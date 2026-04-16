@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Django
+*.log
+media/
+staticfiles/
+backend/staticfiles/
+
+# Node
+node_modules/
+dist/
+.vite/
+.turbo/
+coverage/
+
+# Env / secrets
+.env
+.env.local
+*.pem
+*.key
+/data/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# uv
+.venv
