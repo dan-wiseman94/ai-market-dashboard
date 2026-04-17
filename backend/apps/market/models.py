@@ -87,3 +87,27 @@ class OptionChainSnapshot(models.Model):
 
     def __str__(self) -> str:
         return f"OptionChainSnapshot({self.ticker}, {self.fetched_at})"
+
+
+class NewsItem(models.Model):
+    """One row per news article. Deduplicated on (provider, external_id)."""
+
+    provider = models.CharField(max_length=16)
+    external_id = models.CharField(max_length=64, db_index=True)
+    ticker = models.CharField(max_length=16, db_index=True, blank=True, default="")
+    headline = models.CharField(max_length=512)
+    summary = models.TextField(blank=True, default="")
+    url = models.URLField(max_length=1024)
+    source = models.CharField(max_length=64, blank=True, default="")
+    published_at = models.DateTimeField(db_index=True)
+
+    class Meta:
+        constraints: ClassVar = [
+            models.UniqueConstraint(
+                fields=["provider", "external_id"], name="uniq_news_provider_id",
+            ),
+        ]
+        indexes: ClassVar = [models.Index(fields=["ticker", "-published_at"])]
+
+    def __str__(self) -> str:
+        return f"NewsItem({self.provider}/{self.external_id})"
