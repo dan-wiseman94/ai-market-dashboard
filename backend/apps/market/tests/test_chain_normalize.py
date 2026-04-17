@@ -50,3 +50,48 @@ def test_normalize_chain_handles_empty_maps():
     out = _normalize_chain({"underlyingPrice": 100.0, "callExpDateMap": {}, "putExpDateMap": {}})
     assert out["underlying_last"] == "100.00"
     assert out["expiries"] == {}
+
+
+def test_normalize_chain_handles_schwab_sentinel_strings():
+    """Schwab returns 'N/A' or '' for unavailable greeks; _fmt should return None, not crash."""
+    raw = {
+        "underlyingPrice": 100.0,
+        "callExpDateMap": {
+            "2026-05-01:14": {
+                "100.0": [{
+                    "strikePrice": 100.0, "bid": "N/A", "ask": "",
+                    "delta": "--", "iv": None,
+                }],
+            },
+        },
+        "putExpDateMap": {},
+    }
+    out = _normalize_chain(raw)
+    contract = out["expiries"]["2026-05-01"]["calls"][0]
+    assert contract["strike"] == "100.00"
+    assert contract["bid"] is None
+    assert contract["ask"] is None
+    assert contract["delta"] is None
+    assert contract["iv"] is None
+
+
+def test_normalize_chain_merges_duplicate_expiry_dates():
+    """Schwab can return two DTE suffixes for the same calendar date — both sets of contracts must be preserved."""
+    raw = {
+        "underlyingPrice": 100.0,
+        "callExpDateMap": {
+            "2026-05-01:7": {
+                "95.0": [{"strikePrice": 95.0, "bid": 5.0}],
+            },
+            "2026-05-01:8": {
+                "100.0": [{"strikePrice": 100.0, "bid": 1.0}],
+            },
+        },
+        "putExpDateMap": {},
+    }
+    out = _normalize_chain(raw)
+    calls = out["expiries"]["2026-05-01"]["calls"]
+    assert len(calls) == 2
+    # sorted by strike
+    assert calls[0]["strike"] == "95.00"
+    assert calls[1]["strike"] == "100.00"
