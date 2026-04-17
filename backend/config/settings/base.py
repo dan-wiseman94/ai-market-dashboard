@@ -30,6 +30,7 @@ INSTALLED_APPS = [
     # local
     "apps.core",
     "apps.secrets",
+    "apps.market",
 ]
 
 MIDDLEWARE = [
