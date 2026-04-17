@@ -1,9 +1,11 @@
-"""Core app URL routes.
-
-Empty at M1 Task 3; Task 4 adds health/ready endpoints.
-"""
+"""Core app URL routes."""
 from django.urls import path
+
+from . import views
 
 app_name = "core"
 
-urlpatterns: list = []
+urlpatterns = [
+    path("health/", views.health, name="health"),
+    path("ready/", views.ready, name="ready"),
+]
