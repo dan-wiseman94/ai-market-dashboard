@@ -66,3 +66,23 @@ class SnapshotSection(models.Model):
 
     def __str__(self) -> str:
         return f"{self.snapshot_id}:{self.kind} ({self.status})"
+
+
+class SnapshotImage(models.Model):
+    KIND_CHOICES: ClassVar[list[tuple[str, str]]] = [
+        ("client_capture", "Client capture"),
+        ("server_render", "Server render"),
+    ]
+
+    snapshot = models.ForeignKey(
+        Snapshot, on_delete=models.CASCADE, related_name="images",
+        null=True, blank=True,
+    )
+    kind = models.CharField(max_length=16, choices=KIND_CHOICES)
+    data = models.BinaryField()
+    mime_type = models.CharField(max_length=32, default="image/png")
+    caption = models.CharField(max_length=256, blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    def __str__(self) -> str:
+        return f"SnapshotImage({self.id}, {self.kind})"
