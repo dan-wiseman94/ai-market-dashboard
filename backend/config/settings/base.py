@@ -29,6 +29,7 @@ INSTALLED_APPS = [
     "django_structlog",
     # local
     "apps.core",
+    "apps.secrets",
 ]
 
 MIDDLEWARE = [
@@ -83,6 +84,11 @@ CHANNEL_LAYERS = {
         "CONFIG": {"hosts": [REDIS_URL]},
     },
 }
+
+# Encryption (apps.secrets): salt path for Fernet key derivation.
+# The 32-byte random salt is generated on first access if missing.
+# Losing this file permanently destroys stored credentials.
+_ENCRYPTION_SALT_PATH = env.str("ENCRYPTION_SALT_PATH", default="/data/secret.salt")
 
 # Celery
 CELERY_BROKER_URL = env("CELERY_BROKER_URL", default="redis://redis:6379/1")
