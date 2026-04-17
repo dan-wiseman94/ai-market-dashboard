@@ -5,12 +5,20 @@ is base_url.
 """
 from __future__ import annotations
 
-from typing import AsyncIterator
+from collections.abc import AsyncIterator
+from typing import cast
 
 from openai import AsyncOpenAI
+from openai.types.chat import ChatCompletionMessageParam
 
 from apps.ai.types import (
-    DoneEvent, ErrorEvent, RunEvent, RunRequest, TextDelta, TokenUsage, UsageEvent,
+    DoneEvent,
+    ErrorEvent,
+    RunEvent,
+    RunRequest,
+    TextDelta,
+    TokenUsage,
+    UsageEvent,
 )
 
 
@@ -18,15 +26,16 @@ class OpenAIProvider:
     name = "openai"
 
     def __init__(self, api_key: str, base_url: str = "") -> None:
-        kwargs = {"api_key": api_key}
         if base_url:
-            kwargs["base_url"] = base_url
-        self._client = AsyncOpenAI(**kwargs)
+            self._client = AsyncOpenAI(api_key=api_key, base_url=base_url)
+        else:
+            self._client = AsyncOpenAI(api_key=api_key)
 
     async def run(self, req: RunRequest) -> AsyncIterator[RunEvent]:
-        messages: list[dict] = [{"role": "system", "content": req.system}]
+        raw: list[dict[str, str]] = [{"role": "system", "content": req.system}]
         for m in req.messages:
-            messages.append({"role": m.role, "content": m.content})
+            raw.append({"role": m.role, "content": m.content})
+        messages = cast(list[ChatCompletionMessageParam], raw)
 
         try:
             stream = await self._client.chat.completions.create(
@@ -54,7 +63,7 @@ class OpenAIProvider:
                     )
             yield UsageEvent(usage=usage_data)
             yield DoneEvent()
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             yield ErrorEvent(message=f"{type(exc).__name__}: {exc}")
 
 

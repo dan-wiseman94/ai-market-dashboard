@@ -1,7 +1,7 @@
 """Cost aggregation helpers."""
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 
 from django.db.models import Count, Sum
@@ -10,7 +10,7 @@ from apps.threads.models import AIRun
 
 
 def cost_breakdown_today() -> dict:
-    start = datetime.now(tz=timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    start = datetime.now(tz=UTC).replace(hour=0, minute=0, second=0, microsecond=0)
     qs = AIRun.objects.filter(created_at__gte=start)
     by_provider = list(
         qs.values("provider").annotate(

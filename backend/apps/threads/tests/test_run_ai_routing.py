@@ -12,7 +12,7 @@ from apps.threads.tasks import run_ai_on_message
 @pytest.mark.django_db
 @override_settings(CELERY_TASK_ALWAYS_EAGER=True, CELERY_TASK_EAGER_PROPAGATES=True)
 def test_uses_openai_when_profile_defaults_to_openai():
-    ProviderConfig.objects.create(provider="openai", api_key="sk-oai-x")
+    ProviderConfig.objects.create(provider="openai", api_key="sk-oai-x")  # type: ignore[misc]
     p = TradingProfile.objects.create(
         name="P", style="x", default_provider="openai", default_model="gpt-5-mini",
     )
@@ -41,8 +41,8 @@ def test_uses_openai_when_profile_defaults_to_openai():
 @pytest.mark.django_db
 @override_settings(CELERY_TASK_ALWAYS_EAGER=True, CELERY_TASK_EAGER_PROPAGATES=True)
 def test_override_routes_to_claude():
-    ProviderConfig.objects.create(provider="claude", api_key="sk-ant-x")
-    ProviderConfig.objects.create(provider="openai", api_key="sk-oai-x")
+    ProviderConfig.objects.create(provider="claude", api_key="sk-ant-x")  # type: ignore[misc]
+    ProviderConfig.objects.create(provider="openai", api_key="sk-oai-x")  # type: ignore[misc]
     p = TradingProfile.objects.create(
         name="P", style="x", default_provider="openai", default_model="gpt-5-mini",
     )
