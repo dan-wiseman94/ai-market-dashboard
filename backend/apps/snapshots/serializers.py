@@ -1,3 +1,5 @@
+from typing import ClassVar
+
 from rest_framework import serializers
 
 from .models import Snapshot, SnapshotSection
@@ -6,7 +8,7 @@ from .models import Snapshot, SnapshotSection
 class SnapshotSectionSerializer(serializers.ModelSerializer):
     class Meta:
         model = SnapshotSection
-        fields = ["id", "kind", "status", "payload", "error"]
+        fields: ClassVar = ["id", "kind", "status", "payload", "error"]
 
 
 class SnapshotSerializer(serializers.ModelSerializer):
@@ -14,8 +16,8 @@ class SnapshotSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Snapshot
-        fields = [
+        fields: ClassVar = [
             "id", "profile_id", "objective", "notes", "status", "includes",
             "source", "captured_at", "sections",
         ]
-        read_only_fields = ["captured_at", "status"]
+        read_only_fields: ClassVar = ["captured_at", "status"]

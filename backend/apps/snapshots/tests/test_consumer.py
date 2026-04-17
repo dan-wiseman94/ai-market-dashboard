@@ -1,7 +1,7 @@
 import pytest
 from channels.testing import WebsocketCommunicator
-
 from config.asgi import application
+
 from apps.profiles.models import TradingProfile
 from apps.snapshots.models import Snapshot
 

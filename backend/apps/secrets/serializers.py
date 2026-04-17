@@ -1,3 +1,5 @@
+from typing import ClassVar
+
 from rest_framework import serializers
 
 from .models import ProviderConfig
@@ -9,7 +11,7 @@ class ProviderConfigSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = ProviderConfig
-        fields = [
+        fields: ClassVar = [
             "provider", "base_url", "default_model", "enabled", "supports_vision",
             "daily_cost_cap_usd", "api_key_present", "api_key_write",
         ]

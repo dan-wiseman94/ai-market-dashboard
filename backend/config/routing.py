@@ -1,9 +1,8 @@
 """Channels WebSocket URL routing."""
-from django.urls import path
-
 from apps.core.consumers import PingConsumer
 from apps.snapshots.consumers import SnapshotConsumer
 from apps.threads.consumers import ThreadConsumer
+from django.urls import path
 
 websocket_urlpatterns = [
     path("ws/ping/", PingConsumer.as_asgi()),

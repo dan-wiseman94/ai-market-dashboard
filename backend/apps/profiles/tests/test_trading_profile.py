@@ -1,4 +1,5 @@
 import pytest
+from django.db import IntegrityError
 
 from apps.profiles.models import TradingProfile
 
@@ -31,5 +32,5 @@ def test_profile_stores_custom_includes():
 @pytest.mark.django_db
 def test_profile_name_unique():
     TradingProfile.objects.create(name="A", style="x")
-    with pytest.raises(Exception):
+    with pytest.raises(IntegrityError):
         TradingProfile.objects.create(name="A", style="y")

@@ -1,7 +1,7 @@
 """Cost math + daily cap guard."""
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 
 from apps.ai.catalog import ceiling_for_provider, get_model
@@ -37,9 +37,10 @@ def _dec(v: float | int) -> Decimal:
 def daily_spend_usd(provider: str) -> Decimal:
     """Sum today's AIRun.cost_usd for the given provider (UTC day)."""
     from django.db.models import Sum
+
     from apps.threads.models import AIRun
 
-    today_start = datetime.now(tz=timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    today_start = datetime.now(tz=UTC).replace(hour=0, minute=0, second=0, microsecond=0)
     agg = AIRun.objects.filter(
         provider=provider, created_at__gte=today_start,
     ).aggregate(total=Sum("cost_usd"))

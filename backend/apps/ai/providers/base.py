@@ -1,7 +1,8 @@
 """Provider Protocol — structural interface for Claude/OpenAI/Local."""
 from __future__ import annotations
 
-from typing import AsyncIterator, Protocol, runtime_checkable
+from collections.abc import AsyncIterator
+from typing import Protocol, runtime_checkable
 
 from apps.ai.types import RunEvent, RunRequest
 

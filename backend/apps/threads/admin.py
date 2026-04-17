@@ -1,3 +1,5 @@
+from typing import ClassVar
+
 from django.contrib import admin
 
 from .models import AIRun, Message, Thread
@@ -14,7 +16,7 @@ class MessageInline(admin.TabularInline):
 class ThreadAdmin(admin.ModelAdmin):
     list_display = ("id", "kind", "title", "profile", "created_at")
     list_filter = ("kind",)
-    inlines = [MessageInline]
+    inlines: ClassVar = [MessageInline]
 
 
 @admin.register(AIRun)

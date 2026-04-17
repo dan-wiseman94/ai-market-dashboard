@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from apps.ai.providers.claude import ClaudeProvider
-from apps.ai.types import ChatMessage, RunRequest, TextDelta, UsageEvent, DoneEvent
+from apps.ai.types import ChatMessage, DoneEvent, RunRequest, TextDelta, UsageEvent
 
 
 class _FakeStream:
