@@ -7,6 +7,7 @@ import MarketTicker from "./pages/MarketTicker";
 import ProfilesPage from "./pages/ProfilesPage";
 import SnapshotComposerPage from "./pages/SnapshotComposerPage";
 import ThreadDetailPage from "./pages/ThreadDetailPage";
+import ThreadsPage from "./pages/ThreadsPage";
 
 export const router = createBrowserRouter([
   { path: "/", element: <Dashboard /> },
@@ -16,5 +17,6 @@ export const router = createBrowserRouter([
   { path: "/market/:ticker", element: <MarketTicker /> },
   { path: "/profiles", element: <ProfilesPage /> },
   { path: "/snapshot", element: <SnapshotComposerPage /> },
+  { path: "/threads", element: <ThreadsPage /> },
   { path: "/threads/:id", element: <ThreadDetailPage /> },
 ]);
