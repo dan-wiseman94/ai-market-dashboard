@@ -9,4 +9,5 @@ urlpatterns = [
     path("ohlc/", views.ohlc, name="ohlc"),
     path("positions/", views.positions, name="positions"),
     path("context/", views.context, name="context"),
+    path("chain/", views.chain, name="chain"),
 ]
