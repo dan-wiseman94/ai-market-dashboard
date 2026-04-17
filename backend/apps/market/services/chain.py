@@ -1,6 +1,13 @@
 """Option chain fetching, normalization, and caching."""
 from __future__ import annotations
 
+import hashlib
+import json
+
+from apps.market import cache
+from apps.market.models import OptionChainSnapshot
+from apps.market.schwab_client import get_schwab_client
+
 
 def _fmt(x) -> str | None:
     if x is None:
@@ -57,3 +64,46 @@ def _normalize_chain(raw: dict) -> dict:
         "underlying_last": _fmt(raw.get("underlyingPrice")),
         "expiries": expiries,
     }
+
+
+def fetch_chain(
+    ticker: str,
+    *,
+    expiries: int = 4,
+    strikes_around_atm: int = 10,
+) -> dict:
+    """Fetch + cache + persist an option chain for `ticker`.
+
+    Cache key:  market:chain:<TICKER>:<params_hash>  TTL 15s.
+    On cache miss: call Schwab, normalize, persist OptionChainSnapshot, return payload.
+    On cache hit: return cached payload (no DB write).
+    """
+    ticker = ticker.upper()
+    params_hash = hashlib.sha1(
+        json.dumps({"e": expiries, "k": strikes_around_atm}, sort_keys=True).encode(),
+    ).hexdigest()[:8]
+    cache_key = f"market:chain:{ticker}:{params_hash}"
+
+    def _fetch_and_persist() -> dict:
+        client = get_schwab_client()
+        resp = client.get_option_chain(
+            symbol=ticker,
+            contract_type=client.Options.ContractType.ALL,
+            strike_count=strikes_around_atm * 2,
+            include_underlying_quote=True,
+        )
+        raw = resp.json()
+        payload = _normalize_chain(raw)
+        payload["ticker"] = ticker  # stamp for downstream serializer
+        OptionChainSnapshot.objects.create(
+            ticker=ticker,
+            expiries=list(payload["expiries"].keys()),
+            payload=payload,
+        )
+        return payload
+
+    return cache.get_or_fetch(
+        cache_key,
+        ttl_seconds=cache.ttl_for_kind("chain"),
+        fetcher=_fetch_and_persist,
+    )
