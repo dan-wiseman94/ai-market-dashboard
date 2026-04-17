@@ -38,6 +38,22 @@ _CATALOG: list[ModelInfo] = [
         input_per_mtok=1.00, output_per_mtok=5.00, cached_per_mtok=0.125,
         context_window=200_000, supports_vision=True, supports_cache=True,
     ),
+    # OpenAI
+    ModelInfo(
+        provider="openai", id="gpt-5", name="GPT-5",
+        input_per_mtok=5.00, output_per_mtok=40.00, cached_per_mtok=0.50,
+        context_window=400_000, supports_vision=True, supports_cache=True,
+    ),
+    ModelInfo(
+        provider="openai", id="gpt-5-mini", name="GPT-5 Mini",
+        input_per_mtok=0.60, output_per_mtok=4.80, cached_per_mtok=0.06,
+        context_window=400_000, supports_vision=True, supports_cache=True,
+    ),
+    ModelInfo(
+        provider="openai", id="gpt-5-nano", name="GPT-5 Nano",
+        input_per_mtok=0.15, output_per_mtok=1.20, cached_per_mtok=0.015,
+        context_window=400_000, supports_vision=False, supports_cache=True,
+    ),
 ]
 
 
