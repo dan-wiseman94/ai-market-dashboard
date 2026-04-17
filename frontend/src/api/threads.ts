@@ -35,3 +35,11 @@ export const createThread = (body: {
 
 export const sendMessage = (threadId: number, text: string) =>
   apiPost<Message>(`/api/threads/${threadId}/send/`, { text });
+
+export const compareMessage = (threadId: number, text: string, branches: {provider: string; model: string}[]) =>
+  apiPost<{ user_message_id: number; branches: { provider: string; model: string; task_id: string }[] }>(
+    `/api/threads/${threadId}/compare/`, { text, branches },
+  );
+
+export const stopMessage = (threadId: number, messageId: number) =>
+  apiPost<{ ok: boolean }>(`/api/threads/${threadId}/stop/${messageId}/`);

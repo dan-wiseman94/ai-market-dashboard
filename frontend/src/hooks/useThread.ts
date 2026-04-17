@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { fetchThread, fetchThreads, sendMessage } from "@/api/threads";
+import { compareMessage, fetchThread, fetchThreads, sendMessage, stopMessage } from "@/api/threads";
 
 export const useThreads = () => useQuery({ queryKey: ["threads"], queryFn: fetchThreads });
 
@@ -14,6 +14,23 @@ export function useSendMessage(threadId: number) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (text: string) => sendMessage(threadId, text),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["thread", threadId] }),
+  });
+}
+
+export function useCompareMessage(threadId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (args: { text: string; branches: {provider: string; model: string}[] }) =>
+      compareMessage(threadId, args.text, args.branches),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["thread", threadId] }),
+  });
+}
+
+export function useStopMessage(threadId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (messageId: number) => stopMessage(threadId, messageId),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["thread", threadId] }),
   });
 }
