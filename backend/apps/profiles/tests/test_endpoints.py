@@ -56,7 +56,8 @@ def test_reorder_symbols(api):
 
     r = api.post(f"/api/watchlists/{w.id}/reorder/", {"order": [b.id, a.id]}, format="json")
     assert r.status_code == 200
-    a.refresh_from_db(); b.refresh_from_db()
+    a.refresh_from_db()
+    b.refresh_from_db()
     assert b.sort_order == 0
     assert a.sort_order == 1
 

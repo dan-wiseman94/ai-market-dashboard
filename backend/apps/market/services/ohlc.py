@@ -1,7 +1,7 @@
 """OHLC price history service."""
 from __future__ import annotations
 
-from datetime import datetime, timezone as dt_tz
+from datetime import UTC, datetime
 
 from apps.market import cache
 from apps.market.schwab_client import get_schwab_client
@@ -42,6 +42,6 @@ def _fetch_from_schwab(ticker: str, timeframe: str, bars: int) -> list[dict]:
             "low": c.get("low"),
             "close": c.get("close"),
             "volume": c.get("volume"),
-            "ts": datetime.fromtimestamp(ts_ms / 1000, tz=dt_tz.utc).isoformat(),
+            "ts": datetime.fromtimestamp(ts_ms / 1000, tz=UTC).isoformat(),
         })
     return out

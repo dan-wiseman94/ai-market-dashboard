@@ -1,6 +1,8 @@
 """Watchlists. (TradingProfile comes in M3.)"""
 from __future__ import annotations
 
+from typing import ClassVar
+
 from django.db import models
 
 
@@ -9,7 +11,7 @@ class Watchlist(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        ordering = ["name"]
+        ordering: ClassVar = ["name"]
 
     def __str__(self) -> str:
         return self.name
@@ -21,10 +23,13 @@ class WatchlistSymbol(models.Model):
     sort_order = models.PositiveIntegerField(default=0)
 
     class Meta:
-        constraints = [
+        constraints: ClassVar = [
             models.UniqueConstraint(fields=["watchlist", "ticker"], name="uniq_watchlist_ticker"),
         ]
-        ordering = ["watchlist_id", "sort_order"]
+        ordering: ClassVar = ["watchlist_id", "sort_order"]
+
+    def __str__(self) -> str:
+        return f"{self.watchlist} / {self.ticker}"
 
     def save(self, *args, **kwargs) -> None:
         self.ticker = (self.ticker or "").upper()

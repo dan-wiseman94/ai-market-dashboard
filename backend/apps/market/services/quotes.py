@@ -1,7 +1,7 @@
 """Quote fetching service."""
 from __future__ import annotations
 
-from typing import Iterable
+from collections.abc import Iterable
 
 from apps.market import cache
 from apps.market.schwab_client import get_schwab_client

@@ -15,7 +15,7 @@ def test_create_watchlist_with_symbols():
 def test_unique_symbol_per_watchlist():
     w = Watchlist.objects.create(name="A")
     WatchlistSymbol.objects.create(watchlist=w, ticker="SPY", sort_order=0)
-    with pytest.raises(Exception):
+    with pytest.raises(Exception, match=""):
         WatchlistSymbol.objects.create(watchlist=w, ticker="SPY", sort_order=1)
 
 

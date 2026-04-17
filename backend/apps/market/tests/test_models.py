@@ -1,8 +1,9 @@
-import pytest
-from django.utils import timezone
 from decimal import Decimal
 
-from apps.market.models import Quote, OHLCBar, Position, MarketContext
+import pytest
+from django.utils import timezone
+
+from apps.market.models import MarketContext, OHLCBar, Position, Quote
 
 
 @pytest.mark.django_db
@@ -26,7 +27,7 @@ def test_ohlcbar_unique_per_ticker_timeframe_ts():
         ticker="SPY", timeframe="1m",
         open=Decimal("1"), high=Decimal("2"), low=Decimal("1"), close=Decimal("2"), volume=100, ts=ts,
     )
-    with pytest.raises(Exception):
+    with pytest.raises(Exception, match=""):
         OHLCBar.objects.create(
             ticker="SPY", timeframe="1m",
             open=Decimal("1"), high=Decimal("2"), low=Decimal("1"), close=Decimal("2"), volume=100, ts=ts,

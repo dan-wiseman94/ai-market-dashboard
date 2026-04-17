@@ -2,8 +2,8 @@ from unittest.mock import patch
 
 import pytest
 
-from apps.market.services.context import fetch_market_context, SECTOR_ETFS, CONTEXT_SYMBOLS
 from apps.market import cache as cache_module
+from apps.market.services.context import CONTEXT_SYMBOLS, SECTOR_ETFS, fetch_market_context
 
 
 @pytest.fixture(autouse=True)

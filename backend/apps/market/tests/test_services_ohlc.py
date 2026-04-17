@@ -2,8 +2,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from apps.market.services.ohlc import fetch_ohlc
 from apps.market import cache as cache_module
+from apps.market.services.ohlc import fetch_ohlc
 
 
 @pytest.fixture(autouse=True)
