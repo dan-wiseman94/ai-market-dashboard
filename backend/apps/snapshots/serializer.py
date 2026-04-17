@@ -1,6 +1,8 @@
 """AI payload serializer: Snapshot → single markdown string for the user message."""
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
 from apps.snapshots.models import Snapshot
 from apps.snapshots.token_budget import prune_to_budget
 
@@ -120,12 +122,23 @@ def _render_breadth(payload: dict) -> str:
     return "\n".join(lines)
 
 
-def _render_news(payload: list) -> str:
-    if not payload:
-        return "## News\n_(no headlines)_"
-    lines = ["## News"]
-    for item in payload[:15]:
-        lines.append(f"- **{item.get('headline', '?')}** — {item.get('summary', '')} ({item.get('source', '')})")
+def _render_news(payload) -> str:
+    items = payload.get("items", []) if isinstance(payload, dict) else (payload or [])
+    if not items:
+        return "## News (last 24h)\n_(no headlines)_"
+    lines = ["## News (last 24h)", ""]
+    for it in items[:15]:
+        ts_raw = it.get("datetime") or it.get("published_at")
+        if isinstance(ts_raw, int | float):
+            when = datetime.fromtimestamp(ts_raw, tz=UTC).strftime("%Y-%m-%d %H:%M")
+        else:
+            when = str(ts_raw or "?")
+        head = it.get("headline") or "?"
+        src = it.get("source") or "?"
+        lines.append(f"- **{when}** — *{src}* — {head}")
+        summary = (it.get("summary") or "").strip()
+        if summary:
+            lines.append(f"  {summary}")
     return "\n".join(lines)
 
 
