@@ -21,4 +21,4 @@ def get_provider(name: str, *, api_key: str, base_url: str = "") -> Provider:
     raise ValueError(f"Unknown provider: {name}")
 
 
-__all__ = ["Provider", "ClaudeProvider", "OpenAIProvider", "LocalProvider", "get_provider"]
+__all__ = ["ClaudeProvider", "LocalProvider", "OpenAIProvider", "Provider", "get_provider"]

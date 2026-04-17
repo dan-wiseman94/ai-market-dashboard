@@ -1,4 +1,4 @@
-from apps.ai.catalog import list_models, get_model
+from apps.ai.catalog import get_model, list_models
 
 
 def test_openai_models_in_catalog():

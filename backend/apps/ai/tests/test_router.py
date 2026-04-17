@@ -1,6 +1,6 @@
 import pytest
 
-from apps.ai.router import resolve_provider_and_model, ResolutionError
+from apps.ai.router import ResolutionError, resolve_provider_and_model
 from apps.profiles.models import TradingProfile
 from apps.secrets.models import ProviderConfig
 from apps.threads.models import Thread

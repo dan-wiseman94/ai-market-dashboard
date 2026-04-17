@@ -4,6 +4,7 @@ from __future__ import annotations
 import asyncio
 import time
 from decimal import Decimal
+from typing import cast
 
 from asgiref.sync import async_to_sync
 from celery import shared_task
@@ -14,7 +15,13 @@ from apps.ai.cost import CostCapExceededError, check_daily_cap, cost_usd_for
 from apps.ai.providers import get_provider
 from apps.ai.router import ResolutionError, resolve_provider_and_model
 from apps.ai.types import (
-    ChatMessage, DoneEvent, ErrorEvent, RunRequest, TextDelta, UsageEvent,
+    ChatMessage,
+    DoneEvent,
+    ErrorEvent,
+    RoleType,
+    RunRequest,
+    TextDelta,
+    UsageEvent,
 )
 from apps.secrets.models import ProviderConfig
 from apps.threads.models import AIRun, Message, Thread
@@ -44,7 +51,7 @@ def _build_request(thread: Thread, user_msg: Message) -> RunRequest:
         .order_by("created_at")
     )
     chat_messages: list[ChatMessage] = [
-        ChatMessage(role=m.role, content=_extract_text(m))
+        ChatMessage(role=cast(RoleType, m.role), content=_extract_text(m))
         for m in history
     ]
     if not any(m.id == user_msg.id for m in history):
