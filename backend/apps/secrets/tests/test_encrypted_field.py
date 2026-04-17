@@ -40,6 +40,7 @@ def test_field_rejects_tampered_ciphertext():
     from cryptography.fernet import InvalidToken
     field = EncryptedJSONField()
     encrypted = field.get_prep_value({"a": 1})
+    assert encrypted is not None  # satisfy mypy
     tampered = encrypted[:-5] + b"XXXXX"
     with pytest.raises(InvalidToken):
         field.from_db_value(tampered, expression=None, connection=None)

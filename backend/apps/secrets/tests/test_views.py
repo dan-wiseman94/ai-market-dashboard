@@ -1,9 +1,9 @@
+from datetime import timedelta
 from unittest.mock import patch
 
 import pytest
 from django.test import Client, override_settings
 from django.utils import timezone
-from datetime import timedelta
 
 from apps.secrets.models import ApiCredential
 

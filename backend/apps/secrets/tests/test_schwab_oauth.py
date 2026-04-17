@@ -3,13 +3,13 @@ from unittest.mock import MagicMock, patch
 import pytest
 from django.test import override_settings
 
+from apps.secrets.models import ApiCredential
 from apps.secrets.schwab_oauth import (
     build_authorize_url,
     exchange_code_for_token,
-    refresh_token,
     persist_token,
+    refresh_token,
 )
-from apps.secrets.models import ApiCredential
 
 
 @override_settings(

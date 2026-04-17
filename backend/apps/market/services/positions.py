@@ -16,8 +16,7 @@ def fetch_positions() -> list[dict]:
 def _fetch_from_schwab() -> list[dict]:
     client = get_schwab_client()
     # Get account hashes then fetch positions via fields=positions
-    hash_resp = client.get_account_numbers()
-    hashes = [a["hashValue"] for a in hash_resp.json()]
+    client.get_account_numbers()
 
     out: list[dict] = []
     accounts_resp = client.get_accounts(fields=client.Account.Fields.POSITIONS)

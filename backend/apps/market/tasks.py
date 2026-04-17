@@ -7,7 +7,7 @@ from celery import shared_task
 from django.utils import timezone
 
 from apps.secrets.models import ApiCredential
-from apps.secrets.schwab_oauth import refresh_token, persist_token
+from apps.secrets.schwab_oauth import persist_token, refresh_token
 
 
 @shared_task(name="market.refresh_schwab_token")

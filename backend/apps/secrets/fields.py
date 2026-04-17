@@ -14,7 +14,7 @@ from typing import Any
 from cryptography.fernet import Fernet
 from django.db import models
 
-from apps.secrets.keys import derive_fernet_key_from_settings, derive_fernet_key
+from apps.secrets.keys import derive_fernet_key, derive_fernet_key_from_settings
 
 __all__ = ["EncryptedJSONField", "derive_fernet_key"]
 

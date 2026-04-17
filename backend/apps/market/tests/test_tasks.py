@@ -1,12 +1,12 @@
+from datetime import timedelta
 from unittest.mock import patch
 
 import pytest
-from django.utils import timezone
-from datetime import timedelta
 from django.test import override_settings
+from django.utils import timezone
 
-from apps.secrets.models import ApiCredential
 from apps.market.tasks import refresh_schwab_token
+from apps.secrets.models import ApiCredential
 
 
 @pytest.mark.django_db

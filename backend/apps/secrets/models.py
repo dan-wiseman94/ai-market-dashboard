@@ -1,6 +1,8 @@
 """Encrypted per-provider credential storage."""
 from __future__ import annotations
 
+from typing import ClassVar
+
 from django.db import models
 from django.utils import timezone
 
@@ -10,7 +12,7 @@ from apps.secrets.fields import EncryptedJSONField
 class ApiCredential(models.Model):
     """One row per third-party provider (schwab, news, ...)."""
 
-    PROVIDER_CHOICES = [
+    PROVIDER_CHOICES: ClassVar = [
         ("schwab", "Charles Schwab"),
         ("finnhub", "Finnhub"),
         ("marketaux", "Marketaux"),

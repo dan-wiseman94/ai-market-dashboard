@@ -29,7 +29,7 @@ def schwab_callback(request: HttpRequest) -> JsonResponse | HttpResponseRedirect
         )
     try:
         token = exchange_code_for_token(code)
-    except Exception as exc:  # noqa: BLE001 — surface any provider error
+    except Exception as exc:
         return JsonResponse(
             {"code": "oauth_exchange_failed", "message": str(exc)},
             status=502,

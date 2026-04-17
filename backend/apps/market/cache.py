@@ -5,7 +5,8 @@ TTLs come from the design spec §5.2. Values are JSON-serialized.
 from __future__ import annotations
 
 import json
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 import redis
 from django.conf import settings
@@ -36,7 +37,7 @@ def ttl_for_kind(kind: str) -> int:
 def get_or_fetch(key: str, *, ttl_seconds: int, fetcher: Callable[[], Any]) -> Any:
     """Read JSON from Redis at key; if missing, call fetcher, store, return."""
     r = _redis()
-    cached = r.get(key)
+    cached: bytes | None = r.get(key)  # type: ignore[assignment]
     if cached is not None:
         return json.loads(cached)
     value = fetcher()

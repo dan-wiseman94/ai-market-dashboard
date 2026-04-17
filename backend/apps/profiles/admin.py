@@ -11,4 +11,4 @@ class WatchlistSymbolInline(admin.TabularInline):
 @admin.register(Watchlist)
 class WatchlistAdmin(admin.ModelAdmin):
     list_display = ("name", "created_at")
-    inlines = [WatchlistSymbolInline]
+    inlines = [WatchlistSymbolInline]  # noqa: RUF012

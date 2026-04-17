@@ -1,11 +1,11 @@
+from datetime import timedelta
 from unittest.mock import patch
 
 import pytest
 from django.test import override_settings
 from django.utils import timezone
-from datetime import timedelta
 
-from apps.market.schwab_client import get_schwab_client, SchwabNotConnectedError
+from apps.market.schwab_client import SchwabNotConnectedError, get_schwab_client
 from apps.secrets.models import ApiCredential
 
 

@@ -1,6 +1,7 @@
+from datetime import timedelta
+
 import pytest
 from django.utils import timezone
-from datetime import timedelta
 
 from apps.secrets.models import ApiCredential
 
@@ -19,7 +20,7 @@ def test_create_credential_stores_token_encrypted():
 @pytest.mark.django_db
 def test_unique_per_provider():
     ApiCredential.objects.create(provider="schwab", token={"a": 1})
-    with pytest.raises(Exception):
+    with pytest.raises(Exception, match=""):
         ApiCredential.objects.create(provider="schwab", token={"a": 2})
 
 

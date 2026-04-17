@@ -61,8 +61,9 @@ def refresh_token(refresh_token_value: str) -> dict:
 
 def persist_token(token: dict) -> None:
     """Upsert the schwab token into ApiCredential."""
-    from apps.secrets.models import ApiCredential
     from datetime import datetime
+
+    from apps.secrets.models import ApiCredential
 
     expires_at = datetime.fromtimestamp(token["expires_at"], tz=timezone.get_current_timezone())
     ApiCredential.objects.update_or_create(

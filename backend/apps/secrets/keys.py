@@ -28,7 +28,7 @@ def _load_or_create_salt(path: Path) -> bytes:
 
 def derive_fernet_key_from_settings() -> bytes:
     salt_path = Path(
-        settings._ENCRYPTION_SALT_PATH
+        settings._ENCRYPTION_SALT_PATH  # type: ignore[misc]
         if hasattr(settings, "_ENCRYPTION_SALT_PATH")
         else "/data/secret.salt"
     )

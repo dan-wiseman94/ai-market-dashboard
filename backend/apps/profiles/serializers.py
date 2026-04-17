@@ -1,3 +1,5 @@
+from typing import ClassVar
+
 from rest_framework import serializers
 
 from .models import Watchlist, WatchlistSymbol
@@ -6,8 +8,8 @@ from .models import Watchlist, WatchlistSymbol
 class WatchlistSymbolSerializer(serializers.ModelSerializer):
     class Meta:
         model = WatchlistSymbol
-        fields = ["id", "ticker", "sort_order"]
-        read_only_fields = ["sort_order"]
+        fields: ClassVar = ["id", "ticker", "sort_order"]
+        read_only_fields: ClassVar = ["sort_order"]
 
 
 class WatchlistSerializer(serializers.ModelSerializer):
@@ -15,5 +17,5 @@ class WatchlistSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Watchlist
-        fields = ["id", "name", "created_at", "symbols"]
-        read_only_fields = ["created_at"]
+        fields: ClassVar = ["id", "name", "created_at", "symbols"]
+        read_only_fields: ClassVar = ["created_at"]

@@ -2,8 +2,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from apps.market.services.quotes import fetch_quotes
 from apps.market import cache as cache_module
+from apps.market.services.quotes import fetch_quotes
 
 
 @pytest.fixture(autouse=True)

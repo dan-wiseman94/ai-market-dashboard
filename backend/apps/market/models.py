@@ -1,6 +1,8 @@
 """Market data tables — append-only caches of what we've fetched from Schwab."""
 from __future__ import annotations
 
+from typing import ClassVar
+
 from django.db import models
 
 
@@ -16,11 +18,14 @@ class Quote(models.Model):
     ts = models.DateTimeField(db_index=True)
 
     class Meta:
-        indexes = [models.Index(fields=["ticker", "-ts"])]
+        indexes: ClassVar = [models.Index(fields=["ticker", "-ts"])]
+
+    def __str__(self) -> str:
+        return f"Quote({self.ticker}, {self.ts})"
 
 
 class OHLCBar(models.Model):
-    TIMEFRAMES = [("1m", "1m"), ("5m", "5m"), ("15m", "15m"), ("1h", "1h"), ("1d", "1d")]
+    TIMEFRAMES: ClassVar = [("1m", "1m"), ("5m", "5m"), ("15m", "15m"), ("1h", "1h"), ("1d", "1d")]
 
     ticker = models.CharField(max_length=16)
     timeframe = models.CharField(max_length=4, choices=TIMEFRAMES)
@@ -32,10 +37,13 @@ class OHLCBar(models.Model):
     ts = models.DateTimeField()
 
     class Meta:
-        constraints = [
+        constraints: ClassVar = [
             models.UniqueConstraint(fields=["ticker", "timeframe", "ts"], name="uniq_bar"),
         ]
-        indexes = [models.Index(fields=["ticker", "timeframe", "-ts"])]
+        indexes: ClassVar = [models.Index(fields=["ticker", "timeframe", "-ts"])]
+
+    def __str__(self) -> str:
+        return f"OHLCBar({self.ticker}, {self.timeframe}, {self.ts})"
 
 
 class Position(models.Model):
@@ -48,7 +56,10 @@ class Position(models.Model):
     as_of = models.DateTimeField()
 
     class Meta:
-        indexes = [models.Index(fields=["ticker", "-as_of"])]
+        indexes: ClassVar = [models.Index(fields=["ticker", "-as_of"])]
+
+    def __str__(self) -> str:
+        return f"Position({self.ticker}, {self.as_of})"
 
 
 class MarketContext(models.Model):
@@ -58,3 +69,6 @@ class MarketContext(models.Model):
     sectors = models.JSONField(default=dict)
     breadth = models.JSONField(default=dict)
     as_of = models.DateTimeField(db_index=True)
+
+    def __str__(self) -> str:
+        return f"MarketContext({self.as_of})"
