@@ -4,6 +4,9 @@ const SECTIONS = [
   { key: "positions", label: "Positions" },
   { key: "breadth", label: "Market context" },
   { key: "notes", label: "My notes" },
+  { key: "chain", label: "Option chain" },
+  { key: "news", label: "News" },
+  { key: "image", label: "Charts (server-render)" },
 ];
 
 type Props = { value: string[]; onChange: (next: string[]) => void };

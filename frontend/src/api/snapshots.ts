@@ -21,6 +21,7 @@ export type CreateSnapshotBody = {
   ohlc_ticker?: string;
   ohlc_timeframe?: string;
   ohlc_bars?: number;
+  image_ids?: number[];
 };
 
 export const createSnapshot = (body: CreateSnapshotBody) =>
