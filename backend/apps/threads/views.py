@@ -44,3 +44,35 @@ class ThreadViewSet(
         )
         run_ai_on_message.delay(thread_id=thread.id, user_message_id=user_msg.id)
         return Response(MessageSerializer(user_msg).data, status=202)
+
+    @action(detail=True, methods=["post"])
+    def compare(self, request, pk=None):
+        """Send ONE user message and fan out to N provider/model branches.
+
+        Body: {text, branches: [{provider, model}, ...]}
+        """
+        thread = self.get_object()
+        text = (request.data.get("text") or "").strip()
+        branches = request.data.get("branches") or []
+        if not text:
+            return Response({"code": "empty", "message": "text is required"}, status=400)
+        if not branches:
+            return Response({"code": "no_branches", "message": "Provide at least one branch"}, status=400)
+
+        user_msg = Message.objects.create(
+            thread=thread, role="user", content={"text": text}, status="done",
+        )
+        branch_ids: list[dict] = []
+        for b in branches:
+            task = run_ai_on_message.delay(
+                thread_id=thread.id,
+                user_message_id=user_msg.id,
+                override={"provider": b["provider"], "model": b["model"]},
+                parent_message_id=user_msg.id,
+            )
+            branch_ids.append({"provider": b["provider"], "model": b["model"], "task_id": task.id})
+
+        return Response(
+            {"user_message_id": user_msg.id, "branches": branch_ids},
+            status=202,
+        )
