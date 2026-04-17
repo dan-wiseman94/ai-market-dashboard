@@ -32,11 +32,18 @@ def _finnhub_get(path: str, params: dict, api_key: str) -> list[dict]:
     return body if isinstance(body, list) else []
 
 
+def _external_id(it: dict) -> str | None:
+    raw = it.get("id")
+    if raw is None or raw == "":
+        return None
+    return str(raw)
+
+
 def _upsert_items(provider: str, items: list[dict]) -> list[NewsItem]:
     out: list[NewsItem] = []
     for it in items:
-        external_id = str(it.get("id", ""))
-        if not external_id:
+        external_id = _external_id(it)
+        if external_id is None:
             continue
         published_at = datetime.fromtimestamp(it.get("datetime", 0), tz=UTC)
         obj, _ = NewsItem.objects.update_or_create(
@@ -66,8 +73,11 @@ def fetch_news(
         log.info("Finnhub credential not configured; returning empty news list")
         return []
 
-    end = datetime.now(UTC).date()
-    start = end - timedelta(hours=lookback_hours)
+    now = datetime.now(UTC)
+    end = now.date()
+    # Subtract hours from the full datetime, then take the date — so sub-day lookback
+    # values still produce a sensible from/to range for Finnhub's date-only endpoint.
+    start = (now - timedelta(hours=lookback_hours)).date()
     aggregated: list[dict] = []
 
     for ticker in [t.upper() for t in tickers if t]:
@@ -95,8 +105,8 @@ def fetch_news(
     seen: set[str] = set()
     deduped: list[dict] = []
     for it in aggregated:
-        key = str(it.get("id"))
-        if key in seen:
+        key = _external_id(it)
+        if key is None or key in seen:
             continue
         seen.add(key)
         deduped.append(it)
