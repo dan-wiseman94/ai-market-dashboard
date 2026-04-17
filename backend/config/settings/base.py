@@ -32,6 +32,7 @@ INSTALLED_APPS = [
     "apps.secrets",
     "apps.market",
     "apps.profiles",
+    "apps.snapshots",
 ]
 
 MIDDLEWARE = [
