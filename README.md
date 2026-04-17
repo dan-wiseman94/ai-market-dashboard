@@ -36,3 +36,12 @@ Open http://localhost:5173 (frontend, dev) or http://localhost:8000 (Django + pr
 - `frontend/` — Vite + React + TypeScript
 - `docs/superpowers/specs/` — design docs
 - `docs/superpowers/plans/` — implementation plans
+
+## Production mode
+
+```bash
+docker compose -f compose.yaml -f compose.prod.yaml --profile build run --rm frontend-build
+docker compose -f compose.yaml -f compose.prod.yaml up
+```
+
+Frontend is built once, then served by Django through Whitenoise on http://localhost:8000.

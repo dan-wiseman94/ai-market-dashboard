@@ -1,0 +1,33 @@
+# Override for prod: build frontend into static files served by web via Whitenoise.
+# Usage: docker compose -f compose.yaml -f compose.prod.yaml up
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      target: base
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.prod
+      DJANGO_DEBUG: "0"
+    volumes:
+      - ./frontend/dist:/app/frontend/dist:ro
+      - app_data:/data
+    command:
+      [
+        "sh",
+        "-c",
+        "python manage.py collectstatic --noinput && \
+         daphne -b 0.0.0.0 -p 8000 config.asgi:application",
+      ]
+
+  frontend:
+    profiles: ["build-only"]
+
+  frontend-build:
+    image: node:20-alpine
+    working_dir: /app
+    volumes:
+      - ./frontend:/app
+    command: ["sh", "-c", "npm install && npm run build"]
+    profiles: ["build"]
