@@ -1,45 +1,27 @@
-import { render, screen, waitFor } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import App from "../App";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { render, screen } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
+import { describe, expect, it } from "vitest";
+import { queryClient } from "../hooks/queryClient";
+import Dashboard from "../pages/Dashboard";
+import Settings from "../pages/Settings";
 
-describe("App", () => {
-  beforeEach(() => {
-    vi.stubGlobal("fetch", vi.fn());
-  });
-  afterEach(() => {
-    vi.unstubAllGlobals();
-  });
-
-  it("shows 'Checking…' before the health check resolves", () => {
-    (globalThis.fetch as ReturnType<typeof vi.fn>).mockReturnValue(
-      new Promise(() => {
-        /* never resolve */
-      }),
+describe("pages", () => {
+  it("renders Dashboard heading", () => {
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter><Dashboard /></MemoryRouter>
+      </QueryClientProvider>,
     );
-    render(<App />);
-    expect(screen.getByText(/checking/i)).toBeInTheDocument();
+    expect(screen.getByText(/Dashboard/i)).toBeInTheDocument();
   });
 
-  it("renders 'Stack is green' when /api/health returns status ok", async () => {
-    (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
-      ok: true,
-      json: async () => ({ status: "ok" }),
-    } as Response);
-
-    render(<App />);
-
-    await waitFor(() => {
-      expect(screen.getByText(/stack is green/i)).toBeInTheDocument();
-    });
-  });
-
-  it("renders 'Stack is down' when /api/health fails", async () => {
-    (globalThis.fetch as ReturnType<typeof vi.fn>).mockRejectedValue(new Error("boom"));
-
-    render(<App />);
-
-    await waitFor(() => {
-      expect(screen.getByText(/stack is down/i)).toBeInTheDocument();
-    });
+  it("renders Settings heading", () => {
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter><Settings /></MemoryRouter>
+      </QueryClientProvider>,
+    );
+    expect(screen.getByText(/Settings/i)).toBeInTheDocument();
   });
 });
