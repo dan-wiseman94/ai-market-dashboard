@@ -76,3 +76,20 @@ class ThreadViewSet(
             {"user_message_id": user_msg.id, "branches": branch_ids},
             status=202,
         )
+
+    @action(detail=True, methods=["post"], url_path=r"stop/(?P<message_id>\d+)")
+    def stop(self, request, pk=None, message_id=None):
+        """Mark a streaming assistant message as cancelled. Task finishes but skips final write."""
+        thread = self.get_object()
+        try:
+            msg = Message.objects.get(id=message_id, thread=thread, role="assistant")
+        except Message.DoesNotExist:
+            return Response({"code": "not_found", "message": "Message not found"}, status=404)
+        if msg.status != "streaming":
+            return Response({"code": "not_streaming", "message": "Message is not streaming"}, status=400)
+        msg.status = "failed"
+        msg.error = "cancelled"
+        msg.save()
+        from apps.threads.tasks import _broadcast
+        _broadcast(thread.id, {"event": "error", "message_id": msg.id, "error": "cancelled"})
+        return Response({"ok": True}, status=200)

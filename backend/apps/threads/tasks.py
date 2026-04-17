@@ -141,6 +141,17 @@ def run_ai_on_message(
     latency_ms = int((time.perf_counter() - t0) * 1000)
 
     with transaction.atomic():
+        assistant.refresh_from_db()
+        if assistant.status == "failed" and assistant.error == "cancelled":
+            # User stopped the stream; don't overwrite the cancellation.
+            AIRun.objects.create(
+                message=assistant, provider=provider_name, model=model_id,
+                status="failed", error="cancelled", latency_ms=latency_ms,
+                input_tokens=(usage.input_tokens if usage else 0),
+                output_tokens=(usage.output_tokens if usage else 0),
+            )
+            return {"ok": False, "error": "cancelled"}
+
         if err:
             assistant.content = {"text": "".join(buffer)}
             assistant.status = "failed"
