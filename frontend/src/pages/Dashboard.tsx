@@ -1,5 +1,6 @@
 import MarketContextStrip from "@/components/MarketContextStrip";
 import PositionsTable from "@/components/PositionsTable";
+import CostChip from "@/components/CostChip";
 import { Link } from "react-router-dom";
 
 export default function Dashboard() {
@@ -7,7 +8,8 @@ export default function Dashboard() {
     <main className="p-6 max-w-6xl mx-auto space-y-6">
       <header className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Dashboard</h1>
-        <nav className="text-sm space-x-4">
+        <nav className="text-sm space-x-4 flex items-center">
+          <CostChip />
           <Link className="text-slate-300 hover:underline" to="/profiles">Profiles</Link>
           <Link className="text-slate-300 hover:underline" to="/watchlists">Watchlists</Link>
           <Link className="text-slate-300 hover:underline" to="/threads">Threads</Link>

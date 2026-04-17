@@ -8,6 +8,7 @@ import ProfilesPage from "./pages/ProfilesPage";
 import SnapshotComposerPage from "./pages/SnapshotComposerPage";
 import ThreadDetailPage from "./pages/ThreadDetailPage";
 import ThreadsPage from "./pages/ThreadsPage";
+import CostsPage from "./pages/CostsPage";
 
 export const router = createBrowserRouter([
   { path: "/", element: <Dashboard /> },
@@ -19,4 +20,5 @@ export const router = createBrowserRouter([
   { path: "/snapshot", element: <SnapshotComposerPage /> },
   { path: "/threads", element: <ThreadsPage /> },
   { path: "/threads/:id", element: <ThreadDetailPage /> },
+  { path: "/costs", element: <CostsPage /> },
 ]);
