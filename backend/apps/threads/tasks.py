@@ -13,7 +13,12 @@ from django.db import transaction
 from apps.ai.cost import CostCapExceededError, check_daily_cap, cost_usd_for
 from apps.ai.providers.claude import ClaudeProvider
 from apps.ai.types import (
-    ChatMessage, DoneEvent, ErrorEvent, RunRequest, TextDelta, UsageEvent,
+    ChatMessage,
+    DoneEvent,
+    ErrorEvent,
+    RunRequest,
+    TextDelta,
+    UsageEvent,
 )
 from apps.secrets.models import ProviderConfig
 from apps.threads.models import AIRun, Message, Thread
@@ -70,7 +75,7 @@ def run_ai_on_message(*, thread_id: int, user_message_id: int) -> dict:
     history = list(Message.objects.filter(thread=thread, role__in=["user", "assistant"]).order_by("created_at"))
     chat_messages = []
     for m in history:
-        chat_messages.append(ChatMessage(role=m.role, content=_extract_text(m)))
+        chat_messages.append(ChatMessage(role=m.role, content=_extract_text(m)))  # type: ignore[arg-type]
 
     if not any(m.id == user_msg.id for m in history):
         chat_messages.append(ChatMessage(role="user", content=_extract_text(user_msg)))

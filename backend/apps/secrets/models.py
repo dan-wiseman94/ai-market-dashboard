@@ -63,6 +63,9 @@ class ProviderConfig(models.Model):
     class Meta:
         db_table = "secrets_providerconfig"
 
+    def __str__(self) -> str:
+        return f"{self.get_provider_display()} ({'on' if self.enabled else 'off'})"
+
     @property
     def api_key(self) -> str:
         return (self._api_key or {}).get("k", "") if self._api_key else ""
@@ -70,6 +73,3 @@ class ProviderConfig(models.Model):
     @api_key.setter
     def api_key(self, value: str) -> None:
         self._api_key = {"k": value} if value else None
-
-    def __str__(self) -> str:
-        return f"{self.get_provider_display()} ({'on' if self.enabled else 'off'})"

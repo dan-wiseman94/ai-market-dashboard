@@ -1,3 +1,5 @@
+from typing import ClassVar
+
 from django.contrib import admin
 
 from .models import Snapshot, SnapshotSection
@@ -12,4 +14,4 @@ class SnapshotSectionInline(admin.TabularInline):
 class SnapshotAdmin(admin.ModelAdmin):
     list_display = ("id", "profile", "status", "source", "captured_at")
     list_filter = ("status", "source")
-    inlines = [SnapshotSectionInline]
+    inlines: ClassVar = [SnapshotSectionInline]

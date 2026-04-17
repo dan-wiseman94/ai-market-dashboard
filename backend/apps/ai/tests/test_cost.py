@@ -1,5 +1,6 @@
-import pytest
 from decimal import Decimal
+
+import pytest
 
 from apps.ai.cost import cost_usd_for
 from apps.ai.types import TokenUsage

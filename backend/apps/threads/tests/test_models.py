@@ -1,9 +1,10 @@
-import pytest
 from decimal import Decimal
+
+import pytest
 
 from apps.profiles.models import TradingProfile
 from apps.snapshots.models import Snapshot
-from apps.threads.models import Thread, Message, AIRun
+from apps.threads.models import AIRun, Message, Thread
 
 
 @pytest.mark.django_db

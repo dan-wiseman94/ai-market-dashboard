@@ -1,12 +1,18 @@
 """Claude provider — streams via anthropic SDK."""
 from __future__ import annotations
 
-from typing import AsyncIterator
+from collections.abc import AsyncIterator
 
 from anthropic import AsyncAnthropic
 
 from apps.ai.types import (
-    DoneEvent, ErrorEvent, RunEvent, RunRequest, TextDelta, TokenUsage, UsageEvent,
+    DoneEvent,
+    ErrorEvent,
+    RunEvent,
+    RunRequest,
+    TextDelta,
+    TokenUsage,
+    UsageEvent,
 )
 
 
@@ -17,7 +23,7 @@ class ClaudeProvider:
         kwargs = {"api_key": api_key}
         if base_url:
             kwargs["base_url"] = base_url
-        self._client = AsyncAnthropic(**kwargs)
+        self._client = AsyncAnthropic(**kwargs)  # type: ignore[arg-type]
 
     async def run(self, req: RunRequest) -> AsyncIterator[RunEvent]:
         system_blocks = _system_blocks(req.system, cache=req.cache_system)
@@ -26,8 +32,8 @@ class ClaudeProvider:
         try:
             async with self._client.messages.stream(
                 model=req.model,
-                system=system_blocks,
-                messages=messages,
+                system=system_blocks,  # type: ignore[arg-type]
+                messages=messages,  # type: ignore[arg-type]
                 max_tokens=req.max_tokens,
                 temperature=req.temperature,
             ) as stream:
@@ -42,7 +48,7 @@ class ClaudeProvider:
                 cached_tokens=getattr(u, "cache_read_input_tokens", 0) or 0,
             ))
             yield DoneEvent()
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             yield ErrorEvent(message=f"{type(exc).__name__}: {exc}")
 
 

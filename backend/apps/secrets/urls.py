@@ -14,4 +14,5 @@ urlpatterns = [
     path("status/", views.schwab_status, name="status"),
     path("models/", views.ai_models, name="ai-models"),
     path("usage/", views.ai_usage, name="ai-usage"),
-] + router.urls
+    *router.urls,
+]

@@ -5,14 +5,14 @@ from django.test import override_settings
 
 from apps.profiles.models import TradingProfile
 from apps.secrets.models import ProviderConfig
-from apps.threads.models import Thread, Message
+from apps.threads.models import Message, Thread
 from apps.threads.tasks import run_ai_on_message
 
 
 @pytest.mark.django_db
 @override_settings(CELERY_TASK_ALWAYS_EAGER=True, CELERY_TASK_EAGER_PROPAGATES=True)
 def test_run_ai_appends_assistant_message_and_airun():
-    ProviderConfig.objects.create(provider="claude", api_key="sk-ant-test")
+    ProviderConfig.objects.create(provider="claude", api_key="sk-ant-test")  # type: ignore[misc]
     p = TradingProfile.objects.create(name="P", style="You trade.")
     t = Thread.objects.create(kind="consult", profile=p, title="x")
     user_msg = Message.objects.create(thread=t, role="user", content={"text": "hi"})
@@ -42,7 +42,7 @@ def test_run_ai_appends_assistant_message_and_airun():
 @pytest.mark.django_db
 @override_settings(CELERY_TASK_ALWAYS_EAGER=True, CELERY_TASK_EAGER_PROPAGATES=True)
 def test_run_ai_marks_failed_on_error():
-    ProviderConfig.objects.create(provider="claude", api_key="sk-ant-test")
+    ProviderConfig.objects.create(provider="claude", api_key="sk-ant-test")  # type: ignore[misc]
     p = TradingProfile.objects.create(name="P", style="x")
     t = Thread.objects.create(kind="consult", profile=p, title="x")
     u = Message.objects.create(thread=t, role="user", content={"text": "hi"})

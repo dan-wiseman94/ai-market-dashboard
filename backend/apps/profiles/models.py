@@ -53,10 +53,10 @@ class TradingProfile(models.Model):
     class Meta:
         ordering: ClassVar[list[str]] = ["-active", "name"]
 
+    def __str__(self) -> str:
+        return self.name
+
     def save(self, *args, **kwargs) -> None:
         if not self.default_includes:
             self.default_includes = list(self.DEFAULT_INCLUDES)
         super().save(*args, **kwargs)
-
-    def __str__(self) -> str:
-        return self.name

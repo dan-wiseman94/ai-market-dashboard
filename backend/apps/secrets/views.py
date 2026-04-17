@@ -3,13 +3,17 @@ from __future__ import annotations
 
 from django.http import HttpRequest, HttpResponseRedirect, JsonResponse
 from django.views.decorators.http import require_GET
+from rest_framework import viewsets
 
-from apps.secrets.models import ApiCredential
+from apps.ai.catalog import list_models as _list_catalog
+from apps.ai.cost import daily_spend_usd
+from apps.secrets.models import ApiCredential, ProviderConfig
 from apps.secrets.schwab_oauth import (
     build_authorize_url,
     exchange_code_for_token,
     persist_token,
 )
+from apps.secrets.serializers import ProviderConfigSerializer
 
 
 @require_GET
@@ -50,14 +54,6 @@ def schwab_status(_request: HttpRequest) -> JsonResponse:
             "expires_at": cred.expires_at.isoformat() if cred.expires_at else None,
         }
     )
-
-
-from rest_framework import viewsets
-
-from apps.ai.catalog import list_models as _list_catalog
-from apps.ai.cost import daily_spend_usd
-from .models import ProviderConfig
-from .serializers import ProviderConfigSerializer
 
 
 class ProviderConfigViewSet(viewsets.ModelViewSet):

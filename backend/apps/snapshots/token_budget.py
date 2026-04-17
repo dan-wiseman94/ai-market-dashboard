@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import tiktoken
 
-
 _ENC = tiktoken.get_encoding("cl100k_base")
 
 _PRUNE_ORDER = ["chain", "news", "ohlc", "breadth", "quotes", "positions"]
