@@ -7,6 +7,7 @@ from django.views.decorators.http import require_GET
 from apps.market.schwab_client import SchwabNotConnectedError
 from apps.market.services.chain import fetch_chain
 from apps.market.services.context import fetch_market_context
+from apps.market.services.news import fetch_news
 from apps.market.services.ohlc import fetch_ohlc
 from apps.market.services.positions import fetch_positions
 from apps.market.services.quotes import fetch_quotes
@@ -73,3 +74,15 @@ def chain(request: HttpRequest) -> JsonResponse:
     if not ticker:
         return _err("missing_ticker", "Provide ?ticker=", 400)
     return JsonResponse(fetch_chain(ticker))
+
+
+@require_GET
+def news(request: HttpRequest) -> JsonResponse:
+    raw_tickers = request.GET.get("tickers", "").strip()
+    tickers = [t.strip() for t in raw_tickers.split(",") if t.strip()]
+    try:
+        lookback = int(request.GET.get("lookback", "24"))
+    except ValueError:
+        return _err("invalid_lookback", "lookback must be int hours", 400)
+    items = fetch_news(tickers, lookback_hours=lookback)
+    return JsonResponse({"items": items})
