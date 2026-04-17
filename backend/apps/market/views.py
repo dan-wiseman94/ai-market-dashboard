@@ -5,10 +5,10 @@ from django.http import HttpRequest, JsonResponse
 from django.views.decorators.http import require_GET
 
 from apps.market.schwab_client import SchwabNotConnectedError
+from apps.market.services.chain import fetch_chain
 from apps.market.services.context import fetch_market_context
 from apps.market.services.ohlc import fetch_ohlc
 from apps.market.services.positions import fetch_positions
-from apps.market.services.chain import fetch_chain
 from apps.market.services.quotes import fetch_quotes
 
 
