@@ -2,11 +2,10 @@
 from __future__ import annotations
 
 import redis
+from django.conf import settings
 from django.db import connection
 from django.http import HttpRequest, JsonResponse
 from django.views.decorators.http import require_GET
-
-from django.conf import settings
 
 
 @require_GET

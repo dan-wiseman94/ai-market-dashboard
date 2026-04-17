@@ -94,7 +94,7 @@ CELERY_TIMEZONE = "UTC"
 CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
 
 # Auth / i18n / etc
-AUTH_PASSWORD_VALIDATORS = []
+AUTH_PASSWORD_VALIDATORS: list[dict[str, str]] = []
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = "UTC"
 USE_I18N = True
