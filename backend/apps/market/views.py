@@ -8,6 +8,7 @@ from apps.market.schwab_client import SchwabNotConnectedError
 from apps.market.services.context import fetch_market_context
 from apps.market.services.ohlc import fetch_ohlc
 from apps.market.services.positions import fetch_positions
+from apps.market.services.chain import fetch_chain
 from apps.market.services.quotes import fetch_quotes
 
 
@@ -63,3 +64,12 @@ def positions(_request: HttpRequest) -> JsonResponse:
 @_wrap_schwab
 def context(_request: HttpRequest) -> JsonResponse:
     return JsonResponse(fetch_market_context())
+
+
+@require_GET
+@_wrap_schwab
+def chain(request: HttpRequest) -> JsonResponse:
+    ticker = request.GET.get("ticker", "").strip()
+    if not ticker:
+        return _err("missing_ticker", "Provide ?ticker=", 400)
+    return JsonResponse(fetch_chain(ticker))
