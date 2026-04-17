@@ -25,7 +25,7 @@ def test_run_ai_appends_assistant_message_and_airun():
         yield UsageEvent(usage=TokenUsage(input_tokens=100, output_tokens=50, cached_tokens=0))
         yield DoneEvent()
 
-    with patch("apps.threads.tasks.ClaudeProvider.run", fake_stream):
+    with patch("apps.ai.providers.claude.ClaudeProvider.run", fake_stream):
         result = run_ai_on_message.delay(thread_id=t.id, user_message_id=user_msg.id).get(timeout=5)
 
     assert result["ok"] is True
@@ -52,7 +52,7 @@ def test_run_ai_marks_failed_on_error():
     async def fake_stream(self, req):
         yield ErrorEvent(message="Anthropic rate limit")
 
-    with patch("apps.threads.tasks.ClaudeProvider.run", fake_stream):
+    with patch("apps.ai.providers.claude.ClaudeProvider.run", fake_stream):
         result = run_ai_on_message.delay(thread_id=t.id, user_message_id=u.id).get(timeout=5)
 
     assert result["ok"] is False

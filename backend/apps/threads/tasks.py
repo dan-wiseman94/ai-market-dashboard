@@ -1,4 +1,4 @@
-"""AI run Celery task — drives ClaudeProvider and broadcasts to the thread channel."""
+"""AI run Celery task — drives a provider chosen by the router."""
 from __future__ import annotations
 
 import asyncio
@@ -11,26 +11,13 @@ from channels.layers import get_channel_layer
 from django.db import transaction
 
 from apps.ai.cost import CostCapExceededError, check_daily_cap, cost_usd_for
-from apps.ai.providers.claude import ClaudeProvider
+from apps.ai.providers import get_provider
+from apps.ai.router import ResolutionError, resolve_provider_and_model
 from apps.ai.types import (
-    ChatMessage,
-    DoneEvent,
-    ErrorEvent,
-    RunRequest,
-    TextDelta,
-    UsageEvent,
+    ChatMessage, DoneEvent, ErrorEvent, RunRequest, TextDelta, UsageEvent,
 )
 from apps.secrets.models import ProviderConfig
 from apps.threads.models import AIRun, Message, Thread
-
-
-async def _broadcast_async(thread_id: int, payload: dict) -> None:
-    layer = get_channel_layer()
-    if layer is None:
-        return
-    await layer.group_send(
-        f"thread.{thread_id}", {"type": "thread_event", "payload": payload}
-    )
 
 
 def _broadcast(thread_id: int, payload: dict) -> None:
@@ -42,21 +29,66 @@ def _broadcast(thread_id: int, payload: dict) -> None:
     )
 
 
+async def _broadcast_async(thread_id: int, payload: dict) -> None:
+    layer = get_channel_layer()
+    if layer is None:
+        return
+    await layer.group_send(f"thread.{thread_id}", {"type": "thread_event", "payload": payload})
+
+
+def _build_request(thread: Thread, user_msg: Message) -> RunRequest:
+    system = thread.profile.style if thread.profile else ""
+    history = list(
+        Message.objects
+        .filter(thread=thread, role__in=["user", "assistant"], status="done")
+        .order_by("created_at")
+    )
+    chat_messages: list[ChatMessage] = [
+        ChatMessage(role=m.role, content=_extract_text(m))
+        for m in history
+    ]
+    if not any(m.id == user_msg.id for m in history):
+        chat_messages.append(ChatMessage(role="user", content=_extract_text(user_msg)))
+    return RunRequest(model="", system=system, messages=chat_messages, cache_system=True)
+
+
+def _extract_text(m: Message) -> str:
+    c = m.content or {}
+    if isinstance(c, dict) and "text" in c:
+        return c["text"]
+    return str(c)
+
+
 @shared_task(name="threads.run_ai_on_message")
-def run_ai_on_message(*, thread_id: int, user_message_id: int) -> dict:
+def run_ai_on_message(
+    *,
+    thread_id: int,
+    user_message_id: int,
+    override: dict | None = None,
+    parent_message_id: int | None = None,
+) -> dict:
     thread = Thread.objects.select_related("profile").get(id=thread_id)
-    profile = thread.profile
     user_msg = Message.objects.get(id=user_message_id)
 
-    provider_name = (profile.default_provider if profile else "claude")
-    model_id = (profile.default_model if profile else "claude-sonnet-4-6")
+    try:
+        provider_name, model_id = resolve_provider_and_model(
+            thread=thread, message=user_msg, override=override,
+        )
+    except ResolutionError as exc:
+        assistant = Message.objects.create(
+            thread=thread, role="assistant", content={"text": ""}, status="failed",
+            error=str(exc), parent_message_id=parent_message_id,
+        )
+        _broadcast(thread_id, {"event": "error", "message_id": assistant.id, "error": str(exc)})
+        return {"ok": False, "error": "no_provider"}
 
     try:
         cfg = ProviderConfig.objects.get(provider=provider_name)
     except ProviderConfig.DoesNotExist:
         assistant = Message.objects.create(
             thread=thread, role="assistant", content={"text": ""}, status="failed",
-            error=f"No API key configured for provider '{provider_name}'. Visit /settings.",
+            error=f"No ProviderConfig row for '{provider_name}'. Visit /settings.",
+            parent_message_id=parent_message_id,
         )
         _broadcast(thread_id, {"event": "error", "message_id": assistant.id, "error": assistant.error})
         return {"ok": False, "error": "no_key"}
@@ -66,28 +98,25 @@ def run_ai_on_message(*, thread_id: int, user_message_id: int) -> dict:
     except CostCapExceededError as exc:
         assistant = Message.objects.create(
             thread=thread, role="assistant", content={"text": ""}, status="failed",
-            error=str(exc),
+            error=str(exc), parent_message_id=parent_message_id,
         )
         _broadcast(thread_id, {"event": "cost_capped", "message_id": assistant.id, "error": str(exc)})
         return {"ok": False, "error": "cost_capped"}
 
-    system = (profile.style if profile else "")
-    history = list(Message.objects.filter(thread=thread, role__in=["user", "assistant"]).order_by("created_at"))
-    chat_messages = []
-    for m in history:
-        chat_messages.append(ChatMessage(role=m.role, content=_extract_text(m)))  # type: ignore[arg-type]
-
-    if not any(m.id == user_msg.id for m in history):
-        chat_messages.append(ChatMessage(role="user", content=_extract_text(user_msg)))
-
-    req = RunRequest(model=model_id, system=system, messages=chat_messages, cache_system=True)
+    req = _build_request(thread, user_msg)
+    req.model = model_id
 
     assistant = Message.objects.create(
         thread=thread, role="assistant", content={"text": ""}, status="streaming",
+        parent_message_id=parent_message_id,
     )
-    _broadcast(thread_id, {"event": "message_started", "message_id": assistant.id})
+    _broadcast(thread_id, {
+        "event": "message_started", "message_id": assistant.id,
+        "parent_message_id": parent_message_id,
+        "provider": provider_name, "model": model_id,
+    })
 
-    provider = ClaudeProvider(api_key=cfg.api_key, base_url=cfg.base_url or "")
+    provider = get_provider(provider_name, api_key=cfg.api_key, base_url=cfg.base_url or "")
     t0 = time.perf_counter()
     buffer: list[str] = []
     usage = None
@@ -128,9 +157,7 @@ def run_ai_on_message(*, thread_id: int, user_message_id: int) -> dict:
         assistant.status = "done"
         assistant.save()
 
-        cost = Decimal("0")
-        if usage is not None:
-            cost = cost_usd_for(provider_name, model_id, usage)
+        cost = Decimal("0") if usage is None else cost_usd_for(provider_name, model_id, usage)
         AIRun.objects.create(
             message=assistant, provider=provider_name, model=model_id,
             input_tokens=(usage.input_tokens if usage else 0),
@@ -142,10 +169,3 @@ def run_ai_on_message(*, thread_id: int, user_message_id: int) -> dict:
             "event": "message_done", "message_id": assistant.id, "cost_usd": str(cost),
         })
         return {"ok": True}
-
-
-def _extract_text(m: Message) -> str:
-    c = m.content or {}
-    if isinstance(c, dict) and "text" in c:
-        return c["text"]
-    return str(c)
