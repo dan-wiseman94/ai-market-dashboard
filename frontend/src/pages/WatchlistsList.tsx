@@ -1,3 +1,53 @@
+import { useState } from "react";
+import { Link } from "react-router-dom";
+import { useCreateWatchlist, useDeleteWatchlist, useWatchlists } from "@/hooks/useWatchlists";
+
 export default function WatchlistsList() {
-  return <main className="p-6"><h1 className="text-2xl font-semibold">Watchlists</h1></main>;
+  const { data, isLoading } = useWatchlists();
+  const create = useCreateWatchlist();
+  const del = useDeleteWatchlist();
+  const [name, setName] = useState("");
+
+  return (
+    <main className="p-6 max-w-3xl mx-auto space-y-4">
+      <h1 className="text-2xl font-semibold">Watchlists</h1>
+
+      <form
+        className="flex gap-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (!name.trim()) return;
+          create.mutate(name.trim(), { onSuccess: () => setName("") });
+        }}
+      >
+        <input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="New watchlist name"
+          className="flex-1 px-3 py-1.5 rounded bg-slate-900 border border-slate-700"
+        />
+        <button className="px-3 py-1.5 rounded bg-emerald-600 hover:bg-emerald-500">Create</button>
+      </form>
+
+      {isLoading ? (
+        <p>Loading…</p>
+      ) : (
+        <ul className="space-y-1">
+          {(data ?? []).map((w) => (
+            <li key={w.id} className="flex items-center justify-between p-3 rounded border border-slate-800">
+              <Link to={`/watchlists/${w.id}`} className="hover:underline">
+                {w.name} <span className="text-slate-500 text-sm">({w.symbols.length} symbols)</span>
+              </Link>
+              <button
+                onClick={() => del.mutate(w.id)}
+                className="text-rose-400 text-sm hover:underline"
+              >
+                Delete
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </main>
+  );
 }
