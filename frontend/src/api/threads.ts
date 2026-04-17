@@ -1,0 +1,37 @@
+import { apiGet, apiPost } from "./client";
+
+export type AiRun = {
+  id: number; provider: string; model: string;
+  input_tokens: number; output_tokens: number; cached_tokens: number;
+  cost_usd: string; latency_ms: number;
+  status: "pending" | "streaming" | "done" | "failed" | "cost_capped";
+  error: string;
+};
+
+export type Message = {
+  id: number;
+  role: "user" | "assistant" | "system";
+  content: { text?: string };
+  status: "done" | "streaming" | "failed";
+  error: string;
+  created_at: string;
+  ai_run?: AiRun | null;
+};
+
+export type Thread = {
+  id: number; kind: "consult" | "chat" | "observer"; title: string;
+  profile: { id: number; name: string; default_provider: string; default_model: string } | null;
+  pinned_snapshot_id: number | null;
+  created_at: string;
+  messages: Message[];
+};
+
+export const fetchThreads = () => apiGet<Thread[]>("/api/threads/");
+export const fetchThread = (id: number) => apiGet<Thread>(`/api/threads/${id}/`);
+
+export const createThread = (body: {
+  kind: "consult" | "chat"; profile_id?: number; pinned_snapshot_id?: number; title?: string;
+}) => apiPost<Thread>("/api/threads/", body);
+
+export const sendMessage = (threadId: number, text: string) =>
+  apiPost<Message>(`/api/threads/${threadId}/send/`, { text });
