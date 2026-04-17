@@ -69,7 +69,6 @@ def _normalize_chain(raw: dict) -> dict:
 def fetch_chain(
     ticker: str,
     *,
-    expiries: int = 4,
     strikes_around_atm: int = 10,
 ) -> dict:
     """Fetch + cache + persist an option chain for `ticker`.
@@ -77,15 +76,21 @@ def fetch_chain(
     Cache key:  market:chain:<TICKER>:<params_hash>  TTL 15s.
     On cache miss: call Schwab, normalize, persist OptionChainSnapshot, return payload.
     On cache hit: return cached payload (no DB write).
+
+    Schwab's get_option_chain has no "number of expiries" parameter, so we always
+    return the default expiry window. The serializer (snapshots/serializer.py)
+    trims to front-month + next monthly when emitting to the AI.
     """
     ticker = ticker.upper()
     params_hash = hashlib.sha1(
-        json.dumps({"e": expiries, "k": strikes_around_atm}, sort_keys=True).encode(),
+        json.dumps({"k": strikes_around_atm}, sort_keys=True).encode(),
     ).hexdigest()[:8]
     cache_key = f"market:chain:{ticker}:{params_hash}"
 
     def _fetch_and_persist() -> dict:
         client = get_schwab_client()
+        # schwab-py v1.x: get_option_chain(symbol, contract_type, strike_count, include_underlying_quote, ...)
+        # If this breaks after a schwab-py upgrade, check BaseClient.get_option_chain signature.
         resp = client.get_option_chain(
             symbol=ticker,
             contract_type=client.Options.ContractType.ALL,
@@ -95,9 +100,10 @@ def fetch_chain(
         raw = resp.json()
         payload = _normalize_chain(raw)
         payload["ticker"] = ticker  # stamp for downstream serializer
+        expiry_dates = list(payload["expiries"].keys())
         OptionChainSnapshot.objects.create(
             ticker=ticker,
-            expiries=list(payload["expiries"].keys()),
+            expiries=expiry_dates,
             payload=payload,
         )
         return payload
