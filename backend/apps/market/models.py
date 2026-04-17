@@ -72,3 +72,18 @@ class MarketContext(models.Model):
 
     def __str__(self) -> str:
         return f"MarketContext({self.as_of})"
+
+
+class OptionChainSnapshot(models.Model):
+    """One row per fetch of an option chain. Full chain in JSONB."""
+
+    ticker = models.CharField(max_length=16, db_index=True)
+    expiries = models.JSONField(default=list)
+    payload = models.JSONField()
+    fetched_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        indexes: ClassVar = [models.Index(fields=["ticker", "-fetched_at"])]
+
+    def __str__(self) -> str:
+        return f"OptionChainSnapshot({self.ticker}, {self.fetched_at})"
