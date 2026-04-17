@@ -1,9 +1,17 @@
+from django.http import HttpResponse, JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_http_methods
 from rest_framework import mixins, viewsets
 from rest_framework.response import Response
 
 from apps.profiles.models import TradingProfile
-from apps.snapshots.models import Snapshot
-from apps.snapshots.serializers import SnapshotSerializer
+from apps.snapshots.models import Snapshot, SnapshotImage
+from apps.snapshots.serializers import SnapshotImageSerializer, SnapshotSerializer
+from apps.snapshots.services_image import (
+    ImageTooLargeError,
+    InvalidPNGError,
+    attach_client_image,
+)
 from apps.snapshots.tasks import capture_task
 
 
@@ -37,3 +45,32 @@ class SnapshotViewSet(
             ohlc_bars=data.get("ohlc_bars", 60),
         )
         return Response(SnapshotSerializer(snap).data, status=202)
+
+
+@csrf_exempt
+@require_http_methods(["GET", "POST"])
+def images_collection(request):
+    if request.method == "POST":
+        body = request.body
+        caption = request.headers.get("X-Caption", "")
+        try:
+            img = attach_client_image(snapshot_id=None, png_bytes=body, caption=caption)
+        except InvalidPNGError as e:
+            return JsonResponse({"code": "invalid_png", "message": str(e)}, status=400)
+        except ImageTooLargeError as e:
+            return JsonResponse({"code": "too_large", "message": str(e)}, status=413)
+        return JsonResponse(SnapshotImageSerializer(img).data, status=201)
+
+    # GET: list staged
+    staged = request.GET.get("staged") == "true"
+    qs = SnapshotImage.objects.filter(snapshot__isnull=True) if staged else SnapshotImage.objects.all()
+    qs = qs.order_by("-created_at")[:50]
+    return JsonResponse({"images": SnapshotImageSerializer(qs, many=True).data})
+
+
+def serve_image(_request, image_id: int):
+    try:
+        img = SnapshotImage.objects.get(id=image_id)
+    except SnapshotImage.DoesNotExist:
+        return HttpResponse(status=404)
+    return HttpResponse(bytes(img.data), content_type=img.mime_type or "image/png")
