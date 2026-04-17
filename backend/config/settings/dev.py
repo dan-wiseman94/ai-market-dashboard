@@ -1,6 +1,5 @@
 """Dev settings — debug on, permissive hosts."""
-from .base import *  # noqa: F401,F403
-from .base import env
+from .base import *
 
 DEBUG = True
 ALLOWED_HOSTS = ["*"]
