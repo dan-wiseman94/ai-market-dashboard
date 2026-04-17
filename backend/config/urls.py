@@ -7,4 +7,6 @@ urlpatterns = [
     path("api/schwab/", include("apps.secrets.urls")),
     path("api/", include("apps.profiles.urls")),
     path("api/market/", include("apps.market.urls")),
+    path("api/", include("apps.snapshots.urls")),
+    path("api/", include("apps.threads.urls")),
 ]
