@@ -60,7 +60,7 @@ def test_normalize_chain_handles_schwab_sentinel_strings():
             "2026-05-01:14": {
                 "100.0": [{
                     "strikePrice": 100.0, "bid": "N/A", "ask": "",
-                    "delta": "--", "iv": None,
+                    "delta": "--", "volatility": "N/A",
                 }],
             },
         },
