@@ -122,17 +122,24 @@ def _render_breadth(payload: dict) -> str:
     return "\n".join(lines)
 
 
+def _format_news_ts(it: dict) -> str:
+    # `is not None` (not `or`) so epoch 0 doesn't silently fall through to published_at.
+    ts_raw = it["datetime"] if it.get("datetime") is not None else it.get("published_at")
+    if isinstance(ts_raw, int | float):
+        return datetime.fromtimestamp(ts_raw, tz=UTC).strftime("%Y-%m-%d %H:%M UTC")
+    if isinstance(ts_raw, datetime):
+        return ts_raw.astimezone(UTC).strftime("%Y-%m-%d %H:%M UTC")
+    return str(ts_raw) if ts_raw else "?"
+
+
 def _render_news(payload) -> str:
+    # Trusts upstream ordering (newest-first) — see fetch_news in apps/market/services/news.py.
     items = payload.get("items", []) if isinstance(payload, dict) else (payload or [])
     if not items:
         return "## News (last 24h)\n_(no headlines)_"
     lines = ["## News (last 24h)", ""]
     for it in items[:15]:
-        ts_raw = it.get("datetime") or it.get("published_at")
-        if isinstance(ts_raw, int | float):
-            when = datetime.fromtimestamp(ts_raw, tz=UTC).strftime("%Y-%m-%d %H:%M")
-        else:
-            when = str(ts_raw or "?")
+        when = _format_news_ts(it)
         head = it.get("headline") or "?"
         src = it.get("source") or "?"
         lines.append(f"- **{when}** — *{src}* — {head}")
