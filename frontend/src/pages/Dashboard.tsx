@@ -10,6 +10,7 @@ export default function Dashboard() {
         <nav className="text-sm space-x-4">
           <Link className="text-slate-300 hover:underline" to="/profiles">Profiles</Link>
           <Link className="text-slate-300 hover:underline" to="/watchlists">Watchlists</Link>
+          <Link className="text-slate-300 hover:underline" to="/threads">Threads</Link>
           <Link className="text-slate-300 hover:underline" to="/settings">Settings</Link>
           <Link className="px-3 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white" to="/snapshot">
             + Snapshot
