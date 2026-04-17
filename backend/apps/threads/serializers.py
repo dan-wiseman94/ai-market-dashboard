@@ -18,10 +18,14 @@ class AIRunSerializer(serializers.ModelSerializer):
 
 class MessageSerializer(serializers.ModelSerializer):
     ai_run = AIRunSerializer(read_only=True)
+    parent_message_id = serializers.IntegerField(read_only=True, allow_null=True)
 
     class Meta:
         model = Message
-        fields: ClassVar = ["id", "role", "content", "status", "error", "created_at", "ai_run"]
+        fields: ClassVar = [
+            "id", "role", "content", "status", "error", "created_at",
+            "ai_run", "parent_message_id",
+        ]
 
 
 class ProfileInlineSerializer(serializers.ModelSerializer):
