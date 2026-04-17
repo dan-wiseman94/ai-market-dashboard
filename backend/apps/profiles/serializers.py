@@ -2,7 +2,7 @@ from typing import ClassVar
 
 from rest_framework import serializers
 
-from .models import Watchlist, WatchlistSymbol
+from .models import TradingProfile, Watchlist, WatchlistSymbol
 
 
 class WatchlistSymbolSerializer(serializers.ModelSerializer):
@@ -19,3 +19,13 @@ class WatchlistSerializer(serializers.ModelSerializer):
         model = Watchlist
         fields: ClassVar = ["id", "name", "created_at", "symbols"]
         read_only_fields: ClassVar = ["created_at"]
+
+
+class TradingProfileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TradingProfile
+        fields = [
+            "id", "name", "style", "default_includes", "default_provider",
+            "default_model", "active", "created_at", "updated_at",
+        ]
+        read_only_fields = ["created_at", "updated_at"]

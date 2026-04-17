@@ -50,3 +50,41 @@ def schwab_status(_request: HttpRequest) -> JsonResponse:
             "expires_at": cred.expires_at.isoformat() if cred.expires_at else None,
         }
     )
+
+
+from rest_framework import viewsets
+
+from apps.ai.catalog import list_models as _list_catalog
+from apps.ai.cost import daily_spend_usd
+from .models import ProviderConfig
+from .serializers import ProviderConfigSerializer
+
+
+class ProviderConfigViewSet(viewsets.ModelViewSet):
+    queryset = ProviderConfig.objects.all()
+    serializer_class = ProviderConfigSerializer
+    lookup_field = "provider"
+
+
+@require_GET
+def ai_models(request: HttpRequest) -> JsonResponse:
+    provider = request.GET.get("provider")
+    models = _list_catalog(provider)
+    return JsonResponse({
+        "models": [
+            {
+                "id": m.id, "name": m.name, "provider": m.provider,
+                "input_per_mtok": m.input_per_mtok, "output_per_mtok": m.output_per_mtok,
+                "cached_per_mtok": m.cached_per_mtok, "context_window": m.context_window,
+                "supports_vision": m.supports_vision,
+            }
+            for m in models
+        ],
+    })
+
+
+@require_GET
+def ai_usage(_request: HttpRequest) -> JsonResponse:
+    return JsonResponse({
+        "today": {p: str(daily_spend_usd(p)) for p in ["claude", "openai", "local"]},
+    })

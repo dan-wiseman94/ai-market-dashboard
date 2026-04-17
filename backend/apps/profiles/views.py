@@ -7,8 +7,8 @@ from rest_framework import mixins, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
-from .models import Watchlist, WatchlistSymbol
-from .serializers import WatchlistSerializer, WatchlistSymbolSerializer
+from .models import TradingProfile, Watchlist, WatchlistSymbol
+from .serializers import TradingProfileSerializer, WatchlistSerializer, WatchlistSymbolSerializer
 
 
 class WatchlistViewSet(viewsets.ModelViewSet):
@@ -51,3 +51,8 @@ class WatchlistSymbolViewSet(
                 status=400,
             )
         return Response(WatchlistSymbolSerializer(sym).data, status=201)
+
+
+class TradingProfileViewSet(viewsets.ModelViewSet):
+    queryset = TradingProfile.objects.all()
+    serializer_class = TradingProfileSerializer
