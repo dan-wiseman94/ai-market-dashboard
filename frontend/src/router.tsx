@@ -3,7 +3,7 @@ import Dashboard from "./pages/Dashboard";
 import Settings from "./pages/Settings";
 import WatchlistsList from "./pages/WatchlistsList";
 import WatchlistDetail from "./pages/WatchlistDetail";
-import MarketTicker from "./pages/MarketTicker";
+import MarketTicker from "./pages/MarketTickerPage";
 import ProfilesPage from "./pages/ProfilesPage";
 import SnapshotComposerPage from "./pages/SnapshotComposerPage";
 import ThreadDetailPage from "./pages/ThreadDetailPage";
