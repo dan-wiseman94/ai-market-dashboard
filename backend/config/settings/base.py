@@ -35,6 +35,7 @@ INSTALLED_APPS = [
     "apps.snapshots",
     "apps.threads",
     "apps.ai",
+    "apps.costs",
 ]
 
 MIDDLEWARE = [
