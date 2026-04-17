@@ -37,3 +37,18 @@ def test_render_chain_emits_per_expiry_table():
 def test_render_chain_handles_empty_payload():
     out = _render_chain({"underlying_last": None, "expiries": {}}, ticker="XXX")
     assert "_(no expiries)_" in out
+
+
+def test_render_chain_preserves_zero_bid_does_not_emit_dash():
+    """A 0 bid is real semantic info on illiquid options — must not be hidden as missing."""
+    payload = {
+        "underlying_last": "100.00",
+        "expiries": {"2026-05-01": {
+            "calls": [{"strike": "100.00", "bid": "0.00", "ask": "0.05",
+                       "delta": "0.50", "iv": "0.0"}],
+            "puts": [],
+        }},
+    }
+    md = _render_chain(payload, ticker="XYZ")
+    # zero values render as their string, not em-dash
+    assert "| 100.00 | 0.00 | 0.05 | 0.50 | 0.0 | — | — | — | — |" in md

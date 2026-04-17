@@ -129,6 +129,11 @@ def _render_news(payload: list) -> str:
     return "\n".join(lines)
 
 
+def _or_dash(v) -> str:
+    """Render `None` as em-dash; preserve everything else (including 0/0.0/'0' — a real bid for an illiquid option)."""
+    return "—" if v is None else str(v)
+
+
 def _render_chain(payload: dict, *, ticker: str = "?") -> str:
     underlying = payload.get("underlying_last")
     header = f"## Option chain — {ticker} (underlying ${underlying})" if underlying else f"## Option chain — {ticker}"
@@ -136,7 +141,10 @@ def _render_chain(payload: dict, *, ticker: str = "?") -> str:
     if not expiries:
         return f"{header}\n_(no expiries)_"
 
-    # Front-month + next monthly per spec §5.3 — keep first 2 expiries by sorted date.
+    # Keep the 2 nearest expiry dates from the payload. The fetch layer already constrains
+    # strike count via Schwab's strike_count param; the payload may still contain weeklies
+    # in addition to monthlies — slicing the first 2 sorted keys takes the nearest pair
+    # whether they are weekly+weekly or weekly+monthly.
     keep = list(sorted(expiries.keys()))[:2]
 
     lines = [header]
@@ -152,10 +160,10 @@ def _render_chain(payload: dict, *, ticker: str = "?") -> str:
             c = calls_by_strike.get(strike, {})
             p = puts_by_strike.get(strike, {})
             lines.append(
-                f"| {strike} | {c.get('bid') or '—'} | {c.get('ask') or '—'} | "
-                f"{c.get('delta') or '—'} | {c.get('iv') or '—'} | "
-                f"{p.get('bid') or '—'} | {p.get('ask') or '—'} | "
-                f"{p.get('delta') or '—'} | {p.get('iv') or '—'} |"
+                f"| {strike} | {_or_dash(c.get('bid'))} | {_or_dash(c.get('ask'))} | "
+                f"{_or_dash(c.get('delta'))} | {_or_dash(c.get('iv'))} | "
+                f"{_or_dash(p.get('bid'))} | {_or_dash(p.get('ask'))} | "
+                f"{_or_dash(p.get('delta'))} | {_or_dash(p.get('iv'))} |"
             )
     return "\n".join(lines)
 
