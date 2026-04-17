@@ -4,6 +4,7 @@ import Settings from "./pages/Settings";
 import WatchlistsList from "./pages/WatchlistsList";
 import WatchlistDetail from "./pages/WatchlistDetail";
 import MarketTicker from "./pages/MarketTicker";
+import ProfilesPage from "./pages/ProfilesPage";
 
 export const router = createBrowserRouter([
   { path: "/", element: <Dashboard /> },
@@ -11,4 +12,5 @@ export const router = createBrowserRouter([
   { path: "/watchlists", element: <WatchlistsList /> },
   { path: "/watchlists/:id", element: <WatchlistDetail /> },
   { path: "/market/:ticker", element: <MarketTicker /> },
+  { path: "/profiles", element: <ProfilesPage /> },
 ]);
