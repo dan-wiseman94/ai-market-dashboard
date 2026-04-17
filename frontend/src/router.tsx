@@ -9,6 +9,7 @@ import SnapshotComposerPage from "./pages/SnapshotComposerPage";
 import ThreadDetailPage from "./pages/ThreadDetailPage";
 import ThreadsPage from "./pages/ThreadsPage";
 import CostsPage from "./pages/CostsPage";
+import RenderChart from "./pages/RenderChart";
 
 export const router = createBrowserRouter([
   { path: "/", element: <Dashboard /> },
@@ -21,4 +22,5 @@ export const router = createBrowserRouter([
   { path: "/threads", element: <ThreadsPage /> },
   { path: "/threads/:id", element: <ThreadDetailPage /> },
   { path: "/costs", element: <CostsPage /> },
+  { path: "/render/chart", element: <RenderChart /> },
 ]);
