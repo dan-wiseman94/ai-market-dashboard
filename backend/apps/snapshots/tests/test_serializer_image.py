@@ -8,7 +8,6 @@ PNG = b"\x89PNG\r\n\x1a\n" + b"\x00" * 50
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def two_images(db):
     profile = TradingProfile.objects.create(name="P", style="x")
     snap = Snapshot.objects.create(profile=profile, includes=["image"])
@@ -17,6 +16,7 @@ def two_images(db):
     return [a.id, b.id]
 
 
+@pytest.mark.django_db
 def test_build_image_blocks_claude(two_images):
     blocks = build_image_blocks(two_images, provider_name="claude")
     assert len(blocks) == 2
@@ -26,6 +26,7 @@ def test_build_image_blocks_claude(two_images):
     assert blocks[0]["source"]["data"]
 
 
+@pytest.mark.django_db
 def test_build_image_blocks_openai(two_images):
     blocks = build_image_blocks(two_images, provider_name="openai")
     assert len(blocks) == 2
@@ -33,6 +34,7 @@ def test_build_image_blocks_openai(two_images):
     assert blocks[0]["image_url"]["url"].startswith("data:image/png;base64,")
 
 
+@pytest.mark.django_db
 def test_render_image_lists_captions(two_images):
     md = _render_image({"image_ids": two_images})
     assert "## Charts attached" in md
