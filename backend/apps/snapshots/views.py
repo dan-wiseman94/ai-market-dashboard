@@ -7,7 +7,7 @@ from rest_framework.response import Response
 from apps.profiles.models import TradingProfile
 from apps.snapshots.models import Snapshot, SnapshotImage
 from apps.snapshots.serializers import SnapshotImageSerializer, SnapshotSerializer
-from apps.snapshots.services_image import (
+from apps.snapshots.services.screenshot import (
     ImageTooLargeError,
     InvalidPNGError,
     attach_client_image,
