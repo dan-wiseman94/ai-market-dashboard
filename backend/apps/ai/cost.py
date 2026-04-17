@@ -1,0 +1,56 @@
+"""Cost math + daily cap guard."""
+from __future__ import annotations
+
+from datetime import datetime, timezone
+from decimal import Decimal
+
+from apps.ai.catalog import ceiling_for_provider, get_model
+from apps.ai.types import TokenUsage
+
+
+class CostCapExceededError(RuntimeError):
+    """Raised to abort an AI run when the provider's daily cap is breached."""
+
+
+def cost_usd_for(provider: str, model_id: str, usage: TokenUsage) -> Decimal:
+    """Compute USD cost for the given run."""
+    if provider == "local":
+        return Decimal("0")
+
+    model = get_model(provider, model_id)
+    if model is None:
+        model = ceiling_for_provider(provider)
+    if model is None:
+        return Decimal("0")
+
+    non_cached = max(0, usage.input_tokens - usage.cached_tokens)
+    input_cost = _dec(non_cached) / Decimal("1000000") * _dec(model.input_per_mtok)
+    cached_cost = _dec(usage.cached_tokens) / Decimal("1000000") * _dec(model.cached_per_mtok)
+    output_cost = _dec(usage.output_tokens) / Decimal("1000000") * _dec(model.output_per_mtok)
+    return (input_cost + cached_cost + output_cost).quantize(Decimal("0.000001"))
+
+
+def _dec(v: float | int) -> Decimal:
+    return Decimal(str(v))
+
+
+def daily_spend_usd(provider: str) -> Decimal:
+    """Sum today's AIRun.cost_usd for the given provider (UTC day)."""
+    from django.db.models import Sum
+    from apps.threads.models import AIRun
+
+    today_start = datetime.now(tz=timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    agg = AIRun.objects.filter(
+        provider=provider, created_at__gte=today_start,
+    ).aggregate(total=Sum("cost_usd"))
+    return agg["total"] or Decimal("0")
+
+
+def check_daily_cap(provider: str, cap_usd: Decimal, prospective_cost: Decimal = Decimal("0")) -> None:
+    """Raise if today's spend + the prospective cost would exceed cap."""
+    spent = daily_spend_usd(provider)
+    if spent + prospective_cost > cap_usd:
+        raise CostCapExceededError(
+            f"{provider} daily cap ${cap_usd} would be exceeded "
+            f"(spent ${spent}, this run ~${prospective_cost})"
+        )

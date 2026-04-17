@@ -34,6 +34,7 @@ INSTALLED_APPS = [
     "apps.profiles",
     "apps.snapshots",
     "apps.threads",
+    "apps.ai",
 ]
 
 MIDDLEWARE = [
