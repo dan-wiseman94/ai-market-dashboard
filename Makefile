@@ -51,7 +51,7 @@ lint: lint-backend lint-frontend ## Lint everything
 .PHONY: lint-backend
 lint-backend: ## ruff + mypy
 	$(COMPOSE) exec web ruff check .
-	$(COMPOSE) exec web mypy backend
+	$(COMPOSE) exec web mypy .
 
 .PHONY: lint-frontend
 lint-frontend: ## eslint + tsc
