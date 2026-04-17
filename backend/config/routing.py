@@ -1,5 +1,8 @@
-"""Channels WebSocket URL routing.
+"""Channels WebSocket URL routing."""
+from django.urls import path
 
-Empty at M1 Task 3; Task 5 adds the PingConsumer route.
-"""
-websocket_urlpatterns: list = []
+from apps.core.consumers import PingConsumer
+
+websocket_urlpatterns = [
+    path("ws/ping/", PingConsumer.as_asgi()),
+]
