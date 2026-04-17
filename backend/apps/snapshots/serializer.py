@@ -1,9 +1,10 @@
 """AI payload serializer: Snapshot → single markdown string for the user message."""
 from __future__ import annotations
 
+import base64
 from datetime import UTC, datetime
 
-from apps.snapshots.models import Snapshot
+from apps.snapshots.models import Snapshot, SnapshotImage
 from apps.snapshots.token_budget import prune_to_budget
 
 
@@ -63,6 +64,8 @@ def _render_section(kind: str, payload) -> str:
         return _render_breadth(payload)
     if kind == "news":
         return _render_news(payload)
+    if kind == "image":
+        return _render_image(payload)
     if kind == "notes":
         return ""
     return f"## {_title(kind)}\n```json\n{payload}\n```"
@@ -204,3 +207,33 @@ def _fmt_int(v) -> str:
         return f"{int(v):,}"
     except (TypeError, ValueError):
         return str(v)
+
+
+def build_image_blocks(image_ids: list[int], *, provider_name: str) -> list[dict]:
+    """Return provider-shaped image blocks for inline base64 attachment."""
+    blocks: list[dict] = []
+    for img in SnapshotImage.objects.filter(id__in=image_ids).order_by("id"):
+        b64 = base64.b64encode(bytes(img.data)).decode("ascii")
+        if provider_name == "claude":
+            blocks.append({
+                "type": "image",
+                "source": {"type": "base64", "media_type": img.mime_type or "image/png", "data": b64},
+            })
+        else:
+            blocks.append({
+                "type": "image_url",
+                "image_url": {"url": f"data:{img.mime_type or 'image/png'};base64,{b64}"},
+            })
+    return blocks
+
+
+def _render_image(payload: dict) -> str:
+    ids = payload.get("image_ids") or []
+    if not ids:
+        return "## Charts attached\n_(none)_"
+    rows = ["## Charts attached"]
+    for img in SnapshotImage.objects.filter(id__in=ids).order_by("id"):
+        suffix = "server-rendered" if img.kind == "server_render" else "your screenshot"
+        cap = img.caption or "(no caption)"
+        rows.append(f"- chart_{img.id}: {cap} ({suffix})")
+    return "\n".join(rows)
