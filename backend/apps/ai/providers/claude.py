@@ -1,0 +1,53 @@
+"""Claude provider — streams via anthropic SDK."""
+from __future__ import annotations
+
+from typing import AsyncIterator
+
+from anthropic import AsyncAnthropic
+
+from apps.ai.types import (
+    DoneEvent, ErrorEvent, RunEvent, RunRequest, TextDelta, TokenUsage, UsageEvent,
+)
+
+
+class ClaudeProvider:
+    name = "claude"
+
+    def __init__(self, api_key: str, base_url: str = "") -> None:
+        kwargs = {"api_key": api_key}
+        if base_url:
+            kwargs["base_url"] = base_url
+        self._client = AsyncAnthropic(**kwargs)
+
+    async def run(self, req: RunRequest) -> AsyncIterator[RunEvent]:
+        system_blocks = _system_blocks(req.system, cache=req.cache_system)
+        messages = [{"role": m.role, "content": m.content} for m in req.messages]
+
+        try:
+            async with self._client.messages.stream(
+                model=req.model,
+                system=system_blocks,
+                messages=messages,
+                max_tokens=req.max_tokens,
+                temperature=req.temperature,
+            ) as stream:
+                async for event in stream:
+                    if event.type == "text":
+                        yield TextDelta(text=event.text)
+                final = await stream.get_final_message()
+            u = final.usage
+            yield UsageEvent(usage=TokenUsage(
+                input_tokens=u.input_tokens,
+                output_tokens=u.output_tokens,
+                cached_tokens=getattr(u, "cache_read_input_tokens", 0) or 0,
+            ))
+            yield DoneEvent()
+        except Exception as exc:  # noqa: BLE001
+            yield ErrorEvent(message=f"{type(exc).__name__}: {exc}")
+
+
+def _system_blocks(system: str, *, cache: bool) -> list[dict]:
+    block: dict = {"type": "text", "text": system}
+    if cache:
+        block["cache_control"] = {"type": "ephemeral"}
+    return [block]
