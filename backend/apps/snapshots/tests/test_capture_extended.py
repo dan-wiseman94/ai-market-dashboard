@@ -22,6 +22,9 @@ def test_capture_with_chain_news_image_sections():
         )
         return img
 
+    # Patch at consumption site (apps.snapshots.services.*), not source modules:
+    # services/__init__.py imports the names at import-time, so the lambdas in _FETCHERS
+    # close over the local references — patching the source paths would not intercept them.
     with patch("apps.snapshots.services.fetch_chain", return_value=fake_chain), \
          patch("apps.snapshots.services.fetch_news", return_value=fake_news_items), \
          patch("apps.snapshots.services.render_chart_png", side_effect=fake_render):
