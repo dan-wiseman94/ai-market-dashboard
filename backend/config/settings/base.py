@@ -125,5 +125,12 @@ CORS_ALLOWED_ORIGINS = [
 ]
 CORS_ALLOW_CREDENTIALS = True
 
+# Schwab OAuth
+SCHWAB_CLIENT_ID = env("SCHWAB_CLIENT_ID", default="")
+SCHWAB_CLIENT_SECRET = env("SCHWAB_CLIENT_SECRET", default="")
+SCHWAB_CALLBACK_URL = env("SCHWAB_CALLBACK_URL", default="https://127.0.0.1:8000/api/schwab/callback")
+SCHWAB_AUTHORIZE_URL = "https://api.schwabapi.com/v1/oauth/authorize"
+SCHWAB_TOKEN_URL = "https://api.schwabapi.com/v1/oauth/token"
+
 # Logging: handled by apps.core.logging.configure_structlog, called from dev/prod settings.
 # We intentionally leave LOGGING at Django's default and reconfigure structlog imperatively.
