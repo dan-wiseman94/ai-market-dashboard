@@ -33,6 +33,7 @@ INSTALLED_APPS = [
     "apps.market",
     "apps.profiles",
     "apps.snapshots",
+    "apps.threads",
 ]
 
 MIDDLEWARE = [
