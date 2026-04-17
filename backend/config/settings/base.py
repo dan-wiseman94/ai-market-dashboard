@@ -118,6 +118,11 @@ STATIC_URL = "/static/"
 STATIC_ROOT = REPO_ROOT / "staticfiles"
 STATICFILES_DIRS = [REPO_ROOT / "frontend" / "dist"] if (REPO_ROOT / "frontend" / "dist").exists() else []
 
+# Raw-bytes uploads (snapshot client captures): align Django's body-buffer cap with
+# apps.snapshots.services_image.MAX_BYTES so oversized PNGs produce a structured 413
+# response from the view rather than Django's bare 400 RequestDataTooBig.
+DATA_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024  # 5 MB
+
 # DRF
 REST_FRAMEWORK = {
     "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
