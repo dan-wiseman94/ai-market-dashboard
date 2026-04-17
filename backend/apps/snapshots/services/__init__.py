@@ -6,15 +6,33 @@ from collections.abc import Iterable
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 
+from apps.market.services.chain import fetch_chain
 from apps.market.services.context import fetch_market_context
+from apps.market.services.news import fetch_news
 from apps.market.services.ohlc import fetch_ohlc
 from apps.market.services.positions import fetch_positions
 from apps.market.services.quotes import fetch_quotes
 from apps.profiles.models import TradingProfile
 from apps.snapshots.models import Snapshot, SnapshotSection
+from apps.snapshots.services.render import render_chart_png
 
 _FETCHERS = {
-    "quotes": lambda *, watchlist_tickers, **_: {"data": fetch_quotes(watchlist_tickers)},
+    "breadth": lambda **_: {"data": fetch_market_context()},
+    "chain": lambda *, watchlist_tickers, **_: {
+        "data": fetch_chain(watchlist_tickers[0] if watchlist_tickers else "SPY"),
+    },
+    "image": lambda *, snapshot_id, watchlist_tickers, ohlc_ticker, ohlc_timeframe, ohlc_bars, **_: {
+        "data": {"image_ids": [
+            render_chart_png(
+                ohlc_ticker or (watchlist_tickers[0] if watchlist_tickers else "SPY"),
+                ohlc_timeframe, ohlc_bars, snapshot_id=snapshot_id,
+            ).id,
+        ]},
+    },
+    "news": lambda *, watchlist_tickers, **_: {
+        "data": {"items": fetch_news(list(watchlist_tickers))},
+    },
+    "notes": lambda **_: {"data": {}},  # user notes live on Snapshot.notes; nothing to fetch
     "ohlc": lambda *, watchlist_tickers, ohlc_ticker=None, ohlc_timeframe="1m", ohlc_bars=60, **_: {
         "data": {
             "ticker": ohlc_ticker or (watchlist_tickers[0] if watchlist_tickers else "SPY"),
@@ -26,8 +44,7 @@ _FETCHERS = {
         },
     },
     "positions": lambda **_: {"data": fetch_positions()},
-    "breadth": lambda **_: {"data": fetch_market_context()},
-    "notes": lambda **_: {"data": {}},  # user notes live on Snapshot.notes; nothing to fetch
+    "quotes": lambda *, watchlist_tickers, **_: {"data": fetch_quotes(watchlist_tickers)},
 }
 
 
@@ -67,6 +84,7 @@ def capture_for_existing(
 
         try:
             result = fetcher(  # type: ignore[operator]
+                snapshot_id=snap.id,
                 watchlist_tickers=list(watchlist_tickers),
                 ohlc_ticker=ohlc_ticker,
                 ohlc_timeframe=ohlc_timeframe,
