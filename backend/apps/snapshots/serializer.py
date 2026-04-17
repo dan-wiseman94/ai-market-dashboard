@@ -53,6 +53,8 @@ def _render_section(kind: str, payload) -> str:
         return _render_quotes(payload)
     if kind == "ohlc":
         return _render_ohlc(payload)
+    if kind == "chain":
+        return _render_chain(payload, ticker=payload.get("ticker", "?"))
     if kind == "positions":
         return _render_positions(payload)
     if kind == "breadth":
@@ -124,6 +126,37 @@ def _render_news(payload: list) -> str:
     lines = ["## News"]
     for item in payload[:15]:
         lines.append(f"- **{item.get('headline', '?')}** — {item.get('summary', '')} ({item.get('source', '')})")
+    return "\n".join(lines)
+
+
+def _render_chain(payload: dict, *, ticker: str = "?") -> str:
+    underlying = payload.get("underlying_last")
+    header = f"## Option chain — {ticker} (underlying ${underlying})" if underlying else f"## Option chain — {ticker}"
+    expiries = payload.get("expiries") or {}
+    if not expiries:
+        return f"{header}\n_(no expiries)_"
+
+    # Front-month + next monthly per spec §5.3 — keep first 2 expiries by sorted date.
+    keep = list(sorted(expiries.keys()))[:2]
+
+    lines = [header]
+    for exp in keep:
+        section = expiries[exp]
+        calls_by_strike = {c["strike"]: c for c in section.get("calls", [])}
+        puts_by_strike = {p["strike"]: p for p in section.get("puts", [])}
+        all_strikes = sorted(set(calls_by_strike) | set(puts_by_strike), key=lambda s: float(s))
+        lines.append(f"\n### Expiry {exp}")
+        lines.append("| strike | call bid | call ask | call Δ | call IV | put bid | put ask | put Δ | put IV |")
+        lines.append("|---|---:|---:|---:|---:|---:|---:|---:|---:|")
+        for strike in all_strikes:
+            c = calls_by_strike.get(strike, {})
+            p = puts_by_strike.get(strike, {})
+            lines.append(
+                f"| {strike} | {c.get('bid') or '—'} | {c.get('ask') or '—'} | "
+                f"{c.get('delta') or '—'} | {c.get('iv') or '—'} | "
+                f"{p.get('bid') or '—'} | {p.get('ask') or '—'} | "
+                f"{p.get('delta') or '—'} | {p.get('iv') or '—'} |"
+            )
     return "\n".join(lines)
 
 
