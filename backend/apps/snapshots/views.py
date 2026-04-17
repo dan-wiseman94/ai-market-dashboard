@@ -37,6 +37,9 @@ class SnapshotViewSet(
             source="manual",
             status="pending",
         )
+        image_ids = data.get("image_ids") or []
+        if image_ids:
+            SnapshotImage.objects.filter(id__in=image_ids, snapshot__isnull=True).update(snapshot=snap)
         capture_task.delay(
             snapshot_id=snap.id,
             watchlist_tickers=data.get("watchlist_tickers") or [],

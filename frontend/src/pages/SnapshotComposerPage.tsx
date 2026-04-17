@@ -18,6 +18,16 @@ export default function SnapshotComposerPage() {
   const [includes, setIncludes] = useState<string[]>(["quotes", "positions", "breadth"]);
   const [objective, setObjective] = useState("");
   const [notes, setNotes] = useState("");
+  const [stagedIds, setStagedIds] = useState<number[]>(() => {
+    try { return JSON.parse(localStorage.getItem("staged_image_ids") || "[]"); }
+    catch { return []; }
+  });
+
+  function dropStaged(id: number) {
+    const next = stagedIds.filter((x) => x !== id);
+    setStagedIds(next);
+    localStorage.setItem("staged_image_ids", JSON.stringify(next));
+  }
 
   useEffect(() => {
     if (profileId === null && profiles && profiles.length > 0) {
@@ -49,11 +59,14 @@ export default function SnapshotComposerPage() {
       ohlc_ticker: tickers[0],
       ohlc_timeframe: "1m",
       ohlc_bars: 60,
+      image_ids: stagedIds,
     });
     const thread = await createThread.mutateAsync({
       profile_id: profileId, pinned_snapshot_id: snap.id,
       title: objective.slice(0, 80) || `Consult ${new Date().toLocaleString()}`,
     });
+    localStorage.removeItem("staged_image_ids");
+    setStagedIds([]);
     navigate(`/threads/${thread.id}?snapshot=${snap.id}`);
   };
 
@@ -110,6 +123,26 @@ export default function SnapshotComposerPage() {
             className="w-full px-2 py-1.5 rounded bg-slate-900 border border-slate-700"
           />
         </div>
+
+        {stagedIds.length > 0 && (
+          <div>
+            <label className="block text-xs text-slate-500 mb-1">Staged screenshots</label>
+            <div className="flex gap-2 flex-wrap">
+              {stagedIds.map((id) => (
+                <div key={id} className="relative border border-slate-700 rounded">
+                  <img src={`/api/snapshots/images/${id}/`} alt={`staged ${id}`}
+                       className="h-16 w-auto block" />
+                  <button
+                    type="button"
+                    onClick={() => dropStaged(id)}
+                    aria-label={`drop staged image ${id}`}
+                    className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-red-900 text-white text-xs leading-none border border-red-800 cursor-pointer p-0"
+                  >×</button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <button
           disabled={!profileId || createSnap.isPending || createThread.isPending}
