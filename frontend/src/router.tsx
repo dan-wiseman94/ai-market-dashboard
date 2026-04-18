@@ -10,6 +10,7 @@ import ThreadDetailPage from "./pages/ThreadDetailPage";
 import ThreadsPage from "./pages/ThreadsPage";
 import CostsPage from "./pages/CostsPage";
 import RenderChart from "./pages/RenderChart";
+import SchedulesPage from "./pages/SchedulesPage";
 
 export const router = createBrowserRouter([
   { path: "/", element: <Dashboard /> },
@@ -23,4 +24,5 @@ export const router = createBrowserRouter([
   { path: "/threads/:id", element: <ThreadDetailPage /> },
   { path: "/costs", element: <CostsPage /> },
   { path: "/render/chart", element: <RenderChart /> },
+  { path: "/schedules", element: <SchedulesPage /> },
 ]);
