@@ -8,7 +8,7 @@ A single-user desktop dashboard that captures snapshots of the stock market and 
 
 The design lives in `docs/superpowers/specs/2026-04-16-ai-dashboard-design.md`. Milestone plans live in `docs/superpowers/plans/`. Both are load-bearing — read the relevant spec section before adding a feature, and read the active milestone plan before starting new implementation work.
 
-Milestones M1 (skeleton, tagged `m1-skeleton`) → M8 (polish). Each gets its own plan and is independently shippable. **Current status:** M1–M5 shipped (`m5-chains-news-images`); **next: M6 (observer)** — schedules + beat + observer timeline UI.
+Milestones M1 (skeleton, tagged `m1-skeleton`) → M8 (polish). Each gets its own plan and is independently shippable. **Current status:** M1–M6 shipped (`m6-observer`); **next: M7 (event triggers)** — evaluator + DSL + visual builder.
 
 ## Daily commands
 
@@ -67,6 +67,10 @@ Each is a Channels group. Groups are joined in `connect()` and left in `disconne
 - **Worker container has chromium for Playwright.** Cold builds of the worker image are ~3–5min slower because of the chromium download (~150MB binary + ~13 Debian system libs). The `web` and `beat` services use the smaller default image without chromium.
 - **Render route `/render/chart`** is deterministic — URL params fully specify the render. Used by `apps.snapshots.services.render.render_chart_png` to capture chart PNGs via headless chromium. In dev: `http://frontend:5173/render/chart?...`. In prod: hash-route on `index.html` so we can reach the SPA via Whitenoise without solving SPA-mode.
 - **Image bytes live in Postgres** (`SnapshotImage.data` BinaryField), not on disk. `serve_image` view reads via `bytes(img.data)` because Django's BinaryField returns memoryview. `DATA_UPLOAD_MAX_MEMORY_SIZE` in settings is aligned with the 5MB image cap so oversized uploads produce a clean 413 instead of bare 400 from Django's body-buffer guard.
+- **Observer schedules drive Celery beat via `OneToOneField(PeriodicTask)`.** `ObserverScheduleViewSet.perform_create` / `perform_update` call `sync_periodic_task(...)` explicitly — no Django signals. Beat picks up changes within its 5s sync interval. Cron expressions evaluate in `OBSERVER_BEAT_TIMEZONE` (default UTC; set to `America/New_York` for the UI's *ET cron presets to be correct year-round).
+- **Notifications are user-anonymous in v1.** `Notification.user` is nullable; consumer subscribes to `user.anonymous.notifications`. When user-auth lands, switch to `user.<id>.notifications` everywhere. The bell icon mounts in `Dashboard.tsx` for v1 (no shared layout — extract in M8 polish).
+- **NYSE market-hours check uses `pandas-market-calendars`.** Holiday + half-day correct; calendar cached at module import in `apps.observer.services.market_hours`.
+- **Integration tests are excluded by default** via `addopts = "... -m 'not integration'"`. Run them explicitly with `pytest -m integration`. The Playwright render test only passes from the `worker` container (which has chromium); web doesn't.
 - **Prod `/` returns 404; SPA is at `/static/index.html`.** Known M1 carry-over. Either configure Whitenoise SPA mode or add a Django catch-all URL in a later milestone.
 - **Single-user auth is a token written to `/data/user.token` on first boot.** No password UI. The container binds to `127.0.0.1` only.
 - **URL include ordering matters.** `config/urls.py` registers specific prefixes (e.g., `/api/costs/`) *before* generic `/api/` includes — a past regression routed `/api/costs/today` into the wrong app. Don't reorder without checking.
