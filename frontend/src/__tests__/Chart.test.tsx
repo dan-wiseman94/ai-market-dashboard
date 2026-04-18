@@ -1,38 +1,26 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, waitFor } from "@testing-library/react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { waitFor } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import Chart from "../components/Chart";
-
-vi.mock("lightweight-charts", () => ({
-  createChart: vi.fn(() => ({
-    addCandlestickSeries: vi.fn(() => ({ setData: vi.fn() })),
-    timeScale: vi.fn(() => ({ fitContent: vi.fn() })),
-    resize: vi.fn(),
-    remove: vi.fn(),
-  })),
-}));
-
-const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-
-const wrapper = ({ children }: { children: React.ReactNode }) => (
-  <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-);
+import { mockFetch, renderWithProviders } from "./testUtils";
 
 beforeEach(() => {
-  global.fetch = vi.fn(() =>
-    Promise.resolve({
-      ok: true,
-      json: () => Promise.resolve({ ticker: "SPY", timeframe: "5m", bars: [
-        { ts: "2026-04-17T09:30:00Z", open: 520, high: 522, low: 519, close: 521, volume: 1000 },
-      ]}),
-    }),
-  ) as never;
+  mockFetch(() => ({
+    ok: true,
+    json: () =>
+      Promise.resolve({
+        ticker: "SPY",
+        timeframe: "5m",
+        bars: [
+          { ts: "2026-04-17T09:30:00Z", open: 520, high: 522, low: 519, close: 521, volume: 1000 },
+        ],
+      }),
+  }));
 });
 
 describe("Chart", () => {
-  it("renders without crashing and calls onReady once data loads", async () => {
+  it("invokes onReady once data finishes loading", async () => {
     const onReady = vi.fn();
-    render(<Chart ticker="SPY" timeframe="5m" bars={60} onReady={onReady} />, { wrapper });
+    renderWithProviders(<Chart ticker="SPY" timeframe="5m" bars={60} onReady={onReady} />);
     await waitFor(() => expect(onReady).toHaveBeenCalled());
   });
 });

@@ -1,4 +1,4 @@
-import { apiGet, apiPatch, apiPost } from "./client";
+import { ApiError, apiGet, apiPatch, apiPost } from "./client";
 
 export type AiModel = {
   id: string; name: string; provider: string;
@@ -16,19 +16,26 @@ export type ProviderConfig = {
   api_key_present: boolean;
 };
 
-export const fetchAiModels = (provider?: string) =>
-  apiGet<{ models: AiModel[] }>(`/api/schwab/models/${provider ? `?provider=${provider}` : ""}`);
+export const fetchAiModels = (provider?: string) => {
+  const query = provider ? `?provider=${encodeURIComponent(provider)}` : "";
+  return apiGet<{ models: AiModel[] }>(`/api/schwab/models/${query}`);
+};
 
 export const fetchProviderConfigs = () =>
   apiGet<ProviderConfig[]>("/api/schwab/providers/");
 
-export const upsertProviderConfig = (provider: string, body: Partial<ProviderConfig> & { api_key_write?: string }) => {
-  return apiPatch<ProviderConfig>(`/api/schwab/providers/${provider}/`, body).catch(async (err) => {
-    if ((err as { status?: number }).status === 404) {
+export const upsertProviderConfig = async (
+  provider: string,
+  body: Partial<ProviderConfig> & { api_key_write?: string },
+) => {
+  try {
+    return await apiPatch<ProviderConfig>(`/api/schwab/providers/${provider}/`, body);
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 404) {
       return apiPost<ProviderConfig>("/api/schwab/providers/", { provider, ...body });
     }
     throw err;
-  });
+  }
 };
 
 export const fetchAiUsage = () => apiGet<{ today: Record<string, string> }>("/api/schwab/usage/");

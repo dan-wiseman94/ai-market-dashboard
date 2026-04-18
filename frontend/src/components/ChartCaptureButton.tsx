@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import html2canvas from "html2canvas";
 
 export interface ChartCaptureButtonProps {
@@ -17,6 +17,17 @@ function appendStaged(id: number) {
 export default function ChartCaptureButton({ targetRef, caption = "" }: ChartCaptureButtonProps) {
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState("");
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => () => {
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+  }, []);
+
+  function showToast(message: string, ms: number) {
+    setToast(message);
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setToast(""), ms);
+  }
 
   async function capture() {
     if (!targetRef.current) return;
@@ -34,11 +45,9 @@ export default function ChartCaptureButton({ targetRef, caption = "" }: ChartCap
       if (!resp.ok) throw new Error(`upload failed ${resp.status}`);
       const body: { id: number } = await resp.json();
       appendStaged(body.id);
-      setToast("Captured — will attach to your next snapshot.");
-      setTimeout(() => setToast(""), 2500);
+      showToast("Captured — will attach to your next snapshot.", 2500);
     } catch (e) {
-      setToast(`Capture failed: ${(e as Error).message}`);
-      setTimeout(() => setToast(""), 4000);
+      showToast(`Capture failed: ${(e as Error).message}`, 4000);
     } finally {
       setBusy(false);
     }

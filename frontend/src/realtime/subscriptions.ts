@@ -4,24 +4,29 @@ type Handler = (msg: any) => void;
 export class Broker {
   private subs = new Map<string, Set<Handler>>();
 
-  subscribe(channel: string, h: Handler): () => void {
+  subscribe(channel: string, handler: Handler): () => void {
     let set = this.subs.get(channel);
     if (!set) {
       set = new Set();
       this.subs.set(channel, set);
     }
-    set.add(h);
+    set.add(handler);
     return () => {
-      const s = this.subs.get(channel);
-      s?.delete(h);
-      if (s && s.size === 0) this.subs.delete(channel);
+      const current = this.subs.get(channel);
+      if (!current) return;
+      current.delete(handler);
+      if (current.size === 0) this.subs.delete(channel);
     };
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   dispatch(channel: string, msg: any): void {
-    this.subs.get(channel)?.forEach((h) => {
-      try { h(msg); } catch { /* swallow handler errors */ }
+    this.subs.get(channel)?.forEach((handler) => {
+      try {
+        handler(msg);
+      } catch {
+        // isolate handler failures so other subscribers still receive the message
+      }
     });
   }
 

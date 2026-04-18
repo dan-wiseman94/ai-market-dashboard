@@ -23,12 +23,12 @@ export default function OptionChainTable({ payload }: { payload: ChainPayload | 
   if (!payload || expiryDates.length === 0) {
     return <div style={{ padding: 12, color: "#888" }}>No chain data.</div>;
   }
-  const exp = payload.expiries[selected] || payload.expiries[expiryDates[0]];
+  const exp = payload.expiries[selected] ?? payload.expiries[expiryDates[0]];
   const callsByStrike = new Map(exp.calls.map((c) => [c.strike, c]));
   const putsByStrike = new Map(exp.puts.map((p) => [p.strike, p]));
   const strikes = [...new Set([...callsByStrike.keys(), ...putsByStrike.keys()])]
     .sort((a, b) => parseFloat(a) - parseFloat(b));
-  const atm = payload.underlying_last ? parseFloat(payload.underlying_last) : null;
+  const atm = payload.underlying_last !== null ? parseFloat(payload.underlying_last) : null;
 
   return (
     <div style={{ padding: 8 }}>
@@ -68,20 +68,20 @@ export default function OptionChainTable({ payload }: { payload: ChainPayload | 
         </thead>
         <tbody>
           {strikes.map((strike) => {
-            const c = callsByStrike.get(strike) || {} as Contract;
-            const p = putsByStrike.get(strike) || {} as Contract;
+            const c = callsByStrike.get(strike);
+            const p = putsByStrike.get(strike);
             const isAtm = atm !== null && Math.abs(parseFloat(strike) - atm) < 0.5;
             return (
               <tr key={strike} style={{ background: isAtm ? "#1a2a3a" : "transparent" }}>
-                <td style={{ textAlign: "right" }}>{c.bid ?? "—"}</td>
-                <td style={{ textAlign: "right" }}>{c.ask ?? "—"}</td>
-                <td style={{ textAlign: "right" }}>{c.delta ?? "—"}</td>
-                <td style={{ textAlign: "right" }}>{c.iv ?? "—"}</td>
+                <td style={{ textAlign: "right" }}>{c?.bid ?? "—"}</td>
+                <td style={{ textAlign: "right" }}>{c?.ask ?? "—"}</td>
+                <td style={{ textAlign: "right" }}>{c?.delta ?? "—"}</td>
+                <td style={{ textAlign: "right" }}>{c?.iv ?? "—"}</td>
                 <td style={{ textAlign: "center", fontWeight: isAtm ? "bold" : "normal" }}>{strike}</td>
-                <td style={{ textAlign: "right" }}>{p.bid ?? "—"}</td>
-                <td style={{ textAlign: "right" }}>{p.ask ?? "—"}</td>
-                <td style={{ textAlign: "right" }}>{p.delta ?? "—"}</td>
-                <td style={{ textAlign: "right" }}>{p.iv ?? "—"}</td>
+                <td style={{ textAlign: "right" }}>{p?.bid ?? "—"}</td>
+                <td style={{ textAlign: "right" }}>{p?.ask ?? "—"}</td>
+                <td style={{ textAlign: "right" }}>{p?.delta ?? "—"}</td>
+                <td style={{ textAlign: "right" }}>{p?.iv ?? "—"}</td>
               </tr>
             );
           })}

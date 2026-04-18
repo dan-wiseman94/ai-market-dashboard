@@ -1,64 +1,65 @@
 import { createContext, useContext, useEffect, useMemo, useRef } from "react";
 import { Broker } from "./subscriptions";
 
-type Ctx = {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  subscribe: (channel: string, handler: (msg: any) => void) => () => void;
-};
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Handler = (msg: any) => void;
+type Subscribe = (channel: string, handler: Handler) => () => void;
+type Ctx = { subscribe: Subscribe };
 
 const WebSocketContext = createContext<Ctx | null>(null);
+
+function pathForChannel(channel: string): string {
+  if (channel.startsWith("thread.")) {
+    return `/ws/threads/${channel.slice("thread.".length)}/`;
+  }
+  if (channel.startsWith("snapshot.")) {
+    return `/ws/snapshots/${channel.slice("snapshot.".length)}/`;
+  }
+  throw new Error(`Unknown channel: ${channel}`);
+}
 
 export function WebSocketProvider({ children }: { children: React.ReactNode }) {
   const broker = useMemo(() => new Broker(), []);
   const sockets = useRef(new Map<string, WebSocket>());
-
   const wsBase = import.meta.env.VITE_WS_BASE_URL ?? "";
 
-  const openForChannel = (channel: string): WebSocket => {
-    const existing = sockets.current.get(channel);
-    if (existing) return existing;
+  const ctx = useMemo<Ctx>(() => {
+    function openForChannel(channel: string): void {
+      if (sockets.current.has(channel)) return;
+      const ws = new WebSocket(`${wsBase}${pathForChannel(channel)}`);
+      ws.addEventListener("message", (ev) => {
+        try {
+          broker.dispatch(channel, JSON.parse(ev.data));
+        } catch {
+          // ignore malformed payloads
+        }
+      });
+      sockets.current.set(channel, ws);
+    }
 
-    const path = channel.startsWith("thread.")
-      ? `/ws/threads/${channel.slice("thread.".length)}/`
-      : channel.startsWith("snapshot.")
-      ? `/ws/snapshots/${channel.slice("snapshot.".length)}/`
-      : null;
-    if (!path) throw new Error(`Unknown channel: ${channel}`);
-
-    const ws = new WebSocket(`${wsBase}${path}`);
-    ws.addEventListener("message", (ev) => {
-      try {
-        broker.dispatch(channel, JSON.parse(ev.data));
-      } catch { /* ignore malformed */ }
-    });
-    sockets.current.set(channel, ws);
-    return ws;
-  };
-
-  const maybeClose = (channel: string) => {
-    if (!broker.channels().includes(channel)) {
+    function closeIfUnused(channel: string): void {
+      if (broker.channels().includes(channel)) return;
       sockets.current.get(channel)?.close();
       sockets.current.delete(channel);
     }
-  };
 
-  const ctx: Ctx = useMemo(() => ({
-    subscribe: (channel, handler) => {
-      openForChannel(channel);
-      const unsubBroker = broker.subscribe(channel, handler);
-      return () => {
-        unsubBroker();
-        maybeClose(channel);
-      };
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), []);
+    return {
+      subscribe(channel, handler) {
+        openForChannel(channel);
+        const unsubscribe = broker.subscribe(channel, handler);
+        return () => {
+          unsubscribe();
+          closeIfUnused(channel);
+        };
+      },
+    };
+  }, [broker, wsBase]);
 
   useEffect(() => {
-    const current = sockets.current;
+    const open = sockets.current;
     return () => {
-      current.forEach((ws) => ws.close());
-      current.clear();
+      open.forEach((ws) => ws.close());
+      open.clear();
     };
   }, []);
 

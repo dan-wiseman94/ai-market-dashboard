@@ -1,32 +1,34 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import ChartCaptureButton from "../components/ChartCaptureButton";
+import { mockFetch } from "./testUtils";
 
-const fakeBlob = new Blob([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], { type: "image/png" });
+const fakePng = new Blob([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], { type: "image/png" });
 
 vi.mock("html2canvas", () => ({
-  default: vi.fn(() => Promise.resolve({
-    toBlob: (cb: (b: Blob) => void) => cb(fakeBlob),
-  })),
+  default: vi.fn(() =>
+    Promise.resolve({
+      toBlob: (cb: (b: Blob) => void) => cb(fakePng),
+    }),
+  ),
 }));
 
 beforeEach(() => {
   localStorage.clear();
-  global.fetch = vi.fn(() =>
-    Promise.resolve({ ok: true, status: 201, json: () => Promise.resolve({ id: 42 }) }),
-  ) as never;
+  mockFetch(() => ({ ok: true, status: 201, json: () => Promise.resolve({ id: 42 }) }));
 });
 
 describe("ChartCaptureButton", () => {
-  it("captures chart, posts PNG, stores image ID in localStorage", async () => {
-    const ref = { current: document.createElement("div") };
-    render(<ChartCaptureButton targetRef={ref} caption="SPY 5m" />);
+  it("captures the chart, posts the PNG, and stores the staged image id", async () => {
+    const targetRef = { current: document.createElement("div") };
+    render(<ChartCaptureButton targetRef={targetRef} caption="SPY 5m" />);
     fireEvent.click(screen.getByRole("button", { name: /capture/i }));
+
     await waitFor(() => {
       const stored = JSON.parse(localStorage.getItem("staged_image_ids") || "[]");
       expect(stored).toEqual([42]);
     });
-    expect(global.fetch).toHaveBeenCalledWith(
+    expect(globalThis.fetch).toHaveBeenCalledWith(
       "/api/snapshots/images/?staged=true",
       expect.objectContaining({ method: "POST" }),
     );

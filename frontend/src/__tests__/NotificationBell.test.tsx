@@ -14,11 +14,11 @@ const NOTIFS = [
 ];
 
 beforeEach(() => {
-  global.fetch = vi.fn(() =>
+  globalThis.fetch = vi.fn(() =>
     Promise.resolve({ ok: true, json: () => Promise.resolve({ results: NOTIFS }) }),
   ) as never;
   // Stub WebSocket so the constructor inside the component doesn't actually open one.
-  (global as { WebSocket?: unknown }).WebSocket = vi.fn(() => ({
+  (globalThis as { WebSocket?: unknown }).WebSocket = vi.fn(() => ({
     onmessage: null, onerror: null, onopen: null, onclose: null,
     close: vi.fn(),
   }));
