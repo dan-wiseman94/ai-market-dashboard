@@ -12,6 +12,10 @@ export default defineConfig({
     host: "0.0.0.0",
     port: 5173,
     strictPort: true,
+    allowedHosts: ["frontend", "localhost", "127.0.0.1"],
+    proxy: {
+      "/api": { target: "http://web:8000", changeOrigin: true },
+    },
   },
   test: {
     globals: true,
