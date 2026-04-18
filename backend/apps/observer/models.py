@@ -12,6 +12,11 @@ from apps.profiles.models import TradingProfile
 class ObserverSchedule(models.Model):
     """A scheduled observer fire definition. Owns the linked PeriodicTask."""
 
+    MODE_CHOICES: ClassVar[list[tuple[str, str]]] = [
+        ("full", "Full payload"),
+        ("diff", "Diff vs previous capture"),
+    ]
+
     name = models.CharField(max_length=100)
     profile = models.ForeignKey(
         TradingProfile, on_delete=models.CASCADE, related_name="observer_schedules",
@@ -23,6 +28,10 @@ class ObserverSchedule(models.Model):
     override_model = models.CharField(max_length=100, blank=True, default="")
     default_includes = models.JSONField(default=list)
     default_watchlist_tickers = models.JSONField(default=list)
+    mode = models.CharField(
+        max_length=8, choices=MODE_CHOICES, default="full",
+        help_text="diff: feed AI only the delta vs the last ready snapshot.",
+    )
     periodic_task = models.OneToOneField(
         "django_celery_beat.PeriodicTask",
         null=True, blank=True, on_delete=models.SET_NULL,
