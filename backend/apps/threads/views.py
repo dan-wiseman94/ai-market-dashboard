@@ -5,6 +5,7 @@ from rest_framework.response import Response
 
 from apps.profiles.models import TradingProfile
 from apps.snapshots.models import Snapshot
+from apps.snapshots.serializer import serialize_for_ai
 from apps.threads.models import Message, Thread
 from apps.threads.serializers import MessageSerializer, ThreadSerializer
 from apps.threads.tasks import _broadcast, run_ai_on_message
@@ -45,6 +46,12 @@ class ThreadViewSet(
             profile=profile,
             pinned_snapshot=snap,
         )
+        if snap is not None:
+            Message.objects.create(
+                thread=t, role="user",
+                content={"text": serialize_for_ai(snap)},
+                snapshot_ref=snap, status="done",
+            )
         return Response(ThreadSerializer(t).data, status=201)
 
     @action(detail=True, methods=["post"])
