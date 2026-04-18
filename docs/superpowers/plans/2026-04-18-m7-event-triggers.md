@@ -131,10 +131,14 @@ Expected: ImportError on `apps.triggers.models` (no `EventTrigger`).
 """EventTrigger + TriggerFiring models."""
 from __future__ import annotations
 
+from typing import ClassVar
+
 from django.db import models
 
 
 class EventTrigger(models.Model):
+    """A user-defined condition rule; fires a snapshot + AI run when matched."""
+
     name = models.CharField(max_length=100)
     profile = models.ForeignKey(
         "profiles.TradingProfile", on_delete=models.CASCADE,
@@ -148,8 +152,8 @@ class EventTrigger(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        indexes = [models.Index(fields=["enabled", "-last_fired_at"])]
-        constraints = [
+        indexes: ClassVar = [models.Index(fields=["enabled", "-last_fired_at"])]
+        constraints: ClassVar = [
             models.UniqueConstraint(
                 fields=["profile", "name"],
                 name="unique_trigger_name_per_profile",
@@ -159,6 +163,8 @@ class EventTrigger(models.Model):
     def __str__(self) -> str:
         return f"{self.name} (profile={self.profile_id})"
 ```
+
+> **Convention note (applies to every model + serializer Meta block in this plan):** project-wide ruff rule `RUF012` requires `ClassVar` on mutable class-level defaults. Mirror `apps/observer/models.py` — always annotate `indexes`, `constraints`, `fields`, `read_only_fields` with `: ClassVar`.
 
 - [ ] **Step 2.4: Generate + apply migration**
 
@@ -251,6 +257,8 @@ Expected: ImportError on `TriggerFiring`.
 Append to `backend/apps/triggers/models.py`:
 ```python
 class TriggerFiring(models.Model):
+    """Immutable audit row: one per fire event."""
+
     trigger = models.ForeignKey(
         EventTrigger, on_delete=models.CASCADE, related_name="firings",
     )
@@ -267,7 +275,7 @@ class TriggerFiring(models.Model):
     cost_capped = models.BooleanField(default=False)
 
     class Meta:
-        indexes = [
+        indexes: ClassVar = [
             models.Index(fields=["trigger", "-fired_at"]),
             models.Index(fields=["-fired_at"]),
         ]
@@ -2393,6 +2401,8 @@ Expected: ImportError on `apps.triggers.serializers`.
 """DRF serializers for EventTrigger + TriggerFiring."""
 from __future__ import annotations
 
+from typing import ClassVar
+
 from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
 
@@ -2405,12 +2415,12 @@ class EventTriggerSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = EventTrigger
-        fields = [
+        fields: ClassVar = [
             "id", "name", "profile", "condition", "cooldown_seconds",
             "enabled", "last_fired_at", "firings_count",
             "created_at", "updated_at",
         ]
-        read_only_fields = ["id", "last_fired_at", "created_at", "updated_at", "firings_count"]
+        read_only_fields: ClassVar = ["id", "last_fired_at", "created_at", "updated_at", "firings_count"]
 
     def validate_condition(self, value):
         try:
@@ -2429,11 +2439,11 @@ class TriggerFiringSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = TriggerFiring
-        fields = [
+        fields: ClassVar = [
             "id", "trigger_id", "trigger_name", "fired_at", "matched_values",
             "snapshot_id", "thread_id", "cost_capped",
         ]
-        read_only_fields = fields
+        read_only_fields: ClassVar = fields
 ```
 
 - [ ] **Step 15.4: Run tests, expect pass**

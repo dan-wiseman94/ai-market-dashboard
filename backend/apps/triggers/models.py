@@ -1,10 +1,14 @@
 """EventTrigger + TriggerFiring models."""
 from __future__ import annotations
 
+from typing import ClassVar
+
 from django.db import models
 
 
 class EventTrigger(models.Model):
+    """A user-defined condition rule; fires a snapshot + AI run when matched."""
+
     name = models.CharField(max_length=100)
     profile = models.ForeignKey(
         "profiles.TradingProfile", on_delete=models.CASCADE,
@@ -18,8 +22,8 @@ class EventTrigger(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        indexes = [models.Index(fields=["enabled", "-last_fired_at"])]
-        constraints = [
+        indexes: ClassVar = [models.Index(fields=["enabled", "-last_fired_at"])]
+        constraints: ClassVar = [
             models.UniqueConstraint(
                 fields=["profile", "name"],
                 name="unique_trigger_name_per_profile",
