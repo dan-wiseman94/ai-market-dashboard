@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import BranchTabs from "@/components/BranchTabs";
+import CompareTotalsStrip from "@/components/CompareTotalsStrip";
 import CompareDialog from "@/components/CompareDialog";
 import ProviderModelPicker from "@/components/ProviderModelPicker";
 import StopButton from "@/components/StopButton";
 import StreamingMessage from "@/components/StreamingMessage";
 import { useChannel } from "@/hooks/useChannel";
+import { useBranchState, type BranchEvent } from "@/hooks/useBranchState";
 import { useSnapshot } from "@/hooks/useSnapshot";
 import { useCompareMessage, useSendMessage, useStopMessage, useThread } from "@/hooks/useThread";
 
@@ -23,6 +25,44 @@ type LiveMessage = {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type WsMsg = any;
+
+function BranchGroup({
+  parentMsg,
+  branches,
+  activeId,
+  onSelect,
+  threadChannel,
+}: {
+  parentMsg: { id: number };
+  branches: LiveMessage[];
+  activeId: number | null;
+  onSelect: (id: number) => void;
+  threadChannel: string | null;
+}) {
+  const { state, handleEvent } = useBranchState(parentMsg.id);
+
+  const onWsBranch = useCallback((msg: WsMsg) => {
+    handleEvent(msg as BranchEvent);
+  }, [handleEvent]);
+
+  useChannel(threadChannel, onWsBranch);
+
+  const branchTabs = branches.map((m) => ({
+    id: m.id,
+    label: `${state[m.id]?.provider ?? m.provider ?? "?"} / ${state[m.id]?.model ?? m.model ?? "?"}`,
+    status: (state[m.id]?.status ?? (m.status === "streaming" ? "streaming" : m.status === "failed" ? "failed" : "done")) as "streaming" | "done" | "failed",
+    cost: state[m.id]?.cost ?? (m.cost != null ? Number(m.cost) : undefined),
+  }));
+
+  return (
+    <>
+      {branchTabs.length > 0 && (
+        <BranchTabs branches={branchTabs} activeId={activeId} onSelect={onSelect} />
+      )}
+      {branchTabs.length > 1 && <CompareTotalsStrip state={state} />}
+    </>
+  );
+}
 
 export default function ThreadDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -141,14 +181,12 @@ export default function ThreadDetailPage() {
                 <StreamingMessage role="user" text={m.text} status={m.status} />
                 {children.length > 0 && (
                   <>
-                    <BranchTabs
-                      branches={children.map((c) => ({
-                        id: c.id,
-                        label: `${c.provider ?? "?"} / ${c.model ?? "?"}`,
-                        status: c.status,
-                      }))}
+                    <BranchGroup
+                      parentMsg={m}
+                      branches={children}
                       activeId={activeId}
                       onSelect={(cid) => setActiveBranchByParent((s) => ({ ...s, [m.id]: cid }))}
+                      threadChannel={tid ? `thread.${tid}` : null}
                     />
                     {active && (
                       <div className="flex items-start gap-2">
