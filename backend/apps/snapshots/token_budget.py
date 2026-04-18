@@ -1,27 +1,26 @@
 """Token estimation + pruning for payload sections."""
 from __future__ import annotations
 
-import tiktoken
-
-_ENC = tiktoken.get_encoding("cl100k_base")
+from apps.ai.token_counter import estimate_tokens as _estimate
 
 _PRUNE_ORDER = ["chain", "news", "ohlc", "breadth", "quotes", "positions"]
 
 
-def estimate_tokens(text: str) -> int:
-    if not text:
-        return 0
-    return len(_ENC.encode(text))
+def estimate_tokens(text: str, *, provider: str = "openai", model: str = "") -> int:
+    """Provider-aware estimate. Defaults preserve the old tiktoken behavior."""
+    return _estimate(text, provider=provider, model=model)
 
 
 def prune_to_budget(
     sections: dict[str, str],
     *,
     max_tokens: int,
+    provider: str = "openai",
+    model: str = "",
 ) -> tuple[dict[str, str], list[str]]:
     kept = dict(sections)
     pruned: list[str] = []
-    sizes = {k: estimate_tokens(v) for k, v in kept.items()}
+    sizes = {k: _estimate(v, provider=provider, model=model) for k, v in kept.items()}
     total = sum(sizes.values())
 
     for kind in _PRUNE_ORDER:
