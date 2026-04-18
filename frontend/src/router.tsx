@@ -1,4 +1,5 @@
 import { createBrowserRouter } from "react-router-dom";
+import AppLayout from "./components/layout/AppLayout";
 import Dashboard from "./pages/Dashboard";
 import Settings from "./pages/Settings";
 import WatchlistsList from "./pages/WatchlistsList";
@@ -16,20 +17,33 @@ import TriggersListPage from "./pages/TriggersListPage";
 import TriggerEditorPage from "./pages/TriggerEditorPage";
 
 export const router = createBrowserRouter([
-  { path: "/", element: <Dashboard /> },
-  { path: "/settings", element: <Settings /> },
-  { path: "/watchlists", element: <WatchlistsList /> },
-  { path: "/watchlists/:id", element: <WatchlistDetail /> },
-  { path: "/market/:ticker", element: <MarketTicker /> },
-  { path: "/profiles", element: <ProfilesPage /> },
-  { path: "/snapshot", element: <SnapshotComposerPage /> },
-  { path: "/threads", element: <ThreadsPage /> },
-  { path: "/threads/:id", element: <ThreadDetailPage /> },
-  { path: "/costs", element: <CostsPage /> },
+  // Render route bypasses AppLayout — it's for headless-chromium PNG captures.
   { path: "/render/chart", element: <RenderChart /> },
-  { path: "/schedules", element: <SchedulesPage /> },
-  { path: "/threads/observer/:profileId", element: <ObserverTimelinePage /> },
-  { path: "/triggers", element: <TriggersListPage /> },
-  { path: "/triggers/new", element: <TriggerEditorPage /> },
-  { path: "/triggers/:id", element: <TriggerEditorPage /> },
+  {
+    path: "/",
+    element: <AppLayout />,
+    handle: { crumb: "Home" },
+    children: [
+      { index: true, element: <Dashboard />, handle: { crumb: "Dashboard" } },
+      { path: "settings", element: <Settings />, handle: { crumb: "Settings" } },
+      { path: "watchlists", element: <WatchlistsList />, handle: { crumb: "Watchlists" } },
+      { path: "watchlists/:id", element: <WatchlistDetail />,
+        handle: { crumb: ({ params }: { params: { id?: string } }) => `Watchlist ${params.id}` } },
+      { path: "market/:ticker", element: <MarketTicker />,
+        handle: { crumb: ({ params }: { params: { ticker?: string } }) => params.ticker?.toUpperCase() ?? "Market" } },
+      { path: "profiles", element: <ProfilesPage />, handle: { crumb: "Profiles" } },
+      { path: "snapshot", element: <SnapshotComposerPage />, handle: { crumb: "Snapshot" } },
+      { path: "threads", element: <ThreadsPage />, handle: { crumb: "Threads" } },
+      { path: "threads/:id", element: <ThreadDetailPage />,
+        handle: { crumb: ({ params }: { params: { id?: string } }) => `Thread ${params.id}` } },
+      { path: "threads/observer/:profileId", element: <ObserverTimelinePage />,
+        handle: { crumb: "Observer timeline" } },
+      { path: "costs", element: <CostsPage />, handle: { crumb: "Costs" } },
+      { path: "schedules", element: <SchedulesPage />, handle: { crumb: "Schedules" } },
+      { path: "triggers", element: <TriggersListPage />, handle: { crumb: "Triggers" } },
+      { path: "triggers/new", element: <TriggerEditorPage />, handle: { crumb: "New trigger" } },
+      { path: "triggers/:id", element: <TriggerEditorPage />,
+        handle: { crumb: ({ params }: { params: { id?: string } }) => `Trigger ${params.id}` } },
+    ],
+  },
 ]);
