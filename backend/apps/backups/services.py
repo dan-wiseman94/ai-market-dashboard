@@ -48,6 +48,7 @@ def _sha256_stream(path: Path) -> str:
 
 
 def perform_backup(kind: str) -> BackupRecord:
+    reconcile_disk()
     if not acquire_lock():
         msg = "another backup is already running"
         log.warning(msg)
@@ -111,3 +112,12 @@ def rotate_scheduled(*, keep: int | None = None) -> None:
         path.unlink(missing_ok=True)
         rec.status = "rotated"
         rec.save(update_fields=["status"])
+
+
+def reconcile_disk() -> None:
+    """Mark BackupRecord rows whose files are no longer on disk."""
+    d = backups_dir()
+    for rec in BackupRecord.objects.filter(status="ok"):
+        if not (d / rec.filename).exists():
+            rec.status = "missing"
+            rec.save(update_fields=["status"])
