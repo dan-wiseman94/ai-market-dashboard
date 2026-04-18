@@ -1,6 +1,19 @@
 import { useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 
+export function useCommandPaletteTrigger(onOpen: () => void): void {
+  useEffect(() => {
+    function handler(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        onOpen();
+      }
+    }
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [onOpen]);
+}
+
 export const SHORTCUTS: Record<string, { path: string; label: string }> = {
   d: { path: "/", label: "Dashboard" },
   s: { path: "/snapshot", label: "Snapshot" },
