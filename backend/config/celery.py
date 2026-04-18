@@ -24,6 +24,7 @@ app.autodiscover_tasks(
         "apps.threads",
         "apps.triggers",
         "apps.backups",
+        "apps.export",
     ]
 )
 
