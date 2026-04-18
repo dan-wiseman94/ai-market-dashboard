@@ -10,14 +10,7 @@ def costs_today(_request: HttpRequest) -> JsonResponse:
     return JsonResponse({
         "total_usd": str(out["total_usd"]),
         "by_provider": [
-            {
-                "provider": row["provider"],
-                "cost_usd": str(row["cost_usd"]),
-                "input_tokens": row["input_tokens"],
-                "output_tokens": row["output_tokens"],
-                "cached_tokens": row["cached_tokens"],
-                "runs": row["runs"],
-            }
+            {**row, "cost_usd": str(row["cost_usd"])}
             for row in out["by_provider"]
         ],
     })

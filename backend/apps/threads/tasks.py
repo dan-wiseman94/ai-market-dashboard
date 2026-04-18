@@ -21,6 +21,7 @@ from apps.ai.types import (
     RoleType,
     RunRequest,
     TextDelta,
+    TokenUsage,
     UsageEvent,
 )
 from apps.secrets.models import ProviderConfig
@@ -32,7 +33,7 @@ def _broadcast(thread_id: int, payload: dict) -> None:
     if layer is None:
         return
     async_to_sync(layer.group_send)(
-        f"thread.{thread_id}", {"type": "thread_event", "payload": payload}
+        f"thread.{thread_id}", {"type": "thread_event", "payload": payload},
     )
 
 
@@ -40,7 +41,16 @@ async def _broadcast_async(thread_id: int, payload: dict) -> None:
     layer = get_channel_layer()
     if layer is None:
         return
-    await layer.group_send(f"thread.{thread_id}", {"type": "thread_event", "payload": payload})
+    await layer.group_send(
+        f"thread.{thread_id}", {"type": "thread_event", "payload": payload},
+    )
+
+
+def _extract_text(m: Message) -> str:
+    c = m.content or {}
+    if isinstance(c, dict) and "text" in c:
+        return c["text"]
+    return str(c)
 
 
 def _build_request(thread: Thread, user_msg: Message) -> RunRequest:
@@ -59,11 +69,30 @@ def _build_request(thread: Thread, user_msg: Message) -> RunRequest:
     return RunRequest(model="", system=system, messages=chat_messages, cache_system=True)
 
 
-def _extract_text(m: Message) -> str:
-    c = m.content or {}
-    if isinstance(c, dict) and "text" in c:
-        return c["text"]
-    return str(c)
+def _fail(
+    *,
+    thread_id: int,
+    parent_message_id: int | None,
+    error: str,
+    event: str = "error",
+) -> Message:
+    """Create a failed assistant message and broadcast a single error/cost_capped event."""
+    assistant = Message.objects.create(
+        thread_id=thread_id, role="assistant", content={"text": ""}, status="failed",
+        error=error, parent_message_id=parent_message_id,
+    )
+    _broadcast(thread_id, {"event": event, "message_id": assistant.id, "error": error})
+    return assistant
+
+
+def _usage_counts(usage: TokenUsage | None) -> dict[str, int]:
+    if usage is None:
+        return {"input_tokens": 0, "output_tokens": 0, "cached_tokens": 0}
+    return {
+        "input_tokens": usage.input_tokens,
+        "output_tokens": usage.output_tokens,
+        "cached_tokens": usage.cached_tokens,
+    }
 
 
 @shared_task(name="threads.run_ai_on_message")
@@ -82,32 +111,25 @@ def run_ai_on_message(
             thread=thread, message=user_msg, override=override,
         )
     except ResolutionError as exc:
-        assistant = Message.objects.create(
-            thread=thread, role="assistant", content={"text": ""}, status="failed",
-            error=str(exc), parent_message_id=parent_message_id,
-        )
-        _broadcast(thread_id, {"event": "error", "message_id": assistant.id, "error": str(exc)})
+        _fail(thread_id=thread_id, parent_message_id=parent_message_id, error=str(exc))
         return {"ok": False, "error": "no_provider"}
 
     try:
         cfg = ProviderConfig.objects.get(provider=provider_name)
     except ProviderConfig.DoesNotExist:
-        assistant = Message.objects.create(
-            thread=thread, role="assistant", content={"text": ""}, status="failed",
+        _fail(
+            thread_id=thread_id, parent_message_id=parent_message_id,
             error=f"No ProviderConfig row for '{provider_name}'. Visit /settings.",
-            parent_message_id=parent_message_id,
         )
-        _broadcast(thread_id, {"event": "error", "message_id": assistant.id, "error": assistant.error})
         return {"ok": False, "error": "no_key"}
 
     try:
         check_daily_cap(provider_name, cap_usd=cfg.daily_cost_cap_usd)
     except CostCapExceededError as exc:
-        assistant = Message.objects.create(
-            thread=thread, role="assistant", content={"text": ""}, status="failed",
-            error=str(exc), parent_message_id=parent_message_id,
+        _fail(
+            thread_id=thread_id, parent_message_id=parent_message_id,
+            error=str(exc), event="cost_capped",
         )
-        _broadcast(thread_id, {"event": "cost_capped", "message_id": assistant.id, "error": str(exc)})
         return {"ok": False, "error": "cost_capped"}
 
     req = _build_request(thread, user_msg)
@@ -126,10 +148,10 @@ def run_ai_on_message(
     provider = get_provider(provider_name, api_key=cfg.api_key, base_url=cfg.base_url or "")
     t0 = time.perf_counter()
     buffer: list[str] = []
-    usage = None
+    usage: TokenUsage | None = None
     err: str | None = None
 
-    async def drive():
+    async def drive() -> None:
         nonlocal usage, err
         async for evt in provider.run(req):
             if isinstance(evt, TextDelta):
@@ -146,21 +168,22 @@ def run_ai_on_message(
 
     asyncio.run(drive())
     latency_ms = int((time.perf_counter() - t0) * 1000)
+    counts = _usage_counts(usage)
 
     with transaction.atomic():
         assistant.refresh_from_db()
         if assistant.status == "failed" and assistant.error == "cancelled":
-            # User stopped the stream; don't overwrite the cancellation.
+            # Stop endpoint already marked the message; don't overwrite cancellation.
             AIRun.objects.create(
                 message=assistant, provider=provider_name, model=model_id,
                 status="failed", error="cancelled", latency_ms=latency_ms,
-                input_tokens=(usage.input_tokens if usage else 0),
-                output_tokens=(usage.output_tokens if usage else 0),
+                input_tokens=counts["input_tokens"],
+                output_tokens=counts["output_tokens"],
             )
             return {"ok": False, "error": "cancelled"}
 
+        assistant.content = {"text": "".join(buffer)}
         if err:
-            assistant.content = {"text": "".join(buffer)}
             assistant.status = "failed"
             assistant.error = err
             assistant.save()
@@ -171,17 +194,13 @@ def run_ai_on_message(
             _broadcast(thread_id, {"event": "error", "message_id": assistant.id, "error": err})
             return {"ok": False, "error": err}
 
-        assistant.content = {"text": "".join(buffer)}
         assistant.status = "done"
         assistant.save()
 
         cost = Decimal("0") if usage is None else cost_usd_for(provider_name, model_id, usage)
         AIRun.objects.create(
             message=assistant, provider=provider_name, model=model_id,
-            input_tokens=(usage.input_tokens if usage else 0),
-            output_tokens=(usage.output_tokens if usage else 0),
-            cached_tokens=(usage.cached_tokens if usage else 0),
-            cost_usd=cost, latency_ms=latency_ms, status="done",
+            cost_usd=cost, latency_ms=latency_ms, status="done", **counts,
         )
         _broadcast(thread_id, {
             "event": "message_done", "message_id": assistant.id, "cost_usd": str(cost),

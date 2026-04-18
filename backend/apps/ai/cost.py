@@ -12,21 +12,22 @@ class CostCapExceededError(RuntimeError):
     """Raised to abort an AI run when the provider's daily cap is breached."""
 
 
+_PER_MTOK = Decimal("1000000")
+
+
 def cost_usd_for(provider: str, model_id: str, usage: TokenUsage) -> Decimal:
     """Compute USD cost for the given run."""
     if provider == "local":
         return Decimal("0")
 
-    model = get_model(provider, model_id)
-    if model is None:
-        model = ceiling_for_provider(provider)
+    model = get_model(provider, model_id) or ceiling_for_provider(provider)
     if model is None:
         return Decimal("0")
 
     non_cached = max(0, usage.input_tokens - usage.cached_tokens)
-    input_cost = _dec(non_cached) / Decimal("1000000") * _dec(model.input_per_mtok)
-    cached_cost = _dec(usage.cached_tokens) / Decimal("1000000") * _dec(model.cached_per_mtok)
-    output_cost = _dec(usage.output_tokens) / Decimal("1000000") * _dec(model.output_per_mtok)
+    input_cost = _dec(non_cached) * _dec(model.input_per_mtok) / _PER_MTOK
+    cached_cost = _dec(usage.cached_tokens) * _dec(model.cached_per_mtok) / _PER_MTOK
+    output_cost = _dec(usage.output_tokens) * _dec(model.output_per_mtok) / _PER_MTOK
     return (input_cost + cached_cost + output_cost).quantize(Decimal("0.000001"))
 
 

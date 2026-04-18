@@ -43,3 +43,4 @@ def get_or_fetch(key: str, *, ttl_seconds: int, fetcher: Callable[[], Any]) -> A
     value = fetcher()
     r.set(key, json.dumps(value, default=str), ex=ttl_seconds)
     return value
+

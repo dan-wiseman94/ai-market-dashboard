@@ -1,22 +1,37 @@
 from rest_framework import mixins, viewsets
 from rest_framework.decorators import action
+from rest_framework.request import Request
 from rest_framework.response import Response
 
 from apps.profiles.models import TradingProfile
 from apps.snapshots.models import Snapshot
 from apps.threads.models import Message, Thread
 from apps.threads.serializers import MessageSerializer, ThreadSerializer
-from apps.threads.tasks import run_ai_on_message
+from apps.threads.tasks import _broadcast, run_ai_on_message
+
+
+def _error(code: str, message: str, status: int) -> Response:
+    return Response({"code": code, "message": message}, status=status)
+
+
+def _user_text(request: Request) -> str:
+    return (request.data.get("text") or "").strip()
+
+
+def _create_user_message(thread: Thread, text: str) -> Message:
+    return Message.objects.create(
+        thread=thread, role="user", content={"text": text}, status="done",
+    )
 
 
 class ThreadViewSet(
     mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.CreateModelMixin,
-    viewsets.GenericViewSet
+    viewsets.GenericViewSet,
 ):
     queryset = Thread.objects.select_related("profile").prefetch_related("messages__ai_run")
     serializer_class = ThreadSerializer
 
-    def create(self, request, *args, **kwargs):
+    def create(self, request: Request, *args: object, **kwargs: object) -> Response:
         data = request.data
         profile = None
         if pid := data.get("profile_id"):
@@ -33,35 +48,28 @@ class ThreadViewSet(
         return Response(ThreadSerializer(t).data, status=201)
 
     @action(detail=True, methods=["post"])
-    def send(self, request, pk=None):
+    def send(self, request: Request, pk: str | None = None) -> Response:
         thread = self.get_object()
-        text = (request.data.get("text") or "").strip()
+        text = _user_text(request)
         if not text:
-            return Response({"code": "empty", "message": "text is required"}, status=400)
+            return _error("empty", "text is required", 400)
 
-        user_msg = Message.objects.create(
-            thread=thread, role="user", content={"text": text}, status="done",
-        )
+        user_msg = _create_user_message(thread, text)
         run_ai_on_message.delay(thread_id=thread.id, user_message_id=user_msg.id)
         return Response(MessageSerializer(user_msg).data, status=202)
 
     @action(detail=True, methods=["post"])
-    def compare(self, request, pk=None):
-        """Send ONE user message and fan out to N provider/model branches.
-
-        Body: {text, branches: [{provider, model}, ...]}
-        """
+    def compare(self, request: Request, pk: str | None = None) -> Response:
+        """Send one user message and fan out to N provider/model branches in parallel."""
         thread = self.get_object()
-        text = (request.data.get("text") or "").strip()
+        text = _user_text(request)
         branches = request.data.get("branches") or []
         if not text:
-            return Response({"code": "empty", "message": "text is required"}, status=400)
+            return _error("empty", "text is required", 400)
         if not branches:
-            return Response({"code": "no_branches", "message": "Provide at least one branch"}, status=400)
+            return _error("no_branches", "Provide at least one branch", 400)
 
-        user_msg = Message.objects.create(
-            thread=thread, role="user", content={"text": text}, status="done",
-        )
+        user_msg = _create_user_message(thread, text)
         branch_ids: list[dict] = []
         for b in branches:
             task = run_ai_on_message.delay(
@@ -70,26 +78,28 @@ class ThreadViewSet(
                 override={"provider": b["provider"], "model": b["model"]},
                 parent_message_id=user_msg.id,
             )
-            branch_ids.append({"provider": b["provider"], "model": b["model"], "task_id": task.id})
-
+            branch_ids.append({
+                "provider": b["provider"],
+                "model": b["model"],
+                "task_id": str(task.id),
+            })
         return Response(
             {"user_message_id": user_msg.id, "branches": branch_ids},
             status=202,
         )
 
     @action(detail=True, methods=["post"], url_path=r"stop/(?P<message_id>\d+)")
-    def stop(self, request, pk=None, message_id=None):
-        """Mark a streaming assistant message as cancelled. Task finishes but skips final write."""
+    def stop(self, request: Request, pk=None, message_id=None) -> Response:
+        """Mark a streaming assistant message as cancelled; the running task will skip its final write."""
         thread = self.get_object()
         try:
             msg = Message.objects.get(id=message_id, thread=thread, role="assistant")
         except Message.DoesNotExist:
-            return Response({"code": "not_found", "message": "Message not found"}, status=404)
+            return _error("not_found", "Message not found", 404)
         if msg.status != "streaming":
-            return Response({"code": "not_streaming", "message": "Message is not streaming"}, status=400)
+            return _error("not_streaming", "Message is not streaming", 400)
         msg.status = "failed"
         msg.error = "cancelled"
         msg.save()
-        from apps.threads.tasks import _broadcast
         _broadcast(thread.id, {"event": "error", "message_id": msg.id, "error": "cancelled"})
         return Response({"ok": True}, status=200)

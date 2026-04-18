@@ -1,6 +1,5 @@
 from apps.market.services.chain import _normalize_chain
 
-
 SCHWAB_RESPONSE = {
     "underlyingPrice": 521.30,
     "callExpDateMap": {

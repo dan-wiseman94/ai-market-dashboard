@@ -1,9 +1,9 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
+
 from apps.market.models import OptionChainSnapshot
 from apps.market.services.chain import fetch_chain
-
 
 SCHWAB_RAW = {
     "underlyingPrice": 521.30,

@@ -45,7 +45,8 @@ def test_render_news_accepts_bare_list_legacy_shape():
 
 def test_render_news_handles_datetime_object_in_published_at():
     """ORM-hydrated NewsItem rows put a datetime object in `published_at`; format must match the int path."""
-    from datetime import UTC, datetime as dt
+    from datetime import UTC
+    from datetime import datetime as dt
     items = [
         {"headline": "From ORM", "source": "S", "summary": "",
          "published_at": dt(2026, 4, 17, 9, 12, tzinfo=UTC)},

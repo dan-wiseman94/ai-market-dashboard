@@ -30,11 +30,10 @@ def _wrap_schwab(fn):
 @require_GET
 @_wrap_schwab
 def quotes(request: HttpRequest) -> JsonResponse:
-    tickers = request.GET.get("tickers", "").strip()
-    if not tickers:
+    raw = request.GET.get("tickers", "").strip()
+    if not raw:
         return _err("missing_tickers", "Provide ?tickers=SPY,QQQ", 400)
-    ticker_list = [t for t in tickers.split(",") if t]
-    return JsonResponse(fetch_quotes(ticker_list))
+    return JsonResponse(fetch_quotes([t for t in raw.split(",") if t]))
 
 
 @require_GET
@@ -78,11 +77,10 @@ def chain(request: HttpRequest) -> JsonResponse:
 
 @require_GET
 def news(request: HttpRequest) -> JsonResponse:
-    raw_tickers = request.GET.get("tickers", "").strip()
-    tickers = [t.strip() for t in raw_tickers.split(",") if t.strip()]
+    raw = request.GET.get("tickers", "").strip()
+    tickers = [t.strip() for t in raw.split(",") if t.strip()]
     try:
         lookback = int(request.GET.get("lookback", "24"))
     except ValueError:
         return _err("invalid_lookback", "lookback must be int hours", 400)
-    items = fetch_news(tickers, lookback_hours=lookback)
-    return JsonResponse({"items": items})
+    return JsonResponse({"items": fetch_news(tickers, lookback_hours=lookback)})

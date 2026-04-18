@@ -1,4 +1,5 @@
 import pytest
+
 from apps.observer.models import ObserverSchedule
 from apps.profiles.models import TradingProfile
 

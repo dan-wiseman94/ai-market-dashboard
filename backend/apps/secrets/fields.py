@@ -35,7 +35,7 @@ class EncryptedJSONField(models.BinaryField):
         return json.loads(plaintext.decode("utf-8"))
 
     def to_python(self, value: Any) -> Any:
-        # When a dict has just been assigned (not loaded from DB), pass through.
+        # Pass-through for freshly-assigned Python values; only decrypt raw DB bytes.
         if value is None or isinstance(value, (dict, list, str, int, float, bool)):
             return value
         return self.from_db_value(value, None, None)

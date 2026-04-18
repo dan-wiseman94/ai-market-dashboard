@@ -21,15 +21,15 @@ def prune_to_budget(
 ) -> tuple[dict[str, str], list[str]]:
     kept = dict(sections)
     pruned: list[str] = []
-
-    def total() -> int:
-        return sum(estimate_tokens(v) for v in kept.values())
+    sizes = {k: estimate_tokens(v) for k, v in kept.items()}
+    total = sum(sizes.values())
 
     for kind in _PRUNE_ORDER:
-        if total() <= max_tokens:
+        if total <= max_tokens:
             break
         if kind in kept:
             del kept[kind]
+            total -= sizes[kind]
             pruned.append(kind)
 
     return kept, pruned

@@ -9,6 +9,7 @@ schwab-py handles refresh automatically for runtime clients via
 from __future__ import annotations
 
 import time
+from datetime import datetime
 from urllib.parse import urlencode
 
 import httpx
@@ -61,8 +62,6 @@ def refresh_token(refresh_token_value: str) -> dict:
 
 def persist_token(token: dict) -> None:
     """Upsert the schwab token into ApiCredential."""
-    from datetime import datetime
-
     from apps.secrets.models import ApiCredential
 
     expires_at = datetime.fromtimestamp(token["expires_at"], tz=timezone.get_current_timezone())

@@ -1,4 +1,3 @@
-"""Watchlist + WatchlistSymbol CRUD + reorder."""
 from __future__ import annotations
 
 from django.db import IntegrityError, transaction
@@ -42,9 +41,10 @@ class WatchlistSymbolViewSet(
                 {"code": "invalid_input", "message": "ticker is required"},
                 status=400,
             )
-        next_order = wl.symbols.count()
         try:
-            sym = WatchlistSymbol.objects.create(watchlist=wl, ticker=ticker, sort_order=next_order)
+            sym = WatchlistSymbol.objects.create(
+                watchlist=wl, ticker=ticker, sort_order=wl.symbols.count(),
+            )
         except IntegrityError:
             return Response(
                 {"code": "duplicate", "message": f"{ticker} is already in this watchlist"},

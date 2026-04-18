@@ -1,6 +1,6 @@
 import pytest
-from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
+from channels.layers import get_channel_layer
 
 from apps.observer.models import Notification
 from apps.observer.services.notifications import notify

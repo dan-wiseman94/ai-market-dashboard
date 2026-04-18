@@ -1,8 +1,8 @@
 import pytest
+
 from apps.profiles.models import TradingProfile
 from apps.snapshots.models import Snapshot, SnapshotImage
-from apps.snapshots.serializer import build_image_blocks, _render_image
-
+from apps.snapshots.serializer import _render_image, build_image_blocks
 
 PNG = b"\x89PNG\r\n\x1a\n" + b"\x00" * 50
 

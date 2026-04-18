@@ -12,12 +12,11 @@ def fetch_quotes(tickers: Iterable[str]) -> dict[str, dict]:
 
     Cached in Redis for 5s. One Schwab call per cache miss; batched.
     """
-    ticker_list = sorted(set(t.upper() for t in tickers if t))
+    ticker_list = sorted({t.upper() for t in tickers if t})
     if not ticker_list:
         return {}
-    cache_key = f"market:quotes:{','.join(ticker_list)}"
     return cache.get_or_fetch(
-        cache_key,
+        f"market:quotes:{','.join(ticker_list)}",
         ttl_seconds=cache.ttl_for_kind("quotes"),
         fetcher=lambda: _fetch_from_schwab(ticker_list),
     )
@@ -25,8 +24,7 @@ def fetch_quotes(tickers: Iterable[str]) -> dict[str, dict]:
 
 def _fetch_from_schwab(tickers: list[str]) -> dict[str, dict]:
     client = get_schwab_client()
-    resp = client.get_quotes(tickers)
-    raw = resp.json()
+    raw = client.get_quotes(tickers).json()
     out: dict[str, dict] = {}
     for t, blob in raw.items():
         q = blob.get("quote", {}) if isinstance(blob, dict) else {}

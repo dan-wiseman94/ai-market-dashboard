@@ -52,23 +52,10 @@ def _title(kind: str) -> str:
 
 
 def _render_section(kind: str, payload) -> str:
-    if kind == "quotes":
-        return _render_quotes(payload)
-    if kind == "ohlc":
-        return _render_ohlc(payload)
-    if kind == "chain":
-        return _render_chain(payload, ticker=payload.get("ticker", "?"))
-    if kind == "positions":
-        return _render_positions(payload)
-    if kind == "breadth":
-        return _render_breadth(payload)
-    if kind == "news":
-        return _render_news(payload)
-    if kind == "image":
-        return _render_image(payload)
-    if kind == "notes":
-        return ""
-    return f"## {_title(kind)}\n```json\n{payload}\n```"
+    renderer = _RENDERERS.get(kind)
+    if renderer is None:
+        return f"## {_title(kind)}\n```json\n{payload}\n```"
+    return renderer(payload)
 
 
 def _render_quotes(payload: dict) -> str:
@@ -159,16 +146,15 @@ def _or_dash(v) -> str:
 
 def _render_chain(payload: dict, *, ticker: str = "?") -> str:
     underlying = payload.get("underlying_last")
-    header = f"## Option chain — {ticker} (underlying ${underlying})" if underlying else f"## Option chain — {ticker}"
+    header = f"## Option chain — {ticker}"
+    if underlying:
+        header += f" (underlying ${underlying})"
     expiries = payload.get("expiries") or {}
     if not expiries:
         return f"{header}\n_(no expiries)_"
 
-    # Keep the 2 nearest expiry dates from the payload. The fetch layer already constrains
-    # strike count via Schwab's strike_count param; the payload may still contain weeklies
-    # in addition to monthlies — slicing the first 2 sorted keys takes the nearest pair
-    # whether they are weekly+weekly or weekly+monthly.
-    keep = list(sorted(expiries.keys()))[:2]
+    # Keep the 2 nearest expiries (sorted ascending; payload may include weeklies + monthlies).
+    keep = sorted(expiries.keys())[:2]
 
     lines = [header]
     for exp in keep:
@@ -237,3 +223,15 @@ def _render_image(payload: dict) -> str:
         cap = img.caption or "(no caption)"
         rows.append(f"- chart_{img.id}: {cap} ({suffix})")
     return "\n".join(rows)
+
+
+_RENDERERS = {
+    "quotes": _render_quotes,
+    "ohlc": _render_ohlc,
+    "chain": lambda p: _render_chain(p, ticker=p.get("ticker", "?")),
+    "positions": _render_positions,
+    "breadth": _render_breadth,
+    "news": _render_news,
+    "image": _render_image,
+    "notes": lambda _p: "",
+}

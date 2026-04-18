@@ -71,7 +71,7 @@ def get_model(provider: str, model_id: str) -> ModelInfo | None:
 
 
 def ceiling_for_provider(provider: str) -> ModelInfo | None:
-    entries = [m for m in _CATALOG if m.provider == provider]
+    entries = list_models(provider)
     if not entries:
         return None
     return max(entries, key=lambda m: m.output_per_mtok)
