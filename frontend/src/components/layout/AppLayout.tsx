@@ -1,22 +1,49 @@
-import { useCallback, useState } from "react";
-import { Outlet } from "react-router-dom";
+import { useCallback, useMemo, useState } from "react";
+import { Outlet, useNavigate } from "react-router-dom";
 import TopNav from "./TopNav";
 import SideNav from "./SideNav";
-import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
+import {
+  useKeyboardShortcuts,
+  useCommandPaletteTrigger,
+} from "@/hooks/useKeyboardShortcuts";
 import ShortcutHelpDialog from "./ShortcutHelpDialog";
 import Breadcrumbs from "./Breadcrumbs";
 import { ToastProvider } from "@/hooks/useToast";
 import { Toasts } from "@/components/Toasts";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { CommandPalette, type Command } from "@/components/CommandPalette";
+
+function useDefaultCommands(): Command[] {
+  const nav = useNavigate();
+  return useMemo(
+    () => [
+      { id: "go-dashboard", label: "Go to Dashboard", keywords: "home", run: () => nav("/") },
+      { id: "go-threads", label: "Go to Threads", keywords: "chats ai", run: () => nav("/threads") },
+      { id: "go-snapshot", label: "New snapshot", keywords: "capture", run: () => nav("/snapshot") },
+      { id: "go-triggers", label: "Go to Triggers", keywords: "alerts rules", run: () => nav("/triggers") },
+      { id: "go-costs", label: "Go to Costs", keywords: "spend usage", run: () => nav("/costs") },
+      { id: "go-schedules", label: "Go to Schedules", keywords: "observer cron", run: () => nav("/schedules") },
+      { id: "go-backups", label: "Go to Backups", keywords: "backup restore", run: () => nav("/backups") },
+      { id: "go-profiles", label: "Go to Profiles", keywords: "style", run: () => nav("/profiles") },
+      { id: "go-settings", label: "Open Settings", keywords: "providers keys", run: () => nav("/settings") },
+      { id: "go-exports", label: "Go to Exports", keywords: "download zip", run: () => nav("/exports") },
+    ],
+    [nav],
+  );
+}
 
 export default function AppLayout() {
   const [helpOpen, setHelpOpen] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
   const handleHelp = useCallback(() => setHelpOpen(true), []);
+  const openPalette = useCallback(() => setPaletteOpen(true), []);
   useKeyboardShortcuts(handleHelp);
+  useCommandPaletteTrigger(openPalette);
+  const commands = useDefaultCommands();
+
   return (
     <ToastProvider>
       <div className="relative min-h-screen text-ink-100 flex flex-col">
-        {/* Decorative ambient wash — copper at top-left, cool at bottom-right */}
         <div
           aria-hidden
           className="pointer-events-none fixed inset-0 -z-10"
@@ -36,6 +63,11 @@ export default function AppLayout() {
           </main>
         </div>
         <ShortcutHelpDialog open={helpOpen} onClose={() => setHelpOpen(false)} />
+        <CommandPalette
+          open={paletteOpen}
+          onClose={() => setPaletteOpen(false)}
+          commands={commands}
+        />
         <Toasts />
       </div>
     </ToastProvider>
