@@ -26,6 +26,14 @@ class ClaudeProvider:
         self._client = AsyncAnthropic(**kwargs)  # type: ignore[arg-type]
 
     async def run(self, req: RunRequest) -> AsyncIterator[RunEvent]:
+        from apps.core.mocks import is_mock_mode
+        if is_mock_mode():
+            yield TextDelta(text="Mocked ")
+            yield TextDelta(text="response")
+            yield UsageEvent(usage=TokenUsage(input_tokens=10, output_tokens=5, cached_tokens=0))
+            yield DoneEvent()
+            return
+
         system_blocks = _system_blocks(req.system, cache=req.cache_system)
         messages = [{"role": m.role, "content": m.content} for m in req.messages]
 
