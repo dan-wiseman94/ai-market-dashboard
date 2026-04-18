@@ -10,6 +10,7 @@ import { useChannel } from "@/hooks/useChannel";
 import { useBranchState, type BranchEvent } from "@/hooks/useBranchState";
 import { useSnapshot } from "@/hooks/useSnapshot";
 import { useCompareMessage, useSendMessage, useStopMessage, useThread } from "@/hooks/useThread";
+import ThreadExportButton from "@/components/ThreadExportButton";
 
 type LiveMessage = {
   id: number;
@@ -156,7 +157,10 @@ export default function ThreadDetailPage() {
     <main className="p-6 max-w-4xl mx-auto space-y-4">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-semibold">{thread.title || `Thread #${thread.id}`}</h1>
-        <Link to="/" className="text-sm text-slate-300 hover:underline">← Dashboard</Link>
+        <div className="flex items-center gap-3">
+          <ThreadExportButton threadId={tid!} />
+          <Link to="/" className="text-sm text-slate-300 hover:underline">← Dashboard</Link>
+        </div>
       </div>
 
       {snap && (
