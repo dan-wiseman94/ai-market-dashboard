@@ -15,6 +15,7 @@ import SchedulesPage from "./pages/SchedulesPage";
 import ObserverTimelinePage from "./pages/ObserverTimelinePage";
 import TriggersListPage from "./pages/TriggersListPage";
 import TriggerEditorPage from "./pages/TriggerEditorPage";
+import SnapshotCostPage from "./pages/SnapshotCostPage";
 
 export const router = createBrowserRouter([
   // Render route bypasses AppLayout — it's for headless-chromium PNG captures.
@@ -39,6 +40,8 @@ export const router = createBrowserRouter([
       { path: "threads/observer/:profileId", element: <ObserverTimelinePage />,
         handle: { crumb: "Observer timeline" } },
       { path: "costs", element: <CostsPage />, handle: { crumb: "Costs" } },
+      { path: "costs/snapshot/:id", element: <SnapshotCostPage />,
+        handle: { crumb: ({ params }: { params: { id?: string } }) => `Snapshot ${params.id}` } },
       { path: "schedules", element: <SchedulesPage />, handle: { crumb: "Schedules" } },
       { path: "triggers", element: <TriggersListPage />, handle: { crumb: "Triggers" } },
       { path: "triggers/new", element: <TriggerEditorPage />, handle: { crumb: "New trigger" } },
