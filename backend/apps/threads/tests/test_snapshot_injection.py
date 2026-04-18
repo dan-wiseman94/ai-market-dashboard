@@ -99,3 +99,20 @@ def test_thread_create_with_unknown_snapshot_id_no_crash(profile) -> None:
     thread = Thread.objects.get(id=resp.json()["id"])
     assert thread.pinned_snapshot is None
     assert Message.objects.filter(thread=thread).count() == 0
+
+
+@pytest.mark.django_db
+def test_thread_create_refuses_non_ready_snapshot(profile) -> None:
+    """Pinning a pending/failed snapshot would inject all-stub noise. Reject with 400."""
+    pending = Snapshot.objects.create(
+        profile=profile, status="pending", includes=["quotes"], source="manual",
+    )
+    client = APIClient()
+    resp = client.post(
+        "/api/threads/",
+        data={"kind": "consult", "profile_id": profile.id, "pinned_snapshot_id": pending.id},
+        format="json",
+    )
+    assert resp.status_code == 400
+    assert resp.json()["code"] == "snapshot_not_ready"
+    assert Thread.objects.count() == 0  # atomic: no thread created on refusal
