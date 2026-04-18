@@ -102,3 +102,26 @@ class AIRun(models.Model):
 
     def __str__(self) -> str:
         return f"AIRun {self.provider}/{self.model} (${self.cost_usd})"
+
+
+class ToolCall(models.Model):
+    """Audit row for one tool_use → tool_result round-trip inside an AI run."""
+
+    message = models.ForeignKey(
+        Message, on_delete=models.CASCADE, related_name="tool_calls",
+    )
+    tool_use_id = models.CharField(max_length=64)
+    tool_name = models.CharField(max_length=64)
+    tool_input = models.JSONField(default=dict)
+    tool_output = models.JSONField(default=dict)
+    ok = models.BooleanField(default=True)
+    error = models.TextField(blank=True, default="")
+    latency_ms = models.IntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes: ClassVar = [models.Index(fields=["message", "created_at"])]
+        ordering: ClassVar[list[str]] = ["message_id", "created_at"]
+
+    def __str__(self) -> str:
+        return f"ToolCall({self.tool_name}, ok={self.ok})"
