@@ -1,7 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ApiError, apiGet, apiPost, apiDelete } from "../api/client";
+import { ApiError, apiDelete, apiGet, apiPost } from "../api/client";
 
-type MockFetch = { mockResolvedValue: (v: unknown) => void };
+function stubFetchOnce(response: unknown): ReturnType<typeof vi.fn> {
+  const fetchMock = vi.fn().mockResolvedValue(response);
+  vi.stubGlobal("fetch", fetchMock);
+  return fetchMock;
+}
 
 describe("api client", () => {
   beforeEach(() => {
@@ -11,31 +15,31 @@ describe("api client", () => {
     vi.unstubAllGlobals();
   });
 
-  it("apiGet returns JSON on 200", async () => {
-    (globalThis.fetch as unknown as MockFetch).mockResolvedValue({
-      ok: true, status: 200, json: async () => ({ hello: "world" }),
-    });
-    const v = await apiGet<{ hello: string }>("/api/x/");
-    expect(v).toEqual({ hello: "world" });
+  it("returns parsed JSON on 200", async () => {
+    stubFetchOnce({ ok: true, status: 200, json: async () => ({ hello: "world" }) });
+    const result = await apiGet<{ hello: string }>("/api/x/");
+    expect(result).toEqual({ hello: "world" });
   });
 
-  it("throws ApiError on non-2xx", async () => {
-    (globalThis.fetch as unknown as MockFetch).mockResolvedValue({
-      ok: false, status: 503, statusText: "bad", json: async () => ({ code: "oops", message: "nope" }),
+  it("throws ApiError on non-2xx responses", async () => {
+    stubFetchOnce({
+      ok: false,
+      status: 503,
+      statusText: "bad",
+      json: async () => ({ code: "oops", message: "nope" }),
     });
     await expect(apiGet("/api/y/")).rejects.toBeInstanceOf(ApiError);
   });
 
-  it("apiDelete resolves void on 204", async () => {
-    (globalThis.fetch as unknown as MockFetch).mockResolvedValue({ ok: true, status: 204 });
+  it("resolves void on 204 No Content", async () => {
+    stubFetchOnce({ ok: true, status: 204 });
     await expect(apiDelete("/api/y/")).resolves.toBeUndefined();
   });
 
-  it("apiPost sends JSON body", async () => {
-    const mock = vi.fn().mockResolvedValue({ ok: true, status: 201, json: async () => ({ id: 1 }) });
-    vi.stubGlobal("fetch", mock);
+  it("serializes the request body as JSON on POST", async () => {
+    const fetchMock = stubFetchOnce({ ok: true, status: 201, json: async () => ({ id: 1 }) });
     await apiPost("/api/x/", { name: "A" });
-    const [, opts] = mock.mock.calls[0];
+    const [, opts] = fetchMock.mock.calls[0];
     expect(opts.method).toBe("POST");
     expect(opts.body).toBe(JSON.stringify({ name: "A" }));
   });

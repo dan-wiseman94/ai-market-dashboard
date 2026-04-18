@@ -14,7 +14,7 @@ const SCHEDULES = [
 ];
 
 beforeEach(() => {
-  global.fetch = vi.fn((url: string, init?: RequestInit) => {
+  globalThis.fetch = vi.fn((url: string, init?: RequestInit) => {
     if (url.startsWith("/api/observer/schedules/") && (!init || init.method === "GET" || !init.method)) {
       return Promise.resolve({ ok: true, json: () => Promise.resolve(SCHEDULES) });
     }
@@ -35,7 +35,7 @@ describe("SchedulesPage", () => {
   });
 
   it("renders empty state when no schedules", async () => {
-    global.fetch = vi.fn(() =>
+    globalThis.fetch = vi.fn(() =>
       Promise.resolve({ ok: true, json: () => Promise.resolve([]) }),
     ) as never;
     render(<QueryClientProvider client={qc()}><SchedulesPage /></QueryClientProvider>);
@@ -43,10 +43,10 @@ describe("SchedulesPage", () => {
   });
 
   it("submits selected preset cron via create form", async () => {
-    const postSpy = vi.fn(() =>
+    const postSpy = vi.fn((_url: string, _init: RequestInit) =>
       Promise.resolve({ ok: true, status: 201, json: () => Promise.resolve({}) }),
     );
-    global.fetch = vi.fn((url: string, init?: RequestInit) => {
+    globalThis.fetch = vi.fn((url: string, init?: RequestInit) => {
       if (init?.method === "POST" && url.startsWith("/api/observer/schedules/")) {
         return postSpy(url, init);
       }

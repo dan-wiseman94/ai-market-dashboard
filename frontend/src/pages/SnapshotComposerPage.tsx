@@ -41,12 +41,9 @@ export default function SnapshotComposerPage() {
     }
   }, [watchlists, watchlistId]);
 
-  const selectedWatchlist = useMemo(
-    () => watchlists?.find((w) => w.id === watchlistId), [watchlists, watchlistId],
-  );
   const tickers = useMemo(
-    () => selectedWatchlist?.symbols.map((s) => s.ticker) ?? [],
-    [selectedWatchlist],
+    () => watchlists?.find((w) => w.id === watchlistId)?.symbols.map((s) => s.ticker) ?? [],
+    [watchlists, watchlistId],
   );
 
   const onCapture = async (e: React.FormEvent) => {

@@ -1,10 +1,10 @@
 import { useRef } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import Chart from "../components/Chart";
-import ChartCaptureButton from "../components/ChartCaptureButton";
-import OptionChainTable from "../components/OptionChainTable";
-import NewsFeed from "../components/NewsFeed";
+import Chart from "@/components/Chart";
+import ChartCaptureButton from "@/components/ChartCaptureButton";
+import OptionChainTable from "@/components/OptionChainTable";
+import NewsFeed from "@/components/NewsFeed";
 
 export default function MarketTickerPage() {
   const { ticker = "SPY" } = useParams<{ ticker: string }>();
