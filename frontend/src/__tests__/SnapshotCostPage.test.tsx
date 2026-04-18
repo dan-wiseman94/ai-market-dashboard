@@ -5,7 +5,7 @@ import { vi, test, expect } from "vitest";
 import SnapshotCostPage from "@/pages/SnapshotCostPage";
 
 test("renders token attribution rows", async () => {
-  vi.spyOn(globalThis, "fetch").mockImplementation(async (url: any) => {
+  vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => {
     if (String(url).includes("/api/costs/snapshot/7")) {
       return new Response(JSON.stringify([
         { section: "quotes", payload_tokens: 700, cost_share_usd: "0.0700" },
