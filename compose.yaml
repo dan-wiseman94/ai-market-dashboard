@@ -35,6 +35,7 @@ services:
     build:
       context: .
       dockerfile: backend/Dockerfile
+      target: web
     env_file: .env
     depends_on:
       db:
@@ -63,7 +64,8 @@ services:
   worker:
     build:
       context: .
-      dockerfile: backend/Dockerfile.worker
+      dockerfile: backend/Dockerfile
+      target: worker
     env_file: .env
     depends_on:
       db:
@@ -83,7 +85,8 @@ services:
   beat:
     build:
       context: .
-      dockerfile: backend/Dockerfile.worker
+      dockerfile: backend/Dockerfile
+      target: worker
     env_file: .env
     depends_on:
       db:
