@@ -71,7 +71,7 @@ def run_observer(schedule_id: int) -> int | None:
 
     msg = Message.objects.create(
         thread=thread, role="user",
-        content={"text": serialize_for_ai(snap)},
+        content={"text": serialize_for_ai(snap, provider=provider_name)},
         snapshot_ref=snap, status="done",
     )
 

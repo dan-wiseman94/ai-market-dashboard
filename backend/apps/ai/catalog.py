@@ -20,6 +20,7 @@ class ModelInfo:
     context_window: int
     supports_vision: bool
     supports_cache: bool
+    max_payload_tokens: int = 40_000
 
 
 _CATALOG: list[ModelInfo] = [
@@ -27,32 +28,38 @@ _CATALOG: list[ModelInfo] = [
         provider="claude", id="claude-opus-4-7", name="Claude Opus 4.7",
         input_per_mtok=15.00, output_per_mtok=75.00, cached_per_mtok=1.875,
         context_window=200_000, supports_vision=True, supports_cache=True,
+        max_payload_tokens=150_000,
     ),
     ModelInfo(
         provider="claude", id="claude-sonnet-4-6", name="Claude Sonnet 4.6",
         input_per_mtok=3.00, output_per_mtok=15.00, cached_per_mtok=0.375,
         context_window=200_000, supports_vision=True, supports_cache=True,
+        max_payload_tokens=150_000,
     ),
     ModelInfo(
         provider="claude", id="claude-haiku-4-5-20251001", name="Claude Haiku 4.5",
         input_per_mtok=1.00, output_per_mtok=5.00, cached_per_mtok=0.125,
         context_window=200_000, supports_vision=True, supports_cache=True,
+        max_payload_tokens=150_000,
     ),
     # OpenAI
     ModelInfo(
         provider="openai", id="gpt-5", name="GPT-5",
         input_per_mtok=5.00, output_per_mtok=40.00, cached_per_mtok=0.50,
         context_window=400_000, supports_vision=True, supports_cache=True,
+        max_payload_tokens=300_000,
     ),
     ModelInfo(
         provider="openai", id="gpt-5-mini", name="GPT-5 Mini",
         input_per_mtok=0.60, output_per_mtok=4.80, cached_per_mtok=0.06,
         context_window=400_000, supports_vision=True, supports_cache=True,
+        max_payload_tokens=200_000,
     ),
     ModelInfo(
         provider="openai", id="gpt-5-nano", name="GPT-5 Nano",
         input_per_mtok=0.15, output_per_mtok=1.20, cached_per_mtok=0.015,
         context_window=400_000, supports_vision=False, supports_cache=True,
+        max_payload_tokens=200_000,
     ),
 ]
 
