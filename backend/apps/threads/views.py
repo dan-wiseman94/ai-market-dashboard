@@ -1,3 +1,4 @@
+from django.db import transaction
 from rest_framework import mixins, viewsets
 from rest_framework.decorators import action
 from rest_framework.request import Request
@@ -5,6 +6,7 @@ from rest_framework.response import Response
 
 from apps.profiles.models import TradingProfile
 from apps.snapshots.models import Snapshot
+from apps.snapshots.serializer import serialize_for_ai
 from apps.threads.models import Message, Thread
 from apps.threads.serializers import MessageSerializer, ThreadSerializer
 from apps.threads.tasks import _broadcast, run_ai_on_message
@@ -39,12 +41,21 @@ class ThreadViewSet(
         snap = None
         if sid := data.get("pinned_snapshot_id"):
             snap = Snapshot.objects.filter(id=sid).first()
-        t = Thread.objects.create(
-            kind=data.get("kind", "consult"),
-            title=data.get("title", ""),
-            profile=profile,
-            pinned_snapshot=snap,
-        )
+            if snap is not None and snap.status != "ready":
+                return _error("snapshot_not_ready", "Snapshot is not ready", 400)
+        with transaction.atomic():
+            t = Thread.objects.create(
+                kind=data.get("kind", "consult"),
+                title=data.get("title", ""),
+                profile=profile,
+                pinned_snapshot=snap,
+            )
+            if snap is not None:
+                Message.objects.create(
+                    thread=t, role="user",
+                    content={"text": serialize_for_ai(snap)},
+                    snapshot_ref=snap, status="done",
+                )
         return Response(ThreadSerializer(t).data, status=201)
 
     @action(detail=True, methods=["post"])
