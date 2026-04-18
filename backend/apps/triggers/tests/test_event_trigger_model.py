@@ -1,4 +1,5 @@
 import pytest
+from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 
 from apps.profiles.models import TradingProfile
@@ -31,3 +32,11 @@ def test_event_trigger_same_name_different_profile_ok():
     p2 = TradingProfile.objects.create(name="P2", style="x")
     EventTrigger.objects.create(name="rule", profile=p1, condition={"all": []})
     EventTrigger.objects.create(name="rule", profile=p2, condition={"all": []})
+
+
+@pytest.mark.django_db
+def test_event_trigger_clean_runs_dsl_validator():
+    p = TradingProfile.objects.create(name="P", style="x")
+    t = EventTrigger(name="bad", profile=p, condition={"metric": "nope"})
+    with pytest.raises(ValidationError):
+        t.full_clean()

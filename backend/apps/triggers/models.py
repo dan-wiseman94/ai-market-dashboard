@@ -33,6 +33,10 @@ class EventTrigger(models.Model):
     def __str__(self) -> str:
         return f"{self.name} (profile={self.profile_id})"
 
+    def clean(self) -> None:
+        from apps.triggers.dsl import validate_condition
+        validate_condition(self.condition)
+
 
 class TriggerFiring(models.Model):
     """Immutable audit row: one per fire event."""
