@@ -43,8 +43,9 @@ def ready_snapshot(db, profile) -> Snapshot:
     return snap
 
 
+@pytest.mark.django_db
 def test_thread_create_with_pinned_snapshot_injects_first_user_message(
-    db, profile, ready_snapshot,
+    profile, ready_snapshot,
 ) -> None:
     client = APIClient()
     resp = client.post(
@@ -71,8 +72,9 @@ def test_thread_create_with_pinned_snapshot_injects_first_user_message(
     assert "VIX" in text and "14.2" in text, "breadth section missing"
 
 
+@pytest.mark.django_db
 def test_thread_create_without_pinned_snapshot_has_no_synthetic_message(
-    db, profile,
+    profile,
 ) -> None:
     client = APIClient()
     resp = client.post(
@@ -85,7 +87,8 @@ def test_thread_create_without_pinned_snapshot_has_no_synthetic_message(
     assert Message.objects.filter(thread=thread).count() == 0
 
 
-def test_thread_create_with_unknown_snapshot_id_no_crash(db, profile) -> None:
+@pytest.mark.django_db
+def test_thread_create_with_unknown_snapshot_id_no_crash(profile) -> None:
     client = APIClient()
     resp = client.post(
         "/api/threads/",
