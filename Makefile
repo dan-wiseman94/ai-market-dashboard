@@ -75,3 +75,13 @@ restore: ## Restore DB from /data/backups/<file>. Usage: make restore file=2026-
 	$(COMPOSE) stop beat worker
 	$(COMPOSE) exec web sh -c 'pg_restore --clean --if-exists -h $$PGHOST -U $$PGUSER -d $$PGDATABASE /data/backups/$(file)'
 	$(COMPOSE) start beat worker
+
+.PHONY: e2e
+e2e: ## Run all Playwright E2E journeys against compose stack
+	$(COMPOSE) -f compose.yaml -f compose.e2e.yaml up -d
+	$(COMPOSE) exec web pytest e2e/ -v
+	$(COMPOSE) -f compose.yaml -f compose.e2e.yaml down
+
+.PHONY: e2e-one
+e2e-one: ## make e2e-one t=test_compare_flow
+	$(COMPOSE) exec web pytest e2e/journeys/$(t).py -v
