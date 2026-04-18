@@ -34,6 +34,7 @@ INSTALLED_APPS = [
     "apps.profiles",
     "apps.snapshots",
     "apps.threads",
+    "apps.triggers",
     "apps.ai",
     "apps.costs",
     "apps.observer",
