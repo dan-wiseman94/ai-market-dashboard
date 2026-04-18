@@ -1,39 +1,38 @@
-import { useCostsToday } from "@/hooks/useCosts";
+import { useState } from "react";
+import CostCapBars from "@/components/costs/CostCapBars";
+import DateRangePicker, { type Range } from "@/components/costs/DateRangePicker";
+import DailyCostChart from "@/components/costs/DailyCostChart";
+import BreakdownTables from "@/components/costs/BreakdownTables";
+import { useCostsSummary, useCostsCaps } from "@/hooks/useCosts";
+
+function defaultRange(): Range {
+  const now = new Date();
+  const start = new Date(now.getTime() - 30 * 86400000);
+  return { from: start.toISOString(), to: now.toISOString() };
+}
 
 export default function CostsPage() {
-  const { data, isLoading } = useCostsToday();
-  if (isLoading) return <main className="p-6">Loading…</main>;
+  const [range, setRange] = useState<Range>(defaultRange);
+  const summary = useCostsSummary(range);
+  const capsQ = useCostsCaps();
+
+  const csvHref = `/api/costs/export.csv?from=${encodeURIComponent(range.from)}&to=${encodeURIComponent(range.to)}`;
 
   return (
-    <main className="p-6 max-w-3xl mx-auto space-y-4">
-      <h1 className="text-2xl font-semibold">Costs — today</h1>
-      <div className="text-3xl tabular-nums">
-        ${Number(data?.total_usd ?? "0").toFixed(4)}
+    <main className="p-6 max-w-6xl mx-auto space-y-4">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-semibold">Costs</h1>
+        <a
+          href={csvHref}
+          className="text-sm px-3 py-1 rounded bg-slate-800 hover:bg-slate-700"
+        >
+          ⇣ Export CSV
+        </a>
       </div>
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="text-slate-400 text-left">
-            <th className="py-2">Provider</th>
-            <th className="py-2">Runs</th>
-            <th className="py-2">Input tok</th>
-            <th className="py-2">Cached</th>
-            <th className="py-2">Output tok</th>
-            <th className="py-2">Cost</th>
-          </tr>
-        </thead>
-        <tbody>
-          {(data?.by_provider ?? []).map((p) => (
-            <tr key={p.provider} className="border-t border-slate-800">
-              <td className="py-2 capitalize font-medium">{p.provider}</td>
-              <td className="py-2 tabular-nums">{p.runs}</td>
-              <td className="py-2 tabular-nums">{p.input_tokens.toLocaleString()}</td>
-              <td className="py-2 tabular-nums text-slate-500">{p.cached_tokens.toLocaleString()}</td>
-              <td className="py-2 tabular-nums">{p.output_tokens.toLocaleString()}</td>
-              <td className="py-2 tabular-nums">${Number(p.cost_usd).toFixed(4)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <DateRangePicker value={range} onChange={setRange} />
+      {capsQ.data && <CostCapBars rows={capsQ.data} />}
+      {summary.data && <DailyCostChart data={summary.data.daily} />}
+      {summary.data && <BreakdownTables summary={summary.data} />}
     </main>
   );
 }
