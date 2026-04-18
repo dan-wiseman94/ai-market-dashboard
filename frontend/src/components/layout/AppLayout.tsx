@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { Outlet } from "react-router-dom";
 import TopNav from "./TopNav";
 import SideNav from "./SideNav";
@@ -7,7 +7,8 @@ import ShortcutHelpDialog from "./ShortcutHelpDialog";
 
 export default function AppLayout() {
   const [helpOpen, setHelpOpen] = useState(false);
-  useKeyboardShortcuts(() => setHelpOpen(true));
+  const handleHelp = useCallback(() => setHelpOpen(true), []);
+  useKeyboardShortcuts(handleHelp);
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
       <TopNav />
