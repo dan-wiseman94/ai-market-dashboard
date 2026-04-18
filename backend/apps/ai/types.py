@@ -10,7 +10,9 @@ RoleType = Literal["user", "assistant", "system"]
 @dataclass
 class ChatMessage:
     role: RoleType
-    content: str
+    # str for text-only turns; list[dict] for provider-shaped content blocks
+    # (Claude: `{"type": "image", "source": ...}`, OpenAI: `{"type": "image_url", ...}`).
+    content: str | list[dict]
 
 
 @dataclass
@@ -22,6 +24,9 @@ class RunRequest:
     temperature: float = 1.0
     cache_system: bool = True
     cache_last_message: bool = False
+    tools: list[dict] = field(default_factory=list)
+    thinking_budget: int = 0  # 0 disables extended thinking
+    memory_dir: str = ""       # "" disables Memory tool
 
 
 @dataclass
@@ -61,4 +66,36 @@ class ErrorEvent:
     message: str = ""
 
 
-RunEvent = TextDelta | UsageEvent | DoneEvent | ErrorEvent
+@dataclass
+class ToolCallEvent:
+    type: Literal["tool_call"] = "tool_call"
+    tool_use_id: str = ""
+    name: str = ""
+    input: dict = field(default_factory=dict)
+
+
+@dataclass
+class ToolResultEvent:
+    type: Literal["tool_result"] = "tool_result"
+    tool_use_id: str = ""
+    ok: bool = True
+    result: object = None
+    error: str = ""
+    latency_ms: int = 0
+
+
+@dataclass
+class ThinkingDeltaEvent:
+    type: Literal["thinking_delta"] = "thinking_delta"
+    text: str = ""
+
+
+RunEvent = (
+    TextDelta
+    | UsageEvent
+    | DoneEvent
+    | ErrorEvent
+    | ToolCallEvent
+    | ToolResultEvent
+    | ThinkingDeltaEvent
+)
