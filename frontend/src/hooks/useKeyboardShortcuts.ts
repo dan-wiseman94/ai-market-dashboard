@@ -14,7 +14,10 @@ function isEditable(el: Element | null): boolean {
   if (!el) return false;
   const tag = el.tagName;
   if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return true;
-  return (el as HTMLElement).isContentEditable === true;
+  if ((el as HTMLElement).isContentEditable === true) return true;
+  const role = (el as HTMLElement).getAttribute?.("role");
+  if (role === "textbox" || role === "combobox" || role === "searchbox") return true;
+  return false;
 }
 
 export function useKeyboardShortcuts(onHelp: () => void): void {

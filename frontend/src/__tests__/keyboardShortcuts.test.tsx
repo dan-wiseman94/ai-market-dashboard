@@ -24,6 +24,11 @@ function makeRouter(entry = "/") {
       { path: "triggers", element: <div data-testid="triggers">t</div> },
       { path: "costs", element: <div data-testid="costs">c</div> },
       { path: "snapshot", element: <div data-testid="snapshot"><input /></div> },
+      { path: "combobox", element: (
+        <div data-testid="combobox">
+          <div role="textbox" tabIndex={0} data-testid="role-textbox" />
+        </div>
+      ) },
     ]}],
     { initialEntries: [entry] },
   );
@@ -69,4 +74,13 @@ test("unmapped key after g cancels the binding", async () => {
   renderWithProviders(makeRouter("/"));
   await user.keyboard("gx");
   expect(screen.getByTestId("dashboard")).toBeInTheDocument();
+});
+
+test("shortcut ignored on element with role=textbox", async () => {
+  const user = userEvent.setup();
+  renderWithProviders(makeRouter("/combobox"));
+  (screen.getByTestId("role-textbox") as HTMLElement).focus();
+  await user.keyboard("gt");
+  expect(screen.getByTestId("combobox")).toBeInTheDocument();
+  expect(screen.queryByTestId("triggers")).not.toBeInTheDocument();
 });
