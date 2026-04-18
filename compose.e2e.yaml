@@ -1,0 +1,22 @@
+# compose.e2e.yaml — overlay for end-to-end tests
+# Usage: docker compose -f compose.yaml -f compose.e2e.yaml up -d
+
+services:
+  web:
+    environment:
+      MOCK_EXTERNAL: "true"
+      OBSERVER_TEST_MIN_INTERVAL_SECONDS: "1"
+      TRIGGER_TEST_COOLDOWN_SECONDS: "1"
+      PYTHONPATH: "/app/backend:/app"
+    volumes:
+      - ./e2e:/app/e2e
+
+  worker:
+    environment:
+      MOCK_EXTERNAL: "true"
+      OBSERVER_TEST_MIN_INTERVAL_SECONDS: "1"
+      TRIGGER_TEST_COOLDOWN_SECONDS: "1"
+
+  beat:
+    environment:
+      MOCK_EXTERNAL: "true"
