@@ -1,6 +1,5 @@
-from datetime import datetime, timezone
+from datetime import datetime
 
-import pytest
 from freezegun import freeze_time
 
 from apps.observer.services.market_hours import is_market_open, market_status

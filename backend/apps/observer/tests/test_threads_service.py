@@ -1,4 +1,5 @@
 import pytest
+
 from apps.observer.services.threads import get_or_create_observer_thread
 from apps.profiles.models import TradingProfile
 from apps.threads.models import Thread

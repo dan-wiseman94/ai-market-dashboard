@@ -1,6 +1,5 @@
 from apps.snapshots.serializer import _render_chain
 
-
 CHAIN_PAYLOAD = {
     "underlying_last": "521.30",
     "expiries": {

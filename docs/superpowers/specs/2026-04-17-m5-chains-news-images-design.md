@@ -367,8 +367,8 @@ Single launch per render (no pool) — single-user, low volume; ~1.5s startup ov
 
 | Method | Path | Purpose |
 |---|---|---|
-| GET | `/api/snapshots/chain/?ticker=SPY` | Live chain (cache-backed) |
-| GET | `/api/snapshots/news/?tickers=SPY,AAPL&lookback=24` | Live news list |
+| GET | `/api/market/chain/?ticker=SPY` | Live chain (cache-backed) |
+| GET | `/api/market/news/?tickers=SPY,AAPL&lookback=24` | Live news list |
 | POST | `/api/snapshots/images/?staged=true` | Upload client capture; multipart PNG |
 | GET | `/api/snapshots/images/?staged=true` | List currently-staged client captures |
 | GET | `/api/snapshots/images/<id>/` | Serve image bytes (token-auth) |
@@ -395,8 +395,8 @@ Single launch per render (no pool) — single-user, low volume; ~1.5s startup ov
 
 ### Backend integration (DRF + Celery eager + respx for HTTP mocks)
 
-- `apps/market/tests/test_chain_endpoint.py` — `GET /api/snapshots/chain/?ticker=SPY` with Schwab mocked.
-- `apps/market/tests/test_news_endpoint.py` — `GET /api/snapshots/news/?tickers=SPY,AAPL` with Finnhub mocked; dedup test.
+- `apps/market/tests/test_chain_endpoint.py` — `GET /api/market/chain/?ticker=SPY` with Schwab mocked.
+- `apps/market/tests/test_news_endpoint.py` — `GET /api/market/news/?tickers=SPY,AAPL` with Finnhub mocked; dedup test.
 - `apps/snapshots/tests/test_image_upload.py` — POST PNG bytes; `?staged=true` filter; bad PNG → 400.
 - `apps/snapshots/tests/test_capture_includes_chain_news.py` — full `capture()` with `includes=["quotes","chain","news"]`; assert all three sections persist.
 
@@ -416,7 +416,7 @@ Single launch per render (no pool) — single-user, low volume; ~1.5s startup ov
 ### Smoke verification (end of plan)
 
 - Frontend routes 200: `/`, `/profiles`, `/snapshot`, `/threads`, `/settings`, `/watchlists`, `/costs`, `/market/SPY`, `/render/chart?ticker=SPY&timeframe=5m&bars=10`.
-- Backend endpoints work with stub credentials: chain, news, image upload/serve.
+- Backend endpoints work with stub credentials: `/api/market/chain/`, `/api/market/news/`, `/api/snapshots/images/` upload/serve.
 - One end-to-end `capture(includes=["quotes","chain","news","image"])` succeeds; verify `SnapshotImage.data` non-empty bytes.
 
 ### Cold rebuild + tag

@@ -1,6 +1,7 @@
 from unittest.mock import patch
 
 import pytest
+
 from apps.profiles.models import TradingProfile
 from apps.snapshots.models import SnapshotImage
 from apps.snapshots.services import capture

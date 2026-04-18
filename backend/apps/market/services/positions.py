@@ -15,19 +15,15 @@ def fetch_positions() -> list[dict]:
 
 def _fetch_from_schwab() -> list[dict]:
     client = get_schwab_client()
-    # Get account hashes then fetch positions via fields=positions
     client.get_account_numbers()
+    accounts_resp = client.get_accounts(fields=client.Account.Fields.POSITIONS)
 
     out: list[dict] = []
-    accounts_resp = client.get_accounts(fields=client.Account.Fields.POSITIONS)
     for acct_blob in accounts_resp.json():
-        sec_acct = acct_blob.get("securitiesAccount", {})
-        for p in sec_acct.get("positions", []):
-            symbol = p.get("instrument", {}).get("symbol", "")
-            qty = p.get("longQuantity", 0) - p.get("shortQuantity", 0)
+        for p in acct_blob.get("securitiesAccount", {}).get("positions", []):
             out.append({
-                "ticker": symbol,
-                "qty": qty,
+                "ticker": p.get("instrument", {}).get("symbol", ""),
+                "qty": p.get("longQuantity", 0) - p.get("shortQuantity", 0),
                 "avg_cost": p.get("averagePrice"),
                 "mkt_value": p.get("marketValue"),
                 "unrealized_pl": p.get("longOpenProfitLoss") or p.get("shortOpenProfitLoss"),

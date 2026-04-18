@@ -1,7 +1,7 @@
 import pytest
+
 from apps.profiles.models import TradingProfile
 from apps.snapshots.models import Snapshot, SnapshotImage
-
 
 PNG_BYTES = b"\x89PNG\r\n\x1a\n" + b"\x00" * 100  # minimal valid PNG header
 

@@ -1,4 +1,3 @@
-"""Watchlists. (TradingProfile comes in M3.)"""
 from __future__ import annotations
 
 from typing import ClassVar

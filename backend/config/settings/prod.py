@@ -1,19 +1,18 @@
 """Prod settings."""
-import os
-
 from .base import *
-from .base import REPO_ROOT
+from .base import REPO_ROOT, env
 
 DEBUG = False
 
 # Prod: SPA served by Whitenoise from index.html; render route uses hash routing.
-RENDER_BASE_URL = os.environ.get("RENDER_BASE_URL", "http://web:8000/static/index.html")
+RENDER_BASE_URL = env("RENDER_BASE_URL", default="http://web:8000/static/index.html")
 
-SECURE_SSL_REDIRECT = False  # single-user on localhost; no HTTPS term in container
+# Single-user on localhost; no HTTPS termination in container.
+SECURE_SSL_REDIRECT = False
 SESSION_COOKIE_SECURE = False
 CSRF_COOKIE_SECURE = False
 
-# Whitenoise serves built frontend
+# Whitenoise serves built frontend (dist is baked into the prod image).
 STATICFILES_DIRS = [REPO_ROOT / "frontend" / "dist"]
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 

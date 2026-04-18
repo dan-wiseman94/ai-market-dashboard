@@ -1,4 +1,5 @@
 import pytest
+
 from apps.market.models import OptionChainSnapshot
 
 

@@ -4,7 +4,7 @@ from __future__ import annotations
 import logging
 from datetime import UTC, datetime, timedelta
 
-import requests
+import requests  # type: ignore[import-untyped]
 
 from apps.market import cache
 from apps.market.models import NewsItem
@@ -75,8 +75,8 @@ def fetch_news(
 
     now = datetime.now(UTC)
     end = now.date()
-    # Subtract hours from the full datetime, then take the date — so sub-day lookback
-    # values still produce a sensible from/to range for Finnhub's date-only endpoint.
+    # Subtract hours from the full datetime first so sub-day lookbacks still produce
+    # a sensible from/to range for Finnhub's date-only endpoint.
     start = (now - timedelta(hours=lookback_hours)).date()
     aggregated: list[dict] = []
 
@@ -85,7 +85,7 @@ def fetch_news(
         items = cache.get_or_fetch(
             cache_key,
             ttl_seconds=cache.ttl_for_kind("news"),
-            fetcher=lambda t=ticker: _finnhub_get(
+            fetcher=lambda t=ticker: _finnhub_get(  # type: ignore[misc]
                 "/company-news",
                 {"symbol": t, "from": str(start), "to": str(end)},
                 api_key,

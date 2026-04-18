@@ -6,7 +6,7 @@ from apps.observer.models import ObserverSchedule
 from apps.observer.services.run import run_observer
 from apps.profiles.models import TradingProfile
 from apps.snapshots.models import Snapshot
-from apps.threads.models import Message, Thread
+from apps.threads.models import Thread
 
 
 def _profile():

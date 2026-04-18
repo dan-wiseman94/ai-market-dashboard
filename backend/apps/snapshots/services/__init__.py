@@ -16,15 +16,32 @@ from apps.profiles.models import TradingProfile
 from apps.snapshots.models import Snapshot, SnapshotSection
 from apps.snapshots.services.render import render_chart_png
 
+
+def _pick_ticker(ohlc_ticker: str | None, watchlist_tickers: list[str]) -> str:
+    return ohlc_ticker or (watchlist_tickers[0] if watchlist_tickers else "SPY")
+
+
+def _fetch_ohlc_section(
+    *, watchlist_tickers: list[str], ohlc_ticker: str | None = None,
+    ohlc_timeframe: str = "1m", ohlc_bars: int = 60, **_,
+) -> dict:
+    ticker = _pick_ticker(ohlc_ticker, watchlist_tickers)
+    return {"data": {
+        "ticker": ticker,
+        "timeframe": ohlc_timeframe,
+        "bars": fetch_ohlc(ticker, timeframe=ohlc_timeframe, bars=ohlc_bars),
+    }}
+
+
 _FETCHERS = {
     "breadth": lambda **_: {"data": fetch_market_context()},
     "chain": lambda *, watchlist_tickers, **_: {
-        "data": fetch_chain(watchlist_tickers[0] if watchlist_tickers else "SPY"),
+        "data": fetch_chain(_pick_ticker(None, watchlist_tickers)),
     },
     "image": lambda *, snapshot_id, watchlist_tickers, ohlc_ticker, ohlc_timeframe, ohlc_bars, **_: {
         "data": {"image_ids": [
             render_chart_png(
-                ohlc_ticker or (watchlist_tickers[0] if watchlist_tickers else "SPY"),
+                _pick_ticker(ohlc_ticker, watchlist_tickers),
                 ohlc_timeframe, ohlc_bars, snapshot_id=snapshot_id,
             ).id,
         ]},
@@ -32,17 +49,8 @@ _FETCHERS = {
     "news": lambda *, watchlist_tickers, **_: {
         "data": {"items": fetch_news(list(watchlist_tickers))},
     },
-    "notes": lambda **_: {"data": {}},  # user notes live on Snapshot.notes; nothing to fetch
-    "ohlc": lambda *, watchlist_tickers, ohlc_ticker=None, ohlc_timeframe="1m", ohlc_bars=60, **_: {
-        "data": {
-            "ticker": ohlc_ticker or (watchlist_tickers[0] if watchlist_tickers else "SPY"),
-            "timeframe": ohlc_timeframe,
-            "bars": fetch_ohlc(
-                ohlc_ticker or (watchlist_tickers[0] if watchlist_tickers else "SPY"),
-                timeframe=ohlc_timeframe, bars=ohlc_bars,
-            ),
-        },
-    },
+    "notes": lambda **_: {"data": {}},
+    "ohlc": _fetch_ohlc_section,
     "positions": lambda **_: {"data": fetch_positions()},
     "quotes": lambda *, watchlist_tickers, **_: {"data": fetch_quotes(watchlist_tickers)},
 }

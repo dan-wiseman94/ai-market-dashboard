@@ -68,7 +68,7 @@ class ProviderConfig(models.Model):
 
     @property
     def api_key(self) -> str:
-        return (self._api_key or {}).get("k", "") if self._api_key else ""
+        return (self._api_key or {}).get("k", "")
 
     @api_key.setter
     def api_key(self, value: str) -> None:

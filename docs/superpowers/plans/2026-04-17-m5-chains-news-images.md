@@ -221,7 +221,7 @@ PNG_BYTES = b"\x89PNG\r\n\x1a\n" + b"\x00" * 100  # minimal valid PNG header
 
 @pytest.mark.django_db
 def test_snapshotimage_attached_to_snapshot():
-    profile = TradingProfile.objects.create(name="Default", style_text="x")
+    profile = TradingProfile.objects.create(name="Default", style="x")
     snap = Snapshot.objects.create(profile=profile, includes=["image"])
     img = SnapshotImage.objects.create(
         snapshot=snap, kind="client_capture", data=PNG_BYTES, caption="SPY 5m",
@@ -1399,7 +1399,7 @@ PNG = b"\x89PNG\r\n\x1a\n" + b"\x00" * 50
 @pytest.fixture
 @pytest.mark.django_db
 def two_images(db):
-    profile = TradingProfile.objects.create(name="P", style_text="x")
+    profile = TradingProfile.objects.create(name="P", style="x")
     snap = Snapshot.objects.create(profile=profile, includes=["image"])
     a = SnapshotImage.objects.create(snapshot=snap, kind="server_render", data=PNG, caption="SPY 5m, 60 bars")
     b = SnapshotImage.objects.create(snapshot=snap, kind="client_capture", data=PNG, caption="TSLA 1h")
@@ -1567,7 +1567,7 @@ from apps.snapshots.services import capture
 
 @pytest.mark.django_db
 def test_capture_with_chain_news_image_sections():
-    profile = TradingProfile.objects.create(name="P", style_text="x")
+    profile = TradingProfile.objects.create(name="P", style="x")
 
     fake_chain = {"ticker": "SPY", "underlying_last": "521.30", "expiries": {}}
     fake_news_items = [{"id": 1, "headline": "h", "summary": "", "url": "u",
@@ -2932,7 +2932,7 @@ PNG = b"\x89PNG\r\n\x1a\n" + b"\x00" * 100
 
 @pytest.mark.django_db
 def test_full_m5_capture_emits_all_sections():
-    profile = TradingProfile.objects.create(name="P", style_text="x")
+    profile = TradingProfile.objects.create(name="P", style="x")
 
     fake_chain = {"ticker": "SPY", "underlying_last": "521.30",
                   "expiries": {"2026-04-25": {"calls": [], "puts": []}}}

@@ -35,17 +35,14 @@ def _normalize_contract(c: dict) -> dict:
 
 
 def _flatten_side(exp_date_map: dict) -> dict[str, list[dict]]:
-    """Flatten Schwab's nested {"YYYY-MM-DD:DTE": {"strike": [contract]}} → {"YYYY-MM-DD": [contracts...]}."""
+    """Flatten Schwab's nested {"YYYY-MM-DD:DTE": {"strike": [contract]}} -> {"YYYY-MM-DD": [contracts...]}."""
     out: dict[str, list[dict]] = {}
     for key, strikes in (exp_date_map or {}).items():
         expiry = key.split(":", 1)[0]
-        contracts = []
-        for _strike, listing in strikes.items():
-            for c in listing:
-                contracts.append(_normalize_contract(c))
-        out.setdefault(expiry, []).extend(contracts)
-    # Sort each expiry's contracts by strike (after merging across DTE buckets).
-    for expiry, contracts in out.items():
+        bucket = out.setdefault(expiry, [])
+        for listing in strikes.values():
+            bucket.extend(_normalize_contract(c) for c in listing)
+    for contracts in out.values():
         contracts.sort(key=lambda c: float(c["strike"] or 0))
     return out
 
@@ -73,13 +70,8 @@ def fetch_chain(
 ) -> dict:
     """Fetch + cache + persist an option chain for `ticker`.
 
-    Cache key:  market:chain:<TICKER>:<params_hash>  TTL 15s.
     On cache miss: call Schwab, normalize, persist OptionChainSnapshot, return payload.
     On cache hit: return cached payload (no DB write).
-
-    Schwab's get_option_chain has no "number of expiries" parameter, so we always
-    return the default expiry window. The serializer (snapshots/serializer.py)
-    trims to front-month + next monthly when emitting to the AI.
     """
     ticker = ticker.upper()
     params_hash = hashlib.sha1(
@@ -89,21 +81,17 @@ def fetch_chain(
 
     def _fetch_and_persist() -> dict:
         client = get_schwab_client()
-        # schwab-py v1.x: get_option_chain(symbol, contract_type, strike_count, include_underlying_quote, ...)
-        # If this breaks after a schwab-py upgrade, check BaseClient.get_option_chain signature.
         resp = client.get_option_chain(
             symbol=ticker,
             contract_type=client.Options.ContractType.ALL,
             strike_count=strikes_around_atm * 2,
             include_underlying_quote=True,
         )
-        raw = resp.json()
-        payload = _normalize_chain(raw)
-        payload["ticker"] = ticker  # stamp for downstream serializer
-        expiry_dates = list(payload["expiries"].keys())
+        payload = _normalize_chain(resp.json())
+        payload["ticker"] = ticker
         OptionChainSnapshot.objects.create(
             ticker=ticker,
-            expiries=expiry_dates,
+            expiries=list(payload["expiries"].keys()),
             payload=payload,
         )
         return payload

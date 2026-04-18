@@ -19,18 +19,16 @@ def fetch_market_context() -> dict:
     )
 
 
+def _last(quotes: dict, sym: str):
+    return quotes.get(sym, {}).get("last")
+
+
 def _fetch() -> dict:
     quotes = fetch_quotes(CONTEXT_SYMBOLS)
-    sectors = {etf: quotes.get(etf, {}).get("last") for etf in SECTOR_ETFS}
-    breadth = {}
-    for sym in BREADTH:
-        q = quotes.get(sym, {})
-        if q.get("last") is not None:
-            breadth[sym] = q["last"]
     return {
-        "spy_last": quotes.get("SPY", {}).get("last"),
-        "qqq_last": quotes.get("QQQ", {}).get("last"),
-        "vix_last": quotes.get("$VIX", {}).get("last"),
-        "sectors": sectors,
-        "breadth": breadth,
+        "spy_last": _last(quotes, "SPY"),
+        "qqq_last": _last(quotes, "QQQ"),
+        "vix_last": _last(quotes, "$VIX"),
+        "sectors": {etf: _last(quotes, etf) for etf in SECTOR_ETFS},
+        "breadth": {sym: v for sym in BREADTH if (v := _last(quotes, sym)) is not None},
     }

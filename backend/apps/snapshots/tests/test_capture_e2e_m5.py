@@ -5,10 +5,10 @@ External calls to Schwab / Finnhub / Playwright are mocked at the SDK boundary.
 from unittest.mock import patch
 
 import pytest
+
 from apps.profiles.models import TradingProfile
 from apps.snapshots.models import SnapshotImage
 from apps.snapshots.services import capture
-
 
 PNG = b"\x89PNG\r\n\x1a\n" + b"\x00" * 100
 

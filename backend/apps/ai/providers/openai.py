@@ -26,15 +26,16 @@ class OpenAIProvider:
     name = "openai"
 
     def __init__(self, api_key: str, base_url: str = "") -> None:
+        kwargs = {"api_key": api_key}
         if base_url:
-            self._client = AsyncOpenAI(api_key=api_key, base_url=base_url)
-        else:
-            self._client = AsyncOpenAI(api_key=api_key)
+            kwargs["base_url"] = base_url
+        self._client = AsyncOpenAI(**kwargs)  # type: ignore[arg-type]
 
     async def run(self, req: RunRequest) -> AsyncIterator[RunEvent]:
-        raw: list[dict[str, str]] = [{"role": "system", "content": req.system}]
-        for m in req.messages:
-            raw.append({"role": m.role, "content": m.content})
+        raw: list[dict[str, str]] = [
+            {"role": "system", "content": req.system},
+            *({"role": m.role, "content": m.content} for m in req.messages),
+        ]
         messages = cast(list[ChatCompletionMessageParam], raw)
 
         try:

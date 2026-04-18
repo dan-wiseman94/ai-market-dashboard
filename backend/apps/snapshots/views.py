@@ -1,4 +1,5 @@
 from django.http import HttpResponse, JsonResponse
+from django.shortcuts import get_object_or_404
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from rest_framework import mixins, viewsets
@@ -72,8 +73,5 @@ def images_collection(request):
 
 
 def serve_image(_request, image_id: int):
-    try:
-        img = SnapshotImage.objects.get(id=image_id)
-    except SnapshotImage.DoesNotExist:
-        return HttpResponse(status=404)
+    img = get_object_or_404(SnapshotImage, id=image_id)
     return HttpResponse(bytes(img.data), content_type=img.mime_type or "image/png")
