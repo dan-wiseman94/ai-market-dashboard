@@ -21,6 +21,7 @@ class RunRequest:
     max_tokens: int = 4096
     temperature: float = 1.0
     cache_system: bool = True
+    cache_last_message: bool = False
 
 
 @dataclass
