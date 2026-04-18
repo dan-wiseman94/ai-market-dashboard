@@ -19,6 +19,7 @@ app.autodiscover_tasks(
     [
         "apps.core",
         "apps.market",
+        "apps.observer",
         "apps.snapshots",
         "apps.threads",
     ]
