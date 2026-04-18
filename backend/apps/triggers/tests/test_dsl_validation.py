@@ -91,3 +91,24 @@ def test_validate_error_path_reports_location():
 def test_validate_empty_group_ok():
     validate_condition({"all": []})
     validate_condition({"any": []})
+
+
+def test_validate_rejects_typo_leaf_keys():
+    """Typos like 'windoww' / 'tikcer' would silently evaluate wrong; reject early."""
+    with pytest.raises(ValidationError) as exc:
+        validate_condition({
+            "metric": "price", "ticker": "SPY", "op": ">", "value": 1, "windoww": "5m",
+        })
+    assert "windoww" in str(exc.value)
+
+
+def test_validate_ticker_must_be_string():
+    with pytest.raises(ValidationError) as exc:
+        validate_condition({"metric": "price", "ticker": ["SPY"], "op": ">", "value": 1})
+    assert "ticker" in str(exc.value)
+
+
+def test_validate_root_must_be_dict():
+    with pytest.raises(ValidationError) as exc:
+        validate_condition([{"metric": "price", "ticker": "SPY", "op": ">", "value": 1}])
+    assert "<root>" in str(exc.value)
