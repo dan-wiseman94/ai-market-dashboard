@@ -116,3 +116,39 @@ def test_thread_create_refuses_non_ready_snapshot(profile) -> None:
     assert resp.status_code == 400
     assert resp.json()["code"] == "snapshot_not_ready"
     assert Thread.objects.count() == 0  # atomic: no thread created on refusal
+
+
+@pytest.mark.django_db
+def test_build_request_includes_snapshot_on_first_user_turn(
+    profile, ready_snapshot,
+) -> None:
+    """After thread creation + one user follow-up, _build_request should emit
+    [system=profile.style, user=snapshot_markdown, user=follow_up]."""
+    from apps.threads.tasks import _build_request
+
+    client = APIClient()
+    resp = client.post(
+        "/api/threads/",
+        data={
+            "kind": "consult",
+            "profile_id": profile.id,
+            "pinned_snapshot_id": ready_snapshot.id,
+        },
+        format="json",
+    )
+    thread_id = resp.json()["id"]
+    thread = Thread.objects.select_related("profile").get(id=thread_id)
+
+    follow_up = Message.objects.create(
+        thread=thread, role="user",
+        content={"text": "What do you see?"}, status="done",
+    )
+
+    req = _build_request(thread, follow_up)
+    assert req.system == "Aggressive intraday"
+    assert len(req.messages) == 2
+    assert req.messages[0].role == "user"
+    assert "Gauge SPY intraday momentum" in req.messages[0].content
+    assert "SPY" in req.messages[0].content
+    assert req.messages[1].role == "user"
+    assert req.messages[1].content == "What do you see?"
