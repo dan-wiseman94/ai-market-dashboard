@@ -12,7 +12,7 @@ from celery import shared_task
 from channels.layers import get_channel_layer
 from django.db import transaction
 
-from apps.ai.cost import CostCapExceededError, check_daily_cap, cost_usd_for
+from apps.ai.cost import CostCapExceededError, check_daily_cap, check_monthly_cap, cost_usd_for
 from apps.ai.providers import get_provider
 from apps.ai.providers.base import Provider
 from apps.ai.router import ResolutionError, resolve_provider_and_model
@@ -170,6 +170,7 @@ def run_ai_on_message(
 
     try:
         check_daily_cap(provider_name, cap_usd=cfg.daily_cost_cap_usd)
+        check_monthly_cap(provider_name, cap_usd=cfg.monthly_cost_cap_usd)
     except CostCapExceededError as exc:
         _fail(
             thread_id=thread_id, parent_message_id=parent_message_id,

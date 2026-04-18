@@ -56,3 +56,38 @@ def check_daily_cap(provider: str, cap_usd: Decimal, prospective_cost: Decimal =
             f"{provider} daily cap ${cap_usd} would be exceeded "
             f"(spent ${spent}, this run ~${prospective_cost})"
         )
+
+
+def monthly_spend_usd(provider: str) -> Decimal:
+    """Sum the last 30 days of AIRun.cost_usd for the given provider."""
+    from datetime import timedelta
+
+    from django.db.models import Sum
+
+    from apps.threads.models import AIRun
+
+    window_start = datetime.now(tz=UTC) - timedelta(days=30)
+    agg = AIRun.objects.filter(
+        provider=provider, created_at__gte=window_start,
+    ).aggregate(total=Sum("cost_usd"))
+    return agg["total"] or Decimal("0")
+
+
+def check_monthly_cap(
+    provider: str,
+    cap_usd: Decimal | None,
+    prospective_cost: Decimal = Decimal("0"),
+) -> None:
+    """Raise if last-30-days + prospective would exceed cap.
+
+    A cap of None (the default when a user hasn't set one on ProviderConfig)
+    is a no-op: monthly caps are opt-in.
+    """
+    if cap_usd is None:
+        return
+    spent = monthly_spend_usd(provider)
+    if spent + prospective_cost > cap_usd:
+        raise CostCapExceededError(
+            f"{provider} monthly cap ${cap_usd} would be exceeded "
+            f"(30-day spend ${spent}, this run ~${prospective_cost})"
+        )
