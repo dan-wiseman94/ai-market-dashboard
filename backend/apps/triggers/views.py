@@ -83,6 +83,44 @@ class EventTriggerViewSet(viewsets.ModelViewSet):
             "page": page, "size": size,
         })
 
+    @action(detail=False, methods=["post"])
+    def backtest(self, request: Request) -> Response:
+        """Replay a DSL condition over stored OHLC bars for [start, end].
+
+        Body: {condition, start (ISO date), end (ISO date), timeframe?}
+        Returns {match_count, matches:[{ts, values}]}. Only price/pct_change
+        leaves are evaluated; other metrics are silently absent from the
+        per-bar snapshot.
+        """
+        from datetime import datetime, timezone
+
+        from apps.triggers.backtest import backtest as run_backtest
+
+        data = request.data
+        condition = data.get("condition")
+        if condition is None:
+            return Response({"code": "missing_condition"}, status=400)
+        try:
+            validate_condition(condition)
+        except DjangoValidationError as exc:
+            return Response({"code": "invalid_condition", "message": str(exc)}, status=400)
+
+        try:
+            start = datetime.fromisoformat(str(data["start"])).replace(tzinfo=timezone.utc)
+            end = datetime.fromisoformat(str(data["end"])).replace(tzinfo=timezone.utc)
+        except (KeyError, ValueError) as exc:
+            return Response({"code": "bad_dates", "message": str(exc)}, status=400)
+
+        timeframe = data.get("timeframe", "1d")
+        matches = run_backtest(condition, start=start, end=end, timeframe=timeframe)
+        return Response({
+            "match_count": len(matches),
+            "matches": [
+                {"ts": m.ts.isoformat(), "values": m.values}
+                for m in matches[:500]
+            ],
+        })
+
     @action(detail=False, methods=["get"], url_path="firings/recent")
     def firings_recent(self, request: Request) -> Response:
         try:
