@@ -2,6 +2,7 @@ import MarketContextStrip from "@/components/MarketContextStrip";
 import PositionsTable from "@/components/PositionsTable";
 import CostChip from "@/components/CostChip";
 import NotificationBell from "@/components/NotificationBell";
+import RecentTriggersCard from "@/components/RecentTriggersCard";
 import { Link } from "react-router-dom";
 
 export default function Dashboard() {
@@ -30,6 +31,10 @@ export default function Dashboard() {
       <section>
         <h2 className="text-sm uppercase tracking-wide text-slate-400 mb-2">Positions</h2>
         <PositionsTable />
+      </section>
+
+      <section>
+        <RecentTriggersCard />
       </section>
     </main>
   );
