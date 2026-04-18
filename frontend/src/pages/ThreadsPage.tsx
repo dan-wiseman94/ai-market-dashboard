@@ -1,9 +1,12 @@
 import { Link } from "react-router-dom";
 import { useThreads } from "@/hooks/useThread";
 import { formatDistanceToNow } from "date-fns";
+import { SkeletonRows } from "@/components/Skeleton";
+import { EmptyState } from "@/components/EmptyState";
 
 export default function ThreadsPage() {
   const { data, isLoading } = useThreads();
+  const threads = data ?? [];
 
   return (
     <main className="p-6 max-w-4xl mx-auto space-y-4">
@@ -13,9 +16,16 @@ export default function ThreadsPage() {
           + Snapshot
         </Link>
       </div>
-      {isLoading ? <p>Loading…</p> : (
+      {isLoading ? (
+        <SkeletonRows rows={4} />
+      ) : threads.length === 0 ? (
+        <EmptyState
+          title="No threads yet"
+          body="Capture a snapshot and pin it to start a consultation."
+        />
+      ) : (
         <ul className="space-y-1">
-          {(data ?? []).map((t) => (
+          {threads.map((t) => (
             <li key={t.id} className="p-3 rounded border border-slate-800 flex justify-between">
               <Link to={`/threads/${t.id}`} className="hover:underline">
                 <div className="font-medium">{t.title || `Thread #${t.id}`}</div>

@@ -40,10 +40,11 @@ class OpenAIProvider:
             yield DoneEvent()
             return
 
-        raw: list[dict[str, str]] = [
+        raw: list[dict] = [
             {"role": "system", "content": req.system},
-            *({"role": m.role, "content": m.content} for m in req.messages),
         ]
+        for m in req.messages:
+            raw.append({"role": m.role, "content": _openai_content(m.content)})
         messages = cast(list[ChatCompletionMessageParam], raw)
 
         try:
@@ -81,3 +82,21 @@ def _cached(usage) -> int:
     if details is None:
         return 0
     return getattr(details, "cached_tokens", 0) or 0
+
+
+def _openai_content(content: str | list[dict]) -> str | list[dict]:
+    """Normalize provider-shaped content to OpenAI's chat completion format.
+
+    Text-only turns pass through as strings. Block lists already in OpenAI's
+    `text`/`image_url` shape pass through. For each block lacking a `type`
+    key, default to "text" with the raw string value.
+    """
+    if isinstance(content, str):
+        return content
+    out: list[dict] = []
+    for block in content:
+        if "type" in block:
+            out.append(block)
+            continue
+        out.append({"type": "text", "text": str(block)})
+    return out

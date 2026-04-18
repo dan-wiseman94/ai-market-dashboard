@@ -24,5 +24,11 @@ export default defineConfig({
     env: {
       VITE_API_BASE_URL: "",
     },
+    coverage: {
+      provider: "v8",
+      reporter: ["text", "html"],
+      include: ["src/**/*.{ts,tsx}"],
+      exclude: ["src/__tests__/**", "src/main.tsx", "src/vite-env.d.ts"],
+    },
   },
 });

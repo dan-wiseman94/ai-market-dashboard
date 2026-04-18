@@ -15,6 +15,7 @@ type Draft = {
   api_key_write?: string;
   default_model?: string;
   daily_cost_cap_usd?: string;
+  monthly_cost_cap_usd?: string;
   base_url?: string;
 };
 
@@ -46,10 +47,12 @@ export default function ProviderConfigCard() {
               className="mt-2 grid grid-cols-2 gap-2 text-sm"
               onSubmit={(e) => {
                 e.preventDefault();
+                const monthlyRaw = draft.monthly_cost_cap_usd ?? cfg?.monthly_cost_cap_usd ?? "";
                 upsert.mutate({ provider: p, body: {
                   api_key_write: draft.api_key_write ?? "",
                   default_model: draft.default_model ?? cfg?.default_model ?? DEFAULT_MODEL[p],
                   daily_cost_cap_usd: draft.daily_cost_cap_usd ?? cfg?.daily_cost_cap_usd ?? "10.00",
+                  monthly_cost_cap_usd: monthlyRaw === "" ? null : monthlyRaw,
                   base_url: draft.base_url ?? cfg?.base_url ?? "",
                 } }, { onSuccess: () => setDrafts((d) => ({ ...d, [p]: {} })) });
               }}
@@ -72,6 +75,12 @@ export default function ProviderConfigCard() {
                 value={draft.daily_cost_cap_usd ?? cfg?.daily_cost_cap_usd ?? "10.00"}
                 onChange={(e) => setDrafts((d) => ({ ...d, [p]: { ...draft, daily_cost_cap_usd: e.target.value } }))}
                 className="px-2 py-1 rounded bg-slate-900 border border-slate-700"
+              />
+              <input
+                placeholder="Monthly cap USD (blank = none)"
+                value={draft.monthly_cost_cap_usd ?? cfg?.monthly_cost_cap_usd ?? ""}
+                onChange={(e) => setDrafts((d) => ({ ...d, [p]: { ...draft, monthly_cost_cap_usd: e.target.value } }))}
+                className="col-span-2 px-2 py-1 rounded bg-slate-900 border border-slate-700"
               />
               {p === "local" && (
                 <input

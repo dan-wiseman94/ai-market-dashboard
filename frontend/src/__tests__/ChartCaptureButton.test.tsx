@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import ChartCaptureButton from "../components/ChartCaptureButton";
 import { mockFetch } from "./testUtils";
+import { ToastProvider } from "@/hooks/useToast";
 
 const fakePng = new Blob([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], { type: "image/png" });
 
@@ -21,7 +22,11 @@ beforeEach(() => {
 describe("ChartCaptureButton", () => {
   it("captures the chart, posts the PNG, and stores the staged image id", async () => {
     const targetRef = { current: document.createElement("div") };
-    render(<ChartCaptureButton targetRef={targetRef} caption="SPY 5m" />);
+    render(
+      <ToastProvider>
+        <ChartCaptureButton targetRef={targetRef} caption="SPY 5m" />
+      </ToastProvider>,
+    );
     fireEvent.click(screen.getByRole("button", { name: /capture/i }));
 
     await waitFor(() => {

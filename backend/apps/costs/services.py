@@ -118,12 +118,16 @@ def _aggregate_by(field: str, *, start: datetime, end: datetime | None) -> list[
 
 
 def caps() -> list[dict]:
-    """Per-provider daily + monthly cap progress. Monthly is None if not configured."""
+    """Per-provider daily + monthly cap progress. Monthly is None if not configured.
+
+    Monthly uses the same rolling-30-day window as `ai.cost.monthly_spend_usd`
+    so UI progress matches what enforcement actually gates on.
+    """
     from apps.secrets.models import ProviderConfig
 
     now = datetime.now(tz=UTC)
     day_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
-    month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    month_window_start = now - timedelta(days=30)
 
     out: list[dict] = []
     for pc in ProviderConfig.objects.all():
@@ -140,7 +144,7 @@ def caps() -> list[dict]:
         monthly = None
         if pc.monthly_cost_cap_usd is not None:
             month_spent = (AIRun.objects.filter(
-                provider=pc.provider, created_at__gte=month_start,
+                provider=pc.provider, created_at__gte=month_window_start,
             ).aggregate(s=Sum("cost_usd"))["s"]) or Decimal("0")
             monthly = {
                 "cap": pc.monthly_cost_cap_usd,

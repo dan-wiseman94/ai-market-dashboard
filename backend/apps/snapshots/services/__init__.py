@@ -19,10 +19,24 @@ from apps.snapshots.services.render import render_chart_png
 from apps.snapshots.token_budget import estimate_tokens
 
 
-def stamp_payload_tokens(section: SnapshotSection) -> None:
-    """Count tokens in section.payload as JSON and persist to section.payload_tokens."""
+def stamp_payload_tokens(
+    section: SnapshotSection,
+    *,
+    provider: str = "",
+    model: str = "",
+) -> None:
+    """Count tokens in section.payload as JSON and persist to section.payload_tokens.
+
+    Provider/model default to the snapshot's profile when available, so counts
+    use the right tokenizer (e.g. Anthropic's count_tokens for Claude runs).
+    """
+    if not provider:
+        profile = getattr(section.snapshot, "profile", None)
+        if profile is not None:
+            provider = profile.default_provider or "openai"
+            model = model or profile.default_model or ""
     text = json.dumps(section.payload, default=str)
-    tokens = estimate_tokens(text)
+    tokens = estimate_tokens(text, provider=provider or "openai", model=model)
     section.payload_tokens = tokens
     section.save(update_fields=["payload_tokens"])
 

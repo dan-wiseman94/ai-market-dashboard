@@ -80,3 +80,18 @@ export const fetchFirings = (triggerId: number, page = 1, size = 20) =>
 
 export const fetchRecentFirings = (limit = 5) =>
   apiGet<Firing[]>(`/api/triggers/firings/recent/?limit=${limit}`);
+
+export type BacktestMatch = {
+  ts: string;
+  values: Record<string, number | null>;
+};
+
+export const backtestTrigger = (body: {
+  condition: Condition;
+  start: string;
+  end: string;
+  timeframe?: string;
+}) =>
+  apiPost<{ match_count: number; matches: BacktestMatch[] }>(
+    "/api/triggers/backtest/", body,
+  );

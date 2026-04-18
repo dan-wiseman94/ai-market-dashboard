@@ -11,6 +11,9 @@ import { useBranchState, type BranchEvent } from "@/hooks/useBranchState";
 import { useSnapshot } from "@/hooks/useSnapshot";
 import { useCompareMessage, useSendMessage, useStopMessage, useThread } from "@/hooks/useThread";
 import ThreadExportButton from "@/components/ThreadExportButton";
+import { ToolCallTrace, type ToolCallRecord } from "@/components/ToolCallTrace";
+import { FileAttachPanel } from "@/components/FileAttachPanel";
+import { useFiles, useAttachFileToThread } from "@/hooks/useFiles";
 
 type LiveMessage = {
   id: number;
@@ -78,6 +81,10 @@ export default function ThreadDetailPage() {
   const [activeBranchByParent, setActiveBranchByParent] = useState<Record<number, number>>({});
   const [picker, setPicker] = useState({ provider: "claude", model: "claude-sonnet-4-6" });
   const [showCompare, setShowCompare] = useState(false);
+  // Per-assistant-message map of tool_use_id → ToolCallRecord.
+  const [toolCalls, setToolCalls] = useState<
+    Record<number, Record<string, ToolCallRecord>>
+  >({});
 
   useEffect(() => {
     if (!thread) return;
@@ -127,6 +134,31 @@ export default function ThreadDetailPage() {
         ...prev,
         [msg.message_id]: { ...prev[msg.message_id], status: "failed", error: msg.error },
       }));
+    } else if (msg.event === "tool_call") {
+      setToolCalls((prev) => {
+        const bucket = { ...(prev[msg.message_id] ?? {}) };
+        bucket[msg.tool_use_id] = {
+          toolUseId: msg.tool_use_id,
+          name: msg.name,
+          input: msg.input,
+          ok: true,
+          latencyMs: 0,
+        };
+        return { ...prev, [msg.message_id]: bucket };
+      });
+    } else if (msg.event === "tool_result") {
+      setToolCalls((prev) => {
+        const bucket = { ...(prev[msg.message_id] ?? {}) };
+        const existing = bucket[msg.tool_use_id];
+        if (existing) {
+          bucket[msg.tool_use_id] = {
+            ...existing,
+            ok: !!msg.ok,
+            latencyMs: msg.latency_ms ?? 0,
+          };
+        }
+        return { ...prev, [msg.message_id]: bucket };
+      });
     }
   }, [refetch]);
 
@@ -239,9 +271,11 @@ export default function ThreadDetailPage() {
               </div>
             );
           }
+          const calls = Object.values(toolCalls[m.id] ?? {});
           return (
             <div key={m.id} className="flex items-start gap-3">
               <div className="flex-1 min-w-0">
+                <ToolCallTrace calls={calls} />
                 <StreamingMessage
                   role={m.role} text={m.text} status={m.status}
                   error={m.error} cost={m.cost} model={m.model} provider={m.provider}
@@ -279,7 +313,10 @@ export default function ThreadDetailPage() {
           onSubmit={(e) => {
             e.preventDefault();
             if (!input.trim()) return;
-            send.mutate(input.trim(), { onSuccess: () => setInput("") });
+            send.mutate(
+              { text: input.trim(), override: picker },
+              { onSuccess: () => setInput("") },
+            );
           }}
         >
           <input
@@ -296,6 +333,8 @@ export default function ThreadDetailPage() {
         </form>
       </div>
 
+      {tid && <FileAttach threadId={tid} />}
+
       {showCompare && (
         <CompareDialog
           onCancel={() => setShowCompare(false)}
@@ -309,3 +348,23 @@ export default function ThreadDetailPage() {
   );
 }
 
+
+
+function FileAttach({ threadId }: { threadId: number }) {
+  const { data: files = [] } = useFiles();
+  const attach = useAttachFileToThread(threadId);
+  return (
+    <details className="mt-6 ledger-surface px-5 py-3">
+      <summary className="cursor-pointer ledger-eyebrow">Attach a file</summary>
+      <div className="mt-2">
+        <FileAttachPanel
+          threadId={threadId}
+          files={files}
+          onAttach={(fileId) =>
+            attach.mutate({ fileId, prompt: "Please review this document." })
+          }
+        />
+      </div>
+    </details>
+  );
+}

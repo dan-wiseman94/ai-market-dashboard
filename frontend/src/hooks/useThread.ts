@@ -13,7 +13,8 @@ export const useThread = (id: number | null) =>
 export function useSendMessage(threadId: number) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (text: string) => sendMessage(threadId, text),
+    mutationFn: (args: { text: string; override?: { provider: string; model: string } }) =>
+      sendMessage(threadId, args.text, args.override),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["thread", threadId] }),
   });
 }

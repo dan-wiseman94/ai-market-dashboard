@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router-dom";
 import { vi, test, expect, beforeEach } from "vitest";
 import BackupsPage from "@/pages/BackupsPage";
+import { ToastProvider } from "@/hooks/useToast";
 
 beforeEach(() => {
   vi.spyOn(globalThis, "fetch").mockImplementation(async (url, init) => {
@@ -26,7 +27,7 @@ beforeEach(() => {
 
 function wrap(ui: React.ReactNode) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return <MemoryRouter><QueryClientProvider client={qc}>{ui}</QueryClientProvider></MemoryRouter>;
+  return <MemoryRouter><QueryClientProvider client={qc}><ToastProvider>{ui}</ToastProvider></QueryClientProvider></MemoryRouter>;
 }
 
 test("renders list with filename and size", async () => {

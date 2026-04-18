@@ -5,9 +5,13 @@ import {
   type EventTrigger,
 } from "@/api/triggers";
 import { describeCondition } from "@/lib/triggers/describe";
+import { SkeletonRows } from "@/components/Skeleton";
+import { EmptyState } from "@/components/EmptyState";
+import { useToast } from "@/hooks/useToast";
 
 export default function TriggersListPage() {
   const qc = useQueryClient();
+  const { push } = useToast();
   const { data: triggers, isLoading } = useQuery({
     queryKey: ["triggers"],
     queryFn: fetchTriggers,
@@ -32,14 +36,26 @@ export default function TriggersListPage() {
 
   const remove = useMutation({
     mutationFn: (id: number) => deleteTrigger(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["triggers"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["triggers"] });
+      push({ kind: "success", text: "Trigger deleted." });
+    },
+    onError: (e) => push({ kind: "error", text: (e as Error).message }),
   });
 
   const fire = useMutation({
     mutationFn: (id: number) => fireTriggerNow(id),
+    onSuccess: () => push({ kind: "info", text: "Trigger fire queued." }),
+    onError: (e) => push({ kind: "error", text: (e as Error).message }),
   });
 
-  if (isLoading) return <div className="p-6">Loading…</div>;
+  if (isLoading) {
+    return (
+      <div className="max-w-5xl mx-auto p-6">
+        <SkeletonRows rows={5} />
+      </div>
+    );
+  }
 
   if (!triggers?.length) {
     return (
@@ -48,7 +64,10 @@ export default function TriggersListPage() {
           <h1 className="text-xl font-semibold">Triggers</h1>
           <Link to="/triggers/new" className="bg-indigo-600 px-3 py-1.5 rounded text-white">New trigger</Link>
         </div>
-        <p className="text-neutral-400">No triggers yet.</p>
+        <EmptyState
+          title="No triggers yet"
+          body="Triggers fire when a condition you define crosses its threshold."
+        />
       </div>
     );
   }
