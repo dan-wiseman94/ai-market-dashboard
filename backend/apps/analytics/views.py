@@ -20,3 +20,18 @@ def _parse_range(request: Request, default_days: int) -> tuple[datetime, datetim
         if start_raw else end - timedelta(days=default_days)
     )
     return start, end
+
+
+class LeaderboardView(APIView):
+    def get(self, request: Request) -> Response:
+        from apps.analytics.services.leaderboard import provider_leaderboard
+        start, end = _parse_range(request, default_days=30)
+        try:
+            hours = max(1, min(168, int(request.query_params.get("forward_hours", "24"))))
+        except ValueError:
+            hours = 24
+        rows = provider_leaderboard(start=start, end=end, forward_hours=hours)
+        return Response({
+            "start": start.isoformat(), "end": end.isoformat(),
+            "forward_hours": hours, "rows": rows,
+        })

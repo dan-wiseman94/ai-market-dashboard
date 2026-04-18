@@ -1,3 +1,7 @@
 from django.urls import path
 
-urlpatterns: list = []
+from apps.analytics.views import LeaderboardView
+
+urlpatterns = [
+    path("leaderboard/", LeaderboardView.as_view(), name="analytics-leaderboard"),
+]
