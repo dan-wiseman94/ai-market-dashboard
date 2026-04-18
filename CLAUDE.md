@@ -8,7 +8,7 @@ A single-user desktop dashboard that captures snapshots of the stock market and 
 
 The design lives in `docs/superpowers/specs/2026-04-16-ai-dashboard-design.md`. Milestone plans live in `docs/superpowers/plans/`. Both are load-bearing — read the relevant spec section before adding a feature, and read the active milestone plan before starting new implementation work.
 
-Milestones M1 (skeleton, tagged `m1-skeleton`) → M8 (polish, tagged `m8-polish`). Each has its own plan and is independently shippable. **Current status:** M1–M8 all shipped; v1 feature set complete.
+Milestones M1 (skeleton, tagged `m1-skeleton`) → M9 (AI platform v2, tagged `m9-ai-platform-v2`). Each has its own plan and is independently shippable. **Current status:** M1–M9 all shipped.
 
 ## Daily commands
 
@@ -82,6 +82,19 @@ Each is a Channels group. Groups are joined in `connect()` and left in `disconne
 - **Single-user auth is a token written to `/data/user.token` on first boot.** No password UI. The container binds to `127.0.0.1` only.
 - **URL include ordering matters.** `config/urls.py` registers specific prefixes (e.g., `/api/costs/`) *before* generic `/api/` includes — a past regression routed `/api/costs/today` into the wrong app. Don't reorder without checking.
 - **Encrypted secrets at rest:** Schwab OAuth tokens, provider API keys, etc. live in `ProviderConfig` / `ApiCredential` rows, encrypted via `django-cryptography`. Key is derived from `DJANGO_SECRET_KEY` + `/data/secret.salt`. Do not log these fields; do not expose them via DRF serializers without explicit write_only.
+- **AI token counts are provider-aware.** `apps.ai.token_counter.estimate_tokens(text, provider=, model=)` routes Claude to Anthropic's `count_tokens` endpoint (cached via `lru_cache`) and everything else to `tiktoken.cl100k_base`. Call sites that don't pass provider/model get the old tiktoken default — intentional back-compat — but new code should pass them through.
+- **Per-model payload budgets live in the catalog.** `ModelInfo.max_payload_tokens` (150k for Claude 4.x, 200-300k for GPT-5 variants). `serialize_for_ai` resolves the budget from `(provider, model)` when `max_tokens` isn't passed explicitly. Raising a model's budget here is the right place; hard-coding 40k is wrong.
+- **Claude multi-turn runs cache the final prior message.** `RunRequest.cache_last_message=True` (set automatically when `len(messages) > 1` in `_build_request`) attaches a second `cache_control` breakpoint on the last message's final text block. On cache hit, Anthropic bills ~0.1× base input for everything before the breakpoint.
+- **Monthly cost cap parity with daily cap.** `apps.ai.cost.check_monthly_cap(provider, cap_usd, prospective)` sums the last 30 days of `AIRun.cost_usd`. Null cap is a no-op (opt-in). Wired into `threads.tasks`, `observer.services.run`, and `triggers.tasks`.
+- **Observer schedules have three opt-in modes.**
+    - `structured=True` — route through `apps.ai.providers.claude_structured.run_structured` with the `ObservationReport` Pydantic schema; parsed result lands in `Message.content` as `{"kind": "structured_observation", "report": <json>}` for typed UI cards.
+    - `mode="diff"` — feed AI only `apps.snapshots.diff.diff_sections(...)` delta vs the most recent prior ready snapshot (falls back to full payload if no prior).
+    - `use_batch=True` — submit a Messages Batch (one `custom_id` per watchlist ticker). `observer.poll_open_batches` beat task (every 60s) moves completed batches into the observer thread. 50% cheaper; no streaming during the window.
+  All three are orthogonal and default False.
+- **Snapshot diff endpoint.** `GET /api/snapshots/<id>/diff/?against=<other_id>` returns `{delta: <markdown>, prev_id, curr_id}`. Not yet surfaced in the UI; power users can call it directly.
+- **Trigger backtest.** `POST /api/triggers/backtest/` body `{condition, start, end, timeframe?}` replays the DSL over stored `OHLCBar` rows and returns match timestamps. Only `price` and `pct_change` leaves are evaluated; live-only metrics (vix, position_pl) are silently absent from per-bar snapshots rather than raising.
+- **Frontend primitives.** `Skeleton` / `SkeletonRows` / `EmptyState` / `ErrorBoundary` / `Toasts` live in `frontend/src/components/`. Reach for these before writing ad-hoc loading spinners, "no data" text, or try/catch-in-JSX guards. Toasts require a `<ToastProvider>` ancestor; `AppLayout` already provides it.
+- **Command palette is Cmd/Ctrl-K.** `useCommandPaletteTrigger(cb)` registers the global handler; default commands in `AppLayout`'s `useDefaultCommands()` cover all top-level routes. Page-level commands can be added by extending the hook.
 
 ## Testing
 
