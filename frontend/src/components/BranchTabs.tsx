@@ -1,11 +1,18 @@
+type BranchTab = {
+  id: number;
+  label: string;
+  status: "streaming" | "done" | "failed";
+  cost?: number;
+};
+
 type Props = {
-  branches: { id: number; label: string; status: "streaming" | "done" | "failed" }[];
+  branches: BranchTab[];
   activeId: number | null;
   onSelect: (id: number) => void;
 };
 
 export default function BranchTabs({ branches, activeId, onSelect }: Props) {
-  if (branches.length <= 1) return null;
+  if (branches.length === 0) return null;
   return (
     <div className="flex gap-1 border-b border-slate-800 text-xs">
       {branches.map((b) => (
@@ -17,8 +24,19 @@ export default function BranchTabs({ branches, activeId, onSelect }: Props) {
           }`}
         >
           {b.label}
+          {b.cost !== undefined ? (
+            <span data-testid={`branch-cost-${b.id}`} className="ml-2 font-mono text-[11px] text-slate-300">
+              ${b.cost.toFixed(4)}
+            </span>
+          ) : b.status === "streaming" ? (
+            <span
+              data-testid={`branch-cost-pending-${b.id}`}
+              aria-label="calculating cost"
+              className="ml-2 inline-block w-2 h-2 rounded-full bg-slate-600 animate-pulse align-middle"
+            />
+          ) : null}
           <span className="ml-1 text-slate-600">
-            {b.status === "streaming" ? "…" : b.status === "failed" ? "✗" : ""}
+            {b.status === "failed" ? "✗" : ""}
           </span>
         </button>
       ))}
