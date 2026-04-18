@@ -136,6 +136,11 @@ CORS_ALLOWED_ORIGINS = [
 ]
 CORS_ALLOW_CREDENTIALS = True
 
+# Playwright server-side chart render base URL.
+# Dev: hits the live Vite dev server (history-mode /render/chart route).
+# Prod: hits the Whitenoise-served SPA bundle via hash routing.
+RENDER_BASE_URL = env("RENDER_BASE_URL", default="http://frontend:5173")
+
 # Schwab OAuth
 SCHWAB_CLIENT_ID = env("SCHWAB_CLIENT_ID", default="")
 SCHWAB_CLIENT_SECRET = env("SCHWAB_CLIENT_SECRET", default="")
