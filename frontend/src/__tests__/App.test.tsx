@@ -8,7 +8,7 @@ import { renderWithProviders } from "./testUtils";
 describe("pages", () => {
   it("renders Dashboard heading", () => {
     renderWithProviders(<Dashboard />, { client: queryClient });
-    expect(screen.getByText(/Dashboard/i)).toBeInTheDocument();
+    expect(screen.getByText(/Market context/i)).toBeInTheDocument();
   });
 
   it("renders Settings heading", () => {

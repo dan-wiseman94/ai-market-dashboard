@@ -151,40 +151,66 @@ export default function ThreadDetailPage() {
     return { ordered: top, branchesByParent: byParent };
   }, [live]);
 
-  if (!thread) return <main className="p-6">Loading…</main>;
+  if (!thread) {
+    return (
+      <main className="px-8 py-8 max-w-4xl mx-auto">
+        <div className="font-mono text-[13px] text-ink-400">Loading thread…</div>
+      </main>
+    );
+  }
 
   return (
-    <main className="p-6 max-w-4xl mx-auto space-y-4">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-semibold">{thread.title || `Thread #${thread.id}`}</h1>
-        <div className="flex items-center gap-3">
+    <main className="px-8 py-8 max-w-4xl mx-auto ledger-fade-in">
+      {/* Masthead */}
+      <header className="mb-8 pb-6 border-b border-rule">
+        <div className="flex items-center gap-3 mb-3">
+          <span className="ledger-eyebrow">Thread · #{thread.id}</span>
+          <span className="flex-1 h-px bg-rule-soft" />
           <ThreadExportButton threadId={tid!} />
-          <Link to="/" className="text-sm text-slate-300 hover:underline">← Dashboard</Link>
+          <Link
+            to="/"
+            className="font-mono text-[11px] text-ink-400 hover:text-copper-300 transition-colors uppercase tracking-wider"
+          >
+            ← Desk
+          </Link>
         </div>
-      </div>
+        <h1
+          className="ledger-display"
+          style={{ fontSize: "clamp(1.5rem, 2.4vw, 2rem)" }}
+        >
+          {thread.title || <em className="italic text-copper-300">Untitled consultation</em>}
+        </h1>
+      </header>
 
+      {/* Snapshot context — folded */}
       {snap && (
-        <details className="p-3 rounded border border-slate-800">
-          <summary className="cursor-pointer text-sm text-slate-300">
-            Snapshot #{snap.id} · {snap.status} · {snap.includes.join(", ")}
+        <details className="group mb-8 ledger-surface">
+          <summary className="cursor-pointer list-none px-5 py-3 flex items-center gap-3 hover:bg-copper-500/[0.04] transition-colors">
+            <span aria-hidden className="font-mono text-[10px] text-copper-400 group-open:rotate-90 transition-transform duration-200">▸</span>
+            <span className="ledger-eyebrow">Context</span>
+            <span className="font-mono text-[12px] text-ink-200">Snapshot #{snap.id}</span>
+            <span className="font-mono text-[11px] text-ink-500">· {snap.status} · {snap.includes.join(", ")}</span>
           </summary>
-          <pre className="mt-2 text-xs text-slate-400 overflow-x-auto">
-            {JSON.stringify(snap.sections.map((s) => ({ kind: s.kind, status: s.status, error: s.error })), null, 2)}
-          </pre>
+          <div className="px-5 py-3 border-t border-rule-soft">
+            <pre className="font-mono text-[11px] text-ink-400 overflow-x-auto leading-relaxed">
+              {JSON.stringify(snap.sections.map((s: { kind: string; status: string; error?: string }) => ({ kind: s.kind, status: s.status, error: s.error })), null, 2)}
+            </pre>
+          </div>
         </details>
       )}
 
-      <section className="space-y-3">
+      {/* Conversation */}
+      <section className="space-y-6">
         {ordered.map((m) => {
           if (m.role === "user") {
             const children = branchesByParent[m.id] ?? [];
             const activeId = activeBranchByParent[m.id] ?? children[0]?.id ?? null;
             const active = children.find((c) => c.id === activeId) ?? children[0];
             return (
-              <div key={m.id} className="space-y-2">
+              <div key={m.id} className="space-y-4">
                 <StreamingMessage role="user" text={m.text} status={m.status} />
                 {children.length > 0 && (
-                  <>
+                  <div className="ledger-surface overflow-hidden">
                     <BranchGroup
                       parentMsg={m}
                       branches={children}
@@ -193,50 +219,63 @@ export default function ThreadDetailPage() {
                       threadChannel={tid ? `thread.${tid}` : null}
                     />
                     {active && (
-                      <div className="flex items-start gap-2">
-                        <div className="flex-1">
+                      <div className="flex items-start gap-2 p-0">
+                        <div className="flex-1 min-w-0 px-6 py-5">
                           <StreamingMessage
+                            bare
                             role={active.role} text={active.text} status={active.status}
-                            error={active.error} cost={active.cost} model={active.model}
+                            error={active.error} cost={active.cost} model={active.model} provider={active.provider}
                           />
                         </div>
                         {active.status === "streaming" && (
-                          <StopButton onStop={() => stop.mutate(active.id)} />
+                          <div className="pt-5 pr-4">
+                            <StopButton onStop={() => stop.mutate(active.id)} />
+                          </div>
                         )}
                       </div>
                     )}
-                  </>
+                  </div>
                 )}
               </div>
             );
           }
           return (
-            <div key={m.id} className="flex items-start gap-2">
-              <div className="flex-1">
+            <div key={m.id} className="flex items-start gap-3">
+              <div className="flex-1 min-w-0">
                 <StreamingMessage
                   role={m.role} text={m.text} status={m.status}
-                  error={m.error} cost={m.cost} model={m.model}
+                  error={m.error} cost={m.cost} model={m.model} provider={m.provider}
                 />
               </div>
-              {m.status === "streaming" && <StopButton onStop={() => stop.mutate(m.id)} />}
+              {m.status === "streaming" && (
+                <div className="pt-5">
+                  <StopButton onStop={() => stop.mutate(m.id)} />
+                </div>
+              )}
             </div>
           );
         })}
       </section>
 
-      <div className="space-y-2">
-        <div className="flex items-center gap-2 text-xs text-slate-500">
-          <span>Reply with:</span>
-          <ProviderModelPicker value={picker} onChange={setPicker} />
+      {/* Compose bar */}
+      <div
+        className="mt-10 ledger-surface overflow-hidden"
+        style={{ boxShadow: "0 -2px 40px -20px rgba(200,150,88,0.25)" }}
+      >
+        <div className="flex items-center gap-3 px-5 py-2.5 border-b border-rule-soft bg-ink-void/30">
+          <span className="ledger-eyebrow">Reply with</span>
+          <div className="flex-1">
+            <ProviderModelPicker value={picker} onChange={setPicker} />
+          </div>
           <button
-            className="ml-auto px-2 py-1 rounded bg-slate-800 hover:bg-slate-700"
+            className="ledger-ghost py-1 px-2.5 text-[11px] font-mono uppercase tracking-wider"
             onClick={() => setShowCompare(true)}
           >
-            Compare…
+            ⇌ Compare
           </button>
         </div>
         <form
-          className="flex gap-2"
+          className="flex items-stretch"
           onSubmit={(e) => {
             e.preventDefault();
             if (!input.trim()) return;
@@ -244,11 +283,16 @@ export default function ThreadDetailPage() {
           }}
         >
           <input
-            value={input} onChange={(e) => setInput(e.target.value)}
-            placeholder="Message"
-            className="flex-1 px-3 py-1.5 rounded bg-slate-900 border border-slate-700"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="Continue the thread…"
+            className="flex-1 px-5 py-4 bg-transparent border-0 focus:outline-none font-display text-[15px] text-ink-100 placeholder:text-ink-500"
+            style={{ fontVariationSettings: '"opsz" 18' }}
           />
-          <button className="px-3 py-1.5 rounded bg-emerald-600 hover:bg-emerald-500">Send</button>
+          <button className="ledger-cta rounded-none border-y-0 border-r-0 px-6">
+            Send
+            <span aria-hidden className="font-mono text-[11px] opacity-70">⏎</span>
+          </button>
         </form>
       </div>
 
@@ -264,3 +308,4 @@ export default function ThreadDetailPage() {
     </main>
   );
 }
+

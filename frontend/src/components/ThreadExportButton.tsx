@@ -6,14 +6,17 @@ export default function ThreadExportButton({ threadId }: { threadId: number }) {
   return (
     <div className="flex items-center gap-2">
       <button
-        className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-xs"
+        className="ledger-ghost py-1 px-2.5 text-[11px] font-mono uppercase tracking-wider"
         disabled={m.isPending}
         onClick={() => m.mutate(threadId)}
       >
-        {m.isPending ? "Queuing…" : "⇣ Export"}
+        {m.isPending ? "Queuing…" : "↓ Export"}
       </button>
       {m.data && (
-        <Link to="/settings/export" className="text-xs text-emerald-300 hover:underline">
+        <Link
+          to="/settings/export"
+          className="text-[11px] font-mono text-copper-300 hover:text-copper-200 transition-colors underline-offset-2 hover:underline"
+        >
           View in Exports
         </Link>
       )}

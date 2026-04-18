@@ -43,3 +43,6 @@ Thumbs.db
 
 # Brainstorming companion workspace
 .superpowers/
+
+# Git worktrees
+.worktrees/

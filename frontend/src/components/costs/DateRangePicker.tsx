@@ -7,7 +7,7 @@ const PRESETS: Array<[string, string, number]> = [
   ["today", "Today", 1],
   ["7d", "Last 7 days", 7],
   ["30d", "Last 30 days", 30],
-  ["month", "This month", -1], // calendar month
+  ["month", "This month", -1],
   ["last-month", "Last month", -2],
 ];
 
@@ -36,30 +36,33 @@ export default function DateRangePicker({ value, onChange }: Props) {
   const onPreset = useCallback((preset: string) => onChange(computeRange(preset)), [onChange]);
 
   return (
-    <div className="flex items-center gap-2 text-sm">
-      <label className="text-slate-500">
-        Range:
+    <div className="ledger-surface px-4 py-2.5 flex items-center gap-3 flex-wrap">
+      <span className="ledger-eyebrow">Range</span>
+      <label>
+        <span className="sr-only">Range preset</span>
         <select
           aria-label="Range preset"
           defaultValue="30d"
           onChange={(e) => onPreset(e.target.value)}
-          className="ml-2 bg-slate-900 border border-slate-700 rounded px-2 py-1"
+          className="ledger-input py-1 text-[12px] font-mono"
         >
           {PRESETS.map(([k, label]) => <option key={k} value={k}>{label}</option>)}
           <option value="custom">Custom</option>
         </select>
       </label>
+      <span className="font-mono text-[10px] text-ink-500">from</span>
       <input
         type="datetime-local" aria-label="From"
         value={value.from ? value.from.slice(0, 16) : ""}
         onChange={(e) => onChange({ ...value, from: new Date(e.target.value).toISOString() })}
-        className="bg-slate-900 border border-slate-700 rounded px-2 py-1"
+        className="ledger-input py-1 text-[12px] font-mono"
       />
+      <span className="font-mono text-[10px] text-ink-500">to</span>
       <input
         type="datetime-local" aria-label="To"
         value={value.to ? value.to.slice(0, 16) : ""}
         onChange={(e) => onChange({ ...value, to: new Date(e.target.value).toISOString() })}
-        className="bg-slate-900 border border-slate-700 rounded px-2 py-1"
+        className="ledger-input py-1 text-[12px] font-mono"
       />
     </div>
   );
