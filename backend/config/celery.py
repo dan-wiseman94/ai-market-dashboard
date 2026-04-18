@@ -33,4 +33,8 @@ app.conf.beat_schedule = {
         "task": "market.refresh_schwab_token",
         "schedule": crontab(minute="*"),
     },
+    "poll-open-observer-batches": {
+        "task": "observer.poll_open_batches",
+        "schedule": 60.0,
+    },
 }

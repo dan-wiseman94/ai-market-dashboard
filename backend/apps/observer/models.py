@@ -37,6 +37,12 @@ class ObserverSchedule(models.Model):
         help_text="When True, observer runs use messages.parse with the "
                   "ObservationReport schema instead of streaming text.",
     )
+    use_batch = models.BooleanField(
+        default=False,
+        help_text="When True, fires submit a Messages Batch per watchlist "
+                  "ticker instead of streaming. 50% cheaper; not interactive.",
+    )
+    last_batch_id = models.CharField(max_length=64, blank=True, default="")
     periodic_task = models.OneToOneField(
         "django_celery_beat.PeriodicTask",
         null=True, blank=True, on_delete=models.SET_NULL,

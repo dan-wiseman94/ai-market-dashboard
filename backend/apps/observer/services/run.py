@@ -75,6 +75,16 @@ def run_observer(schedule_id: int) -> int | None:
         watchlist_tickers=sched.default_watchlist_tickers,
     )
 
+    if sched.use_batch:
+        from apps.observer.services.batch import submit_watchlist_batch
+        try:
+            submit_watchlist_batch(sched.id)
+        except Exception as exc:  # noqa: BLE001
+            log.exception("observer %s batch submit failed: %s", sched.id, exc)
+        sched.last_fired_at = timezone.now()
+        sched.save(update_fields=["last_fired_at"])
+        return snap.id
+
     if sched.mode == "diff":
         from apps.snapshots.diff import diff_sections
         from apps.snapshots.models import Snapshot as _Snapshot
