@@ -19,3 +19,6 @@ STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 from apps.core.logging import configure_structlog  # noqa: E402
 
 configure_structlog(dev=False)
+
+# SPA fallback — Whitenoise serves index.html at / if no other file matches.
+WHITENOISE_INDEX_FILE = True

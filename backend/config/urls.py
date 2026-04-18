@@ -1,5 +1,6 @@
 from django.contrib import admin
-from django.urls import include, path
+from django.urls import include, path, re_path
+from django.views.generic import TemplateView
 
 urlpatterns = [
     path("admin/", admin.site.urls),
@@ -12,4 +13,10 @@ urlpatterns = [
     path("api/", include("apps.profiles.urls")),
     path("api/", include("apps.snapshots.urls")),
     path("api/", include("apps.threads.urls")),
+    # SPA fallback — must be last. Excludes api/, static/, render/, ws/, admin/.
+    re_path(
+        r"^(?!api/|static/|render/|ws/|admin/).*$",
+        TemplateView.as_view(template_name="index.html"),
+        name="spa-fallback",
+    ),
 ]
