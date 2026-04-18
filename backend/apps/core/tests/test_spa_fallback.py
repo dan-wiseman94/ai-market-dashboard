@@ -33,3 +33,15 @@ def test_unknown_api_still_404() -> None:
     assert resp.status_code == 404
     # Not the SPA shell — SPA index.html contains "ai-dash"; Django's 404 does not.
     assert b"ai-dash" not in resp.content
+
+
+@pytest.mark.django_db
+@override_settings(DEBUG=False, ALLOWED_HOSTS=["*"])
+def test_static_prefix_not_intercepted_by_spa_fallback() -> None:
+    """/static/nonexistent.css must 404 via Whitenoise, not return the SPA shell."""
+    client = Client()
+    resp = client.get("/static/nonexistent-css-file.css")
+    # Whitenoise returns 404 for missing static files in production; the SPA fallback
+    # must NOT catch /static/* per our re_path negative lookahead.
+    assert resp.status_code == 404
+    assert b"ai-dash" not in resp.content
