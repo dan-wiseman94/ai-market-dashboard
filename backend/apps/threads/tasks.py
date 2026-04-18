@@ -3,9 +3,9 @@ from __future__ import annotations
 
 import asyncio
 import time
-from collections.abc import Awaitable, Callable
+from collections.abc import Callable, Coroutine
 from decimal import Decimal
-from typing import cast
+from typing import Any, cast
 
 from asgiref.sync import async_to_sync
 from celery import shared_task
@@ -14,6 +14,7 @@ from django.db import transaction
 
 from apps.ai.cost import CostCapExceededError, check_daily_cap, cost_usd_for
 from apps.ai.providers import get_provider
+from apps.ai.providers.base import Provider
 from apps.ai.router import ResolutionError, resolve_provider_and_model
 from apps.ai.types import (
     ChatMessage,
@@ -100,11 +101,11 @@ def _build_stream_runner(
     buffer: list[str],
     usage_dict: dict[str, int],
     err_container: list[str],
-    provider: object,
+    provider: Provider,
     req: RunRequest,
     thread_id: int,
     assistant_id: int,
-) -> Callable[[], Awaitable[None]]:
+) -> Callable[[], Coroutine[Any, Any, None]]:
     """Return a drive() coroutine that reads from the provider stream.
 
     Mutates the three mutable containers in-place:
@@ -117,7 +118,7 @@ def _build_stream_runner(
     provider context.
     """
     async def drive() -> None:
-        async for evt in provider.run(req):  # type: ignore[union-attr]
+        async for evt in provider.run(req):
             if isinstance(evt, TextDelta):
                 buffer.append(evt.text)
                 await _broadcast_async(thread_id, {

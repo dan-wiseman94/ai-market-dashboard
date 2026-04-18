@@ -28,3 +28,6 @@ class ExportJob(models.Model):
 
     class Meta:
         ordering: ClassVar[list[str]] = ["-created_at"]
+
+    def __str__(self) -> str:
+        return f"ExportJob({self.pk}, {self.status})"

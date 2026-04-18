@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import pytest
 
-from apps.export.serializers import snapshot_to_json, snapshot_to_markdown, snapshot_images
+from apps.export.serializers import snapshot_images, snapshot_to_json, snapshot_to_markdown
 
 
 @pytest.mark.django_db

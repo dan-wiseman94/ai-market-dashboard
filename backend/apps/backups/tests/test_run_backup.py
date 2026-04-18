@@ -34,7 +34,7 @@ def test_run_backup_creates_record_and_file(tmp_path, monkeypatch) -> None:
     assert rec.size_bytes == len(content)
     assert rec.sha256 == sha
     # pg_dump args inspectable:
-    args, kwargs = sub.call_args
+    args, _kwargs = sub.call_args
     assert "pg_dump" in args[0][0]
 
 

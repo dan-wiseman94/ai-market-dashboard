@@ -30,8 +30,8 @@ def test_observer_runs_to_json_shape() -> None:
 @pytest.mark.django_db
 def test_trigger_to_json_shape() -> None:
     from apps.export.serializers import trigger_to_json
-    from apps.triggers.models import EventTrigger
     from apps.profiles.models import TradingProfile
+    from apps.triggers.models import EventTrigger
 
     prof = TradingProfile.objects.create(name="swing", style="momentum swing")
     t = EventTrigger.objects.create(

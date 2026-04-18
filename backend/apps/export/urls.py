@@ -8,4 +8,5 @@ router.register("", ExportViewSet, basename="exports")
 
 urlpatterns = [
     path("thread/<int:thread_id>/", export_single_thread, name="export-single-thread"),
-] + router.urls
+    *router.urls,
+]

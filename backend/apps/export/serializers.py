@@ -1,8 +1,12 @@
-"""Pure-function serializers for export. No DRF dependency."""
+"""Serializers for export: pure-function helpers and DRF serializer."""
 from __future__ import annotations
 
 from collections.abc import Iterator
+from typing import ClassVar
 
+from rest_framework import serializers as drf
+
+from apps.export.models import ExportJob
 
 # ---------------------------------------------------------------------------
 # Thread serializers
@@ -233,14 +237,11 @@ def watchlists_to_json() -> dict:
 # DRF serializer
 # ---------------------------------------------------------------------------
 
-from rest_framework import serializers as drf
-from apps.export.models import ExportJob
-
 
 class ExportJobSerializer(drf.ModelSerializer):
     class Meta:
         model = ExportJob
-        fields = ["id", "created_at", "completed_at", "scope", "format",
-                  "status", "filename", "size_bytes", "sha256", "error"]
-        read_only_fields = ["id", "created_at", "completed_at", "status",
-                            "filename", "size_bytes", "sha256", "error", "format"]
+        fields: ClassVar = ["id", "created_at", "completed_at", "scope", "format",
+                            "status", "filename", "size_bytes", "sha256", "error"]
+        read_only_fields: ClassVar = ["id", "created_at", "completed_at", "status",
+                                      "filename", "size_bytes", "sha256", "error", "format"]

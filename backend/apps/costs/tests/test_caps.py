@@ -1,7 +1,6 @@
 # backend/apps/costs/tests/test_caps.py
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 import pytest
@@ -22,7 +21,7 @@ def _seed(pc, cost):
 
 @pytest.mark.django_db
 def test_caps_zero_when_no_runs() -> None:
-    pc = ProviderConfig.objects.create(provider="claude", daily_cost_cap_usd=Decimal("10.00"))
+    ProviderConfig.objects.create(provider="claude", daily_cost_cap_usd=Decimal("10.00"))
     out = caps()
     row = next(r for r in out if r["provider"] == "claude")
     assert row["daily"]["cap"] == Decimal("10.00")
