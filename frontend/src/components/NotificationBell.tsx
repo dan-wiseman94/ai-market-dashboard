@@ -57,7 +57,7 @@ export default function NotificationBell() {
   }, [qc]);
 
   return (
-    <div className="relative">
+    <div className="relative" data-testid="notification-bell">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}

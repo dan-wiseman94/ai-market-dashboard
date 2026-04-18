@@ -1,8 +1,21 @@
 import { render, screen } from "@testing-library/react";
 import { createMemoryRouter, RouterProvider } from "react-router-dom";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import AppLayout from "@/components/layout/AppLayout";
-import { beforeEach } from "vitest";
+import { beforeEach, vi } from "vitest";
 import userEvent from "@testing-library/user-event";
+
+function makeQc() {
+  return new QueryClient({ defaultOptions: { queries: { retry: false } } });
+}
+
+function renderWithProviders(router: ReturnType<typeof createMemoryRouter>) {
+  return render(
+    <QueryClientProvider client={makeQc()}>
+      <RouterProvider router={router} />
+    </QueryClientProvider>,
+  );
+}
 
 test("AppLayout renders Outlet children", () => {
   const router = createMemoryRouter(
@@ -11,7 +24,7 @@ test("AppLayout renders Outlet children", () => {
     ]}],
     { initialEntries: ["/"] },
   );
-  render(<RouterProvider router={router} />);
+  renderWithProviders(router);
   expect(screen.getByText("child-page")).toBeInTheDocument();
 });
 
@@ -20,7 +33,7 @@ test("TopNav renders primary route links", () => {
     [{ path: "/", element: <AppLayout />, children: [{ index: true, element: <div>x</div> }] }],
     { initialEntries: ["/"] },
   );
-  render(<RouterProvider router={router} />);
+  renderWithProviders(router);
   expect(screen.getByRole("link", { name: /dashboard/i })).toHaveAttribute("href", "/");
   expect(screen.getByRole("link", { name: /snapshot/i })).toHaveAttribute("href", "/snapshot");
   expect(screen.getByRole("link", { name: /threads/i })).toHaveAttribute("href", "/threads");
@@ -29,14 +42,35 @@ test("TopNav renders primary route links", () => {
   expect(screen.getByRole("link", { name: /costs/i })).toHaveAttribute("href", "/costs");
 });
 
-beforeEach(() => localStorage.clear());
+beforeEach(() => {
+  localStorage.clear();
+  // Stub network deps needed by NotificationBell (now mounted in TopNav)
+  globalThis.fetch = vi.fn(() =>
+    Promise.resolve({ ok: true, json: () => Promise.resolve({ results: [] }) }),
+  ) as never;
+  (globalThis as { WebSocket?: unknown }).WebSocket = vi.fn(() => ({
+    onmessage: null, onerror: null, onopen: null, onclose: null,
+    close: vi.fn(),
+  }));
+});
+
+test("NotificationBell present on arbitrary child route", () => {
+  const router = createMemoryRouter(
+    [{ path: "/", element: <AppLayout />, children: [
+      { path: "anything", element: <div>x</div> },
+    ]}],
+    { initialEntries: ["/anything"] },
+  );
+  renderWithProviders(router);
+  expect(screen.getByTestId("notification-bell")).toBeInTheDocument();
+});
 
 test("SideNav toggles and persists collapsed state", async () => {
   const router = createMemoryRouter(
     [{ path: "/", element: <AppLayout />, children: [{ index: true, element: <div>x</div> }] }],
     { initialEntries: ["/"] },
   );
-  const { unmount } = render(<RouterProvider router={router} />);
+  const { unmount } = renderWithProviders(router);
   const toggle = screen.getByRole("button", { name: /toggle sidebar/i });
   expect(screen.getByText("Trading")).toBeVisible();
 
@@ -45,6 +79,6 @@ test("SideNav toggles and persists collapsed state", async () => {
   expect(screen.queryByText("Trading")).not.toBeInTheDocument();
 
   unmount();
-  render(<RouterProvider router={router} />);
+  renderWithProviders(router);
   expect(screen.queryByText("Trading")).not.toBeInTheDocument();
 });
