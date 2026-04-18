@@ -12,6 +12,8 @@ import CostsPage from "./pages/CostsPage";
 import RenderChart from "./pages/RenderChart";
 import SchedulesPage from "./pages/SchedulesPage";
 import ObserverTimelinePage from "./pages/ObserverTimelinePage";
+import TriggersListPage from "./pages/TriggersListPage";
+import TriggerEditorPage from "./pages/TriggerEditorPage";
 
 export const router = createBrowserRouter([
   { path: "/", element: <Dashboard /> },
@@ -27,4 +29,7 @@ export const router = createBrowserRouter([
   { path: "/render/chart", element: <RenderChart /> },
   { path: "/schedules", element: <SchedulesPage /> },
   { path: "/threads/observer/:profileId", element: <ObserverTimelinePage /> },
+  { path: "/triggers", element: <TriggersListPage /> },
+  { path: "/triggers/new", element: <TriggerEditorPage /> },
+  { path: "/triggers/:id", element: <TriggerEditorPage /> },
 ]);
