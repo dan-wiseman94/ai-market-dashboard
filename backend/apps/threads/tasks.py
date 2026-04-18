@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import asyncio
 import time
+from collections.abc import Awaitable, Callable
 from decimal import Decimal
 from typing import cast
 
@@ -95,6 +96,43 @@ def _usage_counts(usage: TokenUsage | None) -> dict[str, int]:
     }
 
 
+def _build_stream_runner(
+    buffer: list[str],
+    usage_dict: dict[str, int],
+    err_container: list[str],
+    provider: object,
+    req: RunRequest,
+    thread_id: int,
+    assistant_id: int,
+) -> Callable[[], Awaitable[None]]:
+    """Return a drive() coroutine that reads from the provider stream.
+
+    Mutates the three mutable containers in-place:
+      buffer       — text delta strings are appended.
+      usage_dict   — updated with input_tokens / output_tokens / cached_tokens.
+      err_container — first element set to the error string on provider error.
+
+    This is a module-level function so tests can patch it with a fake factory
+    whose side_effect only inspects the first three arguments and ignores the
+    provider context.
+    """
+    async def drive() -> None:
+        async for evt in provider.run(req):  # type: ignore[union-attr]
+            if isinstance(evt, TextDelta):
+                buffer.append(evt.text)
+                await _broadcast_async(thread_id, {
+                    "event": "text_delta", "message_id": assistant_id, "text": evt.text,
+                })
+            elif isinstance(evt, UsageEvent):
+                usage_dict.update(_usage_counts(evt.usage))
+            elif isinstance(evt, ErrorEvent):
+                err_container.append(evt.message)
+            elif isinstance(evt, DoneEvent):
+                return
+
+    return drive
+
+
 @shared_task(name="threads.run_ai_on_message")
 def run_ai_on_message(
     *,
@@ -148,27 +186,13 @@ def run_ai_on_message(
     provider = get_provider(provider_name, api_key=cfg.api_key, base_url=cfg.base_url or "")
     t0 = time.perf_counter()
     buffer: list[str] = []
-    usage: TokenUsage | None = None
-    err: str | None = None
+    counts: dict[str, int] = {"input_tokens": 0, "output_tokens": 0, "cached_tokens": 0}
+    err_container: list[str] = []
 
-    async def drive() -> None:
-        nonlocal usage, err
-        async for evt in provider.run(req):
-            if isinstance(evt, TextDelta):
-                buffer.append(evt.text)
-                await _broadcast_async(thread_id, {
-                    "event": "text_delta", "message_id": assistant.id, "text": evt.text,
-                })
-            elif isinstance(evt, UsageEvent):
-                usage = evt.usage
-            elif isinstance(evt, ErrorEvent):
-                err = evt.message
-            elif isinstance(evt, DoneEvent):
-                return
-
+    drive = _build_stream_runner(buffer, counts, err_container, provider, req, thread_id, assistant.id)
     asyncio.run(drive())
     latency_ms = int((time.perf_counter() - t0) * 1000)
-    counts = _usage_counts(usage)
+    err: str | None = err_container[0] if err_container else None
 
     with transaction.atomic():
         assistant.refresh_from_db()
@@ -197,12 +221,22 @@ def run_ai_on_message(
         assistant.status = "done"
         assistant.save()
 
-        cost = Decimal("0") if usage is None else cost_usd_for(provider_name, model_id, usage)
+        cost = cost_usd_for(provider_name, model_id, TokenUsage(**counts)) if any(counts.values()) else Decimal("0")
         AIRun.objects.create(
             message=assistant, provider=provider_name, model=model_id,
             cost_usd=cost, latency_ms=latency_ms, status="done", **counts,
         )
         _broadcast(thread_id, {
             "event": "message_done", "message_id": assistant.id, "cost_usd": str(cost),
+        })
+        _broadcast(thread_id, {
+            "event": "cost",
+            "message_id": assistant.id,
+            "parent_message_id": parent_message_id,
+            "cost_usd": str(cost),
+            "tokens_in": counts["input_tokens"],
+            "tokens_out": counts["output_tokens"],
+            "tokens_cached": counts["cached_tokens"],
+            "duration_ms": latency_ms,
         })
         return {"ok": True}
