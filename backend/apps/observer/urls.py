@@ -4,5 +4,6 @@ from . import views
 
 router = DefaultRouter()
 router.register("schedules", views.ObserverScheduleViewSet, basename="observer-schedule")
+router.register("notifications", views.NotificationViewSet, basename="notification")
 
 urlpatterns = router.urls

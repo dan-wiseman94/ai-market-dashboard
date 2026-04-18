@@ -1,12 +1,13 @@
 """Observer HTTP endpoints."""
 from __future__ import annotations
 
-from rest_framework import status, viewsets
+from django.utils import timezone
+from rest_framework import mixins, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
-from apps.observer.models import ObserverSchedule
-from apps.observer.serializers import ObserverScheduleSerializer
+from apps.observer.models import Notification, ObserverSchedule
+from apps.observer.serializers import NotificationSerializer, ObserverScheduleSerializer
 from apps.observer.services.sync import delete_periodic_task, sync_periodic_task
 from apps.observer.tasks import run_observer_task
 
@@ -40,3 +41,34 @@ class ObserverScheduleViewSet(viewsets.ModelViewSet):
     def run_now(self, request, pk=None):
         run_observer_task.delay(schedule_id=int(pk))
         return Response(status=status.HTTP_202_ACCEPTED)
+
+
+class NotificationViewSet(
+    mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.GenericViewSet,
+):
+    serializer_class = NotificationSerializer
+
+    def get_queryset(self):
+        # v1: filter to anonymous rows; switch to request.user when auth lands.
+        qs = Notification.objects.filter(user__isnull=True)
+        if self.request.query_params.get("unread") == "true":
+            qs = qs.filter(read_at__isnull=True)
+        try:
+            limit = int(self.request.query_params.get("limit", "50"))
+        except ValueError:
+            limit = 50
+        return qs[:limit]
+
+    @action(detail=True, methods=["post"])
+    def read(self, request, pk=None):
+        n = Notification.objects.get(id=pk, user__isnull=True)
+        n.read_at = timezone.now()
+        n.save(update_fields=["read_at"])
+        return Response(NotificationSerializer(n).data)
+
+    @action(detail=False, methods=["post"], url_path="mark-all-read")
+    def mark_all_read(self, request):
+        Notification.objects.filter(user__isnull=True, read_at__isnull=True).update(
+            read_at=timezone.now(),
+        )
+        return Response({"ok": True})
