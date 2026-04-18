@@ -1,6 +1,7 @@
 """Snapshot capture orchestration."""
 from __future__ import annotations
 
+import json
 from collections.abc import Iterable
 
 from asgiref.sync import async_to_sync
@@ -15,6 +16,15 @@ from apps.market.services.quotes import fetch_quotes
 from apps.profiles.models import TradingProfile
 from apps.snapshots.models import Snapshot, SnapshotSection
 from apps.snapshots.services.render import render_chart_png
+from apps.snapshots.token_budget import estimate_tokens
+
+
+def stamp_payload_tokens(section: SnapshotSection) -> None:
+    """Count tokens in section.payload as JSON and persist to section.payload_tokens."""
+    text = json.dumps(section.payload, default=str)
+    tokens = estimate_tokens(text)
+    section.payload_tokens = tokens
+    section.save(update_fields=["payload_tokens"])
 
 
 def _pick_ticker(ohlc_ticker: str | None, watchlist_tickers: list[str]) -> str:
@@ -101,6 +111,7 @@ def capture_for_existing(
             section.payload = result["data"] or {}
             section.status = "done"
             section.save()
+            stamp_payload_tokens(section)
             ok_count += 1
             _broadcast(snap.id, {"event": "section_done", "kind": kind})
         except Exception as exc:
