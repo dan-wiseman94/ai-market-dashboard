@@ -7,6 +7,7 @@ urlpatterns = [
     path("api/", include("apps.core.urls")),
     path("api/schwab/", include("apps.secrets.urls")),
     path("api/market/", include("apps.market.urls")),
+    path("api/analytics/", include("apps.analytics.urls")),
     path("api/costs/", include("apps.costs.urls")),
     path("api/observer/", include("apps.observer.urls")),
     path("api/triggers/", include("apps.triggers.urls")),
