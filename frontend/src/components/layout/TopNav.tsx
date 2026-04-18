@@ -5,9 +5,9 @@ import ConnectionStatusDot from "./ConnectionStatusDot";
 const LINKS: Array<[string, string, string]> = [
   ["/", "Dashboard", "g d"],
   ["/snapshot", "Snapshot", "g s"],
-  ["/threads", "Threads", "g t"],
-  ["/triggers", "Triggers", "g r"],
-  ["/schedules", "Schedules", "g h"],
+  ["/threads", "Threads", "g h"],
+  ["/triggers", "Triggers", "g t"],
+  ["/schedules", "Schedules", "g o"],
   ["/costs", "Costs", "g c"],
 ];
 

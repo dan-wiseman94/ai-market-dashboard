@@ -45,6 +45,10 @@ test-backend: ## Run backend tests
 test-frontend: ## Run frontend tests
 	$(COMPOSE) exec frontend npm test -- --run
 
+.PHONY: test-cov
+test-cov: ## Run frontend tests with v8 coverage
+	$(COMPOSE) exec frontend npm run test:cov
+
 .PHONY: lint
 lint: lint-backend lint-frontend ## Lint everything
 

@@ -7,7 +7,7 @@ import os
 import traceback
 import uuid
 import zipfile
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 
 from django.utils import timezone
@@ -27,10 +27,11 @@ def build_export_bundle(job_id: int) -> None:
     job.status = "running"
     job.save(update_fields=["status"])
 
+    path: Path | None = None
     try:
         d = exports_dir()
         d.mkdir(parents=True, exist_ok=True)
-        filename = f"ai-dashboard-export-{datetime.utcnow().strftime('%Y%m%d-%H%M%S')}-{uuid.uuid4().hex[:6]}.zip"
+        filename = f"ai-dashboard-export-{datetime.now(UTC).strftime('%Y%m%d-%H%M%S')}-{uuid.uuid4().hex[:6]}.zip"
         path = d / filename
         counts = {"threads": 0, "snapshots": 0, "observations": 0, "triggers": 0}
 
@@ -135,6 +136,12 @@ def build_export_bundle(job_id: int) -> None:
         job.error = traceback.format_exc()[:4000]
         job.completed_at = timezone.now()
         job.save()
+        # Don't leave a partial zip on disk; failed jobs have no filename.
+        if path is not None:
+            try:
+                path.unlink(missing_ok=True)
+            except OSError:
+                log.warning("could not unlink failed export path %s", path)
 
 
 def reconcile_export_disk() -> None:

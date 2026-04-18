@@ -23,10 +23,10 @@ function useDefaultCommands(): Command[] {
       { id: "go-triggers", label: "Go to Triggers", keywords: "alerts rules", run: () => nav("/triggers") },
       { id: "go-costs", label: "Go to Costs", keywords: "spend usage", run: () => nav("/costs") },
       { id: "go-schedules", label: "Go to Schedules", keywords: "observer cron", run: () => nav("/schedules") },
-      { id: "go-backups", label: "Go to Backups", keywords: "backup restore", run: () => nav("/backups") },
+      { id: "go-backups", label: "Go to Backups", keywords: "backup restore", run: () => nav("/settings/backups") },
       { id: "go-profiles", label: "Go to Profiles", keywords: "style", run: () => nav("/profiles") },
       { id: "go-settings", label: "Open Settings", keywords: "providers keys", run: () => nav("/settings") },
-      { id: "go-exports", label: "Go to Exports", keywords: "download zip", run: () => nav("/exports") },
+      { id: "go-exports", label: "Go to Exports", keywords: "download zip", run: () => nav("/settings/export") },
     ],
     [nav],
   );

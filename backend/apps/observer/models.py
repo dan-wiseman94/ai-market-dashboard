@@ -65,6 +65,7 @@ class Notification(models.Model):
         ("observer_done", "Observer fired"),
         ("error", "Error"),
         ("cost_limit", "Cost limit"),
+        ("backup", "Backup"),
     ]
 
     # Nullable for v1 (no user-auth surface yet). When auth lands, backfill or

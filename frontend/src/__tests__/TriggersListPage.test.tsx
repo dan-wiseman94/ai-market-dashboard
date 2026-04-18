@@ -3,6 +3,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import TriggersListPage from "../pages/TriggersListPage";
+import { ToastProvider } from "@/hooks/useToast";
 
 const TRIGGERS = [
   {
@@ -37,7 +38,7 @@ describe("TriggersListPage", () => {
   it("renders the list with names and firings_count", async () => {
     render(
       <QueryClientProvider client={qc()}>
-        <MemoryRouter><TriggersListPage /></MemoryRouter>
+        <ToastProvider><MemoryRouter><TriggersListPage /></MemoryRouter></ToastProvider>
       </QueryClientProvider>,
     );
     await waitFor(() => expect(screen.getByText("SPY>550")).toBeInTheDocument());
@@ -48,7 +49,7 @@ describe("TriggersListPage", () => {
     const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
     render(
       <QueryClientProvider client={qc()}>
-        <MemoryRouter><TriggersListPage /></MemoryRouter>
+        <ToastProvider><MemoryRouter><TriggersListPage /></MemoryRouter></ToastProvider>
       </QueryClientProvider>,
     );
     await waitFor(() => expect(screen.getByText("SPY>550")).toBeInTheDocument());
@@ -67,7 +68,7 @@ describe("TriggersListPage", () => {
     ) as never;
     render(
       <QueryClientProvider client={qc()}>
-        <MemoryRouter><TriggersListPage /></MemoryRouter>
+        <ToastProvider><MemoryRouter><TriggersListPage /></MemoryRouter></ToastProvider>
       </QueryClientProvider>,
     );
     await waitFor(() => expect(screen.getByText(/no triggers yet/i)).toBeInTheDocument());

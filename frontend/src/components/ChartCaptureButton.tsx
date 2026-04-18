@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import html2canvas from "html2canvas";
+import { useToast } from "@/hooks/useToast";
 
 export interface ChartCaptureButtonProps {
   targetRef: React.RefObject<HTMLElement>;
@@ -16,18 +17,7 @@ function appendStaged(id: number) {
 
 export default function ChartCaptureButton({ targetRef, caption = "" }: ChartCaptureButtonProps) {
   const [busy, setBusy] = useState(false);
-  const [toast, setToast] = useState("");
-  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => () => {
-    if (toastTimer.current) clearTimeout(toastTimer.current);
-  }, []);
-
-  function showToast(message: string, ms: number) {
-    setToast(message);
-    if (toastTimer.current) clearTimeout(toastTimer.current);
-    toastTimer.current = setTimeout(() => setToast(""), ms);
-  }
+  const { push } = useToast();
 
   async function capture() {
     if (!targetRef.current) return;
@@ -45,9 +35,9 @@ export default function ChartCaptureButton({ targetRef, caption = "" }: ChartCap
       if (!resp.ok) throw new Error(`upload failed ${resp.status}`);
       const body: { id: number } = await resp.json();
       appendStaged(body.id);
-      showToast("Captured — will attach to your next snapshot.", 2500);
+      push({ kind: "success", text: "Captured — will attach to your next snapshot." });
     } catch (e) {
-      showToast(`Capture failed: ${(e as Error).message}`, 4000);
+      push({ kind: "error", text: `Capture failed: ${(e as Error).message}` });
     } finally {
       setBusy(false);
     }
@@ -70,13 +60,6 @@ export default function ChartCaptureButton({ targetRef, caption = "" }: ChartCap
       >
         {busy ? "Capturing…" : "Capture chart"}
       </button>
-      {toast && (
-        <div
-          role="status"
-          style={{ marginTop: 6, background: "rgba(20,20,20,0.85)", color: "#fff",
-                   padding: "4px 8px", borderRadius: 4, fontSize: 12 }}
-        >{toast}</div>
-      )}
     </div>
   );
 }

@@ -28,3 +28,9 @@ export const createSnapshot = (body: CreateSnapshotBody) =>
   apiPost<Snapshot>("/api/snapshots/", body);
 
 export const fetchSnapshot = (id: number) => apiGet<Snapshot>(`/api/snapshots/${id}/`);
+
+export type SnapshotDiff = { delta: string; prev_id: number; curr_id: number };
+export const fetchSnapshotDiff = (id: number, against?: number) => {
+  const q = against ? `?against=${against}` : "";
+  return apiGet<SnapshotDiff>(`/api/snapshots/${id}/diff/${q}`);
+};

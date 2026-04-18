@@ -1,5 +1,7 @@
 import { apiGet, apiPost, apiPatch, apiDelete } from "./client";
 
+export type ObserverMode = "full" | "diff";
+
 export interface ObserverSchedule {
   id: number;
   name: string;
@@ -11,6 +13,10 @@ export interface ObserverSchedule {
   override_model: string;
   default_includes: string[];
   default_watchlist_tickers: string[];
+  mode: ObserverMode;
+  structured: boolean;
+  use_batch: boolean;
+  last_batch_id: string;
   last_fired_at: string | null;
   cron_display: string;
   created_at: string;
@@ -28,6 +34,9 @@ export interface CreateScheduleBody {
   override_model?: string;
   default_includes?: string[];
   default_watchlist_tickers?: string[];
+  mode?: ObserverMode;
+  structured?: boolean;
+  use_batch?: boolean;
 }
 
 export const listSchedules = () => apiGet<ObserverSchedule[]>("/api/observer/schedules/");
@@ -42,7 +51,7 @@ export const runScheduleNow = (id: number) =>
 
 export interface NotificationDTO {
   id: number;
-  kind: "trigger" | "observer_done" | "error" | "cost_limit";
+  kind: "trigger" | "observer_done" | "error" | "cost_limit" | "backup";
   title: string;
   body: string;
   link: string;

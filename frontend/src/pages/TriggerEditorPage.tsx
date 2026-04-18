@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   type Condition, type EventTrigger,
   createTrigger, evaluateTrigger, fetchTriggers, updateTrigger,
+  backtestTrigger, type BacktestMatch,
 } from "@/api/triggers";
 import RuleBuilder from "@/components/triggers/RuleBuilder";
 import FiringsTable from "@/components/triggers/FiringsTable";
@@ -48,7 +49,21 @@ export default function TriggerEditorPage() {
   const existing = triggersQ.data?.find((t) => t.id === id);
   const [form, setForm] = useState(EMPTY);
   const [profileId, setProfileId] = useState<number | null>(null);
-  const [tab, setTab] = useState<"condition" | "firings">("condition");
+  const [tab, setTab] = useState<"condition" | "firings" | "backtest">("condition");
+  const ninetyAgo = new Date(Date.now() - 90 * 24 * 3600_000).toISOString().slice(0, 10);
+  const today = new Date().toISOString().slice(0, 10);
+  const [btStart, setBtStart] = useState(ninetyAgo);
+  const [btEnd, setBtEnd] = useState(today);
+  const [btResult, setBtResult] = useState<{ match_count: number; matches: BacktestMatch[] } | null>(null);
+  const backtest = useMutation({
+    mutationFn: () =>
+      backtestTrigger({
+        condition: form.condition,
+        start: new Date(btStart).toISOString(),
+        end: new Date(btEnd + "T23:59:59").toISOString(),
+      }),
+    onSuccess: (data) => setBtResult(data),
+  });
 
   useEffect(() => {
     if (existing) {
@@ -107,11 +122,63 @@ export default function TriggerEditorPage() {
             className={`py-2 ${tab === "firings" ? "text-white border-b-2 border-indigo-500" : "text-neutral-400"}`}
             onClick={() => setTab("firings")}
           >Firings ({existing?.firings_count ?? 0})</button>
+          <button
+            type="button"
+            className={`py-2 ${tab === "backtest" ? "text-white border-b-2 border-indigo-500" : "text-neutral-400"}`}
+            onClick={() => setTab("backtest")}
+          >Backtest</button>
         </div>
       )}
 
       {!isNew && tab === "firings" ? (
         <FiringsTable triggerId={id!} />
+      ) : tab === "backtest" ? (
+        <div className="space-y-3">
+          <div className="text-sm text-neutral-400">
+            Replay the current condition against stored OHLC bars. Only <code>price</code> and
+            <code>pct_change</code> leaves evaluate; live-only metrics are skipped.
+          </div>
+          <div className="flex gap-3 items-end">
+            <label className="text-sm">
+              <div className="text-neutral-400 mb-1">Start</div>
+              <input type="date" value={btStart} onChange={(e) => setBtStart(e.target.value)}
+                     className="bg-neutral-800 px-3 py-2 rounded" />
+            </label>
+            <label className="text-sm">
+              <div className="text-neutral-400 mb-1">End</div>
+              <input type="date" value={btEnd} onChange={(e) => setBtEnd(e.target.value)}
+                     className="bg-neutral-800 px-3 py-2 rounded" />
+            </label>
+            <button
+              type="button"
+              className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded"
+              onClick={() => backtest.mutate()}
+              disabled={backtest.isPending}
+            >{backtest.isPending ? "Running…" : "Run backtest"}</button>
+          </div>
+          {backtest.isError && (
+            <div className="text-rose-400 text-sm">
+              {(backtest.error as Error)?.message ?? "Backtest failed"}
+            </div>
+          )}
+          {btResult && (
+            <div className="space-y-1">
+              <div className="text-sm">
+                <span className="font-mono">{btResult.match_count}</span>
+                <span className="text-neutral-400"> matches</span>
+              </div>
+              <ul className="text-xs font-mono text-neutral-300 max-h-60 overflow-auto">
+                {btResult.matches.slice(0, 50).map((m, i) => (
+                  <li key={i}>
+                    {new Date(m.ts).toLocaleDateString()} —
+                    {Object.entries(m.values).filter(([k]) => !k.startsWith("_prior:"))
+                      .map(([k, v]) => ` ${k}=${v ?? "—"}`).join("")}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
       ) : (
       <>
       <div className="space-y-3">

@@ -13,6 +13,7 @@ export type ProviderConfig = {
   enabled: boolean;
   supports_vision: boolean;
   daily_cost_cap_usd: string;
+  monthly_cost_cap_usd: string | null;
   api_key_present: boolean;
 };
 

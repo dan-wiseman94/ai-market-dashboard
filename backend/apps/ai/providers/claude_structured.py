@@ -3,11 +3,19 @@
 Separate from the streaming ClaudeProvider so we don't mix two different
 return contracts. Intended for Observer / trigger analyses where we want a
 typed result in one go, not token streaming to the UI.
+
+Uses anthropic>=0.96's native `messages.parse` which takes an `output_format`
+Pydantic class and returns a `ParsedMessage` whose `.parsed_output` is an
+instance of the same class.
 """
 from __future__ import annotations
 
 from anthropic import Anthropic
 from pydantic import BaseModel
+
+
+class StructuredParseError(RuntimeError):
+    """Claude did not return parseable output for the requested schema."""
 
 
 def run_structured[M: BaseModel](
@@ -28,5 +36,9 @@ def run_structured[M: BaseModel](
         max_tokens=max_tokens,
         output_format=output_model,
     )
-    # .output may live on beta parsed response types depending on SDK version.
-    return resp.output  # type: ignore[attr-defined]
+    parsed = resp.parsed_output
+    if parsed is None:
+        raise StructuredParseError(
+            f"Claude did not return a parsed {output_model.__name__} output",
+        )
+    return parsed

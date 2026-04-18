@@ -76,7 +76,8 @@ def backtest(
             prev = prev_closes.get(ticker)
             if prev is not None and prev > 0:
                 # pct_change keyed the way evaluator._leaf_key expects: pct_change:<ticker>:<window>
-                pct = (close - prev) / prev * 100
+                # Raw decimal to match live metrics.py (0.01 == 1%).
+                pct = (close - prev) / prev
                 for window in ("1m", "5m", "15m", "1h", "1d"):
                     snapshot[f"pct_change:{ticker}:{window}"] = pct
             prev_closes[ticker] = close

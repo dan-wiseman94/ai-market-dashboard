@@ -3,6 +3,7 @@ import { render } from "@testing-library/react";
 import type { ReactElement, ReactNode } from "react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { vi } from "vitest";
+import { ToastProvider } from "@/hooks/useToast";
 
 export function newQueryClient(): QueryClient {
   return new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -30,7 +31,11 @@ export function renderWithProviders(
         )}
       </MemoryRouter>
     );
-    return <QueryClientProvider client={client}>{router}</QueryClientProvider>;
+    return (
+      <QueryClientProvider client={client}>
+        <ToastProvider>{router}</ToastProvider>
+      </QueryClientProvider>
+    );
   }
   return render(ui, { wrapper: Wrapper });
 }

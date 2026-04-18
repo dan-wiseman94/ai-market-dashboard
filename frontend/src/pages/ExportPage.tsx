@@ -1,6 +1,9 @@
 import { useState } from "react";
 import { useCreateExport, useDeleteExport, useExports } from "@/hooks/useExport";
 import type { ExportScope } from "@/api/export";
+import { SkeletonRows } from "@/components/Skeleton";
+import { EmptyState } from "@/components/EmptyState";
+import { useToast } from "@/hooks/useToast";
 
 const ONE_GB = 1024 * 1024 * 1024;
 
@@ -13,6 +16,7 @@ function fmtSize(n: number | null): string {
 
 export default function ExportPage() {
   const { data = [], isLoading } = useExports();
+  const { push } = useToast();
   const create = useCreateExport();
   const del = useDeleteExport();
   const [scope, setScope] = useState<ExportScope>({
@@ -49,7 +53,10 @@ export default function ExportPage() {
         <button
           className="mt-2 px-3 py-1.5 rounded bg-emerald-600 hover:bg-emerald-500 text-sm disabled:opacity-50"
           disabled={create.isPending || anyRunning}
-          onClick={() => create.mutate(scope)}
+          onClick={() => create.mutate(scope, {
+            onSuccess: () => push({ kind: "info", text: "Export job queued." }),
+            onError: (e) => push({ kind: "error", text: (e as Error).message }),
+          })}
         >
           {create.isPending ? "Queuing…" : "Start export"}
         </button>
@@ -57,7 +64,14 @@ export default function ExportPage() {
 
       <section>
         <h2 className="text-sm uppercase text-slate-500 mb-2">Recent exports</h2>
-        {isLoading && <div className="text-slate-500">Loading…</div>}
+        {isLoading && <SkeletonRows rows={3} />}
+        {!isLoading && data.length === 0 && (
+          <EmptyState
+            title="No exports yet"
+            body="Pick what you'd like to bundle, then start an export. The zip builds asynchronously."
+          />
+        )}
+        {data.length > 0 && (
         <table className="w-full text-sm border border-slate-800 rounded">
           <thead className="bg-slate-900 text-slate-400 text-left">
             <tr>
@@ -100,6 +114,7 @@ export default function ExportPage() {
             ))}
           </tbody>
         </table>
+        )}
       </section>
     </main>
   );

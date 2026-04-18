@@ -54,8 +54,12 @@ export default function NotificationBell() {
 
   useEffect(() => {
     if (typeof WebSocket === "undefined") return;
+    const configured = import.meta.env.VITE_WS_BASE_URL as string | undefined;
     const proto = window.location.protocol === "https:" ? "wss" : "ws";
-    const ws = new WebSocket(`${proto}://${window.location.host}/ws/notifications/`);
+    const base = configured && configured.length > 0
+      ? configured
+      : `${proto}://${window.location.host}`;
+    const ws = new WebSocket(`${base}/ws/notifications/`);
     ws.onmessage = (ev: MessageEvent) => {
       try {
         const m = JSON.parse(ev.data);

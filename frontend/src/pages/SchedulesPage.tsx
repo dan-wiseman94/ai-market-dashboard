@@ -5,6 +5,9 @@ import {
 } from "@/hooks/useSchedules";
 import { useProfiles } from "@/hooks/useProfiles";
 import { CRON_PRESETS, explainCron } from "@/lib/cronPreview";
+import { SkeletonRows } from "@/components/Skeleton";
+import { EmptyState } from "@/components/EmptyState";
+import type { ObserverMode } from "@/api/observer";
 
 export default function SchedulesPage() {
   const { data: schedules, isLoading } = useSchedules();
@@ -23,6 +26,9 @@ export default function SchedulesPage() {
   const [presetIdx, setPresetIdx] = useState(1); // default to "Every 15 minutes"
   const [advancedCron, setAdvancedCron] = useState("*/15 * * * *");
   const [objective, setObjective] = useState("");
+  const [mode, setMode] = useState<ObserverMode>("full");
+  const [structured, setStructured] = useState(false);
+  const [useBatch, setUseBatch] = useState(false);
 
   const cron = cronMode === "preset" ? CRON_PRESETS[presetIdx].cron : advancedCron;
   const cronEnglish = useMemo(() => explainCron(cron), [cron]);
@@ -42,18 +48,33 @@ export default function SchedulesPage() {
     await create.mutateAsync({
       name, profile: profileId, cron, enabled, market_hours_only: marketHoursOnly,
       objective_template: objective,
+      mode, structured, use_batch: useBatch,
     });
-    setName(""); setObjective(""); setShowForm(false);
+    setName(""); setObjective("");
+    setMode("full"); setStructured(false); setUseBatch(false);
+    setShowForm(false);
   }
 
-  if (isLoading) return <main className="p-6">Loading…</main>;
+  if (isLoading) {
+    return (
+      <main className="p-6 max-w-3xl mx-auto space-y-4">
+        <h1 className="text-2xl font-semibold">Observer schedules</h1>
+        <SkeletonRows rows={3} />
+      </main>
+    );
+  }
+
+  const empty = !schedules || !Array.isArray(schedules) || schedules.length === 0;
 
   return (
     <main className="p-6 max-w-3xl mx-auto space-y-4">
       <h1 className="text-2xl font-semibold">Observer schedules</h1>
 
-      {(!schedules || !Array.isArray(schedules) || schedules.length === 0) && (
-        <p className="text-slate-500">No schedules yet.</p>
+      {empty && (
+        <EmptyState
+          title="No schedules yet"
+          body="Create one to have the observer capture + analyze snapshots on a cron."
+        />
       )}
 
       <ul className="space-y-2">
@@ -158,6 +179,35 @@ export default function SchedulesPage() {
               placeholder="e.g. Flag any unusual options activity."
             />
           </div>
+
+          <fieldset className="grid grid-cols-2 gap-3 text-sm border border-slate-800 rounded p-3">
+            <legend className="px-1 text-xs text-slate-500 uppercase tracking-wide">AI mode</legend>
+            <label className="flex flex-col gap-1">
+              <span className="text-xs text-slate-500">Payload shape</span>
+              <select
+                value={mode}
+                onChange={(e) => setMode(e.target.value as ObserverMode)}
+                className="px-2 py-1 rounded bg-slate-950 border border-slate-700"
+              >
+                <option value="full">Full payload</option>
+                <option value="diff">Diff vs previous capture</option>
+              </select>
+            </label>
+            <label className="flex items-center gap-2 mt-6">
+              <input
+                type="checkbox" checked={structured}
+                onChange={(e) => setStructured(e.target.checked)}
+              />
+              <span>Structured (typed observation card)</span>
+            </label>
+            <label className="flex items-center gap-2 col-span-2">
+              <input
+                type="checkbox" checked={useBatch}
+                onChange={(e) => setUseBatch(e.target.checked)}
+              />
+              <span>Messages Batch per watchlist ticker (50% cheaper, async)</span>
+            </label>
+          </fieldset>
 
           <button type="submit" disabled={create.isPending || !name || !profileId}
                   className="px-3 py-1.5 rounded bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40">
