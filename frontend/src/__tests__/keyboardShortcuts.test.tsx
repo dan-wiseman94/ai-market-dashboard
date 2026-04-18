@@ -84,3 +84,12 @@ test("shortcut ignored on element with role=textbox", async () => {
   expect(screen.getByTestId("combobox")).toBeInTheDocument();
   expect(screen.queryByTestId("triggers")).not.toBeInTheDocument();
 });
+
+test("? opens the shortcut help dialog listing all bindings", async () => {
+  const user = userEvent.setup();
+  renderWithProviders(makeRouter("/"));
+  await user.keyboard("?");
+  const dialog = await screen.findByRole("dialog", { name: /keyboard shortcuts/i });
+  expect(dialog).toHaveTextContent("g t");
+  expect(dialog).toHaveTextContent("Triggers");
+});
