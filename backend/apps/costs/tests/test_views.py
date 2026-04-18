@@ -2,8 +2,10 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
+from typing import cast
 
 import pytest
+from django.http import StreamingHttpResponse
 from django.test import Client
 
 from apps.secrets.models import ProviderConfig
@@ -54,7 +56,8 @@ def test_csv_export(client: Client, seed_run) -> None:
     resp = client.get(f"/api/costs/export.csv?from={(now - timedelta(hours=1)).isoformat()}&to={(now + timedelta(hours=1)).isoformat()}")
     assert resp.status_code == 200
     assert resp["Content-Type"].startswith("text/csv")
-    body = b"".join(resp.streaming_content).decode()
+    streaming = cast(StreamingHttpResponse, resp)
+    body = b"".join(streaming.streaming_content).decode()  # type: ignore[arg-type]
     assert "created_at,provider,model" in body.splitlines()[0]
     assert "claude" in body
 

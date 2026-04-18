@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import json
 import zipfile
-from pathlib import Path
 
 import pytest
 
@@ -36,7 +35,7 @@ def test_build_export_writes_expected_structure(tmp_path, monkeypatch) -> None:
     job.refresh_from_db()
     assert job.status == "done"
     assert job.filename
-    assert job.size_bytes > 0
+    assert job.size_bytes is not None and job.size_bytes > 0
     assert len(job.sha256) == 64
 
     path = tmp_path / job.filename

@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
-from django.http import HttpRequest, HttpResponse, JsonResponse, StreamingHttpResponse
+from django.http import HttpRequest, JsonResponse, StreamingHttpResponse
 from django.views.decorators.http import require_GET
 
 from apps.costs import services
@@ -109,7 +109,7 @@ def costs_snapshot_breakdown(_request: HttpRequest, snapshot_id: int) -> JsonRes
 
 
 @require_GET
-def costs_export_csv(request: HttpRequest) -> HttpResponse:
+def costs_export_csv(request: HttpRequest) -> StreamingHttpResponse:
     import csv
     import io
 
@@ -122,7 +122,8 @@ def costs_export_csv(request: HttpRequest) -> HttpResponse:
         for row in rows:
             writer.writerow(row)
             yield buf.getvalue()
-            buf.seek(0); buf.truncate(0)
+            buf.seek(0)
+            buf.truncate(0)
 
     filename = f"ai-dashboard-costs-{start.strftime('%Y%m%d')}-{end.strftime('%Y%m%d')}.csv"
     resp = StreamingHttpResponse(stream(), content_type="text/csv")

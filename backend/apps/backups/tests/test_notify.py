@@ -4,7 +4,6 @@ from unittest.mock import patch
 
 import pytest
 
-from apps.backups.models import BackupRecord
 from apps.backups.services import perform_backup
 
 

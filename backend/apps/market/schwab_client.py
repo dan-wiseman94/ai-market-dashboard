@@ -41,7 +41,7 @@ def _make_write_func():
 class _MockSchwabClient:
     """Minimal stand-in for schwab.client.Client used in MOCK_EXTERNAL mode."""
 
-    def get_quotes(self, tickers):  # type: ignore[override]
+    def get_quotes(self, tickers):
         import types
 
         mock_data = {t: {"quote": {"lastPrice": 100.0, "bidPrice": 99.9, "askPrice": 100.1,
@@ -53,7 +53,7 @@ class _MockSchwabClient:
 
     def __getattr__(self, name: str):
         """Return a callable that yields an empty candles response for any OHLC method."""
-        def _mock_ohlc(*args, **kwargs):  # noqa: ANN001
+        def _mock_ohlc(*args, **kwargs):
             import types
             return types.SimpleNamespace(json=lambda: {"candles": []})
         return _mock_ohlc

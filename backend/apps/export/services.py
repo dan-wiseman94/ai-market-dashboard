@@ -12,8 +12,8 @@ from pathlib import Path
 
 from django.utils import timezone
 
-from apps.export.models import ExportJob
 from apps.export import serializers as S
+from apps.export.models import ExportJob
 
 log = logging.getLogger(__name__)
 
@@ -59,12 +59,12 @@ def build_export_bundle(job_id: int) -> None:
 
             if scope.get("snapshots"):
                 from apps.snapshots.models import Snapshot
-                qs = (
+                snapshot_qs = (
                     Snapshot.objects.all()
                     if scope["snapshots"] == "all"
                     else Snapshot.objects.filter(id__in=scope["snapshots"])
                 )
-                for s in qs:
+                for s in snapshot_qs:
                     zf.writestr(
                         f"{root}/snapshots/{s.id}/meta.json",
                         json.dumps(S.snapshot_to_json(s), default=str, indent=2),
@@ -130,7 +130,7 @@ def build_export_bundle(job_id: int) -> None:
         job.sha256 = h.hexdigest()
         job.completed_at = timezone.now()
         job.save()
-    except Exception:  # noqa: BLE001
+    except Exception:
         job.status = "failed"
         job.error = traceback.format_exc()[:4000]
         job.completed_at = timezone.now()

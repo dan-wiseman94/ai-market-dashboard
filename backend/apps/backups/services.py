@@ -30,10 +30,9 @@ def acquire_lock() -> bool:
 
 
 def release_lock() -> None:
-    try:
+    from contextlib import suppress
+    with suppress(Exception):
         _redis().delete(LOCK_KEY)
-    except Exception:  # noqa: BLE001
-        pass
 
 
 def backups_dir() -> Path:
@@ -75,7 +74,7 @@ def perform_backup(kind: str) -> BackupRecord:
             env = os.environ.copy()
             try:
                 subprocess.run(cmd, stdout=fh, check=True, timeout=1800, env=env)
-            except Exception as e:  # noqa: BLE001
+            except Exception as e:
                 path.unlink(missing_ok=True)
                 rec = BackupRecord.objects.create(
                     filename=filename, size_bytes=0, sha256="0" * 64,
@@ -99,7 +98,7 @@ def perform_backup(kind: str) -> BackupRecord:
                body=f"{rec.size_bytes} bytes")
         rotate_scheduled()
         return rec
-    except Exception:  # noqa: BLE001
+    except Exception:
         tb = traceback.format_exc()[:4000]
         rec = BackupRecord.objects.create(
             filename=f"error-{timezone.now().strftime('%Y-%m-%d-%H%M%S')}.err",

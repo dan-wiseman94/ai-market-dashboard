@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from pathlib import Path
+from typing import ClassVar
 
 from django.http import FileResponse, HttpResponse
 from rest_framework import status, viewsets
@@ -22,7 +22,7 @@ class _ExportPagination(PageNumberPagination):
 class ExportViewSet(viewsets.ModelViewSet):
     queryset = ExportJob.objects.all()
     serializer_class = ExportJobSerializer
-    http_method_names = ["get", "post", "delete"]
+    http_method_names: ClassVar = ["get", "post", "delete"]  # type: ignore[misc]
     pagination_class = _ExportPagination
 
     def create(self, request, *args, **kwargs):

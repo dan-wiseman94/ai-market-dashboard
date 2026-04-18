@@ -9,7 +9,8 @@ from django.conf import settings
 @pytest.fixture(autouse=True)
 def _seed_spa_index() -> None:
     """Ensure an index.html exists for the TemplateView spa-fallback."""
-    target = Path(settings.TEMPLATES[0]["DIRS"][0]) / "index.html"
+    templates: list[dict] = settings.TEMPLATES
+    target = Path(templates[0]["DIRS"][0]) / "index.html"
     if target.exists():
         return
     target.parent.mkdir(parents=True, exist_ok=True)

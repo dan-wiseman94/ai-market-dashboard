@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from pathlib import Path
+from typing import ClassVar
 
 from django.http import FileResponse, HttpResponse
 from rest_framework import status, viewsets
@@ -22,7 +22,7 @@ class BackupViewSet(viewsets.ModelViewSet):
     queryset = BackupRecord.objects.all()
     serializer_class = BackupRecordSerializer
     pagination_class = BackupPagination
-    http_method_names = ["get", "post", "delete"]
+    http_method_names: ClassVar = ["get", "post", "delete"]  # type: ignore[misc]
 
     def create(self, request, *args, **kwargs):
         return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
