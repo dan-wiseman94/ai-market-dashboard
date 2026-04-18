@@ -53,10 +53,19 @@ def _eval_leaf(node: dict, metrics: MetricsSnapshot, values: dict) -> bool:
     key = _leaf_key(node)
     current = metrics.get(key)
     values[key] = current
-    if current is None:
-        return False
     op = node["op"]
     if op in _COMPARE_OPS:
+        if current is None:
+            return False
         return bool(_COMPARE_OPS[op](current, node["value"]))
-    # Crossing ops come in Task 6; raise so tests don't silently pass yet.
-    raise NotImplementedError(f"op {op} not implemented")
+    if op in ("crosses_above", "crosses_below"):
+        prior_key = f"_prior:{key}"
+        prior = metrics.get(prior_key)
+        values[prior_key] = prior
+        if current is None or prior is None:
+            return False
+        threshold = node["value"]
+        if op == "crosses_above":
+            return prior <= threshold < current
+        return prior >= threshold > current
+    raise ValueError(f"unknown op {op!r}")
