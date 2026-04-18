@@ -46,6 +46,29 @@ class TradingProfile(models.Model):
     default_provider = models.CharField(max_length=32, default="claude")
     default_model = models.CharField(max_length=100, default="claude-sonnet-4-6")
     active = models.BooleanField(default=True)
+    # M10 — opt-in AI platform features (Claude-only surfaces).
+    enable_tools = models.BooleanField(
+        default=False,
+        help_text="Expose the default Toolset (get_quote, fetch_ohlc, search_news, "
+                  "get_option_chain, compute_indicator) to Claude.",
+    )
+    enable_thinking = models.BooleanField(
+        default=False,
+        help_text="Turn on extended thinking on Claude.",
+    )
+    thinking_budget = models.PositiveIntegerField(
+        default=8_000,
+        help_text="Thinking token budget when enable_thinking=True. Billed as output.",
+    )
+    enable_memory = models.BooleanField(
+        default=False,
+        help_text="Expose the Memory tool with a per-profile namespace under "
+                  "/data/memory/<profile_id>/.",
+    )
+    skills = models.JSONField(
+        default=list, blank=True,
+        help_text="List of Anthropic Skill ids to attach per run. Empty = none.",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
