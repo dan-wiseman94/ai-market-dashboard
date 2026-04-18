@@ -6,6 +6,7 @@ import {
   createTrigger, evaluateTrigger, fetchTriggers, updateTrigger,
 } from "@/api/triggers";
 import RuleBuilder from "@/components/triggers/RuleBuilder";
+import FiringsTable from "@/components/triggers/FiringsTable";
 import { apiGet } from "@/api/client";
 
 type Profile = { id: number; name: string };
@@ -47,6 +48,7 @@ export default function TriggerEditorPage() {
   const existing = triggersQ.data?.find((t) => t.id === id);
   const [form, setForm] = useState(EMPTY);
   const [profileId, setProfileId] = useState<number | null>(null);
+  const [tab, setTab] = useState<"condition" | "firings">("condition");
 
   useEffect(() => {
     if (existing) {
@@ -93,6 +95,25 @@ export default function TriggerEditorPage() {
         {isNew ? "New trigger" : `Edit trigger: ${existing?.name ?? ""}`}
       </h1>
 
+      {!isNew && (
+        <div className="flex gap-4 border-b border-neutral-800 mb-4">
+          <button
+            type="button"
+            className={`py-2 ${tab === "condition" ? "text-white border-b-2 border-indigo-500" : "text-neutral-400"}`}
+            onClick={() => setTab("condition")}
+          >Condition</button>
+          <button
+            type="button"
+            className={`py-2 ${tab === "firings" ? "text-white border-b-2 border-indigo-500" : "text-neutral-400"}`}
+            onClick={() => setTab("firings")}
+          >Firings ({existing?.firings_count ?? 0})</button>
+        </div>
+      )}
+
+      {!isNew && tab === "firings" ? (
+        <FiringsTable triggerId={id!} />
+      ) : (
+      <>
       <div className="space-y-3">
         <div>
           <label className="block text-sm text-neutral-400 mb-1" htmlFor="tr-name">Name</label>
@@ -176,6 +197,8 @@ export default function TriggerEditorPage() {
           Cancel
         </button>
       </div>
+      </>
+      )}
     </div>
   );
 }
