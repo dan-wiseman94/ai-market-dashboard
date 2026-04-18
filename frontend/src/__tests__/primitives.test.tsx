@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
+import type React from "react";
 import { Skeleton, SkeletonRows } from "../components/Skeleton";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorBoundary } from "../components/ErrorBoundary";
@@ -38,7 +39,7 @@ describe("EmptyState", () => {
   });
 });
 
-function Boom() {
+function Boom(): React.ReactNode {
   throw new Error("crash");
 }
 

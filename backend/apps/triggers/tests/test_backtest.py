@@ -1,7 +1,7 @@
 """POST /api/triggers/backtest/ replays a DSL against stored OHLC bars."""
 from __future__ import annotations
 
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from rest_framework.test import APIClient
@@ -10,7 +10,7 @@ from rest_framework.test import APIClient
 @pytest.fixture
 def aapl_bars(db) -> None:
     from apps.market.models import OHLCBar
-    base = datetime(2026, 3, 1, 14, 30, tzinfo=timezone.utc)
+    base = datetime(2026, 3, 1, 14, 30, tzinfo=UTC)
     rows = []
     for i, close in enumerate([100, 101, 99, 105, 110, 108, 112, 115, 113, 120]):
         rows.append(OHLCBar(
