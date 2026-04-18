@@ -27,6 +27,8 @@ function useDefaultCommands(): Command[] {
       { id: "go-profiles", label: "Go to Profiles", keywords: "style", run: () => nav("/profiles") },
       { id: "go-settings", label: "Open Settings", keywords: "providers keys", run: () => nav("/settings") },
       { id: "go-exports", label: "Go to Exports", keywords: "download zip", run: () => nav("/settings/export") },
+      { id: "go-analytics", label: "Go to Analytics", keywords: "leaderboard cpi heatmap",
+        run: () => nav("/analytics") },
     ],
     [nav],
   );

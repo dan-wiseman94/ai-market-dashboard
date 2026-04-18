@@ -18,6 +18,7 @@ import TriggerEditorPage from "./pages/TriggerEditorPage";
 import SnapshotCostPage from "./pages/SnapshotCostPage";
 import BackupsPage from "./pages/BackupsPage";
 import ExportPage from "./pages/ExportPage";
+import AnalyticsPage from "./pages/AnalyticsPage";
 
 export const router = createBrowserRouter([
   // Render route bypasses AppLayout — it's for headless-chromium PNG captures.
@@ -51,6 +52,7 @@ export const router = createBrowserRouter([
         handle: { crumb: ({ params }: { params: { id?: string } }) => `Trigger ${params.id}` } },
       { path: "settings/backups", element: <BackupsPage />, handle: { crumb: "Backups" } },
       { path: "settings/export", element: <ExportPage />, handle: { crumb: "Export" } },
+      { path: "analytics", element: <AnalyticsPage />, handle: { crumb: "Analytics" } },
     ],
   },
 ]);
