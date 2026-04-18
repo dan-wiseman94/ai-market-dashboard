@@ -23,11 +23,16 @@ from apps.ai.types import (
     RoleType,
     RunRequest,
     TextDelta,
+    ThinkingDeltaEvent,
     TokenUsage,
+    ToolCallEvent,
+    ToolResultEvent,
     UsageEvent,
 )
 from apps.secrets.models import ProviderConfig
-from apps.threads.models import AIRun, Message, Thread
+from apps.snapshots.models import SnapshotSection
+from apps.snapshots.serializer import build_image_blocks
+from apps.threads.models import AIRun, Message, Thread, ToolCall
 
 
 def _broadcast(thread_id: int, payload: dict) -> None:
@@ -55,7 +60,40 @@ def _extract_text(m: Message) -> str:
     return str(c)
 
 
-def _build_request(thread: Thread, user_msg: Message) -> RunRequest:
+def _snapshot_image_ids(snapshot_id: int) -> list[int]:
+    section = (
+        SnapshotSection.objects
+        .filter(snapshot_id=snapshot_id, kind="image", status="ready")
+        .first()
+    )
+    if section is None:
+        return []
+    payload = section.payload or {}
+    return list(payload.get("image_ids") or [])
+
+
+def _message_content(
+    m: Message, *, provider_name: str,
+) -> str | list[dict]:
+    """Return the ChatMessage content for a Message — string, or blocks if the
+    message references a Snapshot with image sections. Images are attached to
+    the message regardless of provider; the serializer handles provider shape.
+    """
+    text = _extract_text(m)
+    snap_id = getattr(m, "snapshot_ref_id", None)
+    if not snap_id:
+        return text
+    image_ids = _snapshot_image_ids(snap_id)
+    if not image_ids:
+        return text
+    blocks: list[dict] = list(build_image_blocks(image_ids, provider_name=provider_name))
+    blocks.append({"type": "text", "text": text})
+    return blocks
+
+
+def _build_request(
+    thread: Thread, user_msg: Message, *, provider_name: str = "claude",
+) -> RunRequest:
     system = thread.profile.style if thread.profile else ""
     history = list(
         Message.objects
@@ -63,17 +101,40 @@ def _build_request(thread: Thread, user_msg: Message) -> RunRequest:
         .order_by("created_at")
     )
     chat_messages: list[ChatMessage] = [
-        ChatMessage(role=cast(RoleType, m.role), content=_extract_text(m))
+        ChatMessage(
+            role=cast(RoleType, m.role),
+            content=_message_content(m, provider_name=provider_name),
+        )
         for m in history
     ]
     if not any(m.id == user_msg.id for m in history):
-        chat_messages.append(ChatMessage(role="user", content=_extract_text(user_msg)))
+        chat_messages.append(ChatMessage(
+            role="user",
+            content=_message_content(user_msg, provider_name=provider_name),
+        ))
+    # M10: opt-in tool use / thinking / memory (Claude-only; other providers ignore).
+    tools: list[dict] = []
+    thinking_budget = 0
+    memory_dir = ""
+    if thread.profile and provider_name == "claude":
+        if getattr(thread.profile, "enable_tools", False):
+            from apps.ai.tools.registry import default_toolset
+            tools = default_toolset().anthropic_tools()
+        if getattr(thread.profile, "enable_thinking", False):
+            thinking_budget = int(getattr(thread.profile, "thinking_budget", 0) or 0)
+        if getattr(thread.profile, "enable_memory", False):
+            from apps.ai.memory import memory_dir_for_profile
+            memory_dir = memory_dir_for_profile(profile_id=thread.profile.id)
+
     return RunRequest(
         model="",
         system=system,
         messages=chat_messages,
         cache_system=True,
         cache_last_message=len(chat_messages) > 1,
+        tools=tools,
+        thinking_budget=thinking_budget,
+        memory_dir=memory_dir,
     )
 
 
@@ -107,6 +168,7 @@ def _build_stream_runner(
     buffer: list[str],
     usage_dict: dict[str, int],
     err_container: list[str],
+    tool_events: list[dict],
     provider: Provider,
     req: RunRequest,
     thread_id: int,
@@ -114,14 +176,11 @@ def _build_stream_runner(
 ) -> Callable[[], Coroutine[Any, Any, None]]:
     """Return a drive() coroutine that reads from the provider stream.
 
-    Mutates the three mutable containers in-place:
+    Mutates the mutable containers in-place:
       buffer       — text delta strings are appended.
       usage_dict   — updated with input_tokens / output_tokens / cached_tokens.
       err_container — first element set to the error string on provider error.
-
-    This is a module-level function so tests can patch it with a fake factory
-    whose side_effect only inspects the first three arguments and ignores the
-    provider context.
+      tool_events  — tool_call / tool_result event dicts appended in order.
     """
     async def drive() -> None:
         async for evt in provider.run(req):
@@ -129,6 +188,42 @@ def _build_stream_runner(
                 buffer.append(evt.text)
                 await _broadcast_async(thread_id, {
                     "event": "text_delta", "message_id": assistant_id, "text": evt.text,
+                })
+            elif isinstance(evt, ThinkingDeltaEvent):
+                await _broadcast_async(thread_id, {
+                    "event": "thinking_delta",
+                    "message_id": assistant_id,
+                    "text": evt.text,
+                })
+            elif isinstance(evt, ToolCallEvent):
+                tool_events.append({
+                    "kind": "call",
+                    "tool_use_id": evt.tool_use_id,
+                    "name": evt.name,
+                    "input": evt.input,
+                })
+                await _broadcast_async(thread_id, {
+                    "event": "tool_call",
+                    "message_id": assistant_id,
+                    "tool_use_id": evt.tool_use_id,
+                    "name": evt.name,
+                    "input": evt.input,
+                })
+            elif isinstance(evt, ToolResultEvent):
+                tool_events.append({
+                    "kind": "result",
+                    "tool_use_id": evt.tool_use_id,
+                    "ok": evt.ok,
+                    "result": evt.result,
+                    "error": evt.error,
+                    "latency_ms": evt.latency_ms,
+                })
+                await _broadcast_async(thread_id, {
+                    "event": "tool_result",
+                    "message_id": assistant_id,
+                    "tool_use_id": evt.tool_use_id,
+                    "ok": evt.ok,
+                    "latency_ms": evt.latency_ms,
                 })
             elif isinstance(evt, UsageEvent):
                 usage_dict.update(_usage_counts(evt.usage))
@@ -138,6 +233,42 @@ def _build_stream_runner(
                 return
 
     return drive
+
+
+def _persist_tool_calls(assistant: Message, events: list[dict]) -> None:
+    """Pair tool_call with tool_result events by tool_use_id; create ToolCall rows."""
+    calls: dict[str, dict] = {}
+    for evt in events:
+        tuid = evt["tool_use_id"]
+        bucket = calls.setdefault(tuid, {})
+        if evt["kind"] == "call":
+            bucket["name"] = evt["name"]
+            bucket["input"] = evt["input"]
+        else:
+            bucket["ok"] = evt.get("ok", True)
+            bucket["result"] = evt.get("result")
+            bucket["error"] = evt.get("error", "")
+            bucket["latency_ms"] = evt.get("latency_ms", 0)
+    to_create = []
+    for tuid, v in calls.items():
+        result = v.get("result")
+        # JSONField requires dict/list; wrap scalars and Nones.
+        if result is None or isinstance(result, dict | list):
+            output = result if isinstance(result, dict | list) else {}
+        else:
+            output = {"value": result}
+        to_create.append(ToolCall(
+            message=assistant,
+            tool_use_id=tuid,
+            tool_name=v.get("name", ""),
+            tool_input=v.get("input") or {},
+            tool_output=output,
+            ok=v.get("ok", True),
+            error=v.get("error", ""),
+            latency_ms=v.get("latency_ms", 0),
+        ))
+    if to_create:
+        ToolCall.objects.bulk_create(to_create)
 
 
 @shared_task(name="threads.run_ai_on_message")
@@ -178,7 +309,7 @@ def run_ai_on_message(
         )
         return {"ok": False, "error": "cost_capped"}
 
-    req = _build_request(thread, user_msg)
+    req = _build_request(thread, user_msg, provider_name=provider_name)
     req.model = model_id
 
     assistant = Message.objects.create(
@@ -197,7 +328,11 @@ def run_ai_on_message(
     counts: dict[str, int] = {"input_tokens": 0, "output_tokens": 0, "cached_tokens": 0}
     err_container: list[str] = []
 
-    drive = _build_stream_runner(buffer, counts, err_container, provider, req, thread_id, assistant.id)
+    tool_events: list[dict] = []
+    drive = _build_stream_runner(
+        buffer, counts, err_container, tool_events,
+        provider, req, thread_id, assistant.id,
+    )
     asyncio.run(drive())
     latency_ms = int((time.perf_counter() - t0) * 1000)
     err: str | None = err_container[0] if err_container else None
@@ -228,6 +363,7 @@ def run_ai_on_message(
 
         assistant.status = "done"
         assistant.save()
+        _persist_tool_calls(assistant, tool_events)
 
         cost = cost_usd_for(provider_name, model_id, TokenUsage(**counts)) if any(counts.values()) else Decimal("0")
         AIRun.objects.create(
