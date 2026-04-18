@@ -13,6 +13,7 @@ from django.conf import settings
 from django.utils import timezone
 
 from apps.backups.models import BackupRecord
+from apps.observer.services.notifications import notify
 
 log = logging.getLogger(__name__)
 
@@ -76,10 +77,14 @@ def perform_backup(kind: str) -> BackupRecord:
                 subprocess.run(cmd, stdout=fh, check=True, timeout=1800, env=env)
             except Exception as e:  # noqa: BLE001
                 path.unlink(missing_ok=True)
-                return BackupRecord.objects.create(
+                rec = BackupRecord.objects.create(
                     filename=filename, size_bytes=0, sha256="0" * 64,
                     kind=kind, status="failed", error=str(e)[:4000],
                 )
+                notify(user_id=None, kind="backup",
+                       title="Backup failed",
+                       body=rec.error[:200])
+                return rec
 
         sha = _sha256_stream(path)
         rec = BackupRecord.objects.create(
@@ -89,14 +94,21 @@ def perform_backup(kind: str) -> BackupRecord:
             kind=kind,
             status="ok",
         )
+        notify(user_id=None, kind="backup",
+               title=f"Backup complete: {filename}",
+               body=f"{rec.size_bytes} bytes")
         rotate_scheduled()
         return rec
     except Exception:  # noqa: BLE001
         tb = traceback.format_exc()[:4000]
-        return BackupRecord.objects.create(
+        rec = BackupRecord.objects.create(
             filename=f"error-{timezone.now().strftime('%Y-%m-%d-%H%M%S')}.err",
             size_bytes=0, sha256="0" * 64, kind=kind, status="failed", error=tb,
         )
+        notify(user_id=None, kind="backup",
+               title="Backup failed",
+               body=rec.error[:200])
+        return rec
     finally:
         release_lock()
 
