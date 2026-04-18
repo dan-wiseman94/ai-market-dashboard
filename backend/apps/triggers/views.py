@@ -1,6 +1,8 @@
 """Triggers HTTP endpoints."""
 from __future__ import annotations
 
+from datetime import UTC
+
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db.models import Count
 from rest_framework import status, viewsets
@@ -92,7 +94,7 @@ class EventTriggerViewSet(viewsets.ModelViewSet):
         leaves are evaluated; other metrics are silently absent from the
         per-bar snapshot.
         """
-        from datetime import datetime, timezone
+        from datetime import datetime
 
         from apps.triggers.backtest import backtest as run_backtest
 
@@ -106,8 +108,8 @@ class EventTriggerViewSet(viewsets.ModelViewSet):
             return Response({"code": "invalid_condition", "message": str(exc)}, status=400)
 
         try:
-            start = datetime.fromisoformat(str(data["start"])).replace(tzinfo=timezone.utc)
-            end = datetime.fromisoformat(str(data["end"])).replace(tzinfo=timezone.utc)
+            start = datetime.fromisoformat(str(data["start"])).replace(tzinfo=UTC)
+            end = datetime.fromisoformat(str(data["end"])).replace(tzinfo=UTC)
         except (KeyError, ValueError) as exc:
             return Response({"code": "bad_dates", "message": str(exc)}, status=400)
 

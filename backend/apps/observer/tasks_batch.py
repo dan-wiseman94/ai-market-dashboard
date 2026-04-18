@@ -22,6 +22,6 @@ def poll_open_batches() -> int:
             if moved > 0:
                 # Clear batch id so the next fire issues a fresh one.
                 ObserverSchedule.objects.filter(id=sched.id).update(last_batch_id="")
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             log.exception("poll_open_batches: schedule %s failed: %s", sched.id, exc)
     return total

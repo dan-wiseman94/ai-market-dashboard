@@ -6,15 +6,11 @@ typed result in one go, not token streaming to the UI.
 """
 from __future__ import annotations
 
-from typing import TypeVar
-
 from anthropic import Anthropic
 from pydantic import BaseModel
 
-M = TypeVar("M", bound=BaseModel)
 
-
-def run_structured(
+def run_structured[M: BaseModel](
     *,
     api_key: str,
     model: str,
@@ -32,4 +28,5 @@ def run_structured(
         max_tokens=max_tokens,
         output_format=output_model,
     )
-    return resp.output  # type: ignore[no-any-return]
+    # .output may live on beta parsed response types depending on SDK version.
+    return resp.output  # type: ignore[attr-defined]

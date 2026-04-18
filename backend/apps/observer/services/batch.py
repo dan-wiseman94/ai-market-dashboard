@@ -55,7 +55,7 @@ def submit_watchlist_batch(schedule_id: int) -> str:
         for ticker in tickers
     ]
     client = _anthropic_client(provider_name)
-    batch = client.messages.batches.create(requests=requests)
+    batch = client.messages.batches.create(requests=requests)  # type: ignore[arg-type]
     sched.last_batch_id = batch.id
     sched.save(update_fields=["last_batch_id"])
     return batch.id
@@ -80,6 +80,7 @@ def poll_batch(schedule_id: int, batch_id: str) -> int:
             text_parts = [
                 block.text for block in result.result.message.content
                 if getattr(block, "type", None) == "text"
+                and hasattr(block, "text")
             ]
             text = f"[{ticker}] " + " ".join(text_parts)
             Message.objects.create(

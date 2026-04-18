@@ -23,7 +23,7 @@ def estimate_tokens(text: str, *, provider: str, model: str) -> int:
     if provider == "claude":
         try:
             return _claude_count_tokens(text, model)
-        except Exception as exc:  # noqa: BLE001 — degrade, don't raise
+        except Exception as exc:
             log.warning("Claude count_tokens failed (%s); falling back to tiktoken", exc)
             return len(_ENC.encode(text))
     return len(_ENC.encode(text))

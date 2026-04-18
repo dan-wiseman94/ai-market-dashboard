@@ -79,7 +79,7 @@ def run_observer(schedule_id: int) -> int | None:
         from apps.observer.services.batch import submit_watchlist_batch
         try:
             submit_watchlist_batch(sched.id)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             log.exception("observer %s batch submit failed: %s", sched.id, exc)
         sched.last_fired_at = timezone.now()
         sched.save(update_fields=["last_fired_at"])
@@ -161,7 +161,7 @@ def _run_structured_and_record(
             output_model=ObservationReport,
             base_url=cfg.base_url or "",
         )
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         Message.objects.create(
             thread=thread, role="assistant",
             content={"text": f"Structured run failed: {exc}"},
