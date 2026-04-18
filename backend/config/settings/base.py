@@ -107,6 +107,7 @@ CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TIMEZONE = "UTC"
 CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
 OBSERVER_BEAT_TIMEZONE = env("OBSERVER_BEAT_TIMEZONE", default="UTC")
+TRIGGER_TICK_SECONDS = env.int("TRIGGER_TICK_SECONDS", default=10)
 
 # Auth / i18n / etc
 AUTH_PASSWORD_VALIDATORS: list[dict[str, str]] = []
