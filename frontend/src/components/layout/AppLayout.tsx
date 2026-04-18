@@ -4,6 +4,7 @@ import TopNav from "./TopNav";
 import SideNav from "./SideNav";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import ShortcutHelpDialog from "./ShortcutHelpDialog";
+import Breadcrumbs from "./Breadcrumbs";
 
 export default function AppLayout() {
   const [helpOpen, setHelpOpen] = useState(false);
@@ -14,7 +15,10 @@ export default function AppLayout() {
       <TopNav />
       <div className="flex flex-1 min-h-0">
         <SideNav />
-        <main className="flex-1 min-w-0"><Outlet /></main>
+        <main className="flex-1 min-w-0">
+          <Breadcrumbs />
+          <Outlet />
+        </main>
       </div>
       <ShortcutHelpDialog open={helpOpen} onClose={() => setHelpOpen(false)} />
     </div>
