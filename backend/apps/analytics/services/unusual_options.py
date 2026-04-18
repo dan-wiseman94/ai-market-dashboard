@@ -2,7 +2,7 @@
 
 A line is unusual if:
   - volume_ratio = volume / max(oi, 1) >= 3.0, OR
-  - iv_z >= 1.5σ above the 30-day mean IV for the same chain
+  - iv_z >= 1.5 sigma above the 30-day mean IV for the same chain
 
 We return both flags + a composite score = volume_ratio + max(iv_z, 0).
 """
@@ -58,12 +58,16 @@ def _score_line(
 ) -> dict | None:
     volume = float(line.get("volume") or 0)
     oi = float(line.get("oi") or 0)
-    iv_str = line.get("iv")
-    iv = float(iv_str) if iv_str not in (None, "") else None
+    iv = _parse_iv(line.get("iv"))
 
     vol_ratio = volume / max(oi, 1.0)
     iv_z: float | None = None
-    if iv is not None and iv_mean is not None and iv_stdev not in (None, 0):
+    if (
+        iv is not None
+        and iv_mean is not None
+        and iv_stdev is not None
+        and iv_stdev != 0
+    ):
         iv_z = (iv - iv_mean) / iv_stdev
 
     triggers = []
@@ -87,6 +91,15 @@ def _score_line(
         "triggers": triggers,
         "score": round(score, 2),
     }
+
+
+def _parse_iv(raw: object) -> float | None:
+    if raw is None or raw == "":
+        return None
+    try:
+        return float(raw)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return None
 
 
 def _iv_stats(history: list[OptionChainSnapshot]) -> tuple[float | None, float | None]:

@@ -1,4 +1,4 @@
-"""Trigger-fire heatmap: 7 × 24 grid of counts by (weekday, hour)."""
+"""Trigger-fire heatmap: 7x24 grid of counts by (weekday, hour)."""
 from __future__ import annotations
 
 from datetime import datetime
