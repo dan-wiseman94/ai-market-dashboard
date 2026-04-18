@@ -466,5 +466,11 @@ Volumes: `pg_data`, `redis_data`, `app_data` (`/data`). `compose.yaml` is dev; `
 6. **M6 — Observer**: Schedules, beat integration, observer timeline UI.
 7. **M7 — Event triggers**: Evaluator worker, DSL, visual builder, notifications + OS notifications.
 8. **M8 — Polish**: Multi-provider compare, costs dashboard, backups, export, E2E tests.
+9. **M9 — AI platform v2**: Provider-aware token counting + raised per-model payload budgets; cache-breakpoint on the last prior turn for multi-turn Claude runs; monthly cost cap parity with daily cap; structured Observer outputs (Pydantic `ObservationReport` + `messages.parse`); snapshot diff service + `/api/snapshots/<id>/diff/` endpoint; Observer diff-mode and Messages-Batch-mode schedules (50% cheaper sweeps); `/api/triggers/backtest/` DSL replay over stored OHLC; frontend primitives (`Toasts`, `Skeleton*`, `EmptyState`, `ErrorBoundary`); Cmd/Ctrl-K command palette. Plan: `docs/superpowers/plans/2026-04-18-m9-ai-platform-v2.md`.
 
 Each milestone is independently shippable and usable.
+
+**M10+ (planned, not yet in flight):**
+- **M10 — AI platform v2.5**: Tool use on Claude (`get_quote`, `fetch_ohlc`, `search_news`, `get_option_chain`, `compute_indicator`), Files API uploads, `search_result` block citations, extended thinking flag per profile, Memory tool, Anthropic Skills, MCP server + client.
+- **M11 — Second brain**: `Thesis` model, decision-journal close-of-thread prompt, post-mortem scheduler (7/30/90-day AI replay), agent presets (earnings prep, devil's advocate, pre-trade bias check, triage pass).
+- **M12 — Analytics**: Provider prediction leaderboard, cost-per-insight metric, trigger-fire heatmap, observer-run timeline chart, unusual-options interpreter.
