@@ -95,6 +95,10 @@ class AIRun(models.Model):
 
     class Meta:
         ordering: ClassVar[list[str]] = ["-created_at"]
+        indexes: ClassVar = [
+            models.Index(fields=["created_at"], name="airun_created_idx"),
+            models.Index(fields=["provider", "model", "created_at"], name="airun_prov_model_idx"),
+        ]
 
     def __str__(self) -> str:
         return f"AIRun {self.provider}/{self.model} (${self.cost_usd})"
