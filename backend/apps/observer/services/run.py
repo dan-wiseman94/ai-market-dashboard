@@ -6,7 +6,7 @@ from decimal import Decimal
 
 from django.utils import timezone
 
-from apps.ai.cost import CostCapExceededError, check_daily_cap
+from apps.ai.cost import CostCapExceededError, check_daily_cap, check_monthly_cap
 from apps.observer.models import ObserverSchedule
 from apps.observer.services.market_hours import is_market_open
 from apps.observer.services.notifications import notify
@@ -35,19 +35,23 @@ def run_observer(schedule_id: int) -> int | None:
     thread = get_or_create_observer_thread(sched.profile)
     provider_name = sched.override_provider or sched.profile.default_provider
 
-    # Resolve daily cap — use Infinity when no ProviderConfig row exists (no enforcement).
-    try:
-        cap_usd: Decimal = ProviderConfig.objects.get(provider=provider_name).daily_cost_cap_usd
-    except ProviderConfig.DoesNotExist:
+    # Resolve caps — Infinity daily / None monthly when no ProviderConfig row exists.
+    cfg = ProviderConfig.objects.filter(provider=provider_name).first()
+    if cfg is None:
         log.warning(
             "observer %s: no ProviderConfig for %s, skipping cost-cap enforcement",
             schedule_id, provider_name,
         )
-        cap_usd = Decimal("Infinity")
+        cap_usd: Decimal = Decimal("Infinity")
+        monthly_cap: Decimal | None = None
+    else:
+        cap_usd = cfg.daily_cost_cap_usd
+        monthly_cap = cfg.monthly_cost_cap_usd
 
     # Cost-cap check: write placeholder Message instead of running if exceeded.
     try:
         check_daily_cap(provider_name, cap_usd=cap_usd)
+        check_monthly_cap(provider_name, cap_usd=monthly_cap)
     except CostCapExceededError:
         Message.objects.create(
             thread=thread, role="system",

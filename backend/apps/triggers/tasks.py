@@ -9,7 +9,7 @@ from celery import shared_task
 from django.conf import settings
 from django.utils import timezone
 
-from apps.ai.cost import CostCapExceededError, check_daily_cap
+from apps.ai.cost import CostCapExceededError, check_daily_cap, check_monthly_cap
 from apps.observer.services.market_hours import is_market_open
 from apps.observer.services.notifications import notify
 from apps.secrets.models import ProviderConfig
@@ -137,6 +137,7 @@ def _do_fire(*, trigger_id: int, matched_values: dict) -> None:
     try:
         cfg = ProviderConfig.objects.get(provider=provider_name)
         check_daily_cap(provider_name, cap_usd=cfg.daily_cost_cap_usd)
+        check_monthly_cap(provider_name, cap_usd=cfg.monthly_cost_cap_usd)
     except ProviderConfig.DoesNotExist:
         logger.warning(
             "trigger.fire.no_provider_config",
