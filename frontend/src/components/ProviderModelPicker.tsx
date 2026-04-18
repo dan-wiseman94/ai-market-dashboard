@@ -11,7 +11,7 @@ export default function ProviderModelPicker({ value, onChange }: Props) {
   const modelsForProvider = all.filter((m) => m.provider === value.provider);
 
   return (
-    <div className="flex gap-2 text-sm">
+    <div className="flex gap-2 text-[12px]">
       <select
         value={value.provider}
         onChange={(e) => {
@@ -19,14 +19,14 @@ export default function ProviderModelPicker({ value, onChange }: Props) {
           const firstModel = all.find((m) => m.provider === provider)?.id ?? "";
           onChange({ provider, model: firstModel });
         }}
-        className="px-2 py-1 rounded bg-slate-900 border border-slate-700"
+        className="ledger-input py-1 pr-6 text-[12px] font-mono uppercase tracking-wider"
       >
         {providers.map((p) => <option key={p} value={p}>{p}</option>)}
       </select>
       <select
         value={value.model}
         onChange={(e) => onChange({ ...value, model: e.target.value })}
-        className="flex-1 px-2 py-1 rounded bg-slate-900 border border-slate-700"
+        className="ledger-input flex-1 py-1 pr-6 text-[12px] font-mono"
       >
         {modelsForProvider.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
         {modelsForProvider.length === 0 && (

@@ -19,14 +19,23 @@ export default function Breadcrumbs() {
   if (crumbs.length === 0) return null;
 
   return (
-    <nav aria-label="Breadcrumb" className="px-4 py-1.5 text-xs text-slate-500 border-b border-slate-900">
+    <nav
+      aria-label="Breadcrumb"
+      className="px-6 py-2 text-[11px] font-mono text-ink-500 border-b border-rule flex items-center"
+    >
+      <span className="text-copper-500/70 mr-2" aria-hidden>◈</span>
       {crumbs.map((c, i) => (
-        <span key={c.match.id}>
-          {i > 0 && <span className="mx-1.5">/</span>}
+        <span key={c.match.id} className="inline-flex items-center">
+          {i > 0 && <span className="mx-2 text-ink-600" aria-hidden>/</span>}
           {i < crumbs.length - 1 ? (
-            <Link to={c.match.pathname} className="hover:text-slate-300">{c.label}</Link>
+            <Link
+              to={c.match.pathname}
+              className="uppercase tracking-loose2 hover:text-copper-300 transition-colors duration-150"
+            >
+              {c.label}
+            </Link>
           ) : (
-            <span className="text-slate-300">{c.label}</span>
+            <span className="uppercase tracking-loose2 text-ink-200">{c.label}</span>
           )}
         </span>
       ))}

@@ -1,3 +1,5 @@
+import { usd } from "@/utils/format";
+
 type BranchTab = {
   id: number;
   label: string;
@@ -14,32 +16,52 @@ type Props = {
 export default function BranchTabs({ branches, activeId, onSelect }: Props) {
   if (branches.length === 0) return null;
   return (
-    <div className="flex gap-1 border-b border-slate-800 text-xs">
-      {branches.map((b) => (
-        <button
-          key={b.id}
-          onClick={() => onSelect(b.id)}
-          className={`px-3 py-1.5 border-b-2 ${
-            activeId === b.id ? "border-emerald-500 text-emerald-300" : "border-transparent text-slate-400 hover:text-slate-200"
-          }`}
-        >
-          {b.label}
-          {b.cost !== undefined ? (
-            <span data-testid={`branch-cost-${b.id}`} className="ml-2 font-mono text-[11px] text-slate-300">
-              ${b.cost.toFixed(4)}
-            </span>
-          ) : b.status === "streaming" ? (
+    <div className="relative flex gap-0 border-b border-rule">
+      {branches.map((b) => {
+        const active = activeId === b.id;
+        return (
+          <button
+            key={b.id}
+            onClick={() => onSelect(b.id)}
+            className={[
+              "relative group px-4 py-2.5 flex items-center gap-3 transition-colors duration-150 ease-ledger",
+              active ? "text-copper-200" : "text-ink-400 hover:text-ink-100",
+            ].join(" ")}
+          >
+            {/* bottom copper rule when active */}
             <span
-              data-testid={`branch-cost-pending-${b.id}`}
-              aria-label="calculating cost"
-              className="ml-2 inline-block w-2 h-2 rounded-full bg-slate-600 animate-pulse align-middle"
+              aria-hidden
+              className={[
+                "absolute left-0 right-0 -bottom-[1px] h-[2px] transition-all duration-300 ease-ledger",
+                active ? "bg-copper-400 opacity-100" : "bg-copper-400 opacity-0 group-hover:opacity-30",
+              ].join(" ")}
             />
-          ) : null}
-          <span className="ml-1 text-slate-600">
-            {b.status === "failed" ? "✗" : ""}
-          </span>
-        </button>
-      ))}
+            <span className="font-mono text-[11px] uppercase tracking-wider">
+              {b.label}
+            </span>
+            {b.cost !== undefined ? (
+              <span
+                data-testid={`branch-cost-${b.id}`}
+                className="font-mono text-[11px] tabular-nums text-ink-300"
+              >
+                {usd(b.cost)}
+              </span>
+            ) : b.status === "streaming" ? (
+              <span
+                data-testid={`branch-cost-pending-${b.id}`}
+                aria-label="calculating cost"
+                className="inline-flex items-center gap-1 font-mono text-[10px] text-copper-400"
+              >
+                <span className="inline-block h-1 w-1 rounded-full bg-copper-400 ledger-pulse" />
+                streaming
+              </span>
+            ) : null}
+            {b.status === "failed" && (
+              <span className="font-mono text-[10px] text-loss">✗</span>
+            )}
+          </button>
+        );
+      })}
     </div>
   );
 }
