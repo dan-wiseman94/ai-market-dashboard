@@ -167,7 +167,7 @@ def _do_fire(*, trigger_id: int, matched_values: dict) -> None:
 
     user_msg = Message.objects.create(
         thread=thread, role="user",
-        content={"text": serialize_for_ai(snap)},
+        content={"text": serialize_for_ai(snap, provider=provider_name)},
         snapshot_ref=snap, status="done",
     )
     run_ai_on_message.delay(thread_id=thread.id, user_message_id=user_msg.id)

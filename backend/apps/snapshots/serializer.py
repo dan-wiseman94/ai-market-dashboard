@@ -8,11 +8,27 @@ from apps.snapshots.models import Snapshot, SnapshotImage
 from apps.snapshots.token_budget import prune_to_budget
 
 
-def serialize_for_ai(snapshot: Snapshot, *, max_tokens: int = 40_000) -> str:
+def serialize_for_ai(
+    snapshot: Snapshot,
+    *,
+    max_tokens: int | None = None,
+    provider: str = "openai",
+    model: str = "",
+) -> str:
     """Return the Snapshot as a compact markdown blob suitable for the `user` turn.
 
     The trading style belongs in the system prompt and is NOT included here.
+
+    When `max_tokens` is None, the budget is resolved from the model catalog
+    (`ModelInfo.max_payload_tokens`), defaulting to 40k when model is unknown.
+    Pass `provider`/`model` so token counting uses the right tokenizer.
     """
+    from apps.ai.catalog import get_model
+
+    if max_tokens is None:
+        info = get_model(provider, model) if model else None
+        max_tokens = info.max_payload_tokens if info else 40_000
+
     sections_by_kind = {s.kind: s for s in snapshot.sections.all()}
     parts: list[str] = []
 
@@ -33,7 +49,9 @@ def serialize_for_ai(snapshot: Snapshot, *, max_tokens: int = 40_000) -> str:
         if text:
             rendered[kind] = text
 
-    pruned_sections, pruned_kinds = prune_to_budget(rendered, max_tokens=max_tokens)
+    pruned_sections, pruned_kinds = prune_to_budget(
+        rendered, max_tokens=max_tokens, provider=provider, model=model,
+    )
     for kind in snapshot.includes:
         if kind in pruned_sections:
             parts.append(pruned_sections[kind])
