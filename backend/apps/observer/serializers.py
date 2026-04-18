@@ -1,7 +1,7 @@
 """Observer DRF serializers."""
 from typing import ClassVar
 
-from croniter import croniter
+from croniter import croniter  # type: ignore[import-untyped]
 from rest_framework import serializers
 
 from .models import Notification, ObserverSchedule
