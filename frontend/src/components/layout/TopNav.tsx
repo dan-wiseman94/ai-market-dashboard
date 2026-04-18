@@ -1,5 +1,6 @@
 import { NavLink } from "react-router-dom";
 import NotificationBell from "@/components/NotificationBell";
+import ConnectionStatusDot from "./ConnectionStatusDot";
 
 const LINKS: Array<[string, string]> = [
   ["/", "Dashboard"],
@@ -29,6 +30,7 @@ export default function TopNav() {
         ))}
       </div>
       <div className="flex-1" />
+      <ConnectionStatusDot />
       <NotificationBell />
     </nav>
   );
