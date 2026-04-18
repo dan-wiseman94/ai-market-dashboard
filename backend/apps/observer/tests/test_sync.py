@@ -32,6 +32,7 @@ def test_sync_periodic_task_updates_on_second_call():
     sync_periodic_task(s, cron="*/15 * * * *")
     s.refresh_from_db()
     assert s.periodic_task_id == pt_id_first  # same row, updated
+    assert s.periodic_task is not None
     assert s.periodic_task.crontab.minute == "*/15"
     assert s.periodic_task.enabled is False
     # No orphaned observer PeriodicTask rows (filter excludes seeded trigger-evaluator task)
@@ -43,6 +44,7 @@ def test_delete_periodic_task_removes_periodic_task_only():
     p = TradingProfile.objects.create(name="P", style="x")
     s = ObserverSchedule.objects.create(name="hourly", profile=p)
     sync_periodic_task(s, cron="0 * * * *")
+    assert s.periodic_task is not None
     crontab_id = s.periodic_task.crontab_id
     delete_periodic_task(s)
     s.refresh_from_db()

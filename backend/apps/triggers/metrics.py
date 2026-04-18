@@ -8,7 +8,7 @@ from __future__ import annotations
 import logging
 import time
 from collections.abc import Iterable
-from typing import Any
+from typing import Any, cast
 
 import redis
 from django.conf import settings
@@ -166,6 +166,6 @@ def _read_redis_float(r: redis.Redis, key: str) -> float | None:
     if raw is None:
         return None
     try:
-        return float(raw)
+        return float(cast("bytes | str", raw))
     except (ValueError, TypeError):
         return None

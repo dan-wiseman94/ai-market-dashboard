@@ -43,6 +43,7 @@ def test_run_observer_writes_placeholder_when_cost_capped():
         assert run_observer(s.id) is None
     thread = Thread.objects.get(profile=p, kind="observer")
     placeholder = thread.messages.first()
+    assert placeholder is not None
     assert placeholder.role == "system"
     assert "skipped" in placeholder.content["text"].lower()
     assert "cost cap" in placeholder.content["text"].lower()

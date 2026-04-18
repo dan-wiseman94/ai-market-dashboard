@@ -51,6 +51,7 @@ def test_patch_enabled_flips_periodic_task(api, profile):
     assert resp2.status_code == 200
     s = ObserverSchedule.objects.get(id=sid)
     assert s.enabled is False
+    assert s.periodic_task is not None
     assert s.periodic_task.enabled is False
 
 
