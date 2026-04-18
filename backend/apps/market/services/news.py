@@ -61,6 +61,21 @@ def _upsert_items(provider: str, items: list[dict]) -> list[NewsItem]:
     return out
 
 
+def _canned_news_items() -> list[dict]:
+    """Minimal deterministic news items for MOCK_EXTERNAL mode."""
+    return [
+        {
+            "id": "mock-1",
+            "headline": "Mock Market Update",
+            "summary": "Mocked summary for E2E tests.",
+            "url": "https://example.com/mock-news-1",
+            "source": "MockSource",
+            "related": "",
+            "datetime": 1_700_000_000,
+        },
+    ]
+
+
 def fetch_news(
     tickers: list[str],
     *,
@@ -68,6 +83,10 @@ def fetch_news(
     limit: int = 15,
 ) -> list[dict]:
     """Fetch + dedup news for `tickers` plus market-wide. Newest-first list capped at `limit`."""
+    from apps.core.mocks import is_mock_mode
+    if is_mock_mode():
+        return _canned_news_items()[:limit]
+
     api_key = _finnhub_api_key()
     if not api_key:
         log.info("Finnhub credential not configured; returning empty news list")

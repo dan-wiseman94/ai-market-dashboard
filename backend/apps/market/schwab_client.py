@@ -38,11 +38,36 @@ def _make_write_func():
     return _write_token
 
 
+class _MockSchwabClient:
+    """Minimal stand-in for schwab.client.Client used in MOCK_EXTERNAL mode."""
+
+    def get_quotes(self, tickers):  # type: ignore[override]
+        import types
+
+        mock_data = {t: {"quote": {"lastPrice": 100.0, "bidPrice": 99.9, "askPrice": 100.1,
+                                    "totalVolume": 1_000_000, "highPrice": 101.0,
+                                    "lowPrice": 99.0, "netPercentChange": 0.5}}
+                     for t in tickers}
+        resp = types.SimpleNamespace(json=lambda: mock_data)
+        return resp
+
+    def __getattr__(self, name: str):
+        """Return a callable that yields an empty candles response for any OHLC method."""
+        def _mock_ohlc(*args, **kwargs):  # noqa: ANN001
+            import types
+            return types.SimpleNamespace(json=lambda: {"candles": []})
+        return _mock_ohlc
+
+
 def get_schwab_client(*, asyncio: bool = False):
     """Return a live schwab.client.Client (or AsyncClient if asyncio=True).
 
     Raises SchwabNotConnectedError if no credential row exists.
     """
+    from apps.core.mocks import is_mock_mode
+    if is_mock_mode():
+        return _MockSchwabClient()
+
     if load_token() is None:
         raise SchwabNotConnectedError("No Schwab credential; connect at /settings first.")
 
