@@ -12,6 +12,7 @@ from rest_framework.test import APIClient
 from apps.profiles.models import TradingProfile
 from apps.snapshots.models import Snapshot, SnapshotSection
 from apps.threads.models import Message, Thread
+from apps.threads.tasks import _build_request
 
 
 @pytest.fixture
@@ -124,8 +125,6 @@ def test_build_request_includes_snapshot_on_first_user_turn(
 ) -> None:
     """After thread creation + one user follow-up, _build_request should emit
     [system=profile.style, user=snapshot_markdown, user=follow_up]."""
-    from apps.threads.tasks import _build_request
-
     client = APIClient()
     resp = client.post(
         "/api/threads/",
