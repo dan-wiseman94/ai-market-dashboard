@@ -28,7 +28,7 @@ def test_create_schedule_with_valid_cron(api, profile):
     s = ObserverSchedule.objects.get(id=sid)
     assert s.periodic_task is not None
     assert s.periodic_task.crontab.minute == "0"
-    assert PeriodicTask.objects.count() == 1
+    assert PeriodicTask.objects.filter(task="observer.run_observer").count() == 1
 
 
 @pytest.mark.django_db
@@ -63,7 +63,7 @@ def test_delete_schedule_drops_periodic_task(api, profile):
     resp2 = api.delete(f"/api/observer/schedules/{sid}/")
     assert resp2.status_code == 204
     assert ObserverSchedule.objects.count() == 0
-    assert PeriodicTask.objects.count() == 0
+    assert PeriodicTask.objects.filter(task="observer.run_observer").count() == 0
 
 
 @pytest.mark.django_db

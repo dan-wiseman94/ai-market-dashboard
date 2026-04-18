@@ -34,8 +34,8 @@ def test_sync_periodic_task_updates_on_second_call():
     assert s.periodic_task_id == pt_id_first  # same row, updated
     assert s.periodic_task.crontab.minute == "*/15"
     assert s.periodic_task.enabled is False
-    # No orphaned PeriodicTask rows
-    assert PeriodicTask.objects.count() == 1
+    # No orphaned observer PeriodicTask rows (filter excludes seeded trigger-evaluator task)
+    assert PeriodicTask.objects.filter(task="observer.run_observer").count() == 1
 
 
 @pytest.mark.django_db
@@ -46,5 +46,5 @@ def test_delete_periodic_task_removes_periodic_task_only():
     crontab_id = s.periodic_task.crontab_id
     delete_periodic_task(s)
     s.refresh_from_db()
-    assert PeriodicTask.objects.count() == 0
+    assert PeriodicTask.objects.filter(task="observer.run_observer").count() == 0
     assert CrontabSchedule.objects.filter(id=crontab_id).exists()
