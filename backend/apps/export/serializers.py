@@ -227,3 +227,20 @@ def watchlists_to_json() -> dict:
             ),
         })
     return {"watchlists": out}
+
+
+# ---------------------------------------------------------------------------
+# DRF serializer
+# ---------------------------------------------------------------------------
+
+from rest_framework import serializers as drf
+from apps.export.models import ExportJob
+
+
+class ExportJobSerializer(drf.ModelSerializer):
+    class Meta:
+        model = ExportJob
+        fields = ["id", "created_at", "completed_at", "scope", "format",
+                  "status", "filename", "size_bytes", "sha256", "error"]
+        read_only_fields = ["id", "created_at", "completed_at", "status",
+                            "filename", "size_bytes", "sha256", "error", "format"]
