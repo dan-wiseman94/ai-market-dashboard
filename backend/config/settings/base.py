@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     "apps.observer",
     "apps.backups",
     "apps.export",
+    "apps.files",
 ]
 
 MIDDLEWARE = [

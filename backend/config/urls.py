@@ -12,6 +12,7 @@ urlpatterns = [
     path("api/triggers/", include("apps.triggers.urls")),
     path("api/backups/", include("apps.backups.urls")),
     path("api/export/", include("apps.export.urls")),
+    path("api/files/", include("apps.files.urls")),
     path("api/", include("apps.profiles.urls")),
     path("api/", include("apps.snapshots.urls")),
     path("api/", include("apps.threads.urls")),
