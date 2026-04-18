@@ -6,7 +6,7 @@ import { vi, test, expect, beforeEach } from "vitest";
 import ExportPage from "@/pages/ExportPage";
 
 beforeEach(() => {
-  vi.spyOn(globalThis, "fetch").mockImplementation(async (url: any, init?: any) => {
+  vi.spyOn(globalThis, "fetch").mockImplementation(async (url, init) => {
     const u = String(url);
     const method = (init?.method ?? "GET").toUpperCase();
     if (u.includes("/api/export/") && method === "POST") {
@@ -40,13 +40,13 @@ test("clicking Start export POSTs scope", async () => {
   render(wrap(<ExportPage />));
   await userEvent.click(screen.getByRole("button", { name: /start export/i }));
   const called = spy.mock.calls.some(
-    ([u, init]) => String(u).endsWith("/api/export/") && (init as any)?.method === "POST",
+    ([u, init]) => String(u).endsWith("/api/export/") && (init as RequestInit | undefined)?.method === "POST",
   );
   expect(called).toBe(true);
 });
 
 test("shows 1 GB warning banner when total exceeds threshold", async () => {
-  vi.spyOn(globalThis, "fetch").mockImplementation(async (url: any) => {
+  vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => {
     if (String(url).includes("/api/export/")) {
       return new Response(JSON.stringify({
         results: [

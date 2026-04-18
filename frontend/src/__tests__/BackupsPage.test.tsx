@@ -6,7 +6,7 @@ import { vi, test, expect, beforeEach } from "vitest";
 import BackupsPage from "@/pages/BackupsPage";
 
 beforeEach(() => {
-  vi.spyOn(globalThis, "fetch").mockImplementation(async (url: any, init?: any) => {
+  vi.spyOn(globalThis, "fetch").mockImplementation(async (url, init) => {
     const u = String(url);
     const method = (init?.method ?? "GET").toUpperCase();
     if (u.includes("/api/backups/") && method === "GET") {
@@ -39,7 +39,7 @@ test("clicking Back up now POSTs to run endpoint", async () => {
   render(wrap(<BackupsPage />));
   await userEvent.click(await screen.findByRole("button", { name: /back up now/i }));
   const called = spy.mock.calls.some(
-    ([u, init]) => String(u).includes("/api/backups/run") && (init as any)?.method === "POST",
+    ([u, init]) => String(u).includes("/api/backups/run") && (init as RequestInit | undefined)?.method === "POST",
   );
   expect(called).toBe(true);
 });

@@ -17,7 +17,7 @@ test("clicking button POSTs to per-thread export endpoint", async () => {
   render(wrap(<ThreadExportButton threadId={42} />));
   await userEvent.click(screen.getByRole("button", { name: /export/i }));
   const called = spy.mock.calls.some(
-    ([u, init]) => String(u).includes("/api/export/thread/42/") && (init as any)?.method === "POST",
+    ([u, init]) => String(u).includes("/api/export/thread/42/") && (init as RequestInit | undefined)?.method === "POST",
   );
   expect(called).toBe(true);
 });
