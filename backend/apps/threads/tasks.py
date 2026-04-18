@@ -68,7 +68,13 @@ def _build_request(thread: Thread, user_msg: Message) -> RunRequest:
     ]
     if not any(m.id == user_msg.id for m in history):
         chat_messages.append(ChatMessage(role="user", content=_extract_text(user_msg)))
-    return RunRequest(model="", system=system, messages=chat_messages, cache_system=True)
+    return RunRequest(
+        model="",
+        system=system,
+        messages=chat_messages,
+        cache_system=True,
+        cache_last_message=len(chat_messages) > 1,
+    )
 
 
 def _fail(

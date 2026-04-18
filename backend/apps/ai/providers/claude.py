@@ -36,6 +36,7 @@ class ClaudeProvider:
 
         system_blocks = _system_blocks(req.system, cache=req.cache_system)
         messages = [{"role": m.role, "content": m.content} for m in req.messages]
+        messages = _maybe_cache_last_message(messages, cache=req.cache_last_message)
 
         try:
             async with self._client.messages.stream(
@@ -65,3 +66,19 @@ def _system_blocks(system: str, *, cache: bool) -> list[dict]:
     if cache:
         block["cache_control"] = {"type": "ephemeral"}
     return [block]
+
+
+def _maybe_cache_last_message(messages: list[dict], *, cache: bool) -> list[dict]:
+    """Attach cache_control to the final text block of the last message.
+
+    Rebuilds the last message with `content` as a single text-block list so we
+    can hang cache_control off it. Earlier messages are unchanged — Anthropic
+    caches everything *before* the breakpoint on hit.
+    """
+    if not cache or not messages:
+        return messages
+    out = [dict(m) for m in messages]
+    last = out[-1]
+    text = last["content"] if isinstance(last["content"], str) else ""
+    last["content"] = [{"type": "text", "text": text, "cache_control": {"type": "ephemeral"}}]
+    return out
