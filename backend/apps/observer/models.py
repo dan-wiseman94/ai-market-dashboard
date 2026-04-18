@@ -37,3 +37,33 @@ class ObserverSchedule(models.Model):
 
     def __str__(self) -> str:
         return f"ObserverSchedule({self.name})"
+
+
+class Notification(models.Model):
+    KIND_CHOICES: ClassVar[list[tuple[str, str]]] = [
+        ("trigger", "Trigger"),
+        ("observer_done", "Observer fired"),
+        ("error", "Error"),
+        ("cost_limit", "Cost limit"),
+    ]
+
+    # Nullable for v1 (no user-auth surface yet). When auth lands, backfill or
+    # default to the resolved user. The FK shape keeps the model multi-user-ready.
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True,
+        on_delete=models.CASCADE, related_name="notifications",
+    )
+    kind = models.CharField(max_length=16, choices=KIND_CHOICES)
+    title = models.CharField(max_length=200)
+    body = models.TextField(blank=True, default="")
+    link = models.CharField(max_length=500, blank=True, default="")
+    meta = models.JSONField(default=dict)
+    read_at = models.DateTimeField(null=True, blank=True, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        indexes: ClassVar = [models.Index(fields=["user", "read_at", "-created_at"])]
+        ordering: ClassVar[list[str]] = ["-created_at"]
+
+    def __str__(self) -> str:
+        return f"Notification({self.kind}: {self.title})"
