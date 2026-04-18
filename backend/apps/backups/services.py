@@ -88,6 +88,7 @@ def perform_backup(kind: str) -> BackupRecord:
             kind=kind,
             status="ok",
         )
+        rotate_scheduled()
         return rec
     except Exception:  # noqa: BLE001
         tb = traceback.format_exc()[:4000]
@@ -97,3 +98,16 @@ def perform_backup(kind: str) -> BackupRecord:
         )
     finally:
         release_lock()
+
+
+def rotate_scheduled(*, keep: int | None = None) -> None:
+    """Delete scheduled backups beyond the keep-count. Manual backups untouched."""
+    keep = keep if keep is not None else int(os.environ.get("BACKUPS_KEEP_SCHEDULED", "7"))
+    recs = list(
+        BackupRecord.objects.filter(kind="scheduled", status="ok").order_by("-created_at")
+    )
+    for rec in recs[keep:]:
+        path = backups_dir() / rec.filename
+        path.unlink(missing_ok=True)
+        rec.status = "rotated"
+        rec.save(update_fields=["status"])
