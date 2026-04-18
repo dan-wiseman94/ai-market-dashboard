@@ -1,3 +1,8 @@
-from django.urls import path
+from rest_framework.routers import DefaultRouter
 
-urlpatterns: list = []
+from apps.backups.views import BackupViewSet
+
+router = DefaultRouter()
+router.register("", BackupViewSet, basename="backups")
+
+urlpatterns = router.urls
