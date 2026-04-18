@@ -121,9 +121,11 @@ class ThreadViewSet(
         thread = self.get_object()
         file_id = request.data.get("file_id")
         prompt = (request.data.get("prompt") or "").strip() or "Please review this document."
+        if file_id is None:
+            return _error("not_found", "File not found", 404)
         try:
-            uf = UserFile.objects.get(id=file_id)
-        except UserFile.DoesNotExist:
+            uf = UserFile.objects.get(id=int(file_id))
+        except (UserFile.DoesNotExist, ValueError, TypeError):
             return _error("not_found", "File not found", 404)
         msg = Message.objects.create(
             thread=thread, role="user", status="done",

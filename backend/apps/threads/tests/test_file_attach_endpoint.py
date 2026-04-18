@@ -37,7 +37,7 @@ def test_attach_file_creates_blocks_message(db, thread, file_row) -> None:
     msg = Message.objects.filter(thread=thread, role="user").latest("id")
     blocks = msg.content["blocks"]
     assert any(b["type"] == "document" for b in blocks)
-    doc = [b for b in blocks if b["type"] == "document"][0]
+    doc = next(b for b in blocks if b["type"] == "document")
     assert doc["source"]["file_id"] == "file_abc"
     assert any(b["type"] == "text" and "risks" in b["text"] for b in blocks)
 
