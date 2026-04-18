@@ -121,7 +121,10 @@ class ClaudeProvider:
                         "is_error": not outcome.get("ok"),
                     })
 
-                messages.append({"role": "assistant", "content": list(final.content)})
+                messages.append({
+                    "role": "assistant",
+                    "content": list(final.content),  # type: ignore[arg-type]
+                })
                 messages.append({"role": "user", "content": tool_results})
 
             yield UsageEvent(usage=TokenUsage(

@@ -1,7 +1,7 @@
 """Default Toolset wiring existing market services as tools for Claude."""
 from __future__ import annotations
 
-from apps.ai.tools import ToolSpec, Toolset
+from apps.ai.tools import Toolset, ToolSpec
 from apps.market.services.chain import fetch_chain as fetch_chain_svc
 from apps.market.services.indicator import compute as compute_ind_svc
 from apps.market.services.news import fetch_news as fetch_news_svc

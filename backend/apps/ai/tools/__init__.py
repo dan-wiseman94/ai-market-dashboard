@@ -40,5 +40,5 @@ class Toolset:
         try:
             result = spec.fn(**tool_input)
             return {"ok": True, "result": result}
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             return {"ok": False, "error": f"{type(exc).__name__}: {exc}"}

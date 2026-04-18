@@ -4,7 +4,7 @@ from __future__ import annotations
 import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from apps.ai.tools import ToolSpec, Toolset
+from apps.ai.tools import Toolset, ToolSpec
 from apps.ai.types import (
     ChatMessage,
     RunRequest,
@@ -30,7 +30,7 @@ def _make_stream(final):
     async_ctx.__aenter__.return_value = cm
     async_ctx.__aexit__.return_value = False
 
-    async def aiter(self):  # noqa: ARG001
+    async def aiter(self):
         for block in final.content:
             if getattr(block, "type", None) == "text":
                 yield MagicMock(type="text", text=block.text)
