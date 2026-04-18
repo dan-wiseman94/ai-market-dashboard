@@ -32,6 +32,11 @@ class ObserverSchedule(models.Model):
         max_length=8, choices=MODE_CHOICES, default="full",
         help_text="diff: feed AI only the delta vs the last ready snapshot.",
     )
+    structured = models.BooleanField(
+        default=False,
+        help_text="When True, observer runs use messages.parse with the "
+                  "ObservationReport schema instead of streaming text.",
+    )
     periodic_task = models.OneToOneField(
         "django_celery_beat.PeriodicTask",
         null=True, blank=True, on_delete=models.SET_NULL,
