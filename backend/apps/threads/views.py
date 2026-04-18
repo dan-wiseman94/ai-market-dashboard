@@ -66,7 +66,16 @@ class ThreadViewSet(
             return _error("empty", "text is required", 400)
 
         user_msg = _create_user_message(thread, text)
-        run_ai_on_message.delay(thread_id=thread.id, user_message_id=user_msg.id)
+        override_provider = (request.data.get("override_provider") or "").strip()
+        override_model = (request.data.get("override_model") or "").strip()
+        override = (
+            {"provider": override_provider, "model": override_model}
+            if override_provider and override_model
+            else None
+        )
+        run_ai_on_message.delay(
+            thread_id=thread.id, user_message_id=user_msg.id, override=override,
+        )
         return Response(MessageSerializer(user_msg).data, status=202)
 
     @action(detail=True, methods=["post"])
@@ -98,6 +107,32 @@ class ThreadViewSet(
             {"user_message_id": user_msg.id, "branches": branch_ids},
             status=202,
         )
+
+    @action(detail=True, methods=["post"], url_path="attach-file")
+    def attach_file(self, request: Request, pk: str | None = None) -> Response:
+        """Attach a previously uploaded UserFile to the thread as a user Message.
+
+        Body: {file_id: int, prompt?: str}. Creates a Message whose content is
+        a `blocks` list: one document block referencing the Anthropic file_id
+        + one text block carrying the prompt.
+        """
+        from apps.files.models import UserFile
+
+        thread = self.get_object()
+        file_id = request.data.get("file_id")
+        prompt = (request.data.get("prompt") or "").strip() or "Please review this document."
+        try:
+            uf = UserFile.objects.get(id=file_id)
+        except UserFile.DoesNotExist:
+            return _error("not_found", "File not found", 404)
+        msg = Message.objects.create(
+            thread=thread, role="user", status="done",
+            content={"blocks": [
+                {"type": "document", "source": {"type": "file", "file_id": uf.anthropic_id}},
+                {"type": "text", "text": prompt},
+            ]},
+        )
+        return Response({"message_id": msg.id}, status=201)
 
     @action(detail=True, methods=["post"], url_path=r"stop/(?P<message_id>\d+)")
     def stop(self, request: Request, pk=None, message_id=None) -> Response:
