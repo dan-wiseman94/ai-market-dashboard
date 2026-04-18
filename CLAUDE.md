@@ -8,7 +8,7 @@ A single-user desktop dashboard that captures snapshots of the stock market and 
 
 The design lives in `docs/superpowers/specs/2026-04-16-ai-dashboard-design.md`. Milestone plans live in `docs/superpowers/plans/`. Both are load-bearing — read the relevant spec section before adding a feature, and read the active milestone plan before starting new implementation work.
 
-Milestones M1 (skeleton, tagged `m1-skeleton`) → M9 (AI platform v2, tagged `m9-ai-platform-v2`). Each has its own plan and is independently shippable. **Current status:** M1–M9 all shipped.
+Milestones M1 (skeleton, tagged `m1-skeleton`) → M10 (AI platform v2.5, tagged `m10-ai-platform-v25`). Each has its own plan and is independently shippable. **Current status:** M1–M10 all shipped.
 
 ## Daily commands
 
@@ -95,6 +95,13 @@ Each is a Channels group. Groups are joined in `connect()` and left in `disconne
 - **Trigger backtest.** `POST /api/triggers/backtest/` body `{condition, start, end, timeframe?}` replays the DSL over stored `OHLCBar` rows and returns match timestamps. Only `price` and `pct_change` leaves are evaluated; live-only metrics (vix, position_pl) are silently absent from per-bar snapshots rather than raising.
 - **Frontend primitives.** `Skeleton` / `SkeletonRows` / `EmptyState` / `ErrorBoundary` / `Toasts` live in `frontend/src/components/`. Reach for these before writing ad-hoc loading spinners, "no data" text, or try/catch-in-JSX guards. Toasts require a `<ToastProvider>` ancestor; `AppLayout` already provides it.
 - **Command palette is Cmd/Ctrl-K.** `useCommandPaletteTrigger(cb)` registers the global handler; default commands in `AppLayout`'s `useDefaultCommands()` cover all top-level routes. Page-level commands can be added by extending the hook.
+- **Tool use on Claude is opt-in per profile.** `TradingProfile.enable_tools=True` causes `_build_request` to inject `apps.ai.tools.registry.default_toolset().anthropic_tools()` into `RunRequest.tools`. The provider loops on `stop_reason == "tool_use"`, dispatching each tool_use block through `Toolset.run(name, input)`, streaming back a `tool_result` turn, and repeating. Every call produces a `ToolCall` row on the assistant `Message` and is broadcast over `thread.<id>` as `tool_call` / `tool_result`. Add a new tool by registering a `ToolSpec` in `apps/ai/tools/registry.py`.
+- **Extended thinking is opt-in per profile.** `Profile.enable_thinking=True` + `Profile.thinking_budget=N` causes the provider to pass `thinking={type:enabled, budget_tokens:N}` on each iteration. Thinking chunks emit `thinking_delta` WS events. Billed as output tokens.
+- **Per-profile Memory lives under `/data/memory/<profile_id>/`.** `Profile.enable_memory=True` attaches the `memory_20250818` tool with the per-profile directory, routed through `self._client.beta.messages.stream(...)` with the `context-management-2025-06-27` beta header. Override the root via `AI_MEMORY_ROOT` in tests.
+- **Anthropic Files API** — `apps.files.UserFile` proxies an `anthropic_id` + metadata. `POST /api/files/` uploads through `anthropic.beta.files.upload`; `POST /api/threads/<id>/attach-file/` creates a user `Message` with `content={"blocks": [{"type":"document","source":{"type":"file","file_id":...}}, {"type":"text","text":...}]}`. The provider hands block lists to the SDK verbatim. Deleting a `UserFile` also calls `anthropic.beta.files.delete`; bytes do not live locally.
+- **Citations on news** — `apps.ai.citations.news_to_search_result_blocks(items)` serializes news items as Anthropic `search_result` blocks with `citations: {enabled: true}`. The frontend `<Citation/>` component resolves citations back to `news://<id>` or the original URL.
+- **`ChatMessage.content` is `str | list[dict]`.** Messages with a `"blocks"` key in `Message.content` thread through as content-block lists; otherwise as plain text. This is how files / images / citations / tool_result blocks co-exist with text.
+- **Only `apps/ai/providers/claude.py` is M10-aware.** OpenAI / Local providers ignore `tools`, `thinking_budget`, `memory_dir`. Enabling these on a profile whose `default_provider != "claude"` is a silent no-op, not an error — parity is a future milestone.
 
 ## Testing
 
