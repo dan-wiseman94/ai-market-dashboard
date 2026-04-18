@@ -135,3 +135,11 @@ def build_export_bundle(job_id: int) -> None:
         job.error = traceback.format_exc()[:4000]
         job.completed_at = timezone.now()
         job.save()
+
+
+def reconcile_export_disk() -> None:
+    d = exports_dir()
+    for job in ExportJob.objects.filter(status="done"):
+        if not (d / job.filename).exists():
+            job.status = "missing"
+            job.save(update_fields=["status"])
