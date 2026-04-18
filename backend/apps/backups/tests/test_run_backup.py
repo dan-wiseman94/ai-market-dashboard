@@ -53,3 +53,16 @@ def test_run_backup_failure_records_error(tmp_path, monkeypatch) -> None:
     rec = BackupRecord.objects.get()
     assert rec.status == "failed"
     assert "permission denied" in rec.error
+
+
+@pytest.mark.django_db
+def test_run_backup_lock_rejects_concurrent(tmp_path, monkeypatch) -> None:
+    monkeypatch.setenv("BACKUPS_DIR", str(tmp_path))
+
+    with patch("apps.backups.services.acquire_lock", return_value=False) as acq:
+        run_backup(kind="manual")
+        acq.assert_called_once()
+
+    rec = BackupRecord.objects.get()
+    assert rec.status == "failed"
+    assert "already running" in rec.error
