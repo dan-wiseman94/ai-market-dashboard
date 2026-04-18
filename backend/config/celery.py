@@ -23,6 +23,7 @@ app.autodiscover_tasks(
         "apps.snapshots",
         "apps.threads",
         "apps.triggers",
+        "apps.backups",
     ]
 )
 
