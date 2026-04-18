@@ -22,6 +22,7 @@ app.autodiscover_tasks(
         "apps.observer",
         "apps.snapshots",
         "apps.threads",
+        "apps.triggers",
     ]
 )
 
