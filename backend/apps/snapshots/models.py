@@ -58,6 +58,7 @@ class SnapshotSection(models.Model):
     payload = models.JSONField(default=dict)
     status = models.CharField(max_length=16, choices=SECTION_STATUS_CHOICES, default="pending")
     error = models.TextField(blank=True, default="")
+    payload_tokens = models.PositiveIntegerField(default=0)
 
     class Meta:
         constraints: ClassVar = [
