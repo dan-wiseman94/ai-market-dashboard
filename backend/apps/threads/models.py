@@ -24,6 +24,10 @@ class Thread(models.Model):
     pinned_snapshot = models.ForeignKey(
         Snapshot, null=True, blank=True, on_delete=models.SET_NULL, related_name="threads",
     )
+    schedule = models.ForeignKey(
+        "observer.ObserverSchedule", null=True, blank=True,
+        on_delete=models.SET_NULL, related_name="threads",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
