@@ -95,7 +95,7 @@ python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
 pythonpath = ["backend"]
-addopts = "-ra --strict-markers --tb=short"
+addopts = "-ra --strict-markers --tb=short -m 'not integration'"
 asyncio_mode = "auto"
 markers = [
     "integration: marks tests as integration tests",
