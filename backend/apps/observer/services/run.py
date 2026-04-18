@@ -73,9 +73,32 @@ def run_observer(schedule_id: int) -> int | None:
         watchlist_tickers=sched.default_watchlist_tickers,
     )
 
+    if sched.mode == "diff":
+        from apps.snapshots.diff import diff_sections
+        from apps.snapshots.models import Snapshot as _Snapshot
+        prev_snap = (
+            _Snapshot.objects
+            .filter(profile=sched.profile, status="ready")
+            .exclude(id=snap.id)
+            .order_by("-created_at")
+            .first()
+        )
+        if prev_snap is not None:
+            prev_sections = {s.kind: s.payload for s in prev_snap.sections.all()}
+            curr_sections = {s.kind: s.payload for s in snap.sections.all()}
+            delta_text = diff_sections(prev_sections, curr_sections)
+            payload_text = (
+                f"Objective: {sched.objective_template}\n\n"
+                f"Delta since snapshot #{prev_snap.id}:\n{delta_text}"
+            )
+        else:
+            payload_text = serialize_for_ai(snap, provider=provider_name)
+    else:
+        payload_text = serialize_for_ai(snap, provider=provider_name)
+
     msg = Message.objects.create(
         thread=thread, role="user",
-        content={"text": serialize_for_ai(snap, provider=provider_name)},
+        content={"text": payload_text},
         snapshot_ref=snap, status="done",
     )
 

@@ -3,9 +3,11 @@ from django.shortcuts import get_object_or_404
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from rest_framework import mixins, viewsets
+from rest_framework.decorators import action
 from rest_framework.response import Response
 
 from apps.profiles.models import TradingProfile
+from apps.snapshots.diff import diff_sections
 from apps.snapshots.models import Snapshot, SnapshotImage
 from apps.snapshots.serializers import SnapshotImageSerializer, SnapshotSerializer
 from apps.snapshots.services.screenshot import (
@@ -49,6 +51,28 @@ class SnapshotViewSet(
             ohlc_bars=data.get("ohlc_bars", 60),
         )
         return Response(SnapshotSerializer(snap).data, status=202)
+
+    @action(detail=True, methods=["get"])
+    def diff(self, request, pk=None):
+        """GET /api/snapshots/<id>/diff/?against=<other_id>
+
+        Returns {delta: <markdown>, prev_id, curr_id}. The caller chooses
+        which snapshot is 'prev' via the `against` query param; this
+        endpoint is direction-agnostic — it just diffs the two.
+        """
+        against_id = request.query_params.get("against")
+        if not against_id:
+            return Response({"code": "missing_against"}, status=400)
+        try:
+            prev = Snapshot.objects.prefetch_related("sections").get(id=against_id)
+            curr = Snapshot.objects.prefetch_related("sections").get(id=pk)
+        except Snapshot.DoesNotExist:
+            return Response({"code": "not_found"}, status=404)
+
+        prev_sections = {s.kind: s.payload for s in prev.sections.all()}
+        curr_sections = {s.kind: s.payload for s in curr.sections.all()}
+        delta = diff_sections(prev_sections, curr_sections)
+        return Response({"delta": delta, "prev_id": prev.id, "curr_id": curr.id})
 
 
 @csrf_exempt
