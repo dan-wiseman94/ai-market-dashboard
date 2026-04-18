@@ -10,8 +10,8 @@ from rest_framework.response import Response
 
 from apps.triggers import evaluator, metrics
 from apps.triggers.dsl import validate_condition
-from apps.triggers.models import EventTrigger
-from apps.triggers.serializers import EventTriggerSerializer
+from apps.triggers.models import EventTrigger, TriggerFiring
+from apps.triggers.serializers import EventTriggerSerializer, TriggerFiringSerializer
 from apps.triggers.tasks import fire_trigger
 
 
@@ -64,6 +64,37 @@ class EventTriggerViewSet(viewsets.ModelViewSet):
         matched, values = evaluator.evaluate(condition, snapshot)
         missing = [k for k, v in values.items() if v is None]
         return Response({"matched": matched, "values": values, "missing": missing})
+
+    @action(detail=True, methods=["get"])
+    def firings(self, request: Request, pk: str | None = None) -> Response:
+        trigger = self.get_object()
+        qs = trigger.firings.select_related("snapshot", "thread").order_by("-fired_at")
+        try:
+            page = max(1, int(request.query_params.get("page", "1")))
+            size = max(1, min(50, int(request.query_params.get("size", "20"))))
+        except ValueError:
+            page, size = 1, 20
+        total = qs.count()
+        start = (page - 1) * size
+        rows = qs[start:start + size]
+        return Response({
+            "results": TriggerFiringSerializer(rows, many=True).data,
+            "count": total,
+            "page": page, "size": size,
+        })
+
+    @action(detail=False, methods=["get"], url_path="firings/recent")
+    def firings_recent(self, request: Request) -> Response:
+        try:
+            limit = max(1, min(20, int(request.query_params.get("limit", "5"))))
+        except ValueError:
+            limit = 5
+        qs = (
+            TriggerFiring.objects
+            .select_related("trigger", "snapshot", "thread")
+            .order_by("-fired_at")[:limit]
+        )
+        return Response(TriggerFiringSerializer(qs, many=True).data)
 
 
 def _synthetic_trigger(condition: dict, *, profile_id: int | None) -> EventTrigger:
