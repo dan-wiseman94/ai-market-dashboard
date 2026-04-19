@@ -4,7 +4,7 @@ COMPOSE := docker compose
 
 .PHONY: help
 help: ## Show this help
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-18s\033[0m %s\n", $$1, $$2}'
+	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-18s\033[0m %s\n", $$1, $$2}'
 
 .PHONY: dev
 dev: ## Start dev stack with hot reload
@@ -81,11 +81,55 @@ restore: ## Restore DB from /data/backups/<file>. Usage: make restore file=2026-
 	$(COMPOSE) start beat worker
 
 .PHONY: e2e
-e2e: ## Run all Playwright E2E journeys against compose stack
+e2e: ## Run all E2E lanes sequentially
 	$(COMPOSE) -f compose.yaml -f compose.e2e.yaml up -d
-	$(COMPOSE) exec web pytest e2e/ -v
+	$(COMPOSE) exec web pytest e2e/ui/ e2e/api/ e2e/ws/ e2e/visual/ e2e/a11y/ -n 4 --dist=loadscope -v
 	$(COMPOSE) -f compose.yaml -f compose.e2e.yaml down
 
 .PHONY: e2e-one
 e2e-one: ## make e2e-one t=test_compare_flow
 	$(COMPOSE) exec web pytest e2e/journeys/$(t).py -v
+
+.PHONY: e2e-up
+e2e-up: ## Bring e2e stack up with overlay, leave running
+	$(COMPOSE) -f compose.yaml -f compose.e2e.yaml up -d
+
+.PHONY: e2e-down
+e2e-down: ## Tear down e2e stack
+	$(COMPOSE) -f compose.yaml -f compose.e2e.yaml down
+
+.PHONY: e2e-ui
+e2e-ui: ## E2E UI lane (Playwright journeys)
+	$(COMPOSE) -f compose.yaml -f compose.e2e.yaml up -d
+	$(COMPOSE) exec web pytest e2e/ui/ -n 4 --dist=loadscope -v
+
+.PHONY: e2e-api
+e2e-api: ## E2E API lane (httpx contract)
+	$(COMPOSE) -f compose.yaml -f compose.e2e.yaml up -d
+	$(COMPOSE) exec web pytest e2e/api/ -n 4 -v
+
+.PHONY: e2e-ws
+e2e-ws: ## E2E WebSocket lane
+	$(COMPOSE) -f compose.yaml -f compose.e2e.yaml up -d
+	$(COMPOSE) exec web pytest e2e/ws/ -n 2 -v
+
+.PHONY: e2e-visual
+e2e-visual: ## E2E visual regression lane
+	$(COMPOSE) -f compose.yaml -f compose.e2e.yaml up -d
+	$(COMPOSE) exec web pytest e2e/visual/ -n 2 -v
+
+.PHONY: e2e-visual-update
+e2e-visual-update: ## Regenerate visual baselines
+	$(COMPOSE) -f compose.yaml -f compose.e2e.yaml up -d
+	$(COMPOSE) exec web pytest e2e/visual/ --update-snapshots -v
+	@echo "Inspect diffs: git diff e2e/visual/__screenshots__/"
+
+.PHONY: e2e-a11y
+e2e-a11y: ## E2E accessibility lane
+	$(COMPOSE) -f compose.yaml -f compose.e2e.yaml up -d
+	$(COMPOSE) exec web pytest e2e/a11y/ -n 4 -v
+
+.PHONY: e2e-perf
+e2e-perf: ## E2E performance lane (runs prod overlay)
+	$(COMPOSE) -f compose.yaml -f compose.prod.yaml up -d
+	$(COMPOSE) exec web pytest e2e/perf/ -v
