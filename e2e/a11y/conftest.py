@@ -1,2 +1,2 @@
-"""A11y lane conftest — axe-playwright accessibility fixtures land here in a later phase."""
+"""A11y lane conftest — axe runner fixtures land here in Phase 7."""
 from __future__ import annotations

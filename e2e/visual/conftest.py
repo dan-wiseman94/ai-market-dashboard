@@ -1,2 +1,2 @@
-"""Visual lane conftest — screenshot comparison fixtures land here in a later phase."""
+"""Visual lane conftest — stability + masking helpers land here in Phase 6."""
 from __future__ import annotations

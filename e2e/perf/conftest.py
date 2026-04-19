@@ -1,2 +1,2 @@
-"""Perf lane conftest — Lighthouse budget fixtures and page-load assertions land here in a later phase."""
+"""Perf lane conftest — Lighthouse runner fixtures land here in Phase 7."""
 from __future__ import annotations
