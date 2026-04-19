@@ -1,5 +1,16 @@
-export function Skeleton({ className = "" }: { className?: string }) {
-  return <div className={`animate-pulse bg-slate-700/50 rounded ${className}`} />;
+export function Skeleton({
+  className = "",
+  where = "generic",
+}: {
+  className?: string;
+  where?: string;
+}) {
+  return (
+    <div
+      className={`animate-pulse bg-slate-700/50 rounded ${className}`}
+      data-testid={`skeleton-${where}`}
+    />
+  );
 }
 
 export function SkeletonRows({ rows = 5 }: { rows?: number }) {

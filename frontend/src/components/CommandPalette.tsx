@@ -67,6 +67,7 @@ export function CommandPalette({
       role="dialog"
       aria-modal="true"
       aria-label="Command palette"
+      data-testid="command-palette"
     >
       <div
         className="w-[560px] max-w-[90vw] bg-slate-900 border border-slate-700 rounded-lg shadow-2xl overflow-hidden"
