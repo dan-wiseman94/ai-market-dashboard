@@ -106,7 +106,7 @@ export default function ProfilesPage() {
 
       <ul className="space-y-2">
         {(data ?? []).map((p) => (
-          <li key={p.id} className="p-3 border border-slate-800 rounded">
+          <li key={p.id} data-testid={`profile-row-${p.name}`} className="p-3 border border-slate-800 rounded">
             <div className="flex justify-between items-start">
               <div>
                 <div className="font-medium">{p.name}</div>

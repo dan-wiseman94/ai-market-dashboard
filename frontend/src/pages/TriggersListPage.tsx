@@ -91,7 +91,7 @@ export default function TriggersListPage() {
         </thead>
         <tbody>
           {triggers.map((t) => (
-            <tr key={t.id} className="border-t border-neutral-800">
+            <tr key={t.id} data-testid={`trigger-row-${t.id}`} className="border-t border-neutral-800">
               <td className="py-2 font-medium">
                 <Link to={`/triggers/${t.id}`} className="hover:text-indigo-400">{t.name}</Link>
               </td>

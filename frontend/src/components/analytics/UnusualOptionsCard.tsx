@@ -5,7 +5,7 @@ export function UnusualOptionsCard() {
   const [ticker, setTicker] = useState("");
   const { data, isLoading, error } = useUnusualOptions(ticker.toUpperCase());
   return (
-    <section className="ledger-surface p-5 md:col-span-2">
+    <section data-testid="analytics-card-unusual-options" className="ledger-surface p-5 md:col-span-2">
       <header className="ledger-eyebrow mb-3">Unusual options</header>
       <input
         className="w-32 px-2 py-1 mb-3 bg-slate-900 border border-slate-700 rounded text-sm font-mono text-slate-100"

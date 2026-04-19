@@ -3,7 +3,7 @@ import { useLeaderboard } from "@/hooks/useAnalytics";
 export function ProviderLeaderboardCard() {
   const { data, isLoading, error } = useLeaderboard();
   return (
-    <section className="ledger-surface p-5">
+    <section data-testid="analytics-card-leaderboard" className="ledger-surface p-5">
       <header className="ledger-eyebrow mb-3">Provider leaderboard (30d)</header>
       {isLoading && <p className="text-sm text-slate-400">Loading…</p>}
       {error && <p className="text-sm text-rose-400">{String(error)}</p>}
