@@ -1,6 +1,8 @@
 """Scaffolding collection test — asserts new lane dirs are importable."""
 from __future__ import annotations
 
+import pytest
+
 
 def test_lane_packages_importable() -> None:
     import e2e.ui  # noqa: F401
@@ -24,3 +26,13 @@ def test_ui_journeys_importable() -> None:
         "e2e.ui.test_export_gold",
     ]:
         importlib.import_module(mod)
+
+
+@pytest.mark.integration
+def test_api_base_url_fixture(api_base_url: str) -> None:
+    assert api_base_url.startswith("http://")
+
+
+@pytest.mark.integration
+def test_frontend_base_url_fixture(frontend_base_url: str) -> None:
+    assert frontend_base_url.startswith("http://")
