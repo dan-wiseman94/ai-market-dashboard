@@ -6,7 +6,7 @@ export function TriggerHeatmapCard() {
   const { data, isLoading, error } = useTriggerHeatmap();
   const max = Math.max(1, ...(data?.cells.map((c) => c.count) ?? [1]));
   return (
-    <section className="ledger-surface p-5 md:col-span-2">
+    <section data-testid="analytics-card-heatmap" className="ledger-surface p-5 md:col-span-2">
       <header className="ledger-eyebrow mb-3">
         Trigger fires (30d) · day × hour
       </header>

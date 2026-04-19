@@ -239,7 +239,7 @@ export default function ThreadDetailPage() {
             const activeId = activeBranchByParent[m.id] ?? children[0]?.id ?? null;
             const active = children.find((c) => c.id === activeId) ?? children[0];
             return (
-              <div key={m.id} className="space-y-4">
+              <div key={m.id} data-testid={`message-${m.id}`} className="space-y-4">
                 <StreamingMessage role="user" text={m.text} status={m.status} />
                 {children.length > 0 && (
                   <div className="ledger-surface overflow-hidden">
@@ -273,7 +273,7 @@ export default function ThreadDetailPage() {
           }
           const calls = Object.values(toolCalls[m.id] ?? {});
           return (
-            <div key={m.id} className="flex items-start gap-3">
+            <div key={m.id} data-testid={`message-${m.id}`} className="flex items-start gap-3">
               <div className="flex-1 min-w-0">
                 <ToolCallTrace calls={calls} />
                 <StreamingMessage
@@ -320,6 +320,7 @@ export default function ThreadDetailPage() {
           }}
         >
           <input
+            data-testid="compose-input"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="Continue the thread…"

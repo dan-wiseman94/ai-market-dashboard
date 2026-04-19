@@ -54,7 +54,7 @@ export default function BackupsPage() {
         </thead>
         <tbody>
           {data.map((b) => (
-            <tr key={b.id} className={`border-t border-slate-800 ${b.status !== "ok" ? "opacity-60" : ""}`}>
+            <tr key={b.id} data-testid={`backup-row-${b.id}`} className={`border-t border-slate-800 ${b.status !== "ok" ? "opacity-60" : ""}`}>
               <td className="px-2 py-1.5">{new Date(b.created_at).toLocaleString()}</td>
               <td className="px-2 py-1.5 font-mono text-xs">{b.filename}</td>
               <td className="px-2 py-1.5 tabular-nums">{fmtSize(b.size_bytes)}</td>

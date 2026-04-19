@@ -7,7 +7,7 @@ export function ObserverTimelineCard() {
     ...(data?.days.map((d) => d.success + d.failed + d.skipped) ?? [1]),
   );
   return (
-    <section className="ledger-surface p-5 md:col-span-2">
+    <section data-testid="analytics-card-timeline" className="ledger-surface p-5 md:col-span-2">
       <header className="ledger-eyebrow mb-3">Observer runs (30d)</header>
       {isLoading && <p className="text-sm text-slate-400">Loading…</p>}
       {error && <p className="text-sm text-rose-400">{String(error)}</p>}

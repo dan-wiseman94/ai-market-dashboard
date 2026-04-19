@@ -84,7 +84,7 @@ export default function ExportPage() {
           </thead>
           <tbody>
             {data.map((j) => (
-              <tr key={j.id} className="border-t border-slate-800">
+              <tr key={j.id} data-testid={`export-row-${j.id}`} className="border-t border-slate-800">
                 <td className="px-2 py-1.5">{new Date(j.created_at).toLocaleString()}</td>
                 <td className="px-2 py-1.5">
                   {j.status === "running" || j.status === "pending"

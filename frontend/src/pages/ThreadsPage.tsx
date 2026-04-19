@@ -26,7 +26,7 @@ export default function ThreadsPage() {
       ) : (
         <ul className="space-y-1">
           {threads.map((t) => (
-            <li key={t.id} className="p-3 rounded border border-slate-800 flex justify-between">
+            <li key={t.id} data-testid={`thread-row-${t.id}`} className="p-3 rounded border border-slate-800 flex justify-between">
               <Link to={`/threads/${t.id}`} className="hover:underline">
                 <div className="font-medium">{t.title || `Thread #${t.id}`}</div>
                 <div className="text-xs text-slate-500">

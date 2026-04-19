@@ -3,7 +3,7 @@ import { useCostPerInsight } from "@/hooks/useAnalytics";
 export function CostPerInsightCard() {
   const { data, isLoading, error } = useCostPerInsight();
   return (
-    <section className="ledger-surface p-5">
+    <section data-testid="analytics-card-cpi" className="ledger-surface p-5">
       <header className="ledger-eyebrow mb-3">Cost per insight (30d)</header>
       {isLoading && <p className="text-sm text-slate-400">Loading…</p>}
       {error && <p className="text-sm text-rose-400">{String(error)}</p>}
