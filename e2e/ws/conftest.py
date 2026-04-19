@@ -1,2 +1,2 @@
-"""WS lane conftest — websocket connection fixtures land here in a later phase."""
+"""WS lane conftest — websockets client fixtures land here in Phase 5."""
 from __future__ import annotations
