@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, createMemoryRouter, RouterProvider } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import Breadcrumbs from "../../components/layout/Breadcrumbs";
 import ConnectionStatusDot from "../../components/layout/ConnectionStatusDot";
@@ -37,7 +37,6 @@ describe("layout testids", () => {
   // when the component does render.  We achieve this by driving it through
   // createMemoryRouter so we can attach handles.
   it("Breadcrumbs root has data-testid='breadcrumb-trail'", () => {
-    const { createMemoryRouter, RouterProvider } = require("react-router-dom");
     const router = createMemoryRouter(
       [
         {
