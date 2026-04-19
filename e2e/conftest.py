@@ -18,6 +18,12 @@ E2E_FRONTEND_URL = os.environ.get("E2E_FRONTEND_URL", "http://frontend:5173")
 def pytest_configure(config):
     """Register custom markers so pytest doesn't warn about unknown marks."""
     config.addinivalue_line("markers", "e2e: end-to-end browser tests (require compose stack)")
+    config.addinivalue_line("markers", "ui: UI lane browser tests")
+    config.addinivalue_line("markers", "api: API lane httpx contract tests")
+    config.addinivalue_line("markers", "ws: WebSocket lane tests")
+    config.addinivalue_line("markers", "visual: visual regression tests")
+    config.addinivalue_line("markers", "a11y: accessibility scan tests")
+    config.addinivalue_line("markers", "perf: performance budget tests")
 
 
 try:
@@ -77,3 +83,13 @@ def seed_minimal_fixture() -> None:
     """Idempotent minimal seed for tests that need DB objects. Use as an explicit param."""
     from e2e.fixtures.seed_minimal import seed_minimal
     seed_minimal()
+
+
+@pytest.fixture(scope="session")
+def api_base_url() -> str:
+    return E2E_BASE_URL
+
+
+@pytest.fixture(scope="session")
+def frontend_base_url() -> str:
+    return E2E_FRONTEND_URL
