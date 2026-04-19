@@ -13,6 +13,7 @@ export default function ConnectionStatusDot() {
     <span
       title={cur.label}
       aria-label={`Connection: ${cur.label}`}
+      data-testid="connection-status-dot"
       className="inline-flex items-center gap-2 select-none"
     >
       <span

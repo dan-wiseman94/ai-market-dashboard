@@ -18,6 +18,7 @@ export function Toasts() {
         <div
           key={t.id}
           className={`px-4 py-2 border rounded shadow-lg cursor-pointer ${TONE[t.kind]}`}
+          data-testid={`toast-${t.kind}`}
           onClick={() => dismiss(t.id)}
         >
           {t.text}
