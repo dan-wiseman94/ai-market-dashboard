@@ -1,0 +1,137 @@
+name: e2e
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-images:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Build images
+        run: docker compose -f compose.yaml -f compose.e2e.yaml build
+      - name: Save images to artifact
+        run: |
+          docker save $(docker compose -f compose.yaml -f compose.e2e.yaml config --images) -o /tmp/images.tar
+      - uses: actions/upload-artifact@v4
+        with:
+          name: docker-images
+          path: /tmp/images.tar
+          retention-days: 1
+
+  e2e-ui:
+    needs: build-images
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: docker-images
+          path: /tmp
+      - run: docker load -i /tmp/images.tar
+      - run: docker compose -f compose.yaml -f compose.e2e.yaml up -d
+      - run: docker compose exec -T web pytest e2e/ui/ -n 4 --dist=loadscope -v --tracing=retain-on-failure
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-traces
+          path: e2e/artifacts/
+
+  e2e-api:
+    needs: build-images
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: {name: docker-images, path: /tmp}
+      - run: docker load -i /tmp/images.tar
+      - run: docker compose -f compose.yaml -f compose.e2e.yaml up -d
+      - run: docker compose exec -T web pytest e2e/api/ -n 4 -v
+
+  e2e-ws:
+    needs: build-images
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: {name: docker-images, path: /tmp}
+      - run: docker load -i /tmp/images.tar
+      - run: docker compose -f compose.yaml -f compose.e2e.yaml up -d
+      - run: docker compose exec -T web pytest e2e/ws/ -n 2 -v
+
+  e2e-visual:
+    needs: build-images
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: {name: docker-images, path: /tmp}
+      - run: docker load -i /tmp/images.tar
+      - run: docker compose -f compose.yaml -f compose.e2e.yaml up -d
+      - run: docker compose exec -T web pytest e2e/visual/ -n 2 -v
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-diffs
+          path: e2e/visual/test-results/
+
+  e2e-a11y:
+    needs: build-images
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: {name: docker-images, path: /tmp}
+      - run: docker load -i /tmp/images.tar
+      - run: docker compose -f compose.yaml -f compose.e2e.yaml up -d
+      - run: docker compose exec -T web pytest e2e/a11y/ -n 4 -v
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: a11y-violations
+          path: e2e/a11y/artifacts/
+
+  e2e-perf:
+    needs: build-images
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: {name: docker-images, path: /tmp}
+      - run: docker load -i /tmp/images.tar
+      - run: docker compose -f compose.yaml -f compose.prod.yaml up -d
+      - run: docker compose exec -T web pytest e2e/perf/ -v
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lighthouse-reports
+          path: e2e/perf/artifacts/
+
+  e2e-summary:
+    needs: [e2e-ui, e2e-api, e2e-ws, e2e-visual, e2e-a11y, e2e-perf]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Write lane matrix summary
+        run: |
+          cat <<EOF > $GITHUB_STEP_SUMMARY
+          | Lane | Status |
+          |------|--------|
+          | ui | ${{ needs.e2e-ui.result }} |
+          | api | ${{ needs.e2e-api.result }} |
+          | ws | ${{ needs.e2e-ws.result }} |
+          | visual | ${{ needs.e2e-visual.result }} |
+          | a11y | ${{ needs.e2e-a11y.result }} |
+          | perf | ${{ needs.e2e-perf.result }} |
+          EOF
