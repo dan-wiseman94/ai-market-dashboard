@@ -1,4 +1,5 @@
 """Trigger heatmap buckets TriggerFiring.fired_at by (weekday, hour_of_day)."""
+
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
@@ -24,7 +25,8 @@ def _fire_at(trig, when: datetime) -> None:
 def test_heatmap_has_168_cells(db, trigger) -> None:
     now = datetime(2026, 4, 10, tzinfo=UTC)
     cells = trigger_heatmap(
-        start=now - timedelta(days=7), end=now + timedelta(days=1),
+        start=now - timedelta(days=7),
+        end=now + timedelta(days=1),
     )
     assert len(cells) == 7 * 24
     assert {c["weekday"] for c in cells} == set(range(7))

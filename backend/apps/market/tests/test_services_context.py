@@ -9,6 +9,7 @@ from apps.market.services.context import CONTEXT_SYMBOLS, SECTOR_ETFS, fetch_mar
 @pytest.fixture(autouse=True)
 def fake_redis(monkeypatch):
     import fakeredis
+
     r = fakeredis.FakeRedis()
     monkeypatch.setattr(cache_module, "_redis", lambda: r)
 

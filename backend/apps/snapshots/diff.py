@@ -4,6 +4,7 @@ Compares two already-serialized `sections` dicts (as stored on Snapshot) and
 emits a compact markdown delta. The goal is *signal compression*: feed the
 AI a paragraph that says what changed, not two 50k-token payloads.
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -41,11 +42,9 @@ def diff_sections(prev: dict[str, Any], curr: dict[str, Any]) -> str:
 
 def _summarize_new(kind: str, payload: Any) -> str:
     if kind == "quotes" and isinstance(payload, dict):
-        return ", ".join(
-            f"{t}={q.get('last','?')}" for t, q in list(payload.items())[:8]
-        )
+        return ", ".join(f"{t}={q.get('last', '?')}" for t, q in list(payload.items())[:8])
     if kind == "news" and isinstance(payload, list):
-        return "\n".join(f"- {item.get('title','(untitled)')}" for item in payload[:5])
+        return "\n".join(f"- {item.get('title', '(untitled)')}" for item in payload[:5])
     return "(section content added)"
 
 
@@ -74,19 +73,16 @@ def _diff_quotes(prev: dict, curr: dict) -> str:
         if abs(change) < _NOISE_PCT:
             continue
         sign = "+" if change >= 0 else ""
-        rows.append(f"- {ticker}: {p_last:g} → {c_last:g} ({sign}{change*100:.2f}%)")
+        rows.append(f"- {ticker}: {p_last:g} → {c_last:g} ({sign}{change * 100:.2f}%)")
     return "\n".join(rows) if rows else "- (all watchlist moves below 0.5%)"
 
 
 def _diff_news(prev: list, curr: list) -> str:
     prev_ids = {item.get("id") for item in prev if isinstance(item, dict)}
-    new_items = [
-        item for item in curr
-        if isinstance(item, dict) and item.get("id") not in prev_ids
-    ]
+    new_items = [item for item in curr if isinstance(item, dict) and item.get("id") not in prev_ids]
     if not new_items:
         return "- (no new headlines)"
-    return "\n".join(f"- {item.get('title','(untitled)')}" for item in new_items[:10])
+    return "\n".join(f"- {item.get('title', '(untitled)')}" for item in new_items[:10])
 
 
 def _diff_breadth(prev: dict, curr: dict) -> str:

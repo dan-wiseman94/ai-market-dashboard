@@ -12,9 +12,15 @@ class ProviderConfigSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProviderConfig
         fields: ClassVar = [
-            "provider", "base_url", "default_model", "enabled", "supports_vision",
-            "daily_cost_cap_usd", "monthly_cost_cap_usd",
-            "api_key_present", "api_key_write",
+            "provider",
+            "base_url",
+            "default_model",
+            "enabled",
+            "supports_vision",
+            "daily_cost_cap_usd",
+            "monthly_cost_cap_usd",
+            "api_key_present",
+            "api_key_write",
         ]
 
     def get_api_key_present(self, obj) -> bool:

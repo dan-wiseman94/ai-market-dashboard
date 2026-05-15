@@ -58,7 +58,9 @@ class ExportViewSet(viewsets.ModelViewSet):
 @api_view(["POST"])
 def export_single_thread(request, thread_id: int):
     job = ExportJob.objects.create(
-        scope={"threads": [thread_id]}, format="zip", status="pending",
+        scope={"threads": [thread_id]},
+        format="zip",
+        status="pending",
     )
     build_export.delay(job.id)
     return Response(

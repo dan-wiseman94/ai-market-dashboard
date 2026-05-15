@@ -22,7 +22,10 @@ async def test_thread_consumer_forwards_text_delta():
     layer = get_channel_layer()
     await layer.group_send(
         f"thread.{t.id}",
-        {"type": "thread_event", "payload": {"event": "text_delta", "message_id": 1, "text": "Hello"}},
+        {
+            "type": "thread_event",
+            "payload": {"event": "text_delta", "message_id": 1, "text": "Hello"},
+        },
     )
     msg = await communicator.receive_json_from(timeout=2)
     assert msg == {"event": "text_delta", "message_id": 1, "text": "Hello"}

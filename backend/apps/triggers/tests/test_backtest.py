@@ -1,4 +1,5 @@
 """POST /api/triggers/backtest/ replays a DSL against stored OHLC bars."""
+
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
@@ -10,14 +11,22 @@ from rest_framework.test import APIClient
 @pytest.fixture
 def aapl_bars(db) -> None:
     from apps.market.models import OHLCBar
+
     base = datetime(2026, 3, 1, 14, 30, tzinfo=UTC)
     rows = []
     for i, close in enumerate([100, 101, 99, 105, 110, 108, 112, 115, 113, 120]):
-        rows.append(OHLCBar(
-            ticker="AAPL", timeframe="1d",
-            ts=base + timedelta(days=i),
-            open=close - 0.5, high=close + 1, low=close - 1, close=close, volume=1_000_000,
-        ))
+        rows.append(
+            OHLCBar(
+                ticker="AAPL",
+                timeframe="1d",
+                ts=base + timedelta(days=i),
+                open=close - 0.5,
+                high=close + 1,
+                low=close - 1,
+                close=close,
+                volume=1_000_000,
+            )
+        )
     OHLCBar.objects.bulk_create(rows)
 
 
@@ -53,9 +62,9 @@ def test_backtest_returns_timestamps(db, aapl_bars) -> None:
 
 def test_backtest_missing_condition_400(db) -> None:
     client = APIClient()
-    resp = client.post("/api/triggers/backtest/",
-                       data={"start": "2026-03-01", "end": "2026-03-10"},
-                       format="json")
+    resp = client.post(
+        "/api/triggers/backtest/", data={"start": "2026-03-01", "end": "2026-03-10"}, format="json"
+    )
     assert resp.status_code == 400
 
 

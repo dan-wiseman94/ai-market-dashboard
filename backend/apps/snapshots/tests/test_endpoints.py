@@ -37,7 +37,9 @@ def test_create_snapshot_kicks_off_capture(api):
 def test_get_snapshot_returns_with_sections(api):
     p = TradingProfile.objects.create(name="P", style="x")
     s = Snapshot.objects.create(profile=p, includes=["quotes"], source="manual", status="ready")
-    SnapshotSection.objects.create(snapshot=s, kind="quotes", status="done", payload={"SPY": {"last": 1}})
+    SnapshotSection.objects.create(
+        snapshot=s, kind="quotes", status="done", payload={"SPY": {"last": 1}}
+    )
     r = api.get(f"/api/snapshots/{s.id}/")
     assert r.status_code == 200
     assert r.json()["sections"][0]["kind"] == "quotes"

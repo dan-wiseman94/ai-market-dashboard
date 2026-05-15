@@ -46,6 +46,8 @@ def test_compare_rejects_empty_branches(api):
     p = TradingProfile.objects.create(name="P", style="x")
     t = Thread.objects.create(kind="chat", profile=p, title="x")
     r = api.post(
-        f"/api/threads/{t.id}/compare/", {"text": "hi", "branches": []}, format="json",
+        f"/api/threads/{t.id}/compare/",
+        {"text": "hi", "branches": []},
+        format="json",
     )
     assert r.status_code == 400

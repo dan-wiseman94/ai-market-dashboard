@@ -1,4 +1,5 @@
 """OHLC price history service."""
+
 from __future__ import annotations
 
 from datetime import UTC, datetime

@@ -1,4 +1,5 @@
 """Cooldown gate: both time-elapsed AND re-armed-on-false must pass."""
+
 from __future__ import annotations
 
 import redis

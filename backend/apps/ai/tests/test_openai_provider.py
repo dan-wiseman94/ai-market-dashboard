@@ -31,6 +31,7 @@ class _FakeOpenAIStream:
                 prompt_tokens_details=MagicMock(cached_tokens=self._usage.get("cached", 0)),
             )
             yield final
+
         return gen()
 
 
@@ -40,14 +41,16 @@ async def test_openai_streams_deltas_and_usage():
 
     async def fake_create(**kwargs):
         return _FakeOpenAIStream(
-            ["Hello", " ", "world"], {"input": 80, "output": 20, "cached": 10},
+            ["Hello", " ", "world"],
+            {"input": 80, "output": 20, "cached": 10},
         )
 
     fake.chat.completions.create = fake_create
     with patch("apps.ai.providers.openai.AsyncOpenAI", return_value=fake):
         provider = OpenAIProvider(api_key="sk-test")
         req = RunRequest(
-            model="gpt-5", system="You help.",
+            model="gpt-5",
+            system="You help.",
             messages=[ChatMessage(role="user", content="hi")],
         )
         events = []
@@ -80,7 +83,8 @@ async def test_openai_normalizes_system_prompt_as_message():
     with patch("apps.ai.providers.openai.AsyncOpenAI", return_value=fake):
         provider = OpenAIProvider(api_key="sk-test")
         req = RunRequest(
-            model="gpt-5", system="YOU_ARE_A_TRADER",
+            model="gpt-5",
+            system="YOU_ARE_A_TRADER",
             messages=[ChatMessage(role="user", content="hi")],
         )
         async for _ in provider.run(req):

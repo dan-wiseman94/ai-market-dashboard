@@ -1,4 +1,5 @@
 """NYSE market-hours check for observer firings."""
+
 from __future__ import annotations
 
 from datetime import datetime, timedelta

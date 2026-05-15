@@ -4,6 +4,7 @@ text is the serialized snapshot payload, so the LLM actually sees the market dat
 Regression guard for the pre-fix state where `pinned_snapshot` was stored as an FK
 but its content never reached the provider call.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -31,22 +32,40 @@ def ready_snapshot(db, profile) -> Snapshot:
         source="manual",
     )
     SnapshotSection.objects.create(
-        snapshot=snap, kind="quotes", status="done",
-        payload={"SPY": {"last": 521.30, "pct_change": 0.42, "bid": 521.28,
-                         "ask": 521.31, "volume": 1_234_567, "high": 522.0,
-                         "low": 520.1}},
+        snapshot=snap,
+        kind="quotes",
+        status="done",
+        payload={
+            "SPY": {
+                "last": 521.30,
+                "pct_change": 0.42,
+                "bid": 521.28,
+                "ask": 521.31,
+                "volume": 1_234_567,
+                "high": 522.0,
+                "low": 520.1,
+            }
+        },
     )
     SnapshotSection.objects.create(
-        snapshot=snap, kind="breadth", status="done",
-        payload={"spy_last": 521.30, "qqq_last": 445.10, "vix_last": 14.2,
-                 "sectors": {"XLK": 215.4}, "breadth": {}},
+        snapshot=snap,
+        kind="breadth",
+        status="done",
+        payload={
+            "spy_last": 521.30,
+            "qqq_last": 445.10,
+            "vix_last": 14.2,
+            "sectors": {"XLK": 215.4},
+            "breadth": {},
+        },
     )
     return snap
 
 
 @pytest.mark.django_db
 def test_thread_create_with_pinned_snapshot_injects_first_user_message(
-    profile, ready_snapshot,
+    profile,
+    ready_snapshot,
 ) -> None:
     client = APIClient()
     resp = client.post(
@@ -106,7 +125,10 @@ def test_thread_create_with_unknown_snapshot_id_no_crash(profile) -> None:
 def test_thread_create_refuses_non_ready_snapshot(profile) -> None:
     """Pinning a pending/failed snapshot would inject all-stub noise. Reject with 400."""
     pending = Snapshot.objects.create(
-        profile=profile, status="pending", includes=["quotes"], source="manual",
+        profile=profile,
+        status="pending",
+        includes=["quotes"],
+        source="manual",
     )
     client = APIClient()
     resp = client.post(
@@ -121,7 +143,8 @@ def test_thread_create_refuses_non_ready_snapshot(profile) -> None:
 
 @pytest.mark.django_db
 def test_build_request_includes_snapshot_on_first_user_turn(
-    profile, ready_snapshot,
+    profile,
+    ready_snapshot,
 ) -> None:
     """After thread creation + one user follow-up, _build_request should emit
     [system=profile.style, user=snapshot_markdown, user=follow_up]."""
@@ -139,8 +162,10 @@ def test_build_request_includes_snapshot_on_first_user_turn(
     thread = Thread.objects.select_related("profile").get(id=thread_id)
 
     follow_up = Message.objects.create(
-        thread=thread, role="user",
-        content={"text": "What do you see?"}, status="done",
+        thread=thread,
+        role="user",
+        content={"text": "What do you see?"},
+        status="done",
     )
 
     req = _build_request(thread, follow_up)

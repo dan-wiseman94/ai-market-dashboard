@@ -1,4 +1,5 @@
 """Per-profile memory directory is isolated and created on demand."""
+
 from __future__ import annotations
 
 import os

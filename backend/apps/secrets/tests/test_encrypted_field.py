@@ -38,6 +38,7 @@ def test_field_handles_none():
 
 def test_field_rejects_tampered_ciphertext():
     from cryptography.fernet import InvalidToken
+
     field = EncryptedJSONField()
     encrypted = field.get_prep_value({"a": 1})
     assert encrypted is not None  # satisfy mypy

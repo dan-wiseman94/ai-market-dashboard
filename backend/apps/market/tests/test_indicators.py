@@ -1,4 +1,5 @@
 """Indicator math is pure: list in, float out. No DB, no cache."""
+
 from __future__ import annotations
 
 import pytest

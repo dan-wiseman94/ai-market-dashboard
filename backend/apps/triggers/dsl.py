@@ -3,6 +3,7 @@
 Called from EventTrigger.clean() and the DRF serializer. Keeps invalid JSON
 out of the database and returns user-facing error paths like ".all[1].op".
 """
+
 from __future__ import annotations
 
 from typing import Any

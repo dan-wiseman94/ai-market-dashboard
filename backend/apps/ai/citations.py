@@ -4,6 +4,7 @@ Using search_result blocks lets Claude emit citations that point back at each
 item so the UI can render hoverable superscripts. The UI resolves a citation
 by matching its `source` field against `news://<id>` or the original url.
 """
+
 from __future__ import annotations
 
 
@@ -21,11 +22,13 @@ def news_to_search_result_blocks(items: list[dict]) -> list[dict]:
         if summary:
             body_parts.append(summary)
         text = "\n".join(body_parts) or title
-        blocks.append({
-            "type": "search_result",
-            "source": source,
-            "title": title,
-            "content": [{"type": "text", "text": text}],
-            "citations": {"enabled": True},
-        })
+        blocks.append(
+            {
+                "type": "search_result",
+                "source": source,
+                "title": title,
+                "content": [{"type": "text", "text": text}],
+                "citations": {"enabled": True},
+            }
+        )
     return blocks

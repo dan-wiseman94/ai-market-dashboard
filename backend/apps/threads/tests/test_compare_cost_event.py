@@ -20,7 +20,10 @@ def test_run_emits_cost_event_after_done(monkeypatch) -> None:
     )
     thread = Thread.objects.create(kind="consult", title="t")
     user_msg = Message.objects.create(
-        thread=thread, role="user", content={"text": "hi"}, status="done",
+        thread=thread,
+        role="user",
+        content={"text": "hi"},
+        status="done",
     )
 
     events: list[dict] = []
@@ -39,11 +42,15 @@ def test_run_emits_cost_event_after_done(monkeypatch) -> None:
             usage_ref["input_tokens"] = 1000
             usage_ref["output_tokens"] = 100
             usage_ref["cached_tokens"] = 500
+
         return drive
 
-    with patch("apps.threads.tasks.cost_usd_for", return_value=Decimal("0.0123")), \
-         patch("apps.threads.tasks._build_stream_runner", side_effect=fake_drive_factory):
+    with (
+        patch("apps.threads.tasks.cost_usd_for", return_value=Decimal("0.0123")),
+        patch("apps.threads.tasks._build_stream_runner", side_effect=fake_drive_factory),
+    ):
         from apps.threads.tasks import run_ai_on_message
+
         run_ai_on_message(
             thread_id=thread.id,
             user_message_id=user_msg.id,

@@ -2,7 +2,7 @@ name: ai-dashboard
 
 services:
   db:
-    image: postgres:16-alpine
+    image: postgres:17-alpine
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
@@ -19,7 +19,7 @@ services:
       retries: 20
 
   redis:
-    image: redis:7-alpine
+    image: redis:8-alpine
     restart: unless-stopped
     volumes:
       - redis_data:/data
@@ -75,7 +75,7 @@ services:
     volumes:
       - ./backend:/app/backend
       - app_data:/data
-    command: ["celery", "-A", "config", "worker", "-l", "INFO"]
+    command: ["uv", "run", "celery", "-A", "config", "worker", "-l", "INFO"]
     develop:
       watch:
         - action: sync+restart
@@ -99,6 +99,8 @@ services:
       - ./backend:/app/backend
     command:
       [
+        "uv",
+        "run",
         "celery",
         "-A",
         "config",
@@ -118,6 +120,7 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile.dev
+    user: "node"
     env_file: .env
     volumes:
       - ./frontend:/app

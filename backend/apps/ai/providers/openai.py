@@ -3,6 +3,7 @@
 Also serves as the base for LocalProvider (see local.py) — the only difference
 is base_url.
 """
+
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
@@ -33,6 +34,7 @@ class OpenAIProvider:
 
     async def run(self, req: RunRequest) -> AsyncIterator[RunEvent]:
         from apps.core.mocks import is_mock_mode
+
         if is_mock_mode():
             yield TextDelta(text="Mocked ")
             yield TextDelta(text="response")

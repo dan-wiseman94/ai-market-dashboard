@@ -1,4 +1,5 @@
 """Market context: SPY/QQQ/VIX + sector ETFs + breadth (best-effort)."""
+
 from __future__ import annotations
 
 from apps.market import cache

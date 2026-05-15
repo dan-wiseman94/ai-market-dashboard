@@ -36,7 +36,7 @@ jobs:
           path: /tmp
       - run: docker load -i /tmp/images.tar
       - run: docker compose -f compose.yaml -f compose.e2e.yaml up -d
-      - run: docker compose exec -T web pytest e2e/ui/ -n 4 --dist=loadscope -v --tracing=retain-on-failure
+      - run: docker compose exec -T web uv run pytest e2e/ui/ -n 4 --dist=loadscope -v --tracing=retain-on-failure
       - if: failure()
         uses: actions/upload-artifact@v4
         with:
@@ -53,7 +53,7 @@ jobs:
         with: {name: docker-images, path: /tmp}
       - run: docker load -i /tmp/images.tar
       - run: docker compose -f compose.yaml -f compose.e2e.yaml up -d
-      - run: docker compose exec -T web pytest e2e/api/ -n 4 -v
+      - run: docker compose exec -T web uv run pytest e2e/api/ -n 4 -v
 
   e2e-ws:
     needs: build-images
@@ -65,7 +65,7 @@ jobs:
         with: {name: docker-images, path: /tmp}
       - run: docker load -i /tmp/images.tar
       - run: docker compose -f compose.yaml -f compose.e2e.yaml up -d
-      - run: docker compose exec -T web pytest e2e/ws/ -n 2 -v
+      - run: docker compose exec -T web uv run pytest e2e/ws/ -n 2 -v
 
   e2e-visual:
     needs: build-images
@@ -77,7 +77,7 @@ jobs:
         with: {name: docker-images, path: /tmp}
       - run: docker load -i /tmp/images.tar
       - run: docker compose -f compose.yaml -f compose.e2e.yaml up -d
-      - run: docker compose exec -T web pytest e2e/visual/ -n 2 -v
+      - run: docker compose exec -T web uv run pytest e2e/visual/ -n 2 -v
       - if: failure()
         uses: actions/upload-artifact@v4
         with:
@@ -94,7 +94,7 @@ jobs:
         with: {name: docker-images, path: /tmp}
       - run: docker load -i /tmp/images.tar
       - run: docker compose -f compose.yaml -f compose.e2e.yaml up -d
-      - run: docker compose exec -T web pytest e2e/a11y/ -n 4 -v
+      - run: docker compose exec -T web uv run pytest e2e/a11y/ -n 4 -v
       - if: failure()
         uses: actions/upload-artifact@v4
         with:
@@ -111,7 +111,7 @@ jobs:
         with: {name: docker-images, path: /tmp}
       - run: docker load -i /tmp/images.tar
       - run: docker compose -f compose.yaml -f compose.prod.yaml up -d
-      - run: docker compose exec -T web pytest e2e/perf/ -v
+      - run: docker compose exec -T web uv run pytest e2e/perf/ -v
       - if: always()
         uses: actions/upload-artifact@v4
         with:

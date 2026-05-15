@@ -19,11 +19,14 @@ def fake_redis():
 def test_build_snapshot_collects_price_leaves(fake_redis):
     p = TradingProfile.objects.create(name="P", style="x")
     t = EventTrigger.objects.create(
-        name="r", profile=p,
-        condition={"all": [
-            {"metric": "price", "ticker": "SPY", "op": ">", "value": 550},
-            {"metric": "price", "ticker": "QQQ", "op": ">", "value": 480},
-        ]},
+        name="r",
+        profile=p,
+        condition={
+            "all": [
+                {"metric": "price", "ticker": "SPY", "op": ">", "value": 550},
+                {"metric": "price", "ticker": "QQQ", "op": ">", "value": 480},
+            ]
+        },
     )
 
     with patch("apps.triggers.metrics.fetch_quotes") as fq:
@@ -33,7 +36,9 @@ def test_build_snapshot_collects_price_leaves(fake_redis):
     assert snap["price:SPY"] == 551.0
     assert snap["price:QQQ"] == 481.0
     fq.assert_called_once()
-    tickers = sorted(fq.call_args[0][0]) if fq.call_args[0] else sorted(fq.call_args.kwargs["tickers"])
+    tickers = (
+        sorted(fq.call_args[0][0]) if fq.call_args[0] else sorted(fq.call_args.kwargs["tickers"])
+    )
     assert tickers == ["QQQ", "SPY"]
 
 
@@ -41,7 +46,8 @@ def test_build_snapshot_collects_price_leaves(fake_redis):
 def test_build_snapshot_stamps_redis_last_price(fake_redis):
     p = TradingProfile.objects.create(name="P", style="x")
     t = EventTrigger.objects.create(
-        name="r", profile=p,
+        name="r",
+        profile=p,
         condition={"metric": "price", "ticker": "SPY", "op": ">", "value": 550},
     )
     with patch("apps.triggers.metrics.fetch_quotes") as fq:
@@ -57,7 +63,8 @@ def test_build_snapshot_populates_prior_for_crossings(fake_redis):
     fake_redis.setex("trigger:last:SPY", 60, "549.5")
 
     t = EventTrigger.objects.create(
-        name="r", profile=p,
+        name="r",
+        profile=p,
         condition={"metric": "price", "ticker": "SPY", "op": "crosses_above", "value": 550},
     )
     with patch("apps.triggers.metrics.fetch_quotes") as fq:
@@ -72,7 +79,8 @@ def test_build_snapshot_populates_prior_for_crossings(fake_redis):
 def test_build_snapshot_missing_ticker_is_none(fake_redis):
     p = TradingProfile.objects.create(name="P", style="x")
     t = EventTrigger.objects.create(
-        name="r", profile=p,
+        name="r",
+        profile=p,
         condition={"metric": "price", "ticker": "NOPE", "op": ">", "value": 1},
     )
     with patch("apps.triggers.metrics.fetch_quotes") as fq:
@@ -86,14 +94,17 @@ def test_build_snapshot_missing_ticker_is_none(fake_redis):
 def test_build_snapshot_vix_metric_fetches_vix_symbol(fake_redis):
     p = TradingProfile.objects.create(name="P", style="x")
     t = EventTrigger.objects.create(
-        name="r", profile=p,
+        name="r",
+        profile=p,
         condition={"metric": "vix", "op": ">", "value": 20},
     )
     with patch("apps.triggers.metrics.fetch_quotes") as fq:
         fq.return_value = {"$VIX": {"last": 22.5}}
         snap = build_snapshot([t])
 
-    tickers = sorted(fq.call_args[0][0]) if fq.call_args[0] else sorted(fq.call_args.kwargs["tickers"])
+    tickers = (
+        sorted(fq.call_args[0][0]) if fq.call_args[0] else sorted(fq.call_args.kwargs["tickers"])
+    )
     assert "$VIX" in tickers
     assert snap["vix"] == 22.5
 
@@ -102,11 +113,14 @@ def test_build_snapshot_vix_metric_fetches_vix_symbol(fake_redis):
 def test_build_snapshot_skips_positions_when_not_needed(fake_redis):
     p = TradingProfile.objects.create(name="P", style="x")
     t = EventTrigger.objects.create(
-        name="r", profile=p,
+        name="r",
+        profile=p,
         condition={"metric": "price", "ticker": "SPY", "op": ">", "value": 550},
     )
-    with patch("apps.triggers.metrics.fetch_quotes") as fq, \
-         patch("apps.triggers.metrics.fetch_positions") as fp:
+    with (
+        patch("apps.triggers.metrics.fetch_quotes") as fq,
+        patch("apps.triggers.metrics.fetch_positions") as fp,
+    ):
         fq.return_value = {"SPY": {"last": 551.0}}
         build_snapshot([t])
 
@@ -117,7 +131,8 @@ def test_build_snapshot_skips_positions_when_not_needed(fake_redis):
 def test_build_snapshot_stamps_last_tick_at(fake_redis):
     p = TradingProfile.objects.create(name="P", style="x")
     t = EventTrigger.objects.create(
-        name="r", profile=p,
+        name="r",
+        profile=p,
         condition={"metric": "price", "ticker": "SPY", "op": ">", "value": 550},
     )
     with patch("apps.triggers.metrics.fetch_quotes") as fq:

@@ -20,9 +20,15 @@ def profile(db):
 
 @pytest.mark.django_db
 def test_create_schedule_with_valid_cron(api, profile):
-    resp = api.post("/api/observer/schedules/", {
-        "name": "hourly", "profile": profile.id, "cron": "0 * * * *",
-    }, format="json")
+    resp = api.post(
+        "/api/observer/schedules/",
+        {
+            "name": "hourly",
+            "profile": profile.id,
+            "cron": "0 * * * *",
+        },
+        format="json",
+    )
     assert resp.status_code == 201, resp.content
     sid = resp.json()["id"]
     s = ObserverSchedule.objects.get(id=sid)
@@ -33,9 +39,15 @@ def test_create_schedule_with_valid_cron(api, profile):
 
 @pytest.mark.django_db
 def test_create_schedule_invalid_cron_returns_400(api, profile):
-    resp = api.post("/api/observer/schedules/", {
-        "name": "bad", "profile": profile.id, "cron": "bogus",
-    }, format="json")
+    resp = api.post(
+        "/api/observer/schedules/",
+        {
+            "name": "bad",
+            "profile": profile.id,
+            "cron": "bogus",
+        },
+        format="json",
+    )
     assert resp.status_code == 400
     body = resp.json()
     assert "cron" in body
@@ -43,9 +55,15 @@ def test_create_schedule_invalid_cron_returns_400(api, profile):
 
 @pytest.mark.django_db
 def test_patch_enabled_flips_periodic_task(api, profile):
-    resp = api.post("/api/observer/schedules/", {
-        "name": "x", "profile": profile.id, "cron": "0 * * * *",
-    }, format="json")
+    resp = api.post(
+        "/api/observer/schedules/",
+        {
+            "name": "x",
+            "profile": profile.id,
+            "cron": "0 * * * *",
+        },
+        format="json",
+    )
     sid = resp.json()["id"]
     resp2 = api.patch(f"/api/observer/schedules/{sid}/", {"enabled": False}, format="json")
     assert resp2.status_code == 200
@@ -57,9 +75,15 @@ def test_patch_enabled_flips_periodic_task(api, profile):
 
 @pytest.mark.django_db
 def test_delete_schedule_drops_periodic_task(api, profile):
-    resp = api.post("/api/observer/schedules/", {
-        "name": "x", "profile": profile.id, "cron": "0 * * * *",
-    }, format="json")
+    resp = api.post(
+        "/api/observer/schedules/",
+        {
+            "name": "x",
+            "profile": profile.id,
+            "cron": "0 * * * *",
+        },
+        format="json",
+    )
     sid = resp.json()["id"]
     resp2 = api.delete(f"/api/observer/schedules/{sid}/")
     assert resp2.status_code == 204
@@ -69,9 +93,15 @@ def test_delete_schedule_drops_periodic_task(api, profile):
 
 @pytest.mark.django_db
 def test_run_now_calls_run_observer(api, profile):
-    resp = api.post("/api/observer/schedules/", {
-        "name": "x", "profile": profile.id, "cron": "0 * * * *",
-    }, format="json")
+    resp = api.post(
+        "/api/observer/schedules/",
+        {
+            "name": "x",
+            "profile": profile.id,
+            "cron": "0 * * * *",
+        },
+        format="json",
+    )
     sid = resp.json()["id"]
     with patch("apps.observer.views.run_observer_task") as fake:
         resp2 = api.post(f"/api/observer/schedules/{sid}/run-now/")

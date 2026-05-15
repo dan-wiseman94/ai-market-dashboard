@@ -12,6 +12,7 @@ We pick the "primary ticker" of a snapshot as the first key of the
 first `quotes` section. This is a best-effort proxy; runs without a
 snapshot or without usable price history show coverage=0.
 """
+
 from __future__ import annotations
 
 from datetime import datetime, timedelta
@@ -24,10 +25,15 @@ from apps.threads.models import AIRun
 
 
 def provider_leaderboard(
-    *, start: datetime, end: datetime, forward_hours: int = 24,
+    *,
+    start: datetime,
+    end: datetime,
+    forward_hours: int = 24,
 ) -> list[dict]:
     qs = AIRun.objects.filter(
-        created_at__gte=start, created_at__lt=end, status="done",
+        created_at__gte=start,
+        created_at__lt=end,
+        status="done",
     )
     agg = (
         qs.values("provider", "model")
@@ -64,15 +70,17 @@ def provider_leaderboard(
         runs = r["runs"]
         coverage = (priced.get(key, 0) / runs * 100.0) if runs else 0.0
         avg_ret = (sum(rs) / len(rs)) if rs else None
-        rows.append({
-            "provider": r["provider"],
-            "model": r["model"],
-            "runs": runs,
-            "total_cost_usd": r["total_cost_usd"] or Decimal("0"),
-            "avg_latency_ms": int(r["avg_latency_ms"] or 0),
-            "avg_forward_return_pct": avg_ret,
-            "coverage_pct": coverage,
-        })
+        rows.append(
+            {
+                "provider": r["provider"],
+                "model": r["model"],
+                "runs": runs,
+                "total_cost_usd": r["total_cost_usd"] or Decimal("0"),
+                "avg_latency_ms": int(r["avg_latency_ms"] or 0),
+                "avg_forward_return_pct": avg_ret,
+                "coverage_pct": coverage,
+            }
+        )
     return rows
 
 
@@ -85,7 +93,9 @@ def _primary_ticker(snap) -> str | None:
 
 
 def _forward_return_pct(
-    ticker: str, at: datetime, forward_hours: int,
+    ticker: str,
+    at: datetime,
+    forward_hours: int,
 ) -> float | None:
     """Closest 1h bar at `at` and at `at + forward_hours`, in percent."""
     target_end = at + timedelta(hours=forward_hours)
@@ -98,8 +108,7 @@ def _forward_return_pct(
 
 def _nearest_bar_close(ticker: str, at: datetime) -> float | None:
     bar = (
-        OHLCBar.objects
-        .filter(ticker=ticker, ts__lte=at + timedelta(hours=1))
+        OHLCBar.objects.filter(ticker=ticker, ts__lte=at + timedelta(hours=1))
         .order_by("-ts")
         .first()
     )

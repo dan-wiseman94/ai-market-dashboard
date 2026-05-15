@@ -3,6 +3,7 @@
 Uses schwab-py's `client_from_access_functions` so token storage is entirely
 under our control (encrypted in Postgres via ApiCredential).
 """
+
 from __future__ import annotations
 
 import time
@@ -44,18 +45,31 @@ class _MockSchwabClient:
     def get_quotes(self, tickers):
         import types
 
-        mock_data = {t: {"quote": {"lastPrice": 100.0, "bidPrice": 99.9, "askPrice": 100.1,
-                                    "totalVolume": 1_000_000, "highPrice": 101.0,
-                                    "lowPrice": 99.0, "netPercentChange": 0.5}}
-                     for t in tickers}
+        mock_data = {
+            t: {
+                "quote": {
+                    "lastPrice": 100.0,
+                    "bidPrice": 99.9,
+                    "askPrice": 100.1,
+                    "totalVolume": 1_000_000,
+                    "highPrice": 101.0,
+                    "lowPrice": 99.0,
+                    "netPercentChange": 0.5,
+                }
+            }
+            for t in tickers
+        }
         resp = types.SimpleNamespace(json=lambda: mock_data)
         return resp
 
     def __getattr__(self, name: str):
         """Return a callable that yields an empty candles response for any OHLC method."""
+
         def _mock_ohlc(*args, **kwargs):
             import types
+
             return types.SimpleNamespace(json=lambda: {"candles": []})
+
         return _mock_ohlc
 
 
@@ -65,6 +79,7 @@ def get_schwab_client(*, asyncio: bool = False):
     Raises SchwabNotConnectedError if no credential row exists.
     """
     from apps.core.mocks import is_mock_mode
+
     if is_mock_mode():
         return _MockSchwabClient()
 

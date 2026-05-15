@@ -24,13 +24,25 @@ def test_quote_create():
 def test_ohlcbar_unique_per_ticker_timeframe_ts():
     ts = timezone.now().replace(second=0, microsecond=0)
     OHLCBar.objects.create(
-        ticker="SPY", timeframe="1m",
-        open=Decimal("1"), high=Decimal("2"), low=Decimal("1"), close=Decimal("2"), volume=100, ts=ts,
+        ticker="SPY",
+        timeframe="1m",
+        open=Decimal("1"),
+        high=Decimal("2"),
+        low=Decimal("1"),
+        close=Decimal("2"),
+        volume=100,
+        ts=ts,
     )
     with pytest.raises(Exception, match=""):
         OHLCBar.objects.create(
-            ticker="SPY", timeframe="1m",
-            open=Decimal("1"), high=Decimal("2"), low=Decimal("1"), close=Decimal("2"), volume=100, ts=ts,
+            ticker="SPY",
+            timeframe="1m",
+            open=Decimal("1"),
+            high=Decimal("2"),
+            low=Decimal("1"),
+            close=Decimal("2"),
+            volume=100,
+            ts=ts,
         )
 
 
@@ -51,8 +63,11 @@ def test_position_create():
 @pytest.mark.django_db
 def test_market_context_create():
     mc = MarketContext.objects.create(
-        spy_last=Decimal("550"), qqq_last=Decimal("480"), vix_last=Decimal("14"),
-        sectors={"XLK": 215.4, "XLF": 45.2}, breadth={"advance_count": 1200, "decline_count": 900},
+        spy_last=Decimal("550"),
+        qqq_last=Decimal("480"),
+        vix_last=Decimal("14"),
+        sectors={"XLK": 215.4, "XLF": 45.2},
+        breadth={"advance_count": 1200, "decline_count": 900},
         as_of=timezone.now(),
     )
     assert mc.sectors["XLK"] == 215.4

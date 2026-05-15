@@ -11,10 +11,16 @@ def api():
 
 @pytest.mark.django_db
 def test_provider_config_create_does_not_leak_key(api):
-    resp = api.post("/api/schwab/providers/", {
-        "provider": "claude", "api_key_write": "sk-ant-xxx",
-        "default_model": "claude-sonnet-4-6", "daily_cost_cap_usd": "5.00",
-    }, format="json")
+    resp = api.post(
+        "/api/schwab/providers/",
+        {
+            "provider": "claude",
+            "api_key_write": "sk-ant-xxx",
+            "default_model": "claude-sonnet-4-6",
+            "daily_cost_cap_usd": "5.00",
+        },
+        format="json",
+    )
     assert resp.status_code == 201
     body = resp.json()
     assert "api_key" not in body

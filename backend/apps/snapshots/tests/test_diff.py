@@ -1,4 +1,5 @@
 """Snapshot diff must produce a compact, human-readable delta for AI context."""
+
 from __future__ import annotations
 
 from apps.snapshots.diff import diff_sections

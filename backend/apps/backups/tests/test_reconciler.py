@@ -13,12 +13,18 @@ def test_reconciler_marks_missing_files(tmp_path, monkeypatch) -> None:
     present = tmp_path / "present.sql.gz"
     present.write_bytes(b"x")
     BackupRecord.objects.create(
-        filename=present.name, size_bytes=1, sha256="x" * 64,
-        kind="scheduled", status="ok",
+        filename=present.name,
+        size_bytes=1,
+        sha256="x" * 64,
+        kind="scheduled",
+        status="ok",
     )
     BackupRecord.objects.create(
-        filename="gone.sql.gz", size_bytes=1, sha256="g" * 64,
-        kind="scheduled", status="ok",
+        filename="gone.sql.gz",
+        size_bytes=1,
+        sha256="g" * 64,
+        kind="scheduled",
+        status="ok",
     )
 
     reconcile_disk()

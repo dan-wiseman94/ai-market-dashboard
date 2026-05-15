@@ -18,7 +18,9 @@ def test_scope_threads_subset(tmp_path, monkeypatch) -> None:
     t2 = Thread.objects.create(kind="chat", title="Beta")
 
     job = ExportJob.objects.create(
-        scope={"threads": [t1.id]}, format="zip", status="pending",
+        scope={"threads": [t1.id]},
+        format="zip",
+        status="pending",
     )
     build_export_bundle(job.id)
     job.refresh_from_db()

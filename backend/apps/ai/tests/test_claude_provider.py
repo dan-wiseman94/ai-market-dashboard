@@ -24,6 +24,7 @@ class _FakeStream:
             for c in self._text_chunks:
                 yield MagicMock(type="text", text=c)
             yield MagicMock(type="message_stop")
+
         return gen()
 
     async def get_final_message(self):
@@ -38,9 +39,12 @@ class _FakeStream:
 @pytest.mark.asyncio
 async def test_claude_streams_text_and_usage():
     fake_client = MagicMock()
-    fake_client.messages.stream = MagicMock(return_value=_FakeStream(
-        ["Hello", " ", "world"], {"input": 100, "output": 50, "cached": 10},
-    ))
+    fake_client.messages.stream = MagicMock(
+        return_value=_FakeStream(
+            ["Hello", " ", "world"],
+            {"input": 100, "output": 50, "cached": 10},
+        )
+    )
 
     with patch("apps.ai.providers.claude.AsyncAnthropic", return_value=fake_client):
         provider = ClaudeProvider(api_key="sk-ant-test")
@@ -67,7 +71,9 @@ async def test_claude_streams_text_and_usage():
 @pytest.mark.asyncio
 async def test_claude_sends_cache_control_when_enabled():
     fake_client = MagicMock()
-    fake_client.messages.stream = MagicMock(return_value=_FakeStream(["hi"], {"input": 1, "output": 1}))
+    fake_client.messages.stream = MagicMock(
+        return_value=_FakeStream(["hi"], {"input": 1, "output": 1})
+    )
 
     with patch("apps.ai.providers.claude.AsyncAnthropic", return_value=fake_client):
         provider = ClaudeProvider(api_key="sk-ant-test")

@@ -11,9 +11,15 @@ def api():
 
 @pytest.mark.django_db
 def test_profile_crud(api):
-    resp = api.post("/api/profiles/", {
-        "name": "A", "style": "x", "default_includes": ["quotes"],
-    }, format="json")
+    resp = api.post(
+        "/api/profiles/",
+        {
+            "name": "A",
+            "style": "x",
+            "default_includes": ["quotes"],
+        },
+        format="json",
+    )
     assert resp.status_code == 201
     pid = resp.json()["id"]
 

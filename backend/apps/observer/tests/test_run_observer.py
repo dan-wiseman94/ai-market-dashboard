@@ -23,7 +23,9 @@ def test_run_observer_skips_when_disabled():
 @pytest.mark.django_db
 def test_run_observer_skips_when_market_closed():
     s = ObserverSchedule.objects.create(
-        name="x", profile=_profile(), market_hours_only=True,
+        name="x",
+        profile=_profile(),
+        market_hours_only=True,
     )
     with patch("apps.observer.services.run.is_market_open", return_value=False):
         assert run_observer(s.id) is None
@@ -34,12 +36,18 @@ def test_run_observer_skips_when_market_closed():
 def test_run_observer_writes_placeholder_when_cost_capped():
     p = _profile()
     s = ObserverSchedule.objects.create(
-        name="x", profile=p, market_hours_only=False,
+        name="x",
+        profile=p,
+        market_hours_only=False,
     )
     from apps.ai.cost import CostCapExceededError
-    with patch("apps.observer.services.run.is_market_open", return_value=True), \
-         patch("apps.observer.services.run.check_daily_cap",
-               side_effect=CostCapExceededError("cap")):
+
+    with (
+        patch("apps.observer.services.run.is_market_open", return_value=True),
+        patch(
+            "apps.observer.services.run.check_daily_cap", side_effect=CostCapExceededError("cap")
+        ),
+    ):
         assert run_observer(s.id) is None
     thread = Thread.objects.get(profile=p, kind="observer")
     placeholder = thread.messages.first()
@@ -56,22 +64,30 @@ def test_run_observer_writes_placeholder_when_cost_capped():
 def test_run_observer_happy_path_creates_snapshot_message_and_notification():
     p = _profile()
     s = ObserverSchedule.objects.create(
-        name="hourly", profile=p, market_hours_only=False,
-        objective_template="What changed?", default_includes=["quotes"],
+        name="hourly",
+        profile=p,
+        market_hours_only=False,
+        objective_template="What changed?",
+        default_includes=["quotes"],
         default_watchlist_tickers=["SPY"],
     )
     fake_snap = Snapshot.objects.create(
-        profile=p, objective="What changed?", includes=["quotes"],
-        source="observer", status="pending",
+        profile=p,
+        objective="What changed?",
+        includes=["quotes"],
+        source="observer",
+        status="pending",
     )
     fake_serialize = "## SNAPSHOT BODY"
 
-    with patch("apps.observer.services.run.is_market_open", return_value=True), \
-         patch("apps.observer.services.run.check_daily_cap"), \
-         patch("apps.observer.services.run.capture", return_value=fake_snap) as cap, \
-         patch("apps.observer.services.run.serialize_for_ai", return_value=fake_serialize), \
-         patch("apps.observer.services.run.run_ai_on_message") as run_ai, \
-         patch("apps.observer.services.run.notify") as notif:
+    with (
+        patch("apps.observer.services.run.is_market_open", return_value=True),
+        patch("apps.observer.services.run.check_daily_cap"),
+        patch("apps.observer.services.run.capture", return_value=fake_snap) as cap,
+        patch("apps.observer.services.run.serialize_for_ai", return_value=fake_serialize),
+        patch("apps.observer.services.run.run_ai_on_message") as run_ai,
+        patch("apps.observer.services.run.notify") as notif,
+    ):
         result = run_observer(s.id)
 
     assert result == fake_snap.id

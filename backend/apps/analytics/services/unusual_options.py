@@ -6,6 +6,7 @@ A line is unusual if:
 
 We return both flags + a composite score = volume_ratio + max(iv_z, 0).
 """
+
 from __future__ import annotations
 
 import statistics
@@ -20,8 +21,7 @@ _IV_Z_THRESHOLD = 1.5
 def unusual_options(*, ticker: str, at: datetime, top_n: int = 25) -> list[dict]:
     ticker = ticker.upper()
     latest = (
-        OptionChainSnapshot.objects
-        .filter(ticker=ticker, fetched_at__lte=at)
+        OptionChainSnapshot.objects.filter(ticker=ticker, fetched_at__lte=at)
         .order_by("-fetched_at")
         .first()
     )
@@ -29,13 +29,11 @@ def unusual_options(*, ticker: str, at: datetime, top_n: int = 25) -> list[dict]
         return []
 
     history = list(
-        OptionChainSnapshot.objects
-        .filter(
+        OptionChainSnapshot.objects.filter(
             ticker=ticker,
             fetched_at__gte=at - timedelta(days=30),
             fetched_at__lt=latest.fetched_at,
-        )
-        .order_by("fetched_at")
+        ).order_by("fetched_at")
     )
     iv_mean, iv_stdev = _iv_stats(history)
 
@@ -53,8 +51,11 @@ def unusual_options(*, ticker: str, at: datetime, top_n: int = 25) -> list[dict]
 
 
 def _score_line(
-    line: dict, side: str, expiry: str,
-    iv_mean: float | None, iv_stdev: float | None,
+    line: dict,
+    side: str,
+    expiry: str,
+    iv_mean: float | None,
+    iv_stdev: float | None,
 ) -> dict | None:
     volume = float(line.get("volume") or 0)
     oi = float(line.get("oi") or 0)
@@ -62,12 +63,7 @@ def _score_line(
 
     vol_ratio = volume / max(oi, 1.0)
     iv_z: float | None = None
-    if (
-        iv is not None
-        and iv_mean is not None
-        and iv_stdev is not None
-        and iv_stdev != 0
-    ):
+    if iv is not None and iv_mean is not None and iv_stdev is not None and iv_stdev != 0:
         iv_z = (iv - iv_mean) / iv_stdev
 
     triggers = []

@@ -1,4 +1,5 @@
 """Server-side chart rendering via Playwright."""
+
 from __future__ import annotations
 
 from urllib.parse import urlencode
@@ -34,7 +35,11 @@ async def _render_async(url: str) -> bytes:
 
 
 def render_chart_png(
-    ticker: str, timeframe: str, bars: int, *, snapshot_id: int | None,
+    ticker: str,
+    timeframe: str,
+    bars: int,
+    *,
+    snapshot_id: int | None,
 ) -> SnapshotImage:
     url = _build_url(ticker, timeframe, bars)
     png = async_to_sync(_render_async)(url)

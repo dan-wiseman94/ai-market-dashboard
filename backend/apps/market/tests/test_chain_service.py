@@ -19,8 +19,10 @@ def test_fetch_chain_calls_schwab_and_persists():
     fake_client = MagicMock()
     fake_client.get_option_chain.return_value = fake_resp
 
-    with patch("apps.market.services.chain.get_schwab_client", return_value=fake_client), \
-         patch("apps.market.services.chain.cache.get_or_fetch") as fake_cache:
+    with (
+        patch("apps.market.services.chain.get_schwab_client", return_value=fake_client),
+        patch("apps.market.services.chain.cache.get_or_fetch") as fake_cache,
+    ):
         fake_cache.side_effect = lambda key, *, ttl_seconds, fetcher: fetcher()
         out = fetch_chain("SPY")
 
@@ -32,8 +34,10 @@ def test_fetch_chain_calls_schwab_and_persists():
 @pytest.mark.django_db
 def test_fetch_chain_cache_hit_skips_schwab_and_persist():
     cached_payload = {"underlying_last": "100.00", "expiries": {}}
-    with patch("apps.market.services.chain.get_schwab_client") as fake_client_factory, \
-         patch("apps.market.services.chain.cache.get_or_fetch", return_value=cached_payload):
+    with (
+        patch("apps.market.services.chain.get_schwab_client") as fake_client_factory,
+        patch("apps.market.services.chain.cache.get_or_fetch", return_value=cached_payload),
+    ):
         out = fetch_chain("SPY")
 
     assert out == cached_payload

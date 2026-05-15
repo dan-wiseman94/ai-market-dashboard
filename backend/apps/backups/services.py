@@ -31,6 +31,7 @@ def acquire_lock() -> bool:
 
 def release_lock() -> None:
     from contextlib import suppress
+
     with suppress(Exception):
         _redis().delete(LOCK_KEY)
 
@@ -54,7 +55,11 @@ def perform_backup(kind: str) -> BackupRecord:
         log.warning(msg)
         return BackupRecord.objects.create(
             filename=f"skipped-{timezone.now().strftime('%Y-%m-%d-%H%M%S')}.skipped",
-            size_bytes=0, sha256="0" * 64, kind=kind, status="failed", error=msg,
+            size_bytes=0,
+            sha256="0" * 64,
+            kind=kind,
+            status="failed",
+            error=msg,
         )
 
     try:
@@ -66,9 +71,14 @@ def perform_backup(kind: str) -> BackupRecord:
 
         with path.open("wb") as fh:
             cmd = [
-                "pg_dump", "-Fc", "-Z", "6",
-                "-h", os.environ.get("PGHOST", "db"),
-                "-U", os.environ.get("PGUSER", "postgres"),
+                "pg_dump",
+                "-Fc",
+                "-Z",
+                "6",
+                "-h",
+                os.environ.get("PGHOST", "db"),
+                "-U",
+                os.environ.get("PGUSER", "postgres"),
                 os.environ.get("PGDATABASE", "postgres"),
             ]
             env = os.environ.copy()
@@ -77,12 +87,14 @@ def perform_backup(kind: str) -> BackupRecord:
             except Exception as e:
                 path.unlink(missing_ok=True)
                 rec = BackupRecord.objects.create(
-                    filename=filename, size_bytes=0, sha256="0" * 64,
-                    kind=kind, status="failed", error=str(e)[:4000],
+                    filename=filename,
+                    size_bytes=0,
+                    sha256="0" * 64,
+                    kind=kind,
+                    status="failed",
+                    error=str(e)[:4000],
                 )
-                notify(user_id=None, kind="backup",
-                       title="Backup failed",
-                       body=rec.error[:200])
+                notify(user_id=None, kind="backup", title="Backup failed", body=rec.error[:200])
                 return rec
 
         sha = _sha256_stream(path)
@@ -93,20 +105,25 @@ def perform_backup(kind: str) -> BackupRecord:
             kind=kind,
             status="ok",
         )
-        notify(user_id=None, kind="backup",
-               title=f"Backup complete: {filename}",
-               body=f"{rec.size_bytes} bytes")
+        notify(
+            user_id=None,
+            kind="backup",
+            title=f"Backup complete: {filename}",
+            body=f"{rec.size_bytes} bytes",
+        )
         rotate_scheduled()
         return rec
     except Exception:
         tb = traceback.format_exc()[:4000]
         rec = BackupRecord.objects.create(
             filename=f"error-{timezone.now().strftime('%Y-%m-%d-%H%M%S')}.err",
-            size_bytes=0, sha256="0" * 64, kind=kind, status="failed", error=tb,
+            size_bytes=0,
+            sha256="0" * 64,
+            kind=kind,
+            status="failed",
+            error=tb,
         )
-        notify(user_id=None, kind="backup",
-               title="Backup failed",
-               body=rec.error[:200])
+        notify(user_id=None, kind="backup", title="Backup failed", body=rec.error[:200])
         return rec
     finally:
         release_lock()
@@ -115,9 +132,7 @@ def perform_backup(kind: str) -> BackupRecord:
 def rotate_scheduled(*, keep: int | None = None) -> None:
     """Delete scheduled backups beyond the keep-count. Manual backups untouched."""
     keep = keep if keep is not None else int(os.environ.get("BACKUPS_KEEP_SCHEDULED", "7"))
-    recs = list(
-        BackupRecord.objects.filter(kind="scheduled", status="ok").order_by("-created_at")
-    )
+    recs = list(BackupRecord.objects.filter(kind="scheduled", status="ok").order_by("-created_at"))
     for rec in recs[keep:]:
         path = backups_dir() / rec.filename
         path.unlink(missing_ok=True)

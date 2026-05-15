@@ -19,11 +19,14 @@ def fake_redis():
 def test_position_pl_fetches_positions_once(fake_redis):
     p = TradingProfile.objects.create(name="P", style="x")
     t = EventTrigger.objects.create(
-        name="r", profile=p,
+        name="r",
+        profile=p,
         condition={"metric": "position_pl", "op": "<", "value": -500},
     )
-    with patch("apps.triggers.metrics.fetch_quotes") as fq, \
-         patch("apps.triggers.metrics.fetch_positions") as fp:
+    with (
+        patch("apps.triggers.metrics.fetch_quotes") as fq,
+        patch("apps.triggers.metrics.fetch_positions") as fp,
+    ):
         fq.return_value = {}
         fp.return_value = [
             {"ticker": "SPY", "unrealized_pl": -100.0, "mkt_value": 5000.0},
@@ -39,11 +42,14 @@ def test_position_pl_fetches_positions_once(fake_redis):
 def test_position_pl_pct_computed_from_totals(fake_redis):
     p = TradingProfile.objects.create(name="P", style="x")
     t = EventTrigger.objects.create(
-        name="r", profile=p,
+        name="r",
+        profile=p,
         condition={"metric": "position_pl_pct", "op": "<", "value": -0.05},
     )
-    with patch("apps.triggers.metrics.fetch_quotes") as fq, \
-         patch("apps.triggers.metrics.fetch_positions") as fp:
+    with (
+        patch("apps.triggers.metrics.fetch_quotes") as fq,
+        patch("apps.triggers.metrics.fetch_positions") as fp,
+    ):
         fq.return_value = {}
         fp.return_value = [
             {"ticker": "SPY", "unrealized_pl": -500.0, "mkt_value": 5000.0},
@@ -57,11 +63,14 @@ def test_position_pl_pct_computed_from_totals(fake_redis):
 def test_position_pl_pct_handles_zero_mkt_value(fake_redis):
     p = TradingProfile.objects.create(name="P", style="x")
     t = EventTrigger.objects.create(
-        name="r", profile=p,
+        name="r",
+        profile=p,
         condition={"metric": "position_pl_pct", "op": "<", "value": -0.05},
     )
-    with patch("apps.triggers.metrics.fetch_quotes") as fq, \
-         patch("apps.triggers.metrics.fetch_positions") as fp:
+    with (
+        patch("apps.triggers.metrics.fetch_quotes") as fq,
+        patch("apps.triggers.metrics.fetch_positions") as fp,
+    ):
         fq.return_value = {}
         fp.return_value = []  # no positions
         snap = build_snapshot([t])
@@ -73,11 +82,14 @@ def test_position_pl_pct_handles_zero_mkt_value(fake_redis):
 def test_positions_failure_yields_none_metric(fake_redis):
     p = TradingProfile.objects.create(name="P", style="x")
     t = EventTrigger.objects.create(
-        name="r", profile=p,
+        name="r",
+        profile=p,
         condition={"metric": "position_pl", "op": "<", "value": -500},
     )
-    with patch("apps.triggers.metrics.fetch_quotes") as fq, \
-         patch("apps.triggers.metrics.fetch_positions") as fp:
+    with (
+        patch("apps.triggers.metrics.fetch_quotes") as fq,
+        patch("apps.triggers.metrics.fetch_positions") as fp,
+    ):
         fq.return_value = {}
         fp.side_effect = RuntimeError("schwab down")
         snap = build_snapshot([t])

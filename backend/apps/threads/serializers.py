@@ -11,8 +11,16 @@ class AIRunSerializer(serializers.ModelSerializer):
     class Meta:
         model = AIRun
         fields: ClassVar = [
-            "id", "provider", "model", "input_tokens", "output_tokens", "cached_tokens",
-            "cost_usd", "latency_ms", "status", "error",
+            "id",
+            "provider",
+            "model",
+            "input_tokens",
+            "output_tokens",
+            "cached_tokens",
+            "cost_usd",
+            "latency_ms",
+            "status",
+            "error",
         ]
 
 
@@ -23,8 +31,14 @@ class MessageSerializer(serializers.ModelSerializer):
     class Meta:
         model = Message
         fields: ClassVar = [
-            "id", "role", "content", "status", "error", "created_at",
-            "ai_run", "parent_message_id",
+            "id",
+            "role",
+            "content",
+            "status",
+            "error",
+            "created_at",
+            "ai_run",
+            "parent_message_id",
         ]
 
 
@@ -40,4 +54,12 @@ class ThreadSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Thread
-        fields: ClassVar = ["id", "kind", "title", "profile", "pinned_snapshot_id", "created_at", "messages"]
+        fields: ClassVar = [
+            "id",
+            "kind",
+            "title",
+            "profile",
+            "pinned_snapshot_id",
+            "created_at",
+            "messages",
+        ]

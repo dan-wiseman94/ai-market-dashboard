@@ -4,6 +4,7 @@ Imported by config/__init__.py so @shared_task registration works.
 Task modules are explicitly listed so discovery never silently drops a module
 due to startup-ordering issues with Django's app registry.
 """
+
 import os
 
 from celery import Celery

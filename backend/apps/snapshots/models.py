@@ -1,4 +1,5 @@
 """Snapshot domain. A Snapshot is a captured market state + metadata."""
+
 from __future__ import annotations
 
 from typing import ClassVar
@@ -76,8 +77,11 @@ class SnapshotImage(models.Model):
     ]
 
     snapshot = models.ForeignKey(
-        Snapshot, on_delete=models.CASCADE, related_name="images",
-        null=True, blank=True,
+        Snapshot,
+        on_delete=models.CASCADE,
+        related_name="images",
+        null=True,
+        blank=True,
     )
     kind = models.CharField(max_length=16, choices=KIND_CHOICES)
     data = models.BinaryField()

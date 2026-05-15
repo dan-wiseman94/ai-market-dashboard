@@ -1,4 +1,5 @@
 """Claude provider — streams text, loops on tool_use, supports thinking + memory."""
+
 from __future__ import annotations
 
 import time
@@ -31,6 +32,7 @@ class ClaudeProvider:
 
     async def run(self, req: RunRequest) -> AsyncIterator[RunEvent]:
         from apps.core.mocks import is_mock_mode
+
         if is_mock_mode():
             yield TextDelta(text="Mocked ")
             yield TextDelta(text="response")
@@ -99,7 +101,9 @@ class ClaudeProvider:
                     block_id = getattr(block, "id", "")
                     block_name = getattr(block, "name", "")
                     yield ToolCallEvent(
-                        tool_use_id=block_id, name=block_name, input=tool_input,
+                        tool_use_id=block_id,
+                        name=block_name,
+                        input=tool_input,
                     )
                     t0 = time.perf_counter()
                     outcome = toolset.run(block_name, tool_input)
@@ -111,25 +115,34 @@ class ClaudeProvider:
                         error=str(outcome.get("error", "")),
                         latency_ms=latency_ms,
                     )
-                    tool_results.append({
-                        "type": "tool_result",
-                        "tool_use_id": block_id,
-                        "content": str(
-                            outcome.get("result") if outcome.get("ok")
-                            else outcome.get("error"),
-                        ),
-                        "is_error": not outcome.get("ok"),
-                    })
+                    tool_results.append(
+                        {
+                            "type": "tool_result",
+                            "tool_use_id": block_id,
+                            "content": str(
+                                outcome.get("result")
+                                if outcome.get("ok")
+                                else outcome.get("error"),
+                            ),
+                            "is_error": not outcome.get("ok"),
+                        }
+                    )
 
-                messages.append({
-                    "role": "assistant",
-                    "content": list(final.content),  # type: ignore[arg-type]
-                })
+                messages.append(
+                    {
+                        "role": "assistant",
+                        "content": list(final.content),  # type: ignore[arg-type]
+                    }
+                )
                 messages.append({"role": "user", "content": tool_results})
 
-            yield UsageEvent(usage=TokenUsage(
-                input_tokens=total_in, output_tokens=total_out, cached_tokens=total_cached,
-            ))
+            yield UsageEvent(
+                usage=TokenUsage(
+                    input_tokens=total_in,
+                    output_tokens=total_out,
+                    cached_tokens=total_cached,
+                )
+            )
             yield DoneEvent()
         except Exception as exc:
             yield ErrorEvent(message=f"{type(exc).__name__}: {exc}")
@@ -138,6 +151,7 @@ class ClaudeProvider:
 def _resolve_toolset():
     """Late import so tests can patch without importing market services."""
     from apps.ai.tools.registry import default_toolset
+
     return default_toolset()
 
 

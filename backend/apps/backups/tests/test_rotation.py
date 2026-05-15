@@ -18,8 +18,11 @@ def test_rotation_keeps_7_scheduled_and_all_manual(tmp_path, monkeypatch) -> Non
         f = tmp_path / f"sched-{i}.sql.gz"
         f.write_bytes(b"x" * 10)
         r = BackupRecord.objects.create(
-            filename=f.name, size_bytes=10, sha256="s" * 64,
-            kind="scheduled", status="ok",
+            filename=f.name,
+            size_bytes=10,
+            sha256="s" * 64,
+            kind="scheduled",
+            status="ok",
         )
         # space them out
         BackupRecord.objects.filter(pk=r.pk).update(
@@ -29,8 +32,11 @@ def test_rotation_keeps_7_scheduled_and_all_manual(tmp_path, monkeypatch) -> Non
         f = tmp_path / f"manual-{i}.sql.gz"
         f.write_bytes(b"y" * 10)
         BackupRecord.objects.create(
-            filename=f.name, size_bytes=10, sha256="m" * 64,
-            kind="manual", status="ok",
+            filename=f.name,
+            size_bytes=10,
+            sha256="m" * 64,
+            kind="manual",
+            status="ok",
         )
 
     rotate_scheduled(keep=7)

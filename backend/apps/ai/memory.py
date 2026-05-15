@@ -4,6 +4,7 @@ Layout: `<AI_MEMORY_ROOT>/<profile_id>/` — intentionally flat; the Memory
 tool itself manages files inside. We only guarantee isolation between
 profiles and existence of the directory.
 """
+
 from __future__ import annotations
 
 import os
