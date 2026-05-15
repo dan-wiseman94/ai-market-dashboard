@@ -31,6 +31,7 @@ def test_observer_thread_endpoint_idempotent(api):
 @pytest.mark.django_db
 def test_observer_thread_endpoint_includes_messages(api):
     from apps.observer.services.threads import get_or_create_observer_thread
+
     p = TradingProfile.objects.create(name="P", style="x")
     t = get_or_create_observer_thread(p)
     Message.objects.create(thread=t, role="user", content={"text": "snap1"})

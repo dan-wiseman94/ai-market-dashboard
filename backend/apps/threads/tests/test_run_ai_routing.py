@@ -14,7 +14,10 @@ from apps.threads.tasks import run_ai_on_message
 def test_uses_openai_when_profile_defaults_to_openai():
     ProviderConfig.objects.create(provider="openai", api_key="sk-oai-x")  # type: ignore[misc]
     p = TradingProfile.objects.create(
-        name="P", style="x", default_provider="openai", default_model="gpt-5-mini",
+        name="P",
+        style="x",
+        default_provider="openai",
+        default_model="gpt-5-mini",
     )
     t = Thread.objects.create(kind="chat", profile=p, title="x")
     u = Message.objects.create(thread=t, role="user", content={"text": "hi"})
@@ -44,7 +47,10 @@ def test_override_routes_to_claude():
     ProviderConfig.objects.create(provider="claude", api_key="sk-ant-x")  # type: ignore[misc]
     ProviderConfig.objects.create(provider="openai", api_key="sk-oai-x")  # type: ignore[misc]
     p = TradingProfile.objects.create(
-        name="P", style="x", default_provider="openai", default_model="gpt-5-mini",
+        name="P",
+        style="x",
+        default_provider="openai",
+        default_model="gpt-5-mini",
     )
     t = Thread.objects.create(kind="chat", profile=p, title="x")
     u = Message.objects.create(thread=t, role="user", content={"text": "hi"})
@@ -61,7 +67,8 @@ def test_override_routes_to_claude():
 
     with patch("apps.ai.providers.claude.ClaudeProvider.run", fake_run):
         result = run_ai_on_message.delay(
-            thread_id=t.id, user_message_id=u.id,
+            thread_id=t.id,
+            user_message_id=u.id,
             override={"provider": "claude", "model": "claude-opus-4-7"},
         ).get(timeout=5)
 

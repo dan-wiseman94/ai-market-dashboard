@@ -13,7 +13,9 @@ def test_snapshot_json_shape() -> None:
 
     prof = TradingProfile.objects.create(name="p", style="swing")
     snap = Snapshot.objects.create(profile=prof)
-    SnapshotSection.objects.create(snapshot=snap, kind="quotes", payload={"AAPL": 1.0}, status="done")
+    SnapshotSection.objects.create(
+        snapshot=snap, kind="quotes", payload={"AAPL": 1.0}, status="done"
+    )
     out = snapshot_to_json(snap)
     assert out["id"] == snap.id
     assert out["sections"][0]["kind"] == "quotes"
@@ -27,7 +29,9 @@ def test_snapshot_markdown_renders_sections() -> None:
 
     prof = TradingProfile.objects.create(name="p2", style="momentum")
     snap = Snapshot.objects.create(profile=prof)
-    SnapshotSection.objects.create(snapshot=snap, kind="quotes", payload={"AAPL": 1.0}, status="done")
+    SnapshotSection.objects.create(
+        snapshot=snap, kind="quotes", payload={"AAPL": 1.0}, status="done"
+    )
     md = snapshot_to_markdown(snap)
     assert "# Snapshot" in md
     assert "## quotes" in md

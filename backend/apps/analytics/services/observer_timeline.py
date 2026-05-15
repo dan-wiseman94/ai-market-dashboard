@@ -6,6 +6,7 @@ Bins Messages on observer-kind Threads per-day inside the window:
   skipped = role=system, status=done   # observer writes these on cost-cap skip
 Gaps are zero-filled so the UI can draw a clean bar chart without reshaping.
 """
+
 from __future__ import annotations
 
 from datetime import datetime, timedelta
@@ -19,12 +20,11 @@ from apps.threads.models import Message
 def observer_timeline(*, start: datetime, end: datetime) -> list[dict]:
     qs = Message.objects.filter(
         thread__kind="observer",
-        created_at__gte=start, created_at__lt=end,
+        created_at__gte=start,
+        created_at__lt=end,
     )
     rows = list(
-        qs.annotate(d=TruncDate("created_at"))
-        .values("d", "role", "status")
-        .annotate(n=Count("id"))
+        qs.annotate(d=TruncDate("created_at")).values("d", "role", "status").annotate(n=Count("id"))
     )
     by_date: dict[str, dict] = {}
     for r in rows:

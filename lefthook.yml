@@ -1,0 +1,56 @@
+# Skip checks when the relevant container isn't running. Run `make dev` first
+# if you want the hooks to actually exercise tests/lint.
+pre-commit:
+  parallel: true
+  commands:
+    ruff-check:
+      glob: "*.py"
+      run: |
+        if docker compose ps --status running --services | grep -qx web; then
+          docker compose exec -T web uv run ruff check --fix {staged_files}
+        else
+          echo "[skip] web container not running"
+        fi
+      stage_fixed: true
+    ruff-format:
+      glob: "*.py"
+      run: |
+        if docker compose ps --status running --services | grep -qx web; then
+          docker compose exec -T web uv run ruff format {staged_files}
+        else
+          echo "[skip] web container not running"
+        fi
+      stage_fixed: true
+    ty:
+      glob: "*.py"
+      run: |
+        if docker compose ps --status running --services | grep -qx web; then
+          docker compose exec -T web uv run ty check {staged_files}
+        else
+          echo "[skip] web container not running"
+        fi
+    eslint:
+      glob: "frontend/**/*.{ts,tsx}"
+      run: |
+        if docker compose ps --status running --services | grep -qx frontend; then
+          docker compose exec -T frontend pnpm exec eslint {staged_files}
+        else
+          echo "[skip] frontend container not running"
+        fi
+
+pre-push:
+  commands:
+    backend-tests:
+      run: |
+        if docker compose ps --status running --services | grep -qx web; then
+          docker compose exec -T web uv run pytest -x
+        else
+          echo "[skip] web container not running — bring up with 'make dev' to enable"
+        fi
+    frontend-tests:
+      run: |
+        if docker compose ps --status running --services | grep -qx frontend; then
+          docker compose exec -T frontend pnpm test --run
+        else
+          echo "[skip] frontend container not running — bring up with 'make dev' to enable"
+        fi

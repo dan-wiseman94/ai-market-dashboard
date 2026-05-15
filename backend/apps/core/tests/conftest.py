@@ -14,4 +14,6 @@ def _seed_spa_index() -> None:
     if target.exists():
         return
     target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text("<!doctype html><html><head><title>ai-dash</title></head><body></body></html>")
+    target.write_text(
+        "<!doctype html><html><head><title>ai-dash</title></head><body></body></html>"
+    )

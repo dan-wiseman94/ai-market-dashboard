@@ -1,4 +1,5 @@
 """Market data tables — append-only caches of what we've fetched from Schwab."""
+
 from __future__ import annotations
 
 from typing import ClassVar
@@ -104,7 +105,8 @@ class NewsItem(models.Model):
     class Meta:
         constraints: ClassVar = [
             models.UniqueConstraint(
-                fields=["provider", "external_id"], name="uniq_news_provider_id",
+                fields=["provider", "external_id"],
+                name="uniq_news_provider_id",
             ),
         ]
         indexes: ClassVar = [models.Index(fields=["ticker", "-published_at"])]

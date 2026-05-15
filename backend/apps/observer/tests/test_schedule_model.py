@@ -27,9 +27,11 @@ def test_observer_schedule_persists_with_required_fields():
 def test_observer_schedule_carries_overrides_and_includes():
     p = TradingProfile.objects.create(name="Day Trader", style="x")
     s = ObserverSchedule.objects.create(
-        name="cheap nightly summary", profile=p,
+        name="cheap nightly summary",
+        profile=p,
         objective_template="Summarize after-hours moves.",
-        override_provider="openai", override_model="gpt-5-nano",
+        override_provider="openai",
+        override_model="gpt-5-nano",
         default_includes=["quotes", "breadth"],
         default_watchlist_tickers=["SPY", "QQQ"],
     )

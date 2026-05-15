@@ -1,4 +1,5 @@
 """Provider Protocol — structural interface for Claude/OpenAI/Local."""
+
 from __future__ import annotations
 
 from collections.abc import AsyncIterator

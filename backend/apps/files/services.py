@@ -1,4 +1,5 @@
 """Anthropic Files API proxy."""
+
 from __future__ import annotations
 
 from anthropic import Anthropic

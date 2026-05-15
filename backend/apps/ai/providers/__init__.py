@@ -3,6 +3,7 @@
 Callers never `from apps.ai.providers.claude import ClaudeProvider` directly
 in the task code; they go through `get_provider(...)`.
 """
+
 from __future__ import annotations
 
 from apps.ai.providers.base import Provider

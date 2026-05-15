@@ -5,6 +5,7 @@
 3. Profile.default_provider / .default_model
 4. First enabled ProviderConfig (+ its default_model)
 """
+
 from __future__ import annotations
 
 from apps.secrets.models import ProviderConfig

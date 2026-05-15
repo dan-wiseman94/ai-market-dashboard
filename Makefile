@@ -28,38 +28,44 @@ shell: ## Bash in web container
 
 .PHONY: migrate
 migrate: ## Run Django migrations
-	$(COMPOSE) exec web python manage.py migrate
+	$(COMPOSE) exec web uv run python manage.py migrate
 
 .PHONY: makemigrations
 makemigrations: ## Create Django migrations
-	$(COMPOSE) exec web python manage.py makemigrations
+	$(COMPOSE) exec web uv run python manage.py makemigrations
 
 .PHONY: test
 test: test-backend test-frontend ## Run all tests
 
 .PHONY: test-backend
 test-backend: ## Run backend tests
-	$(COMPOSE) exec web pytest
+	$(COMPOSE) exec web uv run pytest
 
 .PHONY: test-frontend
 test-frontend: ## Run frontend tests
-	$(COMPOSE) exec frontend npm test -- --run
+	$(COMPOSE) exec frontend pnpm test --run
 
 .PHONY: test-cov
 test-cov: ## Run frontend tests with v8 coverage
-	$(COMPOSE) exec frontend npm run test:cov
+	$(COMPOSE) exec frontend pnpm run test:cov
+
+.PHONY: fmt
+fmt: ## Format backend (ruff) + frontend (prettier via eslint)
+	$(COMPOSE) exec web uv run ruff format .
+	$(COMPOSE) exec web uv run ruff check --fix .
 
 .PHONY: lint
 lint: lint-backend lint-frontend ## Lint everything
 
 .PHONY: lint-backend
-lint-backend: ## ruff + mypy
-	$(COMPOSE) exec web ruff check .
-	$(COMPOSE) exec web mypy .
+lint-backend: ## ruff + ty
+	$(COMPOSE) exec web uv run ruff check .
+	$(COMPOSE) exec web uv run ruff format --check .
+	$(COMPOSE) exec web uv run ty check .
 
 .PHONY: lint-frontend
 lint-frontend: ## eslint + tsc
-	$(COMPOSE) exec frontend npm run lint
+	$(COMPOSE) exec frontend pnpm run lint
 
 .PHONY: check
 check: lint test ## What CI runs
@@ -83,12 +89,12 @@ restore: ## Restore DB from /data/backups/<file>. Usage: make restore file=2026-
 .PHONY: e2e
 e2e: ## Run all E2E lanes sequentially
 	$(COMPOSE) -f compose.yaml -f compose.e2e.yaml up -d
-	$(COMPOSE) exec web pytest e2e/ui/ e2e/api/ e2e/ws/ e2e/visual/ e2e/a11y/ -n 4 --dist=loadscope -v
+	$(COMPOSE) exec web uv run pytest e2e/ui/ e2e/api/ e2e/ws/ e2e/visual/ e2e/a11y/ -n 4 --dist=loadscope -v
 	$(COMPOSE) -f compose.yaml -f compose.e2e.yaml down
 
 .PHONY: e2e-one
 e2e-one: ## make e2e-one t=test_compare_flow
-	$(COMPOSE) exec web pytest e2e/journeys/$(t).py -v
+	$(COMPOSE) exec web uv run pytest e2e/journeys/$(t).py -v
 
 .PHONY: e2e-up
 e2e-up: ## Bring e2e stack up with overlay, leave running
@@ -101,35 +107,35 @@ e2e-down: ## Tear down e2e stack
 .PHONY: e2e-ui
 e2e-ui: ## E2E UI lane (Playwright journeys)
 	$(COMPOSE) -f compose.yaml -f compose.e2e.yaml up -d
-	$(COMPOSE) exec web pytest e2e/ui/ -n 4 --dist=loadscope -v
+	$(COMPOSE) exec web uv run pytest e2e/ui/ -n 4 --dist=loadscope -v
 
 .PHONY: e2e-api
 e2e-api: ## E2E API lane (httpx contract)
 	$(COMPOSE) -f compose.yaml -f compose.e2e.yaml up -d
-	$(COMPOSE) exec web pytest e2e/api/ -n 4 -v
+	$(COMPOSE) exec web uv run pytest e2e/api/ -n 4 -v
 
 .PHONY: e2e-ws
 e2e-ws: ## E2E WebSocket lane
 	$(COMPOSE) -f compose.yaml -f compose.e2e.yaml up -d
-	$(COMPOSE) exec web pytest e2e/ws/ -n 2 -v
+	$(COMPOSE) exec web uv run pytest e2e/ws/ -n 2 -v
 
 .PHONY: e2e-visual
 e2e-visual: ## E2E visual regression lane
 	$(COMPOSE) -f compose.yaml -f compose.e2e.yaml up -d
-	$(COMPOSE) exec web pytest e2e/visual/ -n 2 -v
+	$(COMPOSE) exec web uv run pytest e2e/visual/ -n 2 -v
 
 .PHONY: e2e-visual-update
 e2e-visual-update: ## Regenerate visual baselines
 	$(COMPOSE) -f compose.yaml -f compose.e2e.yaml up -d
-	$(COMPOSE) exec web pytest e2e/visual/ --update-snapshots -v
+	$(COMPOSE) exec web uv run pytest e2e/visual/ --update-snapshots -v
 	@echo "Inspect diffs: git diff e2e/visual/__screenshots__/"
 
 .PHONY: e2e-a11y
 e2e-a11y: ## E2E accessibility lane
 	$(COMPOSE) -f compose.yaml -f compose.e2e.yaml up -d
-	$(COMPOSE) exec web pytest e2e/a11y/ -n 4 -v
+	$(COMPOSE) exec web uv run pytest e2e/a11y/ -n 4 -v
 
 .PHONY: e2e-perf
 e2e-perf: ## E2E performance lane (runs prod overlay)
 	$(COMPOSE) -f compose.yaml -f compose.prod.yaml up -d
-	$(COMPOSE) exec web pytest e2e/perf/ -v
+	$(COMPOSE) exec web uv run pytest e2e/perf/ -v

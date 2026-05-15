@@ -1,4 +1,5 @@
 """Encrypted per-provider credential storage."""
+
 from __future__ import annotations
 
 from decimal import Decimal
@@ -56,9 +57,14 @@ class ProviderConfig(models.Model):
     default_model = models.CharField(max_length=100, blank=True, default="")
     enabled = models.BooleanField(default=True)
     supports_vision = models.BooleanField(default=True)
-    daily_cost_cap_usd = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("10.00"))
+    daily_cost_cap_usd = models.DecimalField(
+        max_digits=10, decimal_places=2, default=Decimal("10.00")
+    )
     monthly_cost_cap_usd = models.DecimalField(
-        max_digits=10, decimal_places=2, null=True, blank=True,
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

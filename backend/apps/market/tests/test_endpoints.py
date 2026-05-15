@@ -39,7 +39,16 @@ def test_quotes_endpoint_missing_param(api):
 
 @pytest.mark.django_db
 def test_ohlc_endpoint_happy(api):
-    bars = [{"ts": "2026-01-01T00:00:00+00:00", "open": 1, "high": 2, "low": 1, "close": 2, "volume": 10}]
+    bars = [
+        {
+            "ts": "2026-01-01T00:00:00+00:00",
+            "open": 1,
+            "high": 2,
+            "low": 1,
+            "close": 2,
+            "volume": 10,
+        }
+    ]
     with patch("apps.market.views.fetch_ohlc", return_value=bars):
         r = api.get("/api/market/ohlc/?ticker=SPY&timeframe=1m&bars=60")
         assert r.status_code == 200

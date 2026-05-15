@@ -27,7 +27,10 @@ def test_trigger_firing_with_refs():
     snap = Snapshot.objects.create(profile=p, includes=[])
     thread = Thread.objects.create(kind="chat", profile=p, title="t")
     f = TriggerFiring.objects.create(
-        trigger=t, matched_values={}, snapshot=snap, thread=thread,
+        trigger=t,
+        matched_values={},
+        snapshot=snap,
+        thread=thread,
     )
     assert f.snapshot_id == snap.id
     assert f.thread_id == thread.id

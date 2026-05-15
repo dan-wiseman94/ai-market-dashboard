@@ -9,7 +9,10 @@ from apps.threads.models import Thread
 @pytest.mark.django_db
 def test_resolves_from_profile_default():
     p = TradingProfile.objects.create(
-        name="P", style="x", default_provider="openai", default_model="gpt-5-mini",
+        name="P",
+        style="x",
+        default_provider="openai",
+        default_model="gpt-5-mini",
     )
     t = Thread.objects.create(kind="chat", profile=p, title="x")
     ProviderConfig.objects.create(provider="openai", default_model="gpt-5")
@@ -21,14 +24,18 @@ def test_resolves_from_profile_default():
 @pytest.mark.django_db
 def test_override_wins_over_profile():
     p = TradingProfile.objects.create(
-        name="P", style="x", default_provider="openai", default_model="gpt-5-mini",
+        name="P",
+        style="x",
+        default_provider="openai",
+        default_model="gpt-5-mini",
     )
     t = Thread.objects.create(kind="chat", profile=p, title="x")
     ProviderConfig.objects.create(provider="claude")
     ProviderConfig.objects.create(provider="openai")
 
     resolved = resolve_provider_and_model(
-        thread=t, message=None,
+        thread=t,
+        message=None,
         override={"provider": "claude", "model": "claude-opus-4-7"},
     )
     assert resolved == ("claude", "claude-opus-4-7")

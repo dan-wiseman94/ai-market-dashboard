@@ -4,6 +4,7 @@ Builds a per-bar 'snapshot' shaped like what triggers.metrics emits at runtime,
 then runs the existing evaluator. Supports price/pct_change leaves only; other
 metrics (vix, position_pl) need a live snapshot and are skipped when replaying.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -51,16 +52,12 @@ def backtest(
     if not tickers:
         return []
 
-    bars = (
-        OHLCBar.objects
-        .filter(
-            ticker__in=tickers,
-            ts__gte=start,
-            ts__lte=end,
-            timeframe=timeframe,
-        )
-        .order_by("ts")
-    )
+    bars = OHLCBar.objects.filter(
+        ticker__in=tickers,
+        ts__gte=start,
+        ts__lte=end,
+        timeframe=timeframe,
+    ).order_by("ts")
     by_ts: dict[datetime, dict[str, OHLCBar]] = {}
     for bar in bars:
         by_ts.setdefault(bar.ts, {})[bar.ticker] = bar

@@ -37,7 +37,8 @@ class UserFileViewSet(viewsets.ModelViewSet):
             return Response({"code": "no_file"}, status=400)
         try:
             anthropic_id, size = upload_to_anthropic(
-                upload.file, filename=upload.name,
+                upload.file,
+                filename=upload.name,
                 mime=upload.content_type or "application/octet-stream",
             )
         except NoKeyError:

@@ -6,6 +6,7 @@ Usage:
 
 Stored on disk as raw Fernet ciphertext in a BYTEA column. Decrypted lazily on read.
 """
+
 from __future__ import annotations
 
 import json

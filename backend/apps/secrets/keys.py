@@ -4,6 +4,7 @@ Key = HKDF(DJANGO_SECRET_KEY, salt=file(/data/secret.salt)). The salt is a 32-by
 random file, generated on first call if missing. Losing the salt destroys all
 stored credentials — back it up alongside /data if you care.
 """
+
 from __future__ import annotations
 
 import base64

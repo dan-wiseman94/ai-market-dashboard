@@ -1,4 +1,5 @@
 """News fetching from Finnhub. One concrete impl, no abstraction (M5 scope)."""
+
 from __future__ import annotations
 
 import logging
@@ -47,7 +48,8 @@ def _upsert_items(provider: str, items: list[dict]) -> list[NewsItem]:
             continue
         published_at = datetime.fromtimestamp(it.get("datetime", 0), tz=UTC)
         obj, _ = NewsItem.objects.update_or_create(
-            provider=provider, external_id=external_id,
+            provider=provider,
+            external_id=external_id,
             defaults={
                 "ticker": (it.get("related") or "").upper(),
                 "headline": (it.get("headline") or "")[:512],
@@ -84,6 +86,7 @@ def fetch_news(
 ) -> list[dict]:
     """Fetch + dedup news for `tickers` plus market-wide. Newest-first list capped at `limit`."""
     from apps.core.mocks import is_mock_mode
+
     if is_mock_mode():
         return _canned_news_items()[:limit]
 

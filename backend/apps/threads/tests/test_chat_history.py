@@ -14,12 +14,17 @@ def test_chat_mode_passes_full_history_to_provider():
     """Multi-turn chat: the second send should include the first exchange."""
     ProviderConfig.objects.create(provider="claude", api_key="sk-ant-x")  # type: ignore[misc]
     p = TradingProfile.objects.create(
-        name="P", style="You trade.", default_provider="claude", default_model="claude-sonnet-4-6",
+        name="P",
+        style="You trade.",
+        default_provider="claude",
+        default_model="claude-sonnet-4-6",
     )
     t = Thread.objects.create(kind="chat", profile=p, title="x")
 
     Message.objects.create(thread=t, role="user", content={"text": "first question"}, status="done")
-    Message.objects.create(thread=t, role="assistant", content={"text": "first answer"}, status="done")
+    Message.objects.create(
+        thread=t, role="assistant", content={"text": "first answer"}, status="done"
+    )
 
     from apps.ai.types import DoneEvent, TextDelta
     from apps.threads.tasks import run_ai_on_message
@@ -32,7 +37,10 @@ def test_chat_mode_passes_full_history_to_provider():
         yield DoneEvent()
 
     new_user = Message.objects.create(
-        thread=t, role="user", content={"text": "follow-up?"}, status="done",
+        thread=t,
+        role="user",
+        content={"text": "follow-up?"},
+        status="done",
     )
 
     with patch("apps.ai.providers.claude.ClaudeProvider.run", fake_run):

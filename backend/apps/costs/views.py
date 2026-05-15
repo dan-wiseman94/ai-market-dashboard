@@ -16,7 +16,9 @@ def _parse_range(request: HttpRequest) -> tuple[datetime, datetime]:
     # Django's query-string parser decodes '+' as a space; restore it so that
     # timezone offsets like '+00:00' survive fromisoformat().
     end = datetime.fromisoformat(end_q.replace(" ", "+")) if end_q else now
-    start = datetime.fromisoformat(start_q.replace(" ", "+")) if start_q else (end - timedelta(days=30))
+    start = (
+        datetime.fromisoformat(start_q.replace(" ", "+")) if start_q else (end - timedelta(days=30))
+    )
     return start, end
 
 
@@ -54,26 +56,29 @@ def _dec4(v) -> str:
 @require_GET
 def costs_today(_request: HttpRequest) -> JsonResponse:
     out = services.cost_breakdown_today()
-    return JsonResponse({
-        "total_usd": str(out["total_usd"]),
-        "by_provider": [
-            {**row, "cost_usd": str(row["cost_usd"])}
-            for row in out["by_provider"]
-        ],
-    })
+    return JsonResponse(
+        {
+            "total_usd": str(out["total_usd"]),
+            "by_provider": [
+                {**row, "cost_usd": str(row["cost_usd"])} for row in out["by_provider"]
+            ],
+        }
+    )
 
 
 @require_GET
 def costs_summary(request: HttpRequest) -> JsonResponse:
     start, end = _parse_range(request)
     out = services.summary(start=start, end=end)
-    return JsonResponse({
-        "total": _dec4(out["total"]),
-        "by_provider": [{**r, "cost_usd": _dec4(r["cost_usd"])} for r in out["by_provider"]],
-        "by_model": [{**r, "cost_usd": _dec4(r["cost_usd"])} for r in out["by_model"]],
-        "by_thread": [{**r, "cost_usd": _dec4(r["cost_usd"])} for r in out["by_thread"]],
-        "daily": [{**r, "cost_usd": _dec4(r["cost_usd"])} for r in out["daily"]],
-    })
+    return JsonResponse(
+        {
+            "total": _dec4(out["total"]),
+            "by_provider": [{**r, "cost_usd": _dec4(r["cost_usd"])} for r in out["by_provider"]],
+            "by_model": [{**r, "cost_usd": _dec4(r["cost_usd"])} for r in out["by_model"]],
+            "by_thread": [{**r, "cost_usd": _dec4(r["cost_usd"])} for r in out["by_thread"]],
+            "daily": [{**r, "cost_usd": _dec4(r["cost_usd"])} for r in out["daily"]],
+        }
+    )
 
 
 @require_GET
@@ -88,10 +93,13 @@ def costs_caps(_request: HttpRequest) -> JsonResponse:
                 "pct": row["daily"]["pct"],
             },
             "monthly": (
-                {"cap": _dec(row["monthly"]["cap"]),
-                 "spent": _dec(row["monthly"]["spent"]),
-                 "pct": row["monthly"]["pct"]}
-                if row["monthly"] else None
+                {
+                    "cap": _dec(row["monthly"]["cap"]),
+                    "spent": _dec(row["monthly"]["spent"]),
+                    "pct": row["monthly"]["pct"],
+                }
+                if row["monthly"]
+                else None
             ),
         }
         for row in out

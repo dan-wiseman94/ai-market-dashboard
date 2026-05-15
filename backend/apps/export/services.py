@@ -42,6 +42,7 @@ def build_export_bundle(job_id: int) -> None:
 
             if scope.get("threads"):
                 from apps.threads.models import Thread
+
                 qs = (
                     Thread.objects.all()
                     if scope["threads"] == "all"
@@ -60,6 +61,7 @@ def build_export_bundle(job_id: int) -> None:
 
             if scope.get("snapshots"):
                 from apps.snapshots.models import Snapshot
+
                 snapshot_qs = (
                     Snapshot.objects.all()
                     if scope["snapshots"] == "all"
@@ -80,6 +82,7 @@ def build_export_bundle(job_id: int) -> None:
 
             if scope.get("observations"):
                 from apps.observer.models import ObserverSchedule
+
                 for sched in ObserverSchedule.objects.all():
                     zf.writestr(
                         f"{root}/observations/{sched.id}/runs.json",
@@ -93,6 +96,7 @@ def build_export_bundle(job_id: int) -> None:
 
             if scope.get("triggers"):
                 from apps.triggers.models import EventTrigger
+
                 for trig in EventTrigger.objects.all():
                     zf.writestr(
                         f"{root}/triggers/{trig.id}/config.json",

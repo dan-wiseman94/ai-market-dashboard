@@ -3,6 +3,7 @@
 `ToolSpec` is the declarative metadata (Anthropic passes this to the model).
 `Toolset` is a bag of specs keyed by name, with a resolver that runs them.
 """
+
 from __future__ import annotations
 
 from collections.abc import Callable

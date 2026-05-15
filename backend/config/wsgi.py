@@ -1,4 +1,5 @@
 """WSGI config — used by management commands."""
+
 import os
 
 from django.core.wsgi import get_wsgi_application

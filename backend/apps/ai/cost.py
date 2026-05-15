@@ -1,4 +1,5 @@
 """Cost math + daily cap guard."""
+
 from __future__ import annotations
 
 from datetime import UTC, datetime
@@ -43,12 +44,15 @@ def daily_spend_usd(provider: str) -> Decimal:
 
     today_start = datetime.now(tz=UTC).replace(hour=0, minute=0, second=0, microsecond=0)
     agg = AIRun.objects.filter(
-        provider=provider, created_at__gte=today_start,
+        provider=provider,
+        created_at__gte=today_start,
     ).aggregate(total=Sum("cost_usd"))
     return agg["total"] or Decimal("0")
 
 
-def check_daily_cap(provider: str, cap_usd: Decimal, prospective_cost: Decimal = Decimal("0")) -> None:
+def check_daily_cap(
+    provider: str, cap_usd: Decimal, prospective_cost: Decimal = Decimal("0")
+) -> None:
     """Raise if today's spend + the prospective cost would exceed cap."""
     spent = daily_spend_usd(provider)
     if spent + prospective_cost > cap_usd:
@@ -68,7 +72,8 @@ def monthly_spend_usd(provider: str) -> Decimal:
 
     window_start = datetime.now(tz=UTC) - timedelta(days=30)
     agg = AIRun.objects.filter(
-        provider=provider, created_at__gte=window_start,
+        provider=provider,
+        created_at__gte=window_start,
     ).aggregate(total=Sum("cost_usd"))
     return agg["total"] or Decimal("0")
 

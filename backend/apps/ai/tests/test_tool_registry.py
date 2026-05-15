@@ -1,4 +1,5 @@
 """Default registry binds the five tools to existing market services."""
+
 from __future__ import annotations
 
 from unittest.mock import patch
@@ -10,8 +11,11 @@ def test_default_toolset_registers_five_tools() -> None:
     ts = default_toolset()
     names = set(ts.specs)
     assert names == {
-        "get_quote", "fetch_ohlc", "search_news",
-        "get_option_chain", "compute_indicator",
+        "get_quote",
+        "fetch_ohlc",
+        "search_news",
+        "get_option_chain",
+        "compute_indicator",
     }
 
 
@@ -37,10 +41,15 @@ def test_compute_indicator_uses_fetch_ohlc_closes() -> None:
     ts = default_toolset()
     bars = [{"close": float(i)} for i in range(1, 21)]
     with patch("apps.ai.tools.registry.fetch_ohlc_svc", return_value=bars):
-        res = ts.run("compute_indicator", {
-            "ticker": "SPY", "indicator": "SMA",
-            "period": 5, "timeframe": "1d",
-        })
+        res = ts.run(
+            "compute_indicator",
+            {
+                "ticker": "SPY",
+                "indicator": "SMA",
+                "period": 5,
+                "timeframe": "1d",
+            },
+        )
     assert res["ok"] is True
     assert res["result"] == 18.0
 

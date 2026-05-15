@@ -1,4 +1,5 @@
 """POST /api/threads/<id>/attach-file/ creates a user Message with blocks content."""
+
 from __future__ import annotations
 
 import pytest
@@ -12,8 +13,10 @@ from apps.threads.models import Message, Thread
 @pytest.fixture
 def thread(db):
     p = TradingProfile.objects.create(
-        name="p", style="s",
-        default_provider="claude", default_model="claude-opus-4-7",
+        name="p",
+        style="s",
+        default_provider="claude",
+        default_model="claude-opus-4-7",
     )
     return Thread.objects.create(kind="consult", profile=p)
 
@@ -21,8 +24,12 @@ def thread(db):
 @pytest.fixture
 def file_row(db) -> UserFile:
     return UserFile.objects.create(
-        anthropic_id="file_abc", kind="filing", ticker="AAPL",
-        mime="application/pdf", size=123, filename="10k.pdf",
+        anthropic_id="file_abc",
+        kind="filing",
+        ticker="AAPL",
+        mime="application/pdf",
+        size=123,
+        filename="10k.pdf",
     )
 
 

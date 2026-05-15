@@ -20,7 +20,7 @@ Everything runs through Docker; Make targets wrap Compose.
 | `make shell` | Bash in the `web` container. Useful for ad-hoc `manage.py` commands. |
 | `make migrate` / `make makemigrations` | Django migrations inside `web`. |
 | `make test` | `pytest` in `web` + `vitest --run` in `frontend`. |
-| `make lint` | `ruff check .` + `mypy .` in `web` + `npm run lint` in `frontend`. |
+| `make lint` | `ruff check .` + `ruff format --check .` + `ty check .` in `web` + `pnpm run lint` in `frontend`. |
 | `make check` | `lint` + `test` (what CI runs). |
 | `make logs s=<service>` | Tail a service. Services: `web`, `worker`, `beat`, `redis`, `db`, `frontend`. |
 | `make down` | Stop and remove containers (volumes kept). |
@@ -31,7 +31,7 @@ Everything runs through Docker; Make targets wrap Compose.
 
 Run one backend test: `docker compose exec web pytest backend/apps/<app>/tests/test_<x>.py::<test_name> -v`
 
-Run one frontend test: `docker compose exec frontend npx vitest run src/__tests__/App.test.tsx -t "specific test name"`
+Run one frontend test: `docker compose exec frontend pnpm exec vitest run src/__tests__/App.test.tsx -t "specific test name"`
 
 Full fresh-rebuild (wipes volumes, catches reproducibility bugs): `docker compose down -v && docker compose build --no-cache && docker compose up -d`
 
@@ -64,11 +64,11 @@ Each is a Channels group. Groups are joined in `connect()` and left in `disconne
 
 ## Non-obvious conventions
 
-- **Everything runs in Docker.** Pyright/mypy/eslint errors about missing modules when you view files in your editor are expected — deps only exist inside the containers. Run lint via `make lint` (which shells into the containers).
+- **Everything runs in Docker.** Pyright/ty/eslint errors about missing modules when you view files in your editor are expected — deps only exist inside the containers. Run lint via `make lint` (which shells into the containers).
 - **`beat` depends on `web` health.** In `compose.yaml`, beat's `depends_on` includes `web: condition: service_healthy`. Without this, `DatabaseScheduler` races `manage.py migrate` and crashes on an empty schema. Do not remove.
-- **Makefile runs `mypy .` not `mypy backend`** because `WORKDIR` inside the `web` container is `/app/backend`. Outside the container (e.g., in CI) you run `mypy backend` from repo root — both invocations are correct for their cwd.
-- **Tool config is duplicated.** `pyproject.toml` has `[tool.ruff]` / `[tool.mypy]` / `[tool.pytest.ini_options]` AND standalone `ruff.toml` / `mypy.ini` / `pytest.ini` exist at repo root. The Dockerfile only copies `pyproject.toml`, so the container uses that; standalone files would be used by local (non-Docker) tool invocations. When editing config, update both for now until consolidation.
-- **`uv.lock` is not committed.** Each fresh Docker build re-resolves dependencies via `uv sync --no-install-project --dev`. For reproducible builds, generate and commit the lockfile (`docker compose exec web uv lock` → copy back to host).
+- **Makefile runs `ty check .` not `ty check backend`** because `WORKDIR` inside the `web` container is `/app/backend`. Outside the container (e.g., in CI) you run `ty check backend` from repo root — both invocations are correct for their cwd.
+- **All tool config lives in `pyproject.toml`.** `[tool.ruff]` / `[tool.pytest.ini_options]` are the single source of truth. Standalone `ruff.toml` / `pytest.ini` are gone — both host (uv) and container tooling read pyproject.
+- **`uv.lock` is committed.** Docker builds and CI both run `uv sync --frozen` against it for reproducible installs. Regenerate with `uv lock` on the host (or `docker compose exec web uv lock` + copy back) when dependencies change.
 - **Worker container has chromium for Playwright.** Cold builds of the worker image are ~3–5min slower because of the chromium download (~150MB binary + ~13 Debian system libs). The `web` and `beat` services use the smaller default image without chromium.
 - **Render route `/render/chart`** is deterministic — URL params fully specify the render. Used by `apps.snapshots.services.render.render_chart_png` to capture chart PNGs via headless chromium. In dev: `http://frontend:5173/render/chart?...`. In prod: hash-route on `index.html` so we can reach the SPA via Whitenoise without solving SPA-mode.
 - **Image bytes live in Postgres** (`SnapshotImage.data` BinaryField), not on disk. `serve_image` view reads via `bytes(img.data)` because Django's BinaryField returns memoryview. `DATA_UPLOAD_MAX_MEMORY_SIZE` in settings is aligned with the 5MB image cap so oversized uploads produce a clean 413 instead of bare 400 from Django's body-buffer guard.

@@ -24,7 +24,14 @@ class SnapshotSerializer(serializers.ModelSerializer):
     class Meta:
         model = Snapshot
         fields: ClassVar = [
-            "id", "profile_id", "objective", "notes", "status", "includes",
-            "source", "captured_at", "sections",
+            "id",
+            "profile_id",
+            "objective",
+            "notes",
+            "status",
+            "includes",
+            "source",
+            "captured_at",
+            "sections",
         ]
         read_only_fields: ClassVar = ["captured_at", "status"]

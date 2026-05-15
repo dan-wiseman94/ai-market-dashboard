@@ -1,4 +1,5 @@
 """Channels WebSocket URL routing."""
+
 from apps.core.consumers import PingConsumer
 from apps.observer.consumers import NotificationsConsumer
 from apps.snapshots.consumers import SnapshotConsumer
