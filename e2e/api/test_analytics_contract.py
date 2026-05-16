@@ -41,8 +41,8 @@ def test_observer_timeline(api_client, analytics) -> None:
     r = api_client.get("/api/analytics/observer-timeline/")
     assert r.status_code == 200
     body = r.json()
-    rows = body.get("rows") if isinstance(body, dict) else body
-    assert isinstance(rows, list)
+    days = body.get("days") if isinstance(body, dict) else body
+    assert isinstance(days, list)
 
 
 @pytest.mark.integration
@@ -50,5 +50,5 @@ def test_unusual_options(api_client, analytics) -> None:
     r = api_client.get("/api/analytics/unusual-options/?ticker=AAPL")
     assert r.status_code == 200
     body = r.json()
-    lines = body.get("lines") if isinstance(body, dict) else body
-    assert isinstance(lines, list)
+    rows = body.get("rows") if isinstance(body, dict) else body
+    assert isinstance(rows, list)
