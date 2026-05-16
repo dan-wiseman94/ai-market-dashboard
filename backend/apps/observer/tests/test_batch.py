@@ -1,5 +1,6 @@
 """Batch-mode observer schedules submit a Messages Batch for their watchlist
 instead of running per-ticker streaming."""
+
 from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
@@ -14,7 +15,9 @@ from apps.secrets.models import ProviderConfig
 @pytest.fixture
 def provider_cfg(db) -> ProviderConfig:
     cfg = ProviderConfig.objects.create(
-        provider="claude", enabled=True, default_model="claude-opus-4-7",
+        provider="claude",
+        enabled=True,
+        default_model="claude-opus-4-7",
     )
     cfg.api_key = "sk-test"
     cfg.save()
@@ -24,12 +27,18 @@ def provider_cfg(db) -> ProviderConfig:
 @pytest.fixture
 def batch_schedule(db, provider_cfg):
     from apps.observer.models import ObserverSchedule
+
     profile = TradingProfile.objects.create(
-        name="p", style="s", default_provider="claude",
+        name="p",
+        style="s",
+        default_provider="claude",
     )
     return ObserverSchedule.objects.create(
-        name="overnight", profile=profile, objective_template="overnight review",
-        use_batch=True, market_hours_only=False,
+        name="overnight",
+        profile=profile,
+        objective_template="overnight review",
+        use_batch=True,
+        market_hours_only=False,
         default_watchlist_tickers=["AAPL", "MSFT", "NVDA"],
     )
 

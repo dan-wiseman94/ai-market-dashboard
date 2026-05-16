@@ -1,4 +1,5 @@
 """Celery tasks for the trigger evaluator and fire path."""
+
 from __future__ import annotations
 
 import time
@@ -56,7 +57,9 @@ def evaluate_triggers() -> dict:
         except Exception as exc:
             logger.error(
                 "trigger.evaluate.failed",
-                trigger_id=trigger.id, trigger_name=trigger.name, error=str(exc),
+                trigger_id=trigger.id,
+                trigger_name=trigger.name,
+                error=str(exc),
             )
             _disable_on_bad_condition(trigger, exc)
             continue
@@ -71,7 +74,8 @@ def evaluate_triggers() -> dict:
     duration_ms = int((time.perf_counter() - t0) * 1000)
     logger.info(
         "trigger.tick",
-        triggers_evaluated=len(triggers), fires_enqueued=fires,
+        triggers_evaluated=len(triggers),
+        fires_enqueued=fires,
         duration_ms=duration_ms,
     )
     return {"evaluated": len(triggers), "fires": fires, "duration_ms": duration_ms}
@@ -82,7 +86,8 @@ def _disable_on_bad_condition(trigger: EventTrigger, exc: Exception) -> None:
     trigger.save(update_fields=["enabled", "updated_at"])
     logger.error(
         "trigger.disabled.invalid_condition",
-        trigger_id=trigger.id, error=str(exc),
+        trigger_id=trigger.id,
+        error=str(exc),
     )
 
 
@@ -104,7 +109,8 @@ def fire_trigger(trigger_id: int, matched_values: dict) -> None:
 def _do_fire(*, trigger_id: int, matched_values: dict) -> None:
     trigger = EventTrigger.objects.select_related("profile").get(id=trigger_id)
     firing = TriggerFiring.objects.create(
-        trigger=trigger, matched_values=matched_values,
+        trigger=trigger,
+        matched_values=matched_values,
     )
     trigger.last_fired_at = timezone.now()
     trigger.save(update_fields=["last_fired_at", "updated_at"])
@@ -119,10 +125,12 @@ def _do_fire(*, trigger_id: int, matched_values: dict) -> None:
     except Exception as exc:
         logger.error(
             "trigger.fire.capture_failed",
-            trigger_id=trigger.id, error=str(exc),
+            trigger_id=trigger.id,
+            error=str(exc),
         )
         notify(
-            user_id=None, kind="error",
+            user_id=None,
+            kind="error",
             title=f"{trigger.name} fired — snapshot failed",
             body=str(exc),
             link=f"/triggers/{trigger.id}",
@@ -141,48 +149,58 @@ def _do_fire(*, trigger_id: int, matched_values: dict) -> None:
     except ProviderConfig.DoesNotExist:
         logger.warning(
             "trigger.fire.no_provider_config",
-            trigger_id=trigger.id, provider=provider_name,
+            trigger_id=trigger.id,
+            provider=provider_name,
         )
         # No config → no cap enforcement; proceed to AI run.
     except CostCapExceededError as exc:
         firing.cost_capped = True
         firing.save(update_fields=["cost_capped"])
         notify(
-            user_id=None, kind="cost_limit",
+            user_id=None,
+            kind="cost_limit",
             title=f"{trigger.name} fired — AI skipped (cap hit)",
             body=f"{describe(matched_values)} · {exc}",
             link=f"/triggers/{trigger.id}",
         )
         logger.info(
             "trigger.fire.ai_skipped_cost_capped",
-            trigger_id=trigger.id, provider=provider_name,
+            trigger_id=trigger.id,
+            provider=provider_name,
         )
         return
 
     thread = Thread.objects.create(
-        kind="chat", profile=trigger.profile, pinned_snapshot=snap,
+        kind="chat",
+        profile=trigger.profile,
+        pinned_snapshot=snap,
         title=f"{trigger.name} fired at {timezone.localtime():%H:%M}",
     )
     firing.thread = thread
     firing.save(update_fields=["thread"])
 
     user_msg = Message.objects.create(
-        thread=thread, role="user",
+        thread=thread,
+        role="user",
         content={"text": serialize_for_ai(snap, provider=provider_name)},
-        snapshot_ref=snap, status="done",
+        snapshot_ref=snap,
+        status="done",
     )
     run_ai_on_message.delay(thread_id=thread.id, user_message_id=user_msg.id)
 
     notify(
-        user_id=None, kind="trigger",
+        user_id=None,
+        kind="trigger",
         title=trigger.name,
         body=describe(matched_values),
         link=f"/threads/{thread.id}",
     )
     logger.info(
         "trigger.fired",
-        trigger_id=trigger.id, trigger_name=trigger.name,
+        trigger_id=trigger.id,
+        trigger_name=trigger.name,
         profile_id=trigger.profile_id,
-        snapshot_id=snap.id, thread_id=thread.id,
+        snapshot_id=snap.id,
+        thread_id=thread.id,
         cost_capped=False,
     )

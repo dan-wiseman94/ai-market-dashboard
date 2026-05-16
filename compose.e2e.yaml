@@ -10,6 +10,8 @@ services:
       PYTHONPATH: "/app/backend:/app"
     volumes:
       - ./e2e:/app/e2e
+      - ./.github:/app/.github:ro
+      - ./Makefile:/app/Makefile:ro
 
   worker:
     environment:

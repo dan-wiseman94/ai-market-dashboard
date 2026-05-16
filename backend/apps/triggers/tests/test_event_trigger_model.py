@@ -10,7 +10,8 @@ from apps.triggers.models import EventTrigger
 def test_event_trigger_defaults():
     p = TradingProfile.objects.create(name="Default", style="x")
     t = EventTrigger.objects.create(
-        name="SPY > 550", profile=p,
+        name="SPY > 550",
+        profile=p,
         condition={"all": [{"metric": "price", "ticker": "SPY", "op": ">", "value": 550}]},
     )
     assert t.enabled is True

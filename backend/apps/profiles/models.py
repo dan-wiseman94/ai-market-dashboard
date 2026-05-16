@@ -50,7 +50,7 @@ class TradingProfile(models.Model):
     enable_tools = models.BooleanField(
         default=False,
         help_text="Expose the default Toolset (get_quote, fetch_ohlc, search_news, "
-                  "get_option_chain, compute_indicator) to Claude.",
+        "get_option_chain, compute_indicator) to Claude.",
     )
     enable_thinking = models.BooleanField(
         default=False,
@@ -63,10 +63,11 @@ class TradingProfile(models.Model):
     enable_memory = models.BooleanField(
         default=False,
         help_text="Expose the Memory tool with a per-profile namespace under "
-                  "/data/memory/<profile_id>/.",
+        "/data/memory/<profile_id>/.",
     )
     skills = models.JSONField(
-        default=list, blank=True,
+        default=list,
+        blank=True,
         help_text="List of Anthropic Skill ids to attach per run. Empty = none.",
     )
     created_at = models.DateTimeField(auto_now_add=True)

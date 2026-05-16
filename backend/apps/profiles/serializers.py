@@ -25,7 +25,14 @@ class TradingProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = TradingProfile
         fields: ClassVar = [
-            "id", "name", "style", "default_includes", "default_provider",
-            "default_model", "active", "created_at", "updated_at",
+            "id",
+            "name",
+            "style",
+            "default_includes",
+            "default_provider",
+            "default_model",
+            "active",
+            "created_at",
+            "updated_at",
         ]
         read_only_fields: ClassVar = ["created_at", "updated_at"]

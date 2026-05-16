@@ -142,6 +142,7 @@ export default function SnapshotComposerPage() {
         )}
 
         <button
+          data-testid="capture-btn"
           disabled={!profileId || createSnap.isPending || createThread.isPending}
           className="px-4 py-2 rounded bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40"
         >

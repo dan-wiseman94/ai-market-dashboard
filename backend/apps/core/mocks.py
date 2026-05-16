@@ -1,4 +1,5 @@
 """Deterministic external-API mocks (activated when MOCK_EXTERNAL=true)."""
+
 from __future__ import annotations
 
 import os

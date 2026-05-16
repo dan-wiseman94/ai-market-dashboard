@@ -1,4 +1,5 @@
 """Sync ObserverSchedule rows to django_celery_beat PeriodicTask rows."""
+
 from __future__ import annotations
 
 import json
@@ -13,8 +14,11 @@ def sync_periodic_task(schedule: ObserverSchedule, *, cron: str) -> PeriodicTask
     """Create or update the linked PeriodicTask from a 5-field cron expression."""
     minute, hour, dom, month, dow = cron.split()
     crontab, _ = CrontabSchedule.objects.get_or_create(
-        minute=minute, hour=hour, day_of_month=dom,
-        month_of_year=month, day_of_week=dow,
+        minute=minute,
+        hour=hour,
+        day_of_month=dom,
+        month_of_year=month,
+        day_of_week=dow,
         timezone=settings.OBSERVER_BEAT_TIMEZONE,
     )
     if schedule.periodic_task is None:

@@ -6,6 +6,7 @@ const TRADING: Array<[string, string, string]> = [
   ["/watchlists", "Watchlists", "WL"],
 ];
 const SYSTEM: Array<[string, string, string]> = [
+  ["/analytics", "Analytics", "AN"],
   ["/settings", "Settings", "ST"],
 ];
 

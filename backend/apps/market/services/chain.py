@@ -1,4 +1,5 @@
 """Option chain fetching, normalization, and caching."""
+
 from __future__ import annotations
 
 import hashlib

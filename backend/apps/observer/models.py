@@ -1,4 +1,5 @@
 """Observer-domain models: ObserverSchedule + Notification."""
+
 from __future__ import annotations
 
 from typing import ClassVar
@@ -19,7 +20,9 @@ class ObserverSchedule(models.Model):
 
     name = models.CharField(max_length=100)
     profile = models.ForeignKey(
-        TradingProfile, on_delete=models.CASCADE, related_name="observer_schedules",
+        TradingProfile,
+        on_delete=models.CASCADE,
+        related_name="observer_schedules",
     )
     enabled = models.BooleanField(default=True)
     market_hours_only = models.BooleanField(default=True)
@@ -29,23 +32,27 @@ class ObserverSchedule(models.Model):
     default_includes = models.JSONField(default=list)
     default_watchlist_tickers = models.JSONField(default=list)
     mode = models.CharField(
-        max_length=8, choices=MODE_CHOICES, default="full",
+        max_length=8,
+        choices=MODE_CHOICES,
+        default="full",
         help_text="diff: feed AI only the delta vs the last ready snapshot.",
     )
     structured = models.BooleanField(
         default=False,
         help_text="When True, observer runs use messages.parse with the "
-                  "ObservationReport schema instead of streaming text.",
+        "ObservationReport schema instead of streaming text.",
     )
     use_batch = models.BooleanField(
         default=False,
         help_text="When True, fires submit a Messages Batch per watchlist "
-                  "ticker instead of streaming. 50% cheaper; not interactive.",
+        "ticker instead of streaming. 50% cheaper; not interactive.",
     )
     last_batch_id = models.CharField(max_length=64, blank=True, default="")
     periodic_task = models.OneToOneField(
         "django_celery_beat.PeriodicTask",
-        null=True, blank=True, on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
         related_name="+",
     )
     last_fired_at = models.DateTimeField(null=True, blank=True)
@@ -71,8 +78,11 @@ class Notification(models.Model):
     # Nullable for v1 (no user-auth surface yet). When auth lands, backfill or
     # default to the resolved user. The FK shape keeps the model multi-user-ready.
     user = models.ForeignKey(
-        settings.AUTH_USER_MODEL, null=True, blank=True,
-        on_delete=models.CASCADE, related_name="notifications",
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="notifications",
     )
     kind = models.CharField(max_length=16, choices=KIND_CHOICES)
     title = models.CharField(max_length=200)

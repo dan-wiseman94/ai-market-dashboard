@@ -1,4 +1,5 @@
 """AI run Celery task — drives a provider chosen by the router."""
+
 from __future__ import annotations
 
 import asyncio
@@ -40,7 +41,8 @@ def _broadcast(thread_id: int, payload: dict) -> None:
     if layer is None:
         return
     async_to_sync(layer.group_send)(
-        f"thread.{thread_id}", {"type": "thread_event", "payload": payload},
+        f"thread.{thread_id}",
+        {"type": "thread_event", "payload": payload},
     )
 
 
@@ -49,7 +51,8 @@ async def _broadcast_async(thread_id: int, payload: dict) -> None:
     if layer is None:
         return
     await layer.group_send(
-        f"thread.{thread_id}", {"type": "thread_event", "payload": payload},
+        f"thread.{thread_id}",
+        {"type": "thread_event", "payload": payload},
     )
 
 
@@ -61,11 +64,9 @@ def _extract_text(m: Message) -> str:
 
 
 def _snapshot_image_ids(snapshot_id: int) -> list[int]:
-    section = (
-        SnapshotSection.objects
-        .filter(snapshot_id=snapshot_id, kind="image", status="ready")
-        .first()
-    )
+    section = SnapshotSection.objects.filter(
+        snapshot_id=snapshot_id, kind="image", status="ready"
+    ).first()
     if section is None:
         return []
     payload = section.payload or {}
@@ -73,7 +74,9 @@ def _snapshot_image_ids(snapshot_id: int) -> list[int]:
 
 
 def _message_content(
-    m: Message, *, provider_name: str,
+    m: Message,
+    *,
+    provider_name: str,
 ) -> str | list[dict]:
     """Return the ChatMessage content for a Message — string, or blocks if the
     message references a Snapshot with image sections. Images are attached to
@@ -92,13 +95,16 @@ def _message_content(
 
 
 def _build_request(
-    thread: Thread, user_msg: Message, *, provider_name: str = "claude",
+    thread: Thread,
+    user_msg: Message,
+    *,
+    provider_name: str = "claude",
 ) -> RunRequest:
     system = thread.profile.style if thread.profile else ""
     history = list(
-        Message.objects
-        .filter(thread=thread, role__in=["user", "assistant"], status="done")
-        .order_by("created_at")
+        Message.objects.filter(
+            thread=thread, role__in=["user", "assistant"], status="done"
+        ).order_by("created_at")
     )
     chat_messages: list[ChatMessage] = [
         ChatMessage(
@@ -108,10 +114,12 @@ def _build_request(
         for m in history
     ]
     if not any(m.id == user_msg.id for m in history):
-        chat_messages.append(ChatMessage(
-            role="user",
-            content=_message_content(user_msg, provider_name=provider_name),
-        ))
+        chat_messages.append(
+            ChatMessage(
+                role="user",
+                content=_message_content(user_msg, provider_name=provider_name),
+            )
+        )
     # M10: opt-in tool use / thinking / memory (Claude-only; other providers ignore).
     tools: list[dict] = []
     thinking_budget = 0
@@ -119,11 +127,13 @@ def _build_request(
     if thread.profile and provider_name == "claude":
         if getattr(thread.profile, "enable_tools", False):
             from apps.ai.tools.registry import default_toolset
+
             tools = default_toolset().anthropic_tools()
         if getattr(thread.profile, "enable_thinking", False):
             thinking_budget = int(getattr(thread.profile, "thinking_budget", 0) or 0)
         if getattr(thread.profile, "enable_memory", False):
             from apps.ai.memory import memory_dir_for_profile
+
             memory_dir = memory_dir_for_profile(profile_id=thread.profile.id)
 
     return RunRequest(
@@ -147,8 +157,12 @@ def _fail(
 ) -> Message:
     """Create a failed assistant message and broadcast a single error/cost_capped event."""
     assistant = Message.objects.create(
-        thread_id=thread_id, role="assistant", content={"text": ""}, status="failed",
-        error=error, parent_message_id=parent_message_id,
+        thread_id=thread_id,
+        role="assistant",
+        content={"text": ""},
+        status="failed",
+        error=error,
+        parent_message_id=parent_message_id,
     )
     _broadcast(thread_id, {"event": event, "message_id": assistant.id, "error": error})
     return assistant
@@ -182,49 +196,68 @@ def _build_stream_runner(
       err_container — first element set to the error string on provider error.
       tool_events  — tool_call / tool_result event dicts appended in order.
     """
+
     async def drive() -> None:
         async for evt in provider.run(req):
             if isinstance(evt, TextDelta):
                 buffer.append(evt.text)
-                await _broadcast_async(thread_id, {
-                    "event": "text_delta", "message_id": assistant_id, "text": evt.text,
-                })
+                await _broadcast_async(
+                    thread_id,
+                    {
+                        "event": "text_delta",
+                        "message_id": assistant_id,
+                        "text": evt.text,
+                    },
+                )
             elif isinstance(evt, ThinkingDeltaEvent):
-                await _broadcast_async(thread_id, {
-                    "event": "thinking_delta",
-                    "message_id": assistant_id,
-                    "text": evt.text,
-                })
+                await _broadcast_async(
+                    thread_id,
+                    {
+                        "event": "thinking_delta",
+                        "message_id": assistant_id,
+                        "text": evt.text,
+                    },
+                )
             elif isinstance(evt, ToolCallEvent):
-                tool_events.append({
-                    "kind": "call",
-                    "tool_use_id": evt.tool_use_id,
-                    "name": evt.name,
-                    "input": evt.input,
-                })
-                await _broadcast_async(thread_id, {
-                    "event": "tool_call",
-                    "message_id": assistant_id,
-                    "tool_use_id": evt.tool_use_id,
-                    "name": evt.name,
-                    "input": evt.input,
-                })
+                tool_events.append(
+                    {
+                        "kind": "call",
+                        "tool_use_id": evt.tool_use_id,
+                        "name": evt.name,
+                        "input": evt.input,
+                    }
+                )
+                await _broadcast_async(
+                    thread_id,
+                    {
+                        "event": "tool_call",
+                        "message_id": assistant_id,
+                        "tool_use_id": evt.tool_use_id,
+                        "name": evt.name,
+                        "input": evt.input,
+                    },
+                )
             elif isinstance(evt, ToolResultEvent):
-                tool_events.append({
-                    "kind": "result",
-                    "tool_use_id": evt.tool_use_id,
-                    "ok": evt.ok,
-                    "result": evt.result,
-                    "error": evt.error,
-                    "latency_ms": evt.latency_ms,
-                })
-                await _broadcast_async(thread_id, {
-                    "event": "tool_result",
-                    "message_id": assistant_id,
-                    "tool_use_id": evt.tool_use_id,
-                    "ok": evt.ok,
-                    "latency_ms": evt.latency_ms,
-                })
+                tool_events.append(
+                    {
+                        "kind": "result",
+                        "tool_use_id": evt.tool_use_id,
+                        "ok": evt.ok,
+                        "result": evt.result,
+                        "error": evt.error,
+                        "latency_ms": evt.latency_ms,
+                    }
+                )
+                await _broadcast_async(
+                    thread_id,
+                    {
+                        "event": "tool_result",
+                        "message_id": assistant_id,
+                        "tool_use_id": evt.tool_use_id,
+                        "ok": evt.ok,
+                        "latency_ms": evt.latency_ms,
+                    },
+                )
             elif isinstance(evt, UsageEvent):
                 usage_dict.update(_usage_counts(evt.usage))
             elif isinstance(evt, ErrorEvent):
@@ -257,16 +290,18 @@ def _persist_tool_calls(assistant: Message, events: list[dict]) -> None:
             output = result if isinstance(result, dict | list) else {}
         else:
             output = {"value": result}
-        to_create.append(ToolCall(
-            message=assistant,
-            tool_use_id=tuid,
-            tool_name=v.get("name", ""),
-            tool_input=v.get("input") or {},
-            tool_output=output,
-            ok=v.get("ok", True),
-            error=v.get("error", ""),
-            latency_ms=v.get("latency_ms", 0),
-        ))
+        to_create.append(
+            ToolCall(
+                message=assistant,
+                tool_use_id=tuid,
+                tool_name=v.get("name", ""),
+                tool_input=v.get("input") or {},
+                tool_output=output,
+                ok=v.get("ok", True),
+                error=v.get("error", ""),
+                latency_ms=v.get("latency_ms", 0),
+            )
+        )
     if to_create:
         ToolCall.objects.bulk_create(to_create)
 
@@ -284,7 +319,9 @@ def run_ai_on_message(
 
     try:
         provider_name, model_id = resolve_provider_and_model(
-            thread=thread, message=user_msg, override=override,
+            thread=thread,
+            message=user_msg,
+            override=override,
         )
     except ResolutionError as exc:
         _fail(thread_id=thread_id, parent_message_id=parent_message_id, error=str(exc))
@@ -294,7 +331,8 @@ def run_ai_on_message(
         cfg = ProviderConfig.objects.get(provider=provider_name)
     except ProviderConfig.DoesNotExist:
         _fail(
-            thread_id=thread_id, parent_message_id=parent_message_id,
+            thread_id=thread_id,
+            parent_message_id=parent_message_id,
             error=f"No ProviderConfig row for '{provider_name}'. Visit /settings.",
         )
         return {"ok": False, "error": "no_key"}
@@ -304,8 +342,10 @@ def run_ai_on_message(
         check_monthly_cap(provider_name, cap_usd=cfg.monthly_cost_cap_usd)
     except CostCapExceededError as exc:
         _fail(
-            thread_id=thread_id, parent_message_id=parent_message_id,
-            error=str(exc), event="cost_capped",
+            thread_id=thread_id,
+            parent_message_id=parent_message_id,
+            error=str(exc),
+            event="cost_capped",
         )
         return {"ok": False, "error": "cost_capped"}
 
@@ -313,14 +353,22 @@ def run_ai_on_message(
     req.model = model_id
 
     assistant = Message.objects.create(
-        thread=thread, role="assistant", content={"text": ""}, status="streaming",
+        thread=thread,
+        role="assistant",
+        content={"text": ""},
+        status="streaming",
         parent_message_id=parent_message_id,
     )
-    _broadcast(thread_id, {
-        "event": "message_started", "message_id": assistant.id,
-        "parent_message_id": parent_message_id,
-        "provider": provider_name, "model": model_id,
-    })
+    _broadcast(
+        thread_id,
+        {
+            "event": "message_started",
+            "message_id": assistant.id,
+            "parent_message_id": parent_message_id,
+            "provider": provider_name,
+            "model": model_id,
+        },
+    )
 
     provider = get_provider(provider_name, api_key=cfg.api_key, base_url=cfg.base_url or "")
     t0 = time.perf_counter()
@@ -330,8 +378,14 @@ def run_ai_on_message(
 
     tool_events: list[dict] = []
     drive = _build_stream_runner(
-        buffer, counts, err_container, tool_events,
-        provider, req, thread_id, assistant.id,
+        buffer,
+        counts,
+        err_container,
+        tool_events,
+        provider,
+        req,
+        thread_id,
+        assistant.id,
     )
     asyncio.run(drive())
     latency_ms = int((time.perf_counter() - t0) * 1000)
@@ -342,8 +396,12 @@ def run_ai_on_message(
         if assistant.status == "failed" and assistant.error == "cancelled":
             # Stop endpoint already marked the message; don't overwrite cancellation.
             AIRun.objects.create(
-                message=assistant, provider=provider_name, model=model_id,
-                status="failed", error="cancelled", latency_ms=latency_ms,
+                message=assistant,
+                provider=provider_name,
+                model=model_id,
+                status="failed",
+                error="cancelled",
+                latency_ms=latency_ms,
                 input_tokens=counts["input_tokens"],
                 output_tokens=counts["output_tokens"],
             )
@@ -355,8 +413,12 @@ def run_ai_on_message(
             assistant.error = err
             assistant.save()
             AIRun.objects.create(
-                message=assistant, provider=provider_name, model=model_id,
-                status="failed", error=err, latency_ms=latency_ms,
+                message=assistant,
+                provider=provider_name,
+                model=model_id,
+                status="failed",
+                error=err,
+                latency_ms=latency_ms,
             )
             _broadcast(thread_id, {"event": "error", "message_id": assistant.id, "error": err})
             return {"ok": False, "error": err}
@@ -365,22 +427,39 @@ def run_ai_on_message(
         assistant.save()
         _persist_tool_calls(assistant, tool_events)
 
-        cost = cost_usd_for(provider_name, model_id, TokenUsage(**counts)) if any(counts.values()) else Decimal("0")
-        AIRun.objects.create(
-            message=assistant, provider=provider_name, model=model_id,
-            cost_usd=cost, latency_ms=latency_ms, status="done", **counts,
+        cost = (
+            cost_usd_for(provider_name, model_id, TokenUsage(**counts))
+            if any(counts.values())
+            else Decimal("0")
         )
-        _broadcast(thread_id, {
-            "event": "message_done", "message_id": assistant.id, "cost_usd": str(cost),
-        })
-        _broadcast(thread_id, {
-            "event": "cost",
-            "message_id": assistant.id,
-            "parent_message_id": parent_message_id,
-            "cost_usd": str(cost),
-            "tokens_in": counts["input_tokens"],
-            "tokens_out": counts["output_tokens"],
-            "tokens_cached": counts["cached_tokens"],
-            "duration_ms": latency_ms,
-        })
+        AIRun.objects.create(
+            message=assistant,
+            provider=provider_name,
+            model=model_id,
+            cost_usd=cost,
+            latency_ms=latency_ms,
+            status="done",
+            **counts,
+        )
+        _broadcast(
+            thread_id,
+            {
+                "event": "message_done",
+                "message_id": assistant.id,
+                "cost_usd": str(cost),
+            },
+        )
+        _broadcast(
+            thread_id,
+            {
+                "event": "cost",
+                "message_id": assistant.id,
+                "parent_message_id": parent_message_id,
+                "cost_usd": str(cost),
+                "tokens_in": counts["input_tokens"],
+                "tokens_out": counts["output_tokens"],
+                "tokens_cached": counts["cached_tokens"],
+                "duration_ms": latency_ms,
+            },
+        )
         return {"ok": True}

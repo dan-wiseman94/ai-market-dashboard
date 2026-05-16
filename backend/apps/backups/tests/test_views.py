@@ -12,8 +12,11 @@ def seeded(db, tmp_path, monkeypatch):
     f = tmp_path / "2026-04-18-023000.sql.gz"
     f.write_bytes(b"hello world" * 10)
     return BackupRecord.objects.create(
-        filename=f.name, size_bytes=f.stat().st_size, sha256="s" * 64,
-        kind="scheduled", status="ok",
+        filename=f.name,
+        size_bytes=f.stat().st_size,
+        sha256="s" * 64,
+        kind="scheduled",
+        status="ok",
     )
 
 
@@ -28,6 +31,7 @@ def test_list(client: Client, seeded) -> None:
 
 def test_run_now(client: Client, db) -> None:
     from unittest.mock import patch
+
     with patch("apps.backups.views.run_backup") as task:
         resp = client.post("/api/backups/run/")
         assert resp.status_code in (200, 202)

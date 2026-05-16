@@ -3,6 +3,7 @@
 `ToolSpec` is the declarative metadata (Anthropic passes this to the model).
 `Toolset` is a bag of specs keyed by name, with a resolver that runs them.
 """
+
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -40,5 +41,5 @@ class Toolset:
         try:
             result = spec.fn(**tool_input)
             return {"ok": True, "result": result}
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             return {"ok": False, "error": f"{type(exc).__name__}: {exc}"}

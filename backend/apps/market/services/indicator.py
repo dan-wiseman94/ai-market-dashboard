@@ -3,6 +3,7 @@
 Signatures intentionally narrow — SMA/EMA/RSI take `list[float]` of closes;
 ATR takes `list[dict]` with high/low/close keys (matching fetch_ohlc's bar shape).
 """
+
 from __future__ import annotations
 
 

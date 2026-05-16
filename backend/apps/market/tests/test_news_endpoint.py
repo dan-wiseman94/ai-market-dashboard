@@ -12,8 +12,15 @@ def api():
 @pytest.mark.django_db
 def test_news_endpoint_returns_items(api):
     items = [
-        {"id": 1, "headline": "Hello", "summary": "", "url": "https://x", "source": "R",
-         "datetime": 1700000000, "related": "SPY"},
+        {
+            "id": 1,
+            "headline": "Hello",
+            "summary": "",
+            "url": "https://x",
+            "source": "R",
+            "datetime": 1700000000,
+            "related": "SPY",
+        },
     ]
     with patch("apps.market.views.fetch_news", return_value=items):
         resp = api.get("/api/market/news/?tickers=SPY,AAPL&lookback=24")

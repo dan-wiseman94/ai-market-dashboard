@@ -1,5 +1,6 @@
 """When run_ai_on_message receives ToolCall/ToolResult events, it must persist
 ToolCall rows on the assistant Message."""
+
 from __future__ import annotations
 
 from unittest.mock import patch
@@ -14,17 +15,25 @@ from apps.threads.models import Message, Thread, ToolCall
 @pytest.fixture
 def thread_and_message(db):
     cfg = ProviderConfig.objects.create(
-        provider="claude", enabled=True, default_model="claude-opus-4-7",
+        provider="claude",
+        enabled=True,
+        default_model="claude-opus-4-7",
     )
     cfg.api_key = "sk-test"
     cfg.save()
     profile = TradingProfile.objects.create(
-        name="p", style="s", default_provider="claude",
-        default_model="claude-opus-4-7", enable_tools=True,
+        name="p",
+        style="s",
+        default_provider="claude",
+        default_model="claude-opus-4-7",
+        enable_tools=True,
     )
     thread = Thread.objects.create(kind="consult", profile=profile)
     user_msg = Message.objects.create(
-        thread=thread, role="user", content={"text": "what's AAPL?"}, status="done",
+        thread=thread,
+        role="user",
+        content={"text": "what's AAPL?"},
+        status="done",
     )
     return thread, user_msg
 
@@ -45,8 +54,10 @@ def test_tool_call_events_persist_toolcall_rows(db, thread_and_message) -> None:
     async def fake_provider_run(self, req):
         yield ToolCallEvent(tool_use_id="tu_1", name="get_quote", input={"ticker": "AAPL"})
         yield ToolResultEvent(
-            tool_use_id="tu_1", ok=True,
-            result={"AAPL": {"last": 180.0}}, latency_ms=12,
+            tool_use_id="tu_1",
+            ok=True,
+            result={"AAPL": {"last": 180.0}},
+            latency_ms=12,
         )
         yield TextDelta(text="AAPL 180")
         yield UsageEvent(usage=TokenUsage(input_tokens=5, output_tokens=3, cached_tokens=0))

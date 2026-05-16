@@ -6,6 +6,7 @@ Flow:
 2. Celery beat polls open batches via poll_batch(); on "ended" status,
    results are pulled and written as assistant Messages on the observer thread.
 """
+
 from __future__ import annotations
 
 import logging
@@ -42,14 +43,16 @@ def submit_watchlist_batch(schedule_id: int) -> str:
                 "model": model,
                 "max_tokens": 800,
                 "system": sched.profile.style or "",
-                "messages": [{
-                    "role": "user",
-                    "content": (
-                        f"Objective: {sched.objective_template}\n"
-                        f"Ticker: {ticker}\n"
-                        f"Return a one-paragraph overnight summary."
-                    ),
-                }],
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": (
+                            f"Objective: {sched.objective_template}\n"
+                            f"Ticker: {ticker}\n"
+                            f"Return a one-paragraph overnight summary."
+                        ),
+                    }
+                ],
             },
         }
         for ticker in tickers
@@ -78,21 +81,25 @@ def poll_batch(schedule_id: int, batch_id: str) -> int:
         ticker = result.custom_id
         if result.result.type == "succeeded":
             text_parts = [
-                block.text for block in result.result.message.content
-                if getattr(block, "type", None) == "text"
-                and hasattr(block, "text")
+                block.text
+                for block in result.result.message.content
+                if getattr(block, "type", None) == "text" and hasattr(block, "text")
             ]
             text = f"[{ticker}] " + " ".join(text_parts)
             Message.objects.create(
-                thread=thread, role="assistant",
-                content={"text": text}, status="done",
+                thread=thread,
+                role="assistant",
+                content={"text": text},
+                status="done",
             )
         else:
             err = getattr(result.result, "error", None)
             msg_text = f"[{ticker}] batch failed: {getattr(err, 'message', 'unknown')}"
             Message.objects.create(
-                thread=thread, role="assistant",
-                content={"text": msg_text}, status="failed",
+                thread=thread,
+                role="assistant",
+                content={"text": msg_text},
+                status="failed",
                 error=getattr(err, "message", ""),
             )
         count += 1

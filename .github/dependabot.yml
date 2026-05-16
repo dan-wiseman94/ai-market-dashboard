@@ -1,0 +1,64 @@
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "ci(deps)"
+
+  - package-ecosystem: pip
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      django:
+        patterns:
+          - "django*"
+          - "channels*"
+          - "djangorestframework*"
+      celery:
+        patterns:
+          - "celery*"
+          - "django-celery-beat*"
+          - "redis*"
+      ai-sdks:
+        patterns:
+          - "anthropic*"
+          - "openai*"
+          - "tiktoken*"
+      dev:
+        dependency-type: development
+    ignore:
+      - dependency-name: "ty"
+
+  - package-ecosystem: npm
+    directory: "/frontend"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      react:
+        patterns:
+          - "react*"
+          - "@types/react*"
+      tooling:
+        patterns:
+          - "vite*"
+          - "vitest*"
+          - "@vitejs/*"
+          - "@vitest/*"
+          - "eslint*"
+          - "@eslint/*"
+          - "typescript*"
+          - "typescript-eslint"
+      testing:
+        patterns:
+          - "@testing-library/*"
+          - "jsdom"

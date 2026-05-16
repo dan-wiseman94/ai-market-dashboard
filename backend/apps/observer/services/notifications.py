@@ -1,4 +1,5 @@
 """Persist + broadcast Notification rows."""
+
 from __future__ import annotations
 
 from asgiref.sync import async_to_sync
@@ -8,11 +9,22 @@ from apps.observer.models import Notification
 from apps.observer.serializers import NotificationSerializer
 
 
-def notify(*, user_id: int | None, kind: str, title: str, body: str = "",
-           link: str = "", meta: dict | None = None) -> Notification:
+def notify(
+    *,
+    user_id: int | None,
+    kind: str,
+    title: str,
+    body: str = "",
+    link: str = "",
+    meta: dict | None = None,
+) -> Notification:
     n = Notification.objects.create(
-        user_id=user_id, kind=kind, title=title, body=body,
-        link=link, meta=meta or {},
+        user_id=user_id,
+        kind=kind,
+        title=title,
+        body=body,
+        link=link,
+        meta=meta or {},
     )
     # v1: no user-auth surface, all notifications go to the anonymous group.
     # When auth lands, switch to f"user.{user_id}.notifications".

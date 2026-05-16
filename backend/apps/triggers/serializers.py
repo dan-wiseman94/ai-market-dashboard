@@ -1,4 +1,5 @@
 """DRF serializers for EventTrigger + TriggerFiring."""
+
 from __future__ import annotations
 
 from typing import ClassVar
@@ -16,12 +17,23 @@ class EventTriggerSerializer(serializers.ModelSerializer):
     class Meta:
         model = EventTrigger
         fields: ClassVar = [
-            "id", "name", "profile", "condition", "cooldown_seconds",
-            "enabled", "last_fired_at", "firings_count",
-            "created_at", "updated_at",
+            "id",
+            "name",
+            "profile",
+            "condition",
+            "cooldown_seconds",
+            "enabled",
+            "last_fired_at",
+            "firings_count",
+            "created_at",
+            "updated_at",
         ]
         read_only_fields: ClassVar = [
-            "id", "last_fired_at", "created_at", "updated_at", "firings_count",
+            "id",
+            "last_fired_at",
+            "created_at",
+            "updated_at",
+            "firings_count",
         ]
 
     def validate_condition(self, value):
@@ -41,7 +53,13 @@ class TriggerFiringSerializer(serializers.ModelSerializer):
     class Meta:
         model = TriggerFiring
         fields: ClassVar = [
-            "id", "trigger_id", "trigger_name", "fired_at", "matched_values",
-            "snapshot_id", "thread_id", "cost_capped",
+            "id",
+            "trigger_id",
+            "trigger_name",
+            "fired_at",
+            "matched_values",
+            "snapshot_id",
+            "thread_id",
+            "cost_capped",
         ]
         read_only_fields: ClassVar = fields

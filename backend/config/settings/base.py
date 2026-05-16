@@ -1,10 +1,11 @@
 """Base settings — shared between dev and prod."""
+
 from pathlib import Path
 
 import environ
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent  # ai-dashboard/backend
-REPO_ROOT = BASE_DIR.parent                                # ai-dashboard
+REPO_ROOT = BASE_DIR.parent  # ai-dashboard
 
 env = environ.Env()
 environ.Env.read_env(REPO_ROOT / ".env")
@@ -14,7 +15,6 @@ DEBUG = env.bool("DJANGO_DEBUG", default=False)
 ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS", default=["localhost", "127.0.0.1"])
 
 INSTALLED_APPS = [
-    "daphne",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -36,6 +36,7 @@ INSTALLED_APPS = [
     "apps.threads",
     "apps.triggers",
     "apps.ai",
+    "apps.analytics",
     "apps.costs",
     "apps.observer",
     "apps.backups",
@@ -123,7 +124,9 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # Static / media
 STATIC_URL = "/static/"
 STATIC_ROOT = REPO_ROOT / "staticfiles"
-STATICFILES_DIRS = [REPO_ROOT / "frontend" / "dist"] if (REPO_ROOT / "frontend" / "dist").exists() else []
+STATICFILES_DIRS = (
+    [REPO_ROOT / "frontend" / "dist"] if (REPO_ROOT / "frontend" / "dist").exists() else []
+)
 
 # Raw-bytes uploads (snapshot client captures): align Django's body-buffer cap with
 # apps.snapshots.services_image.MAX_BYTES so oversized PNGs produce a structured 413
@@ -151,7 +154,9 @@ RENDER_BASE_URL = env("RENDER_BASE_URL", default="http://frontend:5173")
 # Schwab OAuth
 SCHWAB_CLIENT_ID = env("SCHWAB_CLIENT_ID", default="")
 SCHWAB_CLIENT_SECRET = env("SCHWAB_CLIENT_SECRET", default="")
-SCHWAB_CALLBACK_URL = env("SCHWAB_CALLBACK_URL", default="https://127.0.0.1:8000/api/schwab/callback")
+SCHWAB_CALLBACK_URL = env(
+    "SCHWAB_CALLBACK_URL", default="https://127.0.0.1:8000/api/schwab/callback"
+)
 SCHWAB_AUTHORIZE_URL = "https://api.schwabapi.com/v1/oauth/authorize"
 SCHWAB_TOKEN_URL = "https://api.schwabapi.com/v1/oauth/token"
 

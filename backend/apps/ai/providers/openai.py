@@ -3,6 +3,7 @@
 Also serves as the base for LocalProvider (see local.py) — the only difference
 is base_url.
 """
+
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
@@ -26,13 +27,14 @@ class OpenAIProvider:
     name = "openai"
 
     def __init__(self, api_key: str, base_url: str = "") -> None:
-        kwargs = {"api_key": api_key}
         if base_url:
-            kwargs["base_url"] = base_url
-        self._client = AsyncOpenAI(**kwargs)  # type: ignore[arg-type]
+            self._client = AsyncOpenAI(api_key=api_key, base_url=base_url)
+        else:
+            self._client = AsyncOpenAI(api_key=api_key)
 
     async def run(self, req: RunRequest) -> AsyncIterator[RunEvent]:
         from apps.core.mocks import is_mock_mode
+
         if is_mock_mode():
             yield TextDelta(text="Mocked ")
             yield TextDelta(text="response")

@@ -6,6 +6,7 @@ schwab-py handles refresh automatically for runtime clients via
 - Handling our web callback (schwab-py's built-in flows are CLI-oriented).
 - Scheduled proactive refresh via Celery.
 """
+
 from __future__ import annotations
 
 import time

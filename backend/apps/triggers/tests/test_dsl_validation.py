@@ -16,22 +16,32 @@ def test_validate_pct_change_requires_window():
 
 def test_validate_price_rejects_window():
     with pytest.raises(ValidationError) as exc:
-        validate_condition({"metric": "price", "ticker": "SPY", "op": ">", "value": 550, "window": "5m"})
+        validate_condition(
+            {"metric": "price", "ticker": "SPY", "op": ">", "value": 550, "window": "5m"}
+        )
     assert "window" in str(exc.value)
 
 
 def test_validate_all_group_ok():
-    validate_condition({"all": [
-        {"metric": "price", "ticker": "SPY", "op": ">", "value": 550},
-        {"metric": "vix", "op": ">", "value": 20},
-    ]})
+    validate_condition(
+        {
+            "all": [
+                {"metric": "price", "ticker": "SPY", "op": ">", "value": 550},
+                {"metric": "vix", "op": ">", "value": 20},
+            ]
+        }
+    )
 
 
 def test_validate_any_group_ok():
-    validate_condition({"any": [
-        {"metric": "price", "ticker": "SPY", "op": ">", "value": 550},
-        {"metric": "price", "ticker": "QQQ", "op": ">", "value": 480},
-    ]})
+    validate_condition(
+        {
+            "any": [
+                {"metric": "price", "ticker": "SPY", "op": ">", "value": 550},
+                {"metric": "price", "ticker": "QQQ", "op": ">", "value": 480},
+            ]
+        }
+    )
 
 
 def test_validate_not_wraps_one_node():
@@ -40,10 +50,14 @@ def test_validate_not_wraps_one_node():
 
 def test_validate_not_rejects_multiple():
     with pytest.raises(ValidationError):
-        validate_condition({"not": [
-            {"metric": "vix", "op": ">", "value": 30},
-            {"metric": "vix", "op": "<", "value": 10},
-        ]})
+        validate_condition(
+            {
+                "not": [
+                    {"metric": "vix", "op": ">", "value": 30},
+                    {"metric": "vix", "op": "<", "value": 10},
+                ]
+            }
+        )
 
 
 def test_validate_unknown_metric():
@@ -71,7 +85,9 @@ def test_validate_vix_ticker_optional():
 
 def test_validate_window_must_be_valid():
     with pytest.raises(ValidationError):
-        validate_condition({"metric": "pct_change", "ticker": "SPY", "op": ">", "value": 0.01, "window": "7m"})
+        validate_condition(
+            {"metric": "pct_change", "ticker": "SPY", "op": ">", "value": 0.01, "window": "7m"}
+        )
 
 
 def test_validate_value_must_be_number():
@@ -81,10 +97,14 @@ def test_validate_value_must_be_number():
 
 def test_validate_error_path_reports_location():
     with pytest.raises(ValidationError) as exc:
-        validate_condition({"all": [
-            {"metric": "price", "ticker": "SPY", "op": ">", "value": 550},
-            {"metric": "bad", "ticker": "SPY", "op": ">", "value": 1},
-        ]})
+        validate_condition(
+            {
+                "all": [
+                    {"metric": "price", "ticker": "SPY", "op": ">", "value": 550},
+                    {"metric": "bad", "ticker": "SPY", "op": ">", "value": 1},
+                ]
+            }
+        )
     assert ".all[1]" in str(exc.value)
 
 
@@ -96,9 +116,15 @@ def test_validate_empty_group_ok():
 def test_validate_rejects_typo_leaf_keys():
     """Typos like 'windoww' / 'tikcer' would silently evaluate wrong; reject early."""
     with pytest.raises(ValidationError) as exc:
-        validate_condition({
-            "metric": "price", "ticker": "SPY", "op": ">", "value": 1, "windoww": "5m",
-        })
+        validate_condition(
+            {
+                "metric": "price",
+                "ticker": "SPY",
+                "op": ">",
+                "value": 1,
+                "windoww": "5m",
+            }
+        )
     assert "windoww" in str(exc.value)
 
 

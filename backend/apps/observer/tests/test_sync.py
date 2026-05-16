@@ -18,6 +18,7 @@ def test_sync_periodic_task_creates_on_first_call():
     assert pt.crontab.minute == "0"
     assert pt.crontab.hour == "*"
     import json
+
     assert json.loads(pt.kwargs) == {"schedule_id": s.id}
 
 

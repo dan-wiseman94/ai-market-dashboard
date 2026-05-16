@@ -15,7 +15,9 @@ def test_is_market_open_returns_false_on_weekend():
     assert is_market_open() is False
 
 
-@freeze_time("2026-07-04 14:00:00")  # July 4 (US holiday — but a Saturday in 2026; observed on Friday)
+@freeze_time(
+    "2026-07-04 14:00:00"
+)  # July 4 (US holiday — but a Saturday in 2026; observed on Friday)
 def test_is_market_open_returns_false_on_holiday():
     # July 4 2026 is a Saturday — markets closed for weekend regardless of holiday observance.
     assert is_market_open() is False

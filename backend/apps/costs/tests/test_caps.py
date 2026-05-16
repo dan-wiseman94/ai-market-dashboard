@@ -14,8 +14,12 @@ def _seed(pc, cost):
     t = Thread.objects.create(kind="chat", title="t")
     m = Message.objects.create(thread=t, role="assistant", content={"text": ""}, status="done")
     AIRun.objects.create(
-        message=m, provider=pc.provider, model="m",
-        cost_usd=Decimal(str(cost)), latency_ms=1, status="done",
+        message=m,
+        provider=pc.provider,
+        model="m",
+        cost_usd=Decimal(str(cost)),
+        latency_ms=1,
+        status="done",
     )
 
 
@@ -44,7 +48,8 @@ def test_daily_pct_over_100() -> None:
 @pytest.mark.django_db
 def test_monthly_cap_populated_when_set() -> None:
     pc = ProviderConfig.objects.create(
-        provider="openai", daily_cost_cap_usd=Decimal("5.00"),
+        provider="openai",
+        daily_cost_cap_usd=Decimal("5.00"),
         monthly_cost_cap_usd=Decimal("100.00"),
     )
     _seed(pc, "25.00")

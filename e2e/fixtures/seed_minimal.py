@@ -1,4 +1,5 @@
 """Idempotent minimal seed: 1 provider config, 1 profile."""
+
 from __future__ import annotations
 
 from decimal import Decimal

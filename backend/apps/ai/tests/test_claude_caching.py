@@ -1,5 +1,6 @@
 """Claude provider must attach cache_control to the final prior turn when
 cache_last_message=True."""
+
 from __future__ import annotations
 
 from apps.ai.providers.claude import _maybe_cache_last_message

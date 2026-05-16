@@ -1,0 +1,7 @@
+{
+  "/": {"LCP": 2500, "CLS": 0.10, "TBT": 300, "performance": 0.85},
+  "/snapshot": {"LCP": 2500, "CLS": 0.10, "TBT": 400, "performance": 0.80},
+  "/threads/:id": {"LCP": 3000, "CLS": 0.10, "TBT": 400, "performance": 0.80},
+  "/costs": {"LCP": 2500, "CLS": 0.10, "TBT": 300, "performance": 0.85},
+  "/analytics": {"LCP": 3500, "CLS": 0.10, "TBT": 500, "performance": 0.75}
+}

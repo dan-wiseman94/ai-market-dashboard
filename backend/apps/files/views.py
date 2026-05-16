@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import contextlib
+
 from rest_framework import status, viewsets
 from rest_framework.parsers import MultiPartParser
 from rest_framework.request import Request
@@ -35,7 +37,8 @@ class UserFileViewSet(viewsets.ModelViewSet):
             return Response({"code": "no_file"}, status=400)
         try:
             anthropic_id, size = upload_to_anthropic(
-                upload.file, filename=upload.name,
+                upload.file,
+                filename=upload.name,
                 mime=upload.content_type or "application/octet-stream",
             )
         except NoKeyError:
@@ -52,9 +55,7 @@ class UserFileViewSet(viewsets.ModelViewSet):
 
     def destroy(self, request: Request, *args, **kwargs) -> Response:
         uf = self.get_object()
-        try:
+        with contextlib.suppress(NoKeyError):
             delete_from_anthropic(uf.anthropic_id)
-        except NoKeyError:
-            pass
         uf.delete()
         return Response(status=204)

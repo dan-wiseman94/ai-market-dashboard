@@ -24,7 +24,7 @@ export default function DailyCostChart({ data }: { data: Row[] }) {
   const peak = numeric.find((r) => r.cost === max);
 
   return (
-    <div className="ledger-surface overflow-hidden">
+    <div data-testid="cost-tile-today" className="ledger-surface overflow-hidden">
       <div className="flex items-baseline gap-6 px-5 py-3 border-b border-rule">
         <div>
           <div className="ledger-eyebrow mb-0.5">Daily spend</div>

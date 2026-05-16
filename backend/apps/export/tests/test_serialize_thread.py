@@ -13,7 +13,9 @@ from apps.threads.models import Message, Thread
 def seeded_thread(db):
     t = Thread.objects.create(kind="chat", title="Alpha")
     Message.objects.create(thread=t, role="user", content={"text": "hi"}, status="done")
-    Message.objects.create(thread=t, role="assistant", content={"text": "hello back"}, status="done")
+    Message.objects.create(
+        thread=t, role="assistant", content={"text": "hello back"}, status="done"
+    )
     return t
 
 

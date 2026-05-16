@@ -9,6 +9,7 @@ from apps.market.services.positions import fetch_positions
 @pytest.fixture(autouse=True)
 def fake_redis(monkeypatch):
     import fakeredis
+
     r = fakeredis.FakeRedis()
     monkeypatch.setattr(cache_module, "_redis", lambda: r)
     return r
@@ -21,28 +22,32 @@ def test_fetch_positions_extracts_from_account():
     hash_resp.json.return_value = [{"accountNumber": "111", "hashValue": "HASH1"}]
 
     accounts_resp = MagicMock()
-    accounts_resp.json.return_value = [{
-        "securitiesAccount": {
-            "positions": [
-                {
-                    "instrument": {"symbol": "NVDA"},
-                    "longQuantity": 100, "shortQuantity": 0,
-                    "averagePrice": 800.0,
-                    "marketValue": 85000.0,
-                    "currentDayProfitLoss": 250.0,
-                    "longOpenProfitLoss": 4950.0,
-                },
-                {
-                    "instrument": {"symbol": "SPY"},
-                    "longQuantity": 50, "shortQuantity": 0,
-                    "averagePrice": 540.0,
-                    "marketValue": 27500.0,
-                    "currentDayProfitLoss": 100.0,
-                    "longOpenProfitLoss": 500.0,
-                },
-            ]
+    accounts_resp.json.return_value = [
+        {
+            "securitiesAccount": {
+                "positions": [
+                    {
+                        "instrument": {"symbol": "NVDA"},
+                        "longQuantity": 100,
+                        "shortQuantity": 0,
+                        "averagePrice": 800.0,
+                        "marketValue": 85000.0,
+                        "currentDayProfitLoss": 250.0,
+                        "longOpenProfitLoss": 4950.0,
+                    },
+                    {
+                        "instrument": {"symbol": "SPY"},
+                        "longQuantity": 50,
+                        "shortQuantity": 0,
+                        "averagePrice": 540.0,
+                        "marketValue": 27500.0,
+                        "currentDayProfitLoss": 100.0,
+                        "longOpenProfitLoss": 500.0,
+                    },
+                ]
+            }
         }
-    }]
+    ]
 
     client = MagicMock()
     client.get_account_numbers.return_value = hash_resp

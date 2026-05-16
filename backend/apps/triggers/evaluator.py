@@ -4,6 +4,7 @@ No I/O: takes a MetricsSnapshot dict literal and returns (matched, matched_value
 matched_values records every metric key the evaluator read during this call —
 used to populate TriggerFiring.matched_values and the notification body.
 """
+
 from __future__ import annotations
 
 import operator

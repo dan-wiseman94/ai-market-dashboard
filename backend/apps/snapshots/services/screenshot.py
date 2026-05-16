@@ -1,4 +1,5 @@
 """Client-side screenshot upload + validation."""
+
 from __future__ import annotations
 
 from apps.snapshots.models import SnapshotImage
@@ -16,13 +17,17 @@ class ImageTooLargeError(ValueError):
 
 
 def attach_client_image(
-    snapshot_id: int | None, png_bytes: bytes, caption: str = "",
+    snapshot_id: int | None,
+    png_bytes: bytes,
+    caption: str = "",
 ) -> SnapshotImage:
     if not png_bytes.startswith(PNG_MAGIC):
         raise InvalidPNGError("data does not start with PNG magic bytes")
     if len(png_bytes) > MAX_BYTES:
         raise ImageTooLargeError(f"image exceeds {MAX_BYTES} bytes")
     return SnapshotImage.objects.create(
-        snapshot_id=snapshot_id, kind="client_capture",
-        data=png_bytes, caption=caption[:256],
+        snapshot_id=snapshot_id,
+        kind="client_capture",
+        data=png_bytes,
+        caption=caption[:256],
     )

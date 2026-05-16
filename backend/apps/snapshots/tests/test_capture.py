@@ -12,8 +12,12 @@ from apps.snapshots.services import capture
 def test_capture_creates_snapshot_with_sections():
     p = TradingProfile.objects.create(name="P", style="x")
 
-    with patch("apps.snapshots.services.fetch_quotes", return_value={"SPY": {"last": 550}}), \
-         patch("apps.snapshots.services.fetch_positions", return_value=[{"ticker": "SPY", "qty": 1}]):
+    with (
+        patch("apps.snapshots.services.fetch_quotes", return_value={"SPY": {"last": 550}}),
+        patch(
+            "apps.snapshots.services.fetch_positions", return_value=[{"ticker": "SPY", "qty": 1}]
+        ),
+    ):
         snap = capture(
             profile=p,
             objective="short SPY?",
@@ -35,11 +39,17 @@ def test_capture_creates_snapshot_with_sections():
 def test_capture_records_partial_failure():
     p = TradingProfile.objects.create(name="P", style="x")
 
-    with patch("apps.snapshots.services.fetch_quotes", return_value={"SPY": {"last": 550}}), \
-         patch("apps.snapshots.services.fetch_positions", side_effect=RuntimeError("schwab down")):
+    with (
+        patch("apps.snapshots.services.fetch_quotes", return_value={"SPY": {"last": 550}}),
+        patch("apps.snapshots.services.fetch_positions", side_effect=RuntimeError("schwab down")),
+    ):
         snap = capture(
-            profile=p, objective="", includes=["quotes", "positions"], notes="",
-            source="manual", watchlist_tickers=["SPY"],
+            profile=p,
+            objective="",
+            includes=["quotes", "positions"],
+            notes="",
+            source="manual",
+            watchlist_tickers=["SPY"],
         )
 
     snap.refresh_from_db()
@@ -58,8 +68,12 @@ def test_capture_fails_when_all_sections_fail():
 
     with patch("apps.snapshots.services.fetch_quotes", side_effect=RuntimeError("down")):
         snap = capture(
-            profile=p, objective="", includes=["quotes"], notes="",
-            source="manual", watchlist_tickers=["SPY"],
+            profile=p,
+            objective="",
+            includes=["quotes"],
+            notes="",
+            source="manual",
+            watchlist_tickers=["SPY"],
         )
 
     snap.refresh_from_db()

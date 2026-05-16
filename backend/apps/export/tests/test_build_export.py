@@ -57,6 +57,7 @@ def test_build_export_failure_records_status(tmp_path, monkeypatch) -> None:
     job = ExportJob.objects.create(scope={}, format="zip", status="pending")
 
     from unittest.mock import patch
+
     with patch("apps.export.services.zipfile.ZipFile", side_effect=RuntimeError("disk full")):
         build_export(job.id)
 

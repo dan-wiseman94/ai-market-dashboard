@@ -61,8 +61,12 @@ def summary(*, start: datetime, end: datetime) -> dict:
         .order_by("-cost_usd")[:10]
     )
     by_thread = [
-        {"thread_id": r["message__thread_id"], "title": r["message__thread__title"],
-         "cost_usd": r["cost_usd"], "runs": r["runs"]}
+        {
+            "thread_id": r["message__thread_id"],
+            "title": r["message__thread__title"],
+            "cost_usd": r["cost_usd"],
+            "runs": r["runs"],
+        }
         for r in by_thread
     ]
 
@@ -75,8 +79,13 @@ def summary(*, start: datetime, end: datetime) -> dict:
     daily = _fill_daily_gaps(daily_rows, start.date(), end.date())
 
     total = sum((row["cost_usd"] for row in by_provider), Decimal("0"))
-    return {"total": total, "by_provider": by_provider, "by_model": by_model,
-            "by_thread": by_thread, "daily": daily}
+    return {
+        "total": total,
+        "by_provider": by_provider,
+        "by_model": by_model,
+        "by_thread": by_thread,
+        "daily": daily,
+    }
 
 
 def _fill_daily_gaps(rows: list[dict], start: date, end: date) -> list[dict]:
@@ -85,11 +94,13 @@ def _fill_daily_gaps(rows: list[dict], start: date, end: date) -> list[dict]:
     cur = start
     while cur <= end:
         r = by_date.get(cur)
-        out.append({
-            "date": cur.isoformat(),
-            "cost_usd": (r["cost_usd"] if r else Decimal("0")) or Decimal("0"),
-            "runs": r["runs"] if r else 0,
-        })
+        out.append(
+            {
+                "date": cur.isoformat(),
+                "cost_usd": (r["cost_usd"] if r else Decimal("0")) or Decimal("0"),
+                "runs": r["runs"] if r else 0,
+            }
+        )
         cur += timedelta(days=1)
     return out
 
@@ -107,13 +118,15 @@ def _aggregate_by(field: str, *, start: datetime, end: datetime | None) -> list[
             "cached_tokens": row["cached_tokens"] or 0,
             "runs": row["runs"],
         }
-        for row in qs.values(field).annotate(
+        for row in qs.values(field)
+        .annotate(
             cost_usd=Sum("cost_usd"),
             input_tokens=Sum("input_tokens"),
             output_tokens=Sum("output_tokens"),
             cached_tokens=Sum("cached_tokens"),
             runs=Count("id"),
-        ).order_by(field)
+        )
+        .order_by(field)
     ]
 
 
@@ -131,21 +144,29 @@ def caps() -> list[dict]:
 
     out: list[dict] = []
     for pc in ProviderConfig.objects.all():
-        day_spent = (AIRun.objects.filter(
-            provider=pc.provider, created_at__gte=day_start,
-        ).aggregate(s=Sum("cost_usd"))["s"]) or Decimal("0")
+        day_spent = (
+            AIRun.objects.filter(
+                provider=pc.provider,
+                created_at__gte=day_start,
+            ).aggregate(s=Sum("cost_usd"))["s"]
+        ) or Decimal("0")
 
         daily = {
             "cap": pc.daily_cost_cap_usd,
             "spent": day_spent,
-            "pct": min(1.0, float(day_spent / pc.daily_cost_cap_usd)) if pc.daily_cost_cap_usd else 0.0,
+            "pct": min(1.0, float(day_spent / pc.daily_cost_cap_usd))
+            if pc.daily_cost_cap_usd
+            else 0.0,
         }
 
         monthly = None
         if pc.monthly_cost_cap_usd is not None:
-            month_spent = (AIRun.objects.filter(
-                provider=pc.provider, created_at__gte=month_window_start,
-            ).aggregate(s=Sum("cost_usd"))["s"]) or Decimal("0")
+            month_spent = (
+                AIRun.objects.filter(
+                    provider=pc.provider,
+                    created_at__gte=month_window_start,
+                ).aggregate(s=Sum("cost_usd"))["s"]
+            ) or Decimal("0")
             monthly = {
                 "cap": pc.monthly_cost_cap_usd,
                 "spent": month_spent,
@@ -172,27 +193,40 @@ def snapshot_breakdown(snapshot_id: int) -> list[dict]:
     # Find the single AIRun that consumed this snapshot (pinned_snapshot_id on Thread).
     ai_run = (
         AIRun.objects.filter(message__thread__pinned_snapshot_id=snapshot_id, status="done")
-        .order_by("-created_at").first()
+        .order_by("-created_at")
+        .first()
     )
     total_cost = ai_run.cost_usd if ai_run else Decimal("0")
 
     out: list[dict] = []
     for sec in sections:
-        share = (Decimal(sec.payload_tokens) / Decimal(total_tokens)) if total_tokens else Decimal("0")
+        share = (
+            (Decimal(sec.payload_tokens) / Decimal(total_tokens)) if total_tokens else Decimal("0")
+        )
         cost_share = (total_cost * share).quantize(Decimal("0.0001"))
-        out.append({
-            "section": sec.kind,
-            "payload_tokens": sec.payload_tokens,
-            "cost_share_usd": cost_share,
-        })
+        out.append(
+            {
+                "section": sec.kind,
+                "payload_tokens": sec.payload_tokens,
+                "cost_share_usd": cost_share,
+            }
+        )
     return out
 
 
 def csv_rows(*, start: datetime, end: datetime) -> Iterator[list[str]]:
     """Yield header + one row per AIRun, for StreamingHttpResponse."""
     yield [
-        "created_at", "provider", "model", "thread_id", "snapshot_id",
-        "tokens_in", "tokens_out", "tokens_cached", "cost_usd", "duration_ms",
+        "created_at",
+        "provider",
+        "model",
+        "thread_id",
+        "snapshot_id",
+        "tokens_in",
+        "tokens_out",
+        "tokens_cached",
+        "cost_usd",
+        "duration_ms",
     ]
     qs = (
         AIRun.objects.filter(created_at__gte=start, created_at__lt=end)

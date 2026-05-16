@@ -1,4 +1,5 @@
 """Market data read endpoints."""
+
 from __future__ import annotations
 
 from django.http import HttpRequest, JsonResponse
@@ -19,11 +20,13 @@ def _err(code: str, message: str, status: int) -> JsonResponse:
 
 def _wrap_schwab(fn):
     """Decorator: catch SchwabNotConnectedError and return 503."""
+
     def inner(request: HttpRequest, *args, **kwargs):
         try:
             return fn(request, *args, **kwargs)
         except SchwabNotConnectedError as e:
             return _err("schwab_not_connected", str(e), 503)
+
     return inner
 
 

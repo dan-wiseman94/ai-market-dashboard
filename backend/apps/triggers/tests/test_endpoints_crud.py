@@ -25,11 +25,17 @@ def test_list_triggers(api):
 @pytest.mark.django_db
 def test_create_trigger_validates_dsl(api):
     p = TradingProfile.objects.create(name="P", style="x")
-    resp = api.post("/api/triggers/", {
-        "name": "bad", "profile": p.id,
-        "condition": {"metric": "nope", "op": ">", "value": 1},
-        "cooldown_seconds": 300, "enabled": True,
-    }, format="json")
+    resp = api.post(
+        "/api/triggers/",
+        {
+            "name": "bad",
+            "profile": p.id,
+            "condition": {"metric": "nope", "op": ">", "value": 1},
+            "cooldown_seconds": 300,
+            "enabled": True,
+        },
+        format="json",
+    )
     assert resp.status_code == 400
     assert "condition" in resp.json()
 
@@ -37,11 +43,17 @@ def test_create_trigger_validates_dsl(api):
 @pytest.mark.django_db
 def test_create_trigger_ok(api):
     p = TradingProfile.objects.create(name="P", style="x")
-    resp = api.post("/api/triggers/", {
-        "name": "SPY", "profile": p.id,
-        "condition": {"metric": "price", "ticker": "SPY", "op": ">", "value": 550},
-        "cooldown_seconds": 1800, "enabled": True,
-    }, format="json")
+    resp = api.post(
+        "/api/triggers/",
+        {
+            "name": "SPY",
+            "profile": p.id,
+            "condition": {"metric": "price", "ticker": "SPY", "op": ">", "value": 550},
+            "cooldown_seconds": 1800,
+            "enabled": True,
+        },
+        format="json",
+    )
     assert resp.status_code == 201
     assert EventTrigger.objects.filter(name="SPY").exists()
 
@@ -61,6 +73,7 @@ def test_delete_cascades_firings(api):
     p = TradingProfile.objects.create(name="P", style="x")
     t = EventTrigger.objects.create(name="r", profile=p, condition={"all": []})
     from apps.triggers.models import TriggerFiring
+
     TriggerFiring.objects.create(trigger=t, matched_values={})
     resp = api.delete(f"/api/triggers/{t.id}/")
     assert resp.status_code == 204

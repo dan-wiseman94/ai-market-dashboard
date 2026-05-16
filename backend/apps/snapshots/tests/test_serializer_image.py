@@ -11,8 +11,12 @@ PNG = b"\x89PNG\r\n\x1a\n" + b"\x00" * 50
 def two_images(db):
     profile = TradingProfile.objects.create(name="P", style="x")
     snap = Snapshot.objects.create(profile=profile, includes=["image"])
-    a = SnapshotImage.objects.create(snapshot=snap, kind="server_render", data=PNG, caption="SPY 5m, 60 bars")
-    b = SnapshotImage.objects.create(snapshot=snap, kind="client_capture", data=PNG, caption="TSLA 1h")
+    a = SnapshotImage.objects.create(
+        snapshot=snap, kind="server_render", data=PNG, caption="SPY 5m, 60 bars"
+    )
+    b = SnapshotImage.objects.create(
+        snapshot=snap, kind="client_capture", data=PNG, caption="TSLA 1h"
+    )
     return [a.id, b.id]
 
 

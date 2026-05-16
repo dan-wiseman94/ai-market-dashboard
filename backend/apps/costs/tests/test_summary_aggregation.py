@@ -11,11 +11,19 @@ from apps.threads.models import AIRun, Message, Thread
 
 
 def _seed_run(thread, provider, model, cost, day_offset=0):
-    msg = Message.objects.create(thread=thread, role="assistant", content={"text": ""}, status="done")
+    msg = Message.objects.create(
+        thread=thread, role="assistant", content={"text": ""}, status="done"
+    )
     run = AIRun.objects.create(
-        message=msg, provider=provider, model=model,
-        cost_usd=Decimal(str(cost)), input_tokens=100, output_tokens=10, cached_tokens=50,
-        latency_ms=100, status="done",
+        message=msg,
+        provider=provider,
+        model=model,
+        cost_usd=Decimal(str(cost)),
+        input_tokens=100,
+        output_tokens=10,
+        cached_tokens=50,
+        latency_ms=100,
+        status="done",
     )
     if day_offset:
         AIRun.objects.filter(pk=run.pk).update(

@@ -1,4 +1,5 @@
 """Account positions service."""
+
 from __future__ import annotations
 
 from apps.market import cache
@@ -21,12 +22,14 @@ def _fetch_from_schwab() -> list[dict]:
     out: list[dict] = []
     for acct_blob in accounts_resp.json():
         for p in acct_blob.get("securitiesAccount", {}).get("positions", []):
-            out.append({
-                "ticker": p.get("instrument", {}).get("symbol", ""),
-                "qty": p.get("longQuantity", 0) - p.get("shortQuantity", 0),
-                "avg_cost": p.get("averagePrice"),
-                "mkt_value": p.get("marketValue"),
-                "unrealized_pl": p.get("longOpenProfitLoss") or p.get("shortOpenProfitLoss"),
-                "day_pl": p.get("currentDayProfitLoss"),
-            })
+            out.append(
+                {
+                    "ticker": p.get("instrument", {}).get("symbol", ""),
+                    "qty": p.get("longQuantity", 0) - p.get("shortQuantity", 0),
+                    "avg_cost": p.get("averagePrice"),
+                    "mkt_value": p.get("marketValue"),
+                    "unrealized_pl": p.get("longOpenProfitLoss") or p.get("shortOpenProfitLoss"),
+                    "day_pl": p.get("currentDayProfitLoss"),
+                }
+            )
     return out

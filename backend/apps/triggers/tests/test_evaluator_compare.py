@@ -11,18 +11,21 @@ METRICS = {
 }
 
 
-@pytest.mark.parametrize("op,value,expected", [
-    (">", 550, True),
-    (">=", 551.2, True),
-    ("<", 600, True),
-    ("<=", 551.2, True),
-    ("==", 551.2, True),
-    (">", 551.2, False),
-    (">=", 551.3, False),
-    ("<", 551.2, False),
-    ("<=", 551.19, False),
-    ("==", 551.19, False),
-])
+@pytest.mark.parametrize(
+    "op,value,expected",
+    [
+        (">", 550, True),
+        (">=", 551.2, True),
+        ("<", 600, True),
+        ("<=", 551.2, True),
+        ("==", 551.2, True),
+        (">", 551.2, False),
+        (">=", 551.3, False),
+        ("<", 551.2, False),
+        ("<=", 551.19, False),
+        ("==", 551.19, False),
+    ],
+)
 def test_price_comparison_ops(op, value, expected):
     node = {"metric": "price", "ticker": "SPY", "op": op, "value": value}
     matched, values = evaluate(node, METRICS)
