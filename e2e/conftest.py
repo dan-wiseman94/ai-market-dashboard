@@ -86,6 +86,30 @@ def seed_minimal_fixture() -> None:
     seed_minimal()
 
 
+@pytest.fixture(autouse=True)
+def _unblock_live_db_for_e2e(request, django_db_blocker):
+    """Bypass pytest-django's safety net for tests in e2e/ that write to the live DB.
+
+    The api/, ui/, ws/, visual/, a11y/, perf/ lanes seed data via Django ORM but the
+    running web container reads from the same live Postgres — they must share a
+    database. pytest-django would normally redirect ORM calls to a per-process test
+    DB or block them outright; we explicitly unblock here so seeds land where the
+    server reads them.
+
+    Tests under e2e/tests/ that DO use @pytest.mark.django_db (the seed-ladder
+    unit-ish tests) are unaffected — pytest-django re-blocks for those.
+    """
+    test_path = str(request.node.fspath)
+    is_e2e_lane = any(
+        f"/e2e/{lane}/" in test_path for lane in ("api", "ui", "ws", "visual", "a11y", "perf")
+    )
+    if not is_e2e_lane:
+        yield
+        return
+    with django_db_blocker.unblock():
+        yield
+
+
 @pytest.fixture(scope="session")
 def api_base_url() -> str:
     return E2E_BASE_URL

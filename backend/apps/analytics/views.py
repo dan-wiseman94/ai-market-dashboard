@@ -42,3 +42,52 @@ class LeaderboardView(APIView):
                 "rows": rows,
             }
         )
+
+
+class CostPerInsightView(APIView):
+    def get(self, request: Request) -> Response:
+        from apps.analytics.services.cpi import cost_per_insight
+
+        start, end = _parse_range(request, default_days=30)
+        return Response(
+            {
+                "start": start.isoformat(),
+                "end": end.isoformat(),
+                **cost_per_insight(start=start, end=end),
+            }
+        )
+
+
+class TriggerHeatmapView(APIView):
+    def get(self, request: Request) -> Response:
+        from apps.analytics.services.trigger_heatmap import trigger_heatmap
+
+        start, end = _parse_range(request, default_days=30)
+        cells = trigger_heatmap(start=start, end=end)
+        return Response({"start": start.isoformat(), "end": end.isoformat(), "cells": cells})
+
+
+class ObserverTimelineView(APIView):
+    def get(self, request: Request) -> Response:
+        from apps.analytics.services.observer_timeline import observer_timeline
+
+        start, end = _parse_range(request, default_days=30)
+        rows = observer_timeline(start=start, end=end)
+        return Response({"start": start.isoformat(), "end": end.isoformat(), "rows": rows})
+
+
+class UnusualOptionsView(APIView):
+    def get(self, request: Request) -> Response:
+        from apps.analytics.services.unusual_options import unusual_options
+
+        ticker = (request.query_params.get("ticker") or "").upper()
+        if not ticker:
+            return Response({"ticker": "", "lines": []})
+        try:
+            top_n = max(1, min(100, int(request.query_params.get("top_n", "25"))))
+        except ValueError:
+            top_n = 25
+
+        _, end = _parse_range(request, default_days=1)
+        lines = unusual_options(ticker=ticker, at=end, top_n=top_n)
+        return Response({"ticker": ticker, "at": end.isoformat(), "lines": lines})
