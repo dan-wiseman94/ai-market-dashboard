@@ -34,6 +34,7 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "axe-playwright-python" },
     { name = "fakeredis" },
     { name = "freezegun" },
     { name = "pytest" },
@@ -41,6 +42,7 @@ dev = [
     { name = "pytest-cov" },
     { name = "pytest-django" },
     { name = "pytest-playwright" },
+    { name = "pytest-xdist" },
     { name = "pyyaml" },
     { name = "ruff" },
     { name = "ty" },
@@ -76,6 +78,7 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "axe-playwright-python", specifier = ">=0.1.7" },
     { name = "fakeredis", specifier = ">=2.24,<3.0" },
     { name = "freezegun", specifier = ">=1.5,<2.0" },
     { name = "pytest", specifier = ">=8.3,<9.0" },
@@ -83,6 +86,7 @@ dev = [
     { name = "pytest-cov", specifier = ">=5.0,<6.0" },
     { name = "pytest-django", specifier = ">=4.9,<5.0" },
     { name = "pytest-playwright", specifier = ">=0.7.2" },
+    { name = "pytest-xdist", specifier = ">=3.8.0" },
     { name = "pyyaml", specifier = ">=6.0,<7.0" },
     { name = "ruff", specifier = ">=0.7,<1.0" },
     { name = "ty", specifier = ">=0.0.1a0" },
@@ -211,6 +215,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/50/d8/30873d2b7b57dee9263e53d142da044c4600a46f2d28374b3e38b023df16/autopep8-2.3.2.tar.gz", hash = "sha256:89440a4f969197b69a995e4ce0661b031f455a9f776d2c5ba3dbd83466931758", size = 92210 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/9e/43/53afb8ba17218f19b77c7834128566c5bbb100a0ad9ba2e8e89d089d7079/autopep8-2.3.2-py2.py3-none-any.whl", hash = "sha256:ce8ad498672c845a0c3de2629c15b635ec2b05ef8177a6e7c91c74f3e9b51128", size = 45807 },
+]
+
+[[package]]
+name = "axe-playwright-python"
+version = "0.1.7"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "playwright" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/74/90/684e8ae7e7563318d197f1bfbacd561a19716e6cdb6420e7e97ef49d427c/axe_playwright_python-0.1.7.tar.gz", hash = "sha256:f0f3d59061abbaee9990d0309f855210ec8fd6ca5bf076f39210289ac0961258", size = 189815 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/02/b0/6460c11d515cb09d90993e948c730a3d4b6673cc5cd99663179bbc48a758/axe_playwright_python-0.1.7-py3-none-any.whl", hash = "sha256:8699e904466cc2206fa2fa414b4d59aab68e34ba8449c6d082896ca1950440e2", size = 156509 },
 ]
 
 [[package]]
@@ -674,6 +690,15 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/47/73/460b0ece4e7444e3098b7738974c822787e134578d069d3a88b4be17d50a/exchange_calendars-4.13.2.tar.gz", hash = "sha256:a9459425dd64142cd54fbc639847403c7e0c33d60fbc326c94fc1d6bd127f002", size = 4137321 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/c8/4c/0469b40057bc9f8d9594dcc6024202626b981ae4b52dfcd304552e8e1c3a/exchange_calendars-4.13.2-py3-none-any.whl", hash = "sha256:fc5a2ad0d61b5c3a6539a3061cd4cbb55c59f4a903455cec7926e4b798919996", size = 213306 },
+]
+
+[[package]]
+name = "execnet"
+version = "2.1.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/bf/89/780e11f9588d9e7128a3f87788354c7946a9cbb1401ad38a48c4db9a4f07/execnet-2.1.2.tar.gz", hash = "sha256:63d83bfdd9a23e35b9c6a3261412324f964c2ec8dcd8d3c6916ee9373e0befcd", size = 166622 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ab/84/02fc1827e8cdded4aa65baef11296a9bbe595c474f0d6d758af082d849fd/execnet-2.1.2-py3-none-any.whl", hash = "sha256:67fba928dd5a544b783f6056f449e5e3931a5c378b128bc18501f7ea79e296ec", size = 40708 },
 ]
 
 [[package]]
@@ -1341,6 +1366,19 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/e8/6b/913e36aa421b35689ec95ed953ff7e8df3f2ee1c7b8ab2a3f1fd39d95faf/pytest_playwright-0.7.2.tar.gz", hash = "sha256:247b61123b28c7e8febb993a187a07e54f14a9aa04edc166f7a976d88f04c770", size = 16928 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/76/61/4d333d8354ea2bea2c2f01bad0a4aa3c1262de20e1241f78e73360e9b620/pytest_playwright-0.7.2-py3-none-any.whl", hash = "sha256:8084e015b2b3ecff483c2160f1c8219b38b66c0d4578b23c0f700d1b0240ea38", size = 16881 },
+]
+
+[[package]]
+name = "pytest-xdist"
+version = "3.8.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "execnet" },
+    { name = "pytest" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/78/b4/439b179d1ff526791eb921115fca8e44e596a13efeda518b9d845a619450/pytest_xdist-3.8.0.tar.gz", hash = "sha256:7e578125ec9bc6050861aa93f2d59f1d8d085595d6551c2c90b6f4fad8d3a9f1", size = 88069 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ca/31/d4e37e9e550c2b92a9cbc2e4d0b7420a27224968580b5a447f420847c975/pytest_xdist-3.8.0-py3-none-any.whl", hash = "sha256:202ca578cfeb7370784a8c33d6d05bc6e13b4f25b5053c30a152269fd10f0b88", size = 46396 },
 ]
 
 [[package]]
