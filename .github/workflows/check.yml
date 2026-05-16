@@ -52,7 +52,7 @@ jobs:
       CELERY_RESULT_BACKEND: redis://127.0.0.1:6379/2
       PYTHONPATH: backend
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Provision /data (compose volume substitute on bare runner)
         run: sudo mkdir -p /data && sudo chmod 777 /data
       - uses: astral-sh/setup-uv@v7
@@ -80,7 +80,7 @@ jobs:
       run:
         working-directory: frontend
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: pnpm/action-setup@v6
         with:
           version: 11
@@ -103,7 +103,7 @@ jobs:
   audit:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: astral-sh/setup-uv@v7
         with:
           version: "0.8"
@@ -132,7 +132,7 @@ jobs:
   compose-build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Build images
         run: |
           cp .env.example .env
