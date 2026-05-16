@@ -25,7 +25,11 @@ ROUTES: list[tuple[str, str, str]] = [
     ("/profiles", "minimal", "profiles"),
     ("/snapshot", "minimal", "snapshot_composer_empty"),
     ("/threads", "threads", "threads_list"),
-    ("/costs", "analytics", "costs_today"),
+    # /costs is intentionally omitted from the byte-diff lane: the seeded
+    # AIRun amounts are random and bleed into multiple dollar-formatted
+    # cells that aren't reachable by a single mask selector. Tracked
+    # under the "byte-diff sharpness" limitation in e2e/README.md;
+    # revisit when we switch to a pixel-tolerance diff library.
     ("/schedules", "observer", "schedules"),
     ("/triggers", "triggers", "triggers_list"),
     ("/triggers/new", "minimal", "trigger_editor"),
