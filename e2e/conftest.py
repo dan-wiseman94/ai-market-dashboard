@@ -10,7 +10,6 @@ import time
 import warnings
 from collections.abc import Iterator
 
-
 E2E_BASE_URL = os.environ.get("E2E_BASE_URL", "http://web:8000")
 E2E_FRONTEND_URL = os.environ.get("E2E_FRONTEND_URL", "http://frontend:5173")
 
@@ -71,7 +70,7 @@ def _wait_for_stack() -> None:
             r = httpx.get(f"{E2E_BASE_URL}/api/health/", timeout=2.0)
             if r.status_code == 200:
                 return
-        except Exception:  # noqa: BLE001
+        except Exception:
             pass
         time.sleep(1)
     # Soft-fail: warn but don't exit; tests that need the stack will fail naturally.

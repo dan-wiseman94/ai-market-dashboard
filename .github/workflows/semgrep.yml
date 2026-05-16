@@ -20,4 +20,17 @@ jobs:
     if: (github.actor != 'dependabot[bot]')
     steps:
       - uses: actions/checkout@v4
-      - run: semgrep ci --config=p/default --config=p/python --config=p/django --config=p/react --config=p/typescript --config=p/security-audit
+      # Excluded rules are false positives for a single-user, 127.0.0.1-bound desktop
+      # app: containers don't need a non-root USER (no shared host); ws:// is internal
+      # to the compose network; csrf_exempt on image upload is intentional under token auth.
+      - run: |
+          semgrep ci \
+            --config=p/default \
+            --config=p/python \
+            --config=p/django \
+            --config=p/react \
+            --config=p/typescript \
+            --config=p/security-audit \
+            --exclude-rule=dockerfile.security.missing-user.missing-user \
+            --exclude-rule=javascript.lang.security.detect-insecure-websocket.detect-insecure-websocket \
+            --exclude-rule=python.django.security.audit.csrf-exempt.no-csrf-exempt
