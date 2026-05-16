@@ -52,10 +52,10 @@ jobs:
       CELERY_RESULT_BACKEND: redis://127.0.0.1:6379/2
       PYTHONPATH: backend
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Provision /data (compose volume substitute on bare runner)
         run: sudo mkdir -p /data && sudo chmod 777 /data
-      - uses: astral-sh/setup-uv@v4
+      - uses: astral-sh/setup-uv@v7
         with:
           version: "0.8"
       - run: uv python install 3.13
@@ -80,11 +80,11 @@ jobs:
       run:
         working-directory: frontend
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v6
         with:
           version: 11
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: "22"
           cache: "pnpm"
@@ -103,8 +103,8 @@ jobs:
   audit:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v4
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v7
         with:
           version: "0.8"
       - run: uv python install 3.13
@@ -114,10 +114,10 @@ jobs:
         run: |
           uv export --frozen --no-dev --no-hashes --format requirements-txt > /tmp/reqs.txt
           uv tool run pip-audit --strict --requirement /tmp/reqs.txt
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with:
           version: 11
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: "22"
           cache: "pnpm"
@@ -132,7 +132,7 @@ jobs:
   compose-build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Build images
         run: |
           cp .env.example .env
