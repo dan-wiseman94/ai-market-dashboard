@@ -5,10 +5,14 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
+
+permissions:
+  contents: read
 
 jobs:
   backend:
@@ -56,8 +60,17 @@ jobs:
       - run: uv sync --frozen --dev
       - run: uv run ruff check .
       - run: uv run ruff format --check .
-      - run: uv run ty check backend
-      - run: uv run pytest -v
+      - name: ty (type-check) — advisory while ty is pre-1.0 / lacks Django ORM modeling
+        continue-on-error: true
+        run: uv run ty check backend
+      - name: pytest (with coverage)
+        run: uv run pytest -v --cov=backend/apps --cov-report=xml --cov-report=term
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: backend-coverage
+          path: coverage.xml
+          retention-days: 14
 
   frontend:
     runs-on: ubuntu-latest
@@ -76,7 +89,43 @@ jobs:
           cache-dependency-path: frontend/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
       - run: pnpm run lint
-      - run: pnpm test --run
+      - name: vitest (with coverage)
+        run: pnpm run test:cov
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: frontend-coverage
+          path: frontend/coverage/
+          retention-days: 14
+
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+        with:
+          version: "0.8"
+      - run: uv python install 3.13
+      - run: uv sync --frozen --dev
+      - name: pip-audit (backend) — advisory, non-blocking
+        continue-on-error: true
+        run: |
+          uv export --frozen --no-dev --no-hashes --format requirements-txt > /tmp/reqs.txt
+          uv tool run pip-audit --strict --requirement /tmp/reqs.txt
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "pnpm"
+          cache-dependency-path: frontend/pnpm-lock.yaml
+      - working-directory: frontend
+        run: pnpm install --frozen-lockfile
+      - name: pnpm audit (frontend) — advisory, non-blocking
+        continue-on-error: true
+        working-directory: frontend
+        run: pnpm audit --audit-level moderate
 
   compose-build:
     runs-on: ubuntu-latest
