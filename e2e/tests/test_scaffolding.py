@@ -5,14 +5,14 @@ import pytest
 
 
 def test_lane_packages_importable() -> None:
-    import e2e.ui  # noqa: F401
-    import e2e.api  # noqa: F401
+    import e2e.a11y
+    import e2e.api
+    import e2e.helpers
+    import e2e.mocks
+    import e2e.perf
+    import e2e.ui
+    import e2e.visual
     import e2e.ws  # noqa: F401
-    import e2e.visual  # noqa: F401
-    import e2e.a11y  # noqa: F401
-    import e2e.perf  # noqa: F401
-    import e2e.mocks  # noqa: F401
-    import e2e.helpers  # noqa: F401
 
 
 def test_ui_journeys_importable() -> None:
