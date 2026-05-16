@@ -1,4 +1,5 @@
 """The harness itself works: mocks produce expected deterministic outputs."""
+
 from __future__ import annotations
 
 import asyncio
@@ -8,6 +9,7 @@ import os
 def test_mock_mode_flag() -> None:
     os.environ["MOCK_EXTERNAL"] = "true"
     from apps.core.mocks import is_mock_mode
+
     assert is_mock_mode() is True
     del os.environ["MOCK_EXTERNAL"]
 
@@ -15,6 +17,7 @@ def test_mock_mode_flag() -> None:
 def test_mock_mode_flag_off() -> None:
     os.environ.pop("MOCK_EXTERNAL", None)
     from apps.core.mocks import is_mock_mode
+
     assert is_mock_mode() is False
 
 

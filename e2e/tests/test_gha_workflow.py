@@ -1,4 +1,5 @@
 """GHA workflow sanity checks."""
+
 from __future__ import annotations
 
 from pathlib import Path

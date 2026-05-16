@@ -1,4 +1,5 @@
 """Journey 2 — Compare across providers shows per-branch costs + totals."""
+
 from __future__ import annotations
 
 import pytest
