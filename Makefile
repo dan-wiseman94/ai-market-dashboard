@@ -139,7 +139,10 @@ e2e-visual: ## E2E visual regression lane
 .PHONY: e2e-visual-update
 e2e-visual-update: ## Regenerate visual baselines
 	$(COMPOSE) -f compose.yaml -f compose.e2e.yaml up -d
-	$(E2E_RUN) worker uv run pytest e2e/visual/ --update-snapshots -m integration -v
+	# helpers/visual.capture_or_compare creates a baseline if the file is missing,
+	# so wiping the screenshot dir + re-running is the update flow.
+	rm -rf e2e/visual/__screenshots__
+	$(E2E_RUN) worker uv run pytest e2e/visual/ -n 2 -m integration -v
 	@echo "Inspect diffs: git diff e2e/visual/__screenshots__/"
 
 .PHONY: e2e-a11y

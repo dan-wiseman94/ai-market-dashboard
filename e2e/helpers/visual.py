@@ -1,16 +1,24 @@
-"""Visual regression helpers — stability waits + masking.
+"""Visual regression helpers — stability waits + masking + simple baseline diff.
 
-``wait_for_stable`` is the entry point every visual test calls before snapshot
-capture; it kills animations, freezes pointer-driven overlays, waits for any
-skeleton to detach, and waits for fonts.
+Playwright Python lacks the ``expect(page).to_have_screenshot()`` assertion
+that Playwright Test (Node) provides. We roll our own:
 
-``default_masks(page)`` returns the locator set masked on every baseline so we
-don't churn diffs on dynamic content (timestamps, notification counts, etc.).
+* ``wait_for_stable`` kills animations, freezes pointer-driven overlays, waits
+  for any skeleton to detach, and waits for fonts.
+* ``capture_or_compare`` either creates a baseline on first run (when the file
+  is missing) or compares pixel-for-pixel against the committed one. Failures
+  write an ``<actual>.png`` next to the baseline for the reviewer.
+
+This is intentionally simpler than Playwright Test's diff: any byte change
+between the new screenshot and the baseline fails the test. Use generous
+masks on the dynamic regions (timestamps, charts, notification counts) to
+avoid churn.
 """
 
 from __future__ import annotations
 
 import contextlib
+from pathlib import Path
 
 from playwright.sync_api import Locator, Page
 
@@ -56,3 +64,33 @@ def default_masks(page: Page) -> list[Locator]:
         page.locator("[data-chart] canvas"),
         page.get_by_test_id("breadcrumb-trail"),
     ]
+
+
+_BASELINE_ROOT = Path("e2e/visual/__screenshots__")
+
+
+def capture_or_compare(page: Page, name: str, *, mask: list[Locator] | None = None) -> None:
+    """Capture ``page`` screenshot to ``e2e/visual/__screenshots__/<name>.png``.
+
+    On first run (no baseline): create the baseline; the test passes.
+    On subsequent runs: compare bytes. On mismatch, write
+    ``__screenshots__/<name>.actual.png`` next to the baseline and raise
+    AssertionError.
+    """
+    _BASELINE_ROOT.mkdir(parents=True, exist_ok=True)
+    baseline = _BASELINE_ROOT / f"{name}.png"
+    actual_bytes = page.screenshot(
+        full_page=False,
+        mask=mask or [],
+        type="png",
+    )
+    if not baseline.exists():
+        baseline.write_bytes(actual_bytes)
+        return
+    if baseline.read_bytes() != actual_bytes:
+        diff_path = _BASELINE_ROOT / f"{name}.actual.png"
+        diff_path.write_bytes(actual_bytes)
+        raise AssertionError(
+            f"visual diff for {name}: see {diff_path} (baseline {baseline}). "
+            "Inspect, then `make e2e-visual-update` to accept."
+        )

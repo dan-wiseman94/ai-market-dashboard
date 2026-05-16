@@ -1,15 +1,19 @@
 """Page-level visual snapshots for every top-level route.
 
-Baselines: ``e2e/visual/__screenshots__/<test>/linux/<name>.png``. Regenerate
-with ``make e2e-visual-update``.
+Baselines: ``e2e/visual/__screenshots__/<name>.png``. On first run the test
+creates the baseline. Subsequent runs compare bytes; failures write
+``<name>.actual.png`` next to the baseline.
+
+Regenerate baselines: ``make e2e-visual-update`` (deletes the directory and
+re-runs the lane).
 """
 
 from __future__ import annotations
 
 import pytest
-from playwright.sync_api import Page, expect
+from playwright.sync_api import Page
 
-from e2e.helpers.visual import default_masks, wait_for_stable
+from e2e.helpers.visual import capture_or_compare, default_masks, wait_for_stable
 
 ROUTES: list[tuple[str, str, str]] = [
     ("/", "analytics", "dashboard"),
@@ -38,9 +42,7 @@ def test_route_snapshot(
     request.getfixturevalue(rung)
     page.goto(f"{frontend_base_url}{path}")
     wait_for_stable(page)
-    expect(page).to_have_screenshot(
-        name=f"{name}.png", mask=default_masks(page), max_diff_pixel_ratio=0.02
-    )
+    capture_or_compare(page, name, mask=default_masks(page))
 
 
 @pytest.mark.integration
@@ -51,9 +53,7 @@ def test_watchlist_detail_snapshot(page: Page, frontend_base_url: str, market) -
     wl = Watchlist.objects.get(name="E2E Core")
     page.goto(f"{frontend_base_url}/watchlists/{wl.id}")
     wait_for_stable(page)
-    expect(page).to_have_screenshot(
-        name="watchlist_detail.png", mask=default_masks(page), max_diff_pixel_ratio=0.02
-    )
+    capture_or_compare(page, "watchlist_detail", mask=default_masks(page))
 
 
 @pytest.mark.integration
@@ -64,11 +64,7 @@ def test_thread_detail_plain_snapshot(page: Page, frontend_base_url: str, thread
     t = Thread.objects.get(title="E2E plain thread")
     page.goto(f"{frontend_base_url}/threads/{t.id}")
     wait_for_stable(page)
-    expect(page).to_have_screenshot(
-        name="thread_detail_plain.png",
-        mask=default_masks(page),
-        max_diff_pixel_ratio=0.02,
-    )
+    capture_or_compare(page, "thread_detail_plain", mask=default_masks(page))
 
 
 @pytest.mark.integration
@@ -79,11 +75,7 @@ def test_thread_detail_compare_snapshot(page: Page, frontend_base_url: str, thre
     t = Thread.objects.get(title="E2E compare thread")
     page.goto(f"{frontend_base_url}/threads/{t.id}")
     wait_for_stable(page)
-    expect(page).to_have_screenshot(
-        name="thread_detail_compare.png",
-        mask=default_masks(page),
-        max_diff_pixel_ratio=0.02,
-    )
+    capture_or_compare(page, "thread_detail_compare", mask=default_masks(page))
 
 
 @pytest.mark.integration
@@ -94,11 +86,7 @@ def test_snapshot_cost_drill_snapshot(page: Page, frontend_base_url: str, snapsh
     s = Snapshot.objects.filter(status="ready").first()
     page.goto(f"{frontend_base_url}/costs/snapshot/{s.id}")
     wait_for_stable(page)
-    expect(page).to_have_screenshot(
-        name="snapshot_cost_drill.png",
-        mask=default_masks(page),
-        max_diff_pixel_ratio=0.02,
-    )
+    capture_or_compare(page, "snapshot_cost_drill", mask=default_masks(page))
 
 
 @pytest.mark.integration
@@ -109,8 +97,4 @@ def test_observer_timeline_snapshot(page: Page, frontend_base_url: str, observer
     pid = TradingProfile.objects.get(name="E2E Default").id
     page.goto(f"{frontend_base_url}/threads/observer/{pid}")
     wait_for_stable(page)
-    expect(page).to_have_screenshot(
-        name="observer_timeline.png",
-        mask=default_masks(page),
-        max_diff_pixel_ratio=0.02,
-    )
+    capture_or_compare(page, "observer_timeline", mask=default_masks(page))
