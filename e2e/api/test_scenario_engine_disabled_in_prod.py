@@ -16,7 +16,11 @@ import pytest
 
 @pytest.mark.integration
 def test_scenario_probe_404_when_mock_external_false(api_base_url) -> None:
-    if os.environ.get("MOCK_EXTERNAL", "").lower() in ("1", "true", "yes"):
+    from django.conf import settings
+
+    if os.environ.get("MOCK_EXTERNAL", "").lower() in ("1", "true", "yes") or getattr(
+        settings, "MOCK_EXTERNAL", False
+    ):
         pytest.skip("e2e overlay is up; this assertion only applies to prod posture")
 
     r = httpx.get(
@@ -30,7 +34,11 @@ def test_scenario_probe_404_when_mock_external_false(api_base_url) -> None:
 
 @pytest.mark.integration
 def test_scenario_header_is_noop_when_mock_external_false(api_base_url) -> None:
-    if os.environ.get("MOCK_EXTERNAL", "").lower() in ("1", "true", "yes"):
+    from django.conf import settings
+
+    if os.environ.get("MOCK_EXTERNAL", "").lower() in ("1", "true", "yes") or getattr(
+        settings, "MOCK_EXTERNAL", False
+    ):
         pytest.skip("e2e overlay is up; this assertion only applies to prod posture")
 
     # Hit the readiness probe with the header — it should be ignored.
