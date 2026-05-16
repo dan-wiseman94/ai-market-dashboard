@@ -1,4 +1,5 @@
 """Journey 3 — create schedule, trigger run-now, notification arrives."""
+
 from __future__ import annotations
 
 import pytest

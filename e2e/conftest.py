@@ -3,6 +3,7 @@
 Run: make e2e  (or `make e2e-one t=<test_module>`).
 Requires MOCK_EXTERNAL=true + apps/core/mocks.py for deterministic fixtures.
 """
+
 from __future__ import annotations
 
 import os
@@ -81,6 +82,7 @@ def _wait_for_stack() -> None:
 def seed_minimal_fixture() -> None:
     """Idempotent minimal seed for tests that need DB objects. Use as an explicit param."""
     from e2e.fixtures.seed_minimal import seed_minimal
+
     seed_minimal()
 
 

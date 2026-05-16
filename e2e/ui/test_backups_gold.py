@@ -1,4 +1,5 @@
 """Journey 6 — back up now, verify record + file + gzip magic bytes."""
+
 from __future__ import annotations
 
 from pathlib import Path

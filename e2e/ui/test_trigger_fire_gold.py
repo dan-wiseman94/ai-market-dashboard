@@ -1,4 +1,5 @@
 """Journey 4 — create always-fires trigger, fire it, check drill-down."""
+
 from __future__ import annotations
 
 import pytest

@@ -5,6 +5,7 @@ verify /costs reflects non-zero spend.
 
 Requires MOCK_EXTERNAL=true (compose.e2e.yaml overlay). Run via `make e2e`.
 """
+
 from __future__ import annotations
 
 import pytest

@@ -1,4 +1,5 @@
 """Scaffolding collection test — asserts new lane dirs are importable."""
+
 from __future__ import annotations
 
 import pytest
@@ -17,6 +18,7 @@ def test_lane_packages_importable() -> None:
 
 def test_ui_journeys_importable() -> None:
     import importlib
+
     for mod in [
         "e2e.ui.test_snapshots_capture_gold",
         "e2e.ui.test_compare_two_branches_gold",
