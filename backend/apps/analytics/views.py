@@ -42,3 +42,47 @@ class LeaderboardView(APIView):
                 "rows": rows,
             }
         )
+
+
+class CostPerInsightView(APIView):
+    def get(self, request: Request) -> Response:
+        from apps.analytics.services.cpi import cost_per_insight
+
+        start, end = _parse_range(request, default_days=30)
+        result = cost_per_insight(start=start, end=end)
+        return Response({"start": start.isoformat(), "end": end.isoformat(), **result})
+
+
+class TriggerHeatmapView(APIView):
+    def get(self, request: Request) -> Response:
+        from apps.analytics.services.trigger_heatmap import trigger_heatmap
+
+        start, end = _parse_range(request, default_days=30)
+        cells = trigger_heatmap(start=start, end=end)
+        return Response({"start": start.isoformat(), "end": end.isoformat(), "cells": cells})
+
+
+class ObserverTimelineView(APIView):
+    def get(self, request: Request) -> Response:
+        from apps.analytics.services.observer_timeline import observer_timeline
+
+        start, end = _parse_range(request, default_days=30)
+        days = observer_timeline(start=start, end=end)
+        return Response({"start": start.isoformat(), "end": end.isoformat(), "days": days})
+
+
+class UnusualOptionsView(APIView):
+    def get(self, request: Request) -> Response:
+        from apps.analytics.services.unusual_options import unusual_options
+
+        ticker = (request.query_params.get("ticker") or "").strip()
+        if not ticker:
+            return Response({"rows": []})
+        at_raw = request.query_params.get("at")
+        at = datetime.fromisoformat(at_raw).replace(tzinfo=UTC) if at_raw else datetime.now(tz=UTC)
+        try:
+            top_n = max(1, min(100, int(request.query_params.get("top_n", "25"))))
+        except ValueError:
+            top_n = 25
+        rows = unusual_options(ticker=ticker, at=at, top_n=top_n)
+        return Response({"ticker": ticker.upper(), "at": at.isoformat(), "rows": rows})
