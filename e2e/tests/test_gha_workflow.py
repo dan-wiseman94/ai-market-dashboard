@@ -14,15 +14,17 @@ def _wf_path() -> Path:
     raise FileNotFoundError(".github/workflows/e2e.yml not found")
 
 
-def test_e2e_workflow_has_six_lane_jobs() -> None:
+def test_e2e_workflow_has_ui_job() -> None:
+    """e2e.yml currently has a single 'ui' job; will fan out when other
+    lanes gain real tests."""
     wf = yaml.safe_load(_wf_path().read_text())
-    jobs = wf["jobs"]
-    for lane in ("e2e-ui", "e2e-api", "e2e-ws", "e2e-visual", "e2e-a11y", "e2e-perf"):
-        assert lane in jobs, f"missing GHA job: {lane}"
+    assert "ui" in wf["jobs"]
 
 
-def test_e2e_workflow_has_summary_job() -> None:
+def test_e2e_workflow_runs_pytest_against_ui_lane() -> None:
     wf = yaml.safe_load(_wf_path().read_text())
-    assert "e2e-summary" in wf["jobs"]
-    summary = wf["jobs"]["e2e-summary"]
-    assert "if" in summary and "always()" in summary["if"]
+    steps = wf["jobs"]["ui"]["steps"]
+    runs = [s.get("run") or "" for s in steps]
+    assert any("pytest e2e/ui/" in r for r in runs), (
+        "expected a step that runs pytest against e2e/ui/"
+    )
