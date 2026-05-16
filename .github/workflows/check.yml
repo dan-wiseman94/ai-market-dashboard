@@ -51,6 +51,9 @@ jobs:
       CELERY_BROKER_URL: redis://127.0.0.1:6379/1
       CELERY_RESULT_BACKEND: redis://127.0.0.1:6379/2
       PYTHONPATH: backend
+      # /data is a compose-only volume; on bare runners point file-backed
+      # settings at /tmp instead so encrypted-secrets bootstrap works
+      ENCRYPTION_SALT_PATH: /tmp/secret.salt
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v4
