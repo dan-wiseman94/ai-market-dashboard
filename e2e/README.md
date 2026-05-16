@@ -57,6 +57,17 @@ blocks oversized ones at pre-commit. If you hit the cap, the problem is usually
 a mask leak; check that noisy dynamic regions (timestamps, chart tooltips,
 notification counts) are masked in `helpers/visual.py`.
 
+## Known limitations
+
+- **Visual lane uses byte-level diff.** Playwright Python doesn't ship a
+  `to_have_screenshot()` assertion the way Playwright Test (Node) does, so we
+  roll our own `helpers/visual.capture_or_compare`. Any byte change between
+  the new screenshot and the baseline fails the test. This is fine for
+  most routes once dynamic regions are masked but breaks down on `/costs`
+  where seeded AIRun amounts are random and bleed into multiple cells.
+  `/costs` is intentionally excluded from the parametrized list; bring it
+  back once we wire a pixel-tolerance diff library (pixelmatch-py or PIL).
+
 ## Known test interactions
 
 - **Don't mix `e2e/tests/test_seed_ladder.py` with `e2e/api/` in a single pytest

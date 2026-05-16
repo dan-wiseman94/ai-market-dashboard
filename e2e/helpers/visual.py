@@ -63,6 +63,10 @@ def default_masks(page: Page) -> list[Locator]:
         page.locator(".timestamp"),
         page.locator("[data-chart] canvas"),
         page.get_by_test_id("breadcrumb-trail"),
+        # Cost tables on /costs render seeded random AIRun amounts; mask any
+        # element containing a dollar sign to keep the baseline stable.
+        page.locator("table:has-text('$')"),
+        page.locator("[data-cost-row]"),
     ]
 
 
