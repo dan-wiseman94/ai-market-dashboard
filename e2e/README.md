@@ -57,6 +57,19 @@ blocks oversized ones at pre-commit. If you hit the cap, the problem is usually
 a mask leak; check that noisy dynamic regions (timestamps, chart tooltips,
 notification counts) are masked in `helpers/visual.py`.
 
+## Known test interactions
+
+- **Don't mix `e2e/tests/test_seed_ladder.py` with `e2e/api/` in a single pytest
+  invocation.** The seed-ladder tests use ``@pytest.mark.django_db(transaction=True)``
+  which truncates the live DB at end-of-test; the api lane relies on data the
+  seed fixtures wrote moments earlier. Run them in separate invocations
+  (Make targets do this automatically).
+- **Detail-endpoint API tests (snapshot/thread/trigger) require fresh seeds.**
+  They retrieve an object ID via Django ORM, then hit the API for that ID. If
+  the live DB was truncated by a previous test, the ORM still sees the row
+  (cached connection state) but the API returns 404. Re-run the api lane after
+  any teardown.
+
 ## Troubleshooting matrix
 
 | Symptom                                      | Likely cause                                          | Fix                                                       |
