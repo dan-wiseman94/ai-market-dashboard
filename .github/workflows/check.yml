@@ -81,7 +81,7 @@ jobs:
         working-directory: frontend
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with:
           version: 11
       - uses: actions/setup-node@v4
@@ -114,7 +114,7 @@ jobs:
         run: |
           uv export --frozen --no-dev --no-hashes --format requirements-txt > /tmp/reqs.txt
           uv tool run pip-audit --strict --requirement /tmp/reqs.txt
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with:
           version: 11
       - uses: actions/setup-node@v4
