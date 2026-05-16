@@ -14,7 +14,7 @@ pre-commit:
           echo "✗ 'web' container not running — start it with 'make dev' (or set LEFTHOOK=0 to skip)" >&2
           exit 1
         fi
-        docker compose exec -T web uv run ruff check --fix {staged_files}
+        docker compose exec --workdir /app -T web uv run ruff check --fix {staged_files}
       stage_fixed: true
     ruff-format:
       glob: "*.py"
@@ -23,7 +23,7 @@ pre-commit:
           echo "✗ 'web' container not running — start it with 'make dev' (or set LEFTHOOK=0 to skip)" >&2
           exit 1
         fi
-        docker compose exec -T web uv run ruff format {staged_files}
+        docker compose exec --workdir /app -T web uv run ruff format {staged_files}
       stage_fixed: true
     ty:
       glob: "*.py"
@@ -33,7 +33,7 @@ pre-commit:
           echo "✗ 'web' container not running — start it with 'make dev' (or set LEFTHOOK=0 to skip)" >&2
           exit 1
         fi
-        docker compose exec -T web uv run ty check {staged_files} || true
+        docker compose exec --workdir /app -T web uv run ty check {staged_files} || true
     eslint:
       glob: "frontend/**/*.{ts,tsx}"
       run: |
