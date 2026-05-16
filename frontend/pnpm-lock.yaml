@@ -12,8 +12,8 @@ importers:
         specifier: ^5.59.0
         version: 5.100.10(react@19.2.6)
       cronstrue:
-        specifier: ^2.59.0
-        version: 2.61.0
+        specifier: ^3.14.0
+        version: 3.14.0
       date-fns:
         specifier: ^4.1.0
         version: 4.1.0
@@ -1188,9 +1188,8 @@ packages:
     resolution: {integrity: sha512-ei8Aos7ja0weRpFzJnEA9UHJ/7XQmqglbRwnf2ATjcB9Wq874VKH9kfjjirM6UhU2/E5fFYadylyhFldcqSidQ==}
     engines: {node: '>=18'}
 
-  cronstrue@2.61.0:
-    resolution: {integrity: sha512-ootN5bvXbIQI9rW94+QsXN5eROtXWwew6NkdGxIRpS/UFWRggL0G5Al7a9GTBFEsuvVhJ2K3CntIIVt7L2ILhA==}
-    deprecated: Non-backwards compatible Breaking changes
+  cronstrue@3.14.0:
+    resolution: {integrity: sha512-XnW4vuK/jPJjmTyDWiej1Zq36Od7ITwxaV2O1pzHZuyMVvdy7NAvyvIBzybt+idqSpfqYuoDG7uf/ocGtJVWxA==}
     hasBin: true
 
   cross-spawn@7.0.6:
@@ -3595,7 +3594,7 @@ snapshots:
 
   cookie@1.1.1: {}
 
-  cronstrue@2.61.0: {}
+  cronstrue@3.14.0: {}
 
   cross-spawn@7.0.6:
     dependencies:
