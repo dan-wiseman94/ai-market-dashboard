@@ -12,12 +12,22 @@ def test_capture_with_chain_news_image_sections():
     profile = TradingProfile.objects.create(name="P", style="x")
 
     fake_chain = {"ticker": "SPY", "underlying_last": "521.30", "expiries": {}}
-    fake_news_items = [{"id": 1, "headline": "h", "summary": "", "url": "u",
-                        "source": "S", "datetime": 1700000000, "related": "SPY"}]
+    fake_news_items = [
+        {
+            "id": 1,
+            "headline": "h",
+            "summary": "",
+            "url": "u",
+            "source": "S",
+            "datetime": 1700000000,
+            "related": "SPY",
+        }
+    ]
 
     def fake_render(ticker, timeframe, bars, *, snapshot_id):
         img = SnapshotImage.objects.create(
-            snapshot_id=snapshot_id, kind="server_render",
+            snapshot_id=snapshot_id,
+            kind="server_render",
             data=b"\x89PNG\r\n\x1a\n" + b"\x00" * 100,
             caption=f"{ticker} {timeframe}, {bars} bars",
         )
@@ -26,13 +36,19 @@ def test_capture_with_chain_news_image_sections():
     # Patch at consumption site (apps.snapshots.services.*), not source modules:
     # services/__init__.py imports the names at import-time, so the lambdas in _FETCHERS
     # close over the local references — patching the source paths would not intercept them.
-    with patch("apps.snapshots.services.fetch_chain", return_value=fake_chain), \
-         patch("apps.snapshots.services.fetch_news", return_value=fake_news_items), \
-         patch("apps.snapshots.services.render_chart_png", side_effect=fake_render):
+    with (
+        patch("apps.snapshots.services.fetch_chain", return_value=fake_chain),
+        patch("apps.snapshots.services.fetch_news", return_value=fake_news_items),
+        patch("apps.snapshots.services.render_chart_png", side_effect=fake_render),
+    ):
         snap = capture(
-            profile=profile, objective="o", includes=["chain", "news", "image"],
+            profile=profile,
+            objective="o",
+            includes=["chain", "news", "image"],
             watchlist_tickers=["SPY"],
-            ohlc_ticker="SPY", ohlc_timeframe="5m", ohlc_bars=60,
+            ohlc_ticker="SPY",
+            ohlc_timeframe="5m",
+            ohlc_bars=60,
         )
 
     assert snap.status == "ready"

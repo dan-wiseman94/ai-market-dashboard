@@ -1,4 +1,5 @@
 """Token estimation + pruning for payload sections."""
+
 from __future__ import annotations
 
 from apps.ai.token_counter import estimate_tokens as _estimate

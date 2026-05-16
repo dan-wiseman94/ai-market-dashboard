@@ -1,4 +1,5 @@
 """Format a matched_values dict into a human-readable string for notifications."""
+
 from __future__ import annotations
 
 

@@ -17,16 +17,24 @@ def seed_run(db):
     t = Thread.objects.create(kind="chat", title="T")
     m = Message.objects.create(thread=t, role="assistant", content={"text": ""}, status="done")
     AIRun.objects.create(
-        message=m, provider="claude", model="claude-sonnet-4-6",
-        cost_usd=Decimal("0.0500"), input_tokens=100, output_tokens=10, cached_tokens=0,
-        latency_ms=200, status="done",
+        message=m,
+        provider="claude",
+        model="claude-sonnet-4-6",
+        cost_usd=Decimal("0.0500"),
+        input_tokens=100,
+        output_tokens=10,
+        cached_tokens=0,
+        latency_ms=200,
+        status="done",
     )
     return t
 
 
 def test_summary_endpoint(client: Client, seed_run) -> None:
     now = datetime.now(tz=UTC)
-    resp = client.get(f"/api/costs/summary?from={(now - timedelta(days=1)).isoformat()}&to={(now + timedelta(hours=1)).isoformat()}")
+    resp = client.get(
+        f"/api/costs/summary?from={(now - timedelta(days=1)).isoformat()}&to={(now + timedelta(hours=1)).isoformat()}"
+    )
     assert resp.status_code == 200
     body = resp.json()
     assert body["total"] == "0.0500"
@@ -53,7 +61,9 @@ def test_caps_endpoint(client: Client, db) -> None:
 
 def test_csv_export(client: Client, seed_run) -> None:
     now = datetime.now(tz=UTC)
-    resp = client.get(f"/api/costs/export.csv?from={(now - timedelta(hours=1)).isoformat()}&to={(now + timedelta(hours=1)).isoformat()}")
+    resp = client.get(
+        f"/api/costs/export.csv?from={(now - timedelta(hours=1)).isoformat()}&to={(now + timedelta(hours=1)).isoformat()}"
+    )
     assert resp.status_code == 200
     assert resp["Content-Type"].startswith("text/csv")
     streaming = cast(StreamingHttpResponse, resp)
@@ -68,7 +78,9 @@ def test_snapshot_breakdown_endpoint(client: Client, db) -> None:
 
     prof = TradingProfile.objects.create(name="t")  # Snapshot requires a profile FK
     snap = Snapshot.objects.create(profile=prof)
-    SnapshotSection.objects.create(snapshot=snap, kind="quotes", payload={}, status="done", payload_tokens=100)
+    SnapshotSection.objects.create(
+        snapshot=snap, kind="quotes", payload={}, status="done", payload_tokens=100
+    )
     resp = client.get(f"/api/costs/snapshot/{snap.id}")
     assert resp.status_code == 200
     body = resp.json()

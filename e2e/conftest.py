@@ -3,13 +3,13 @@
 Run: make e2e  (or `make e2e-one t=<test_module>`).
 Requires MOCK_EXTERNAL=true + apps/core/mocks.py for deterministic fixtures.
 """
+
 from __future__ import annotations
 
 import os
 import time
 import warnings
 from collections.abc import Iterator
-
 
 E2E_BASE_URL = os.environ.get("E2E_BASE_URL", "http://web:8000")
 E2E_FRONTEND_URL = os.environ.get("E2E_FRONTEND_URL", "http://frontend:5173")
@@ -18,6 +18,12 @@ E2E_FRONTEND_URL = os.environ.get("E2E_FRONTEND_URL", "http://frontend:5173")
 def pytest_configure(config):
     """Register custom markers so pytest doesn't warn about unknown marks."""
     config.addinivalue_line("markers", "e2e: end-to-end browser tests (require compose stack)")
+    config.addinivalue_line("markers", "ui: UI lane browser tests")
+    config.addinivalue_line("markers", "api: API lane httpx contract tests")
+    config.addinivalue_line("markers", "ws: WebSocket lane tests")
+    config.addinivalue_line("markers", "visual: visual regression tests")
+    config.addinivalue_line("markers", "a11y: accessibility scan tests")
+    config.addinivalue_line("markers", "perf: performance budget tests")
 
 
 try:
@@ -65,7 +71,7 @@ def _wait_for_stack() -> None:
             r = httpx.get(f"{E2E_BASE_URL}/api/health/", timeout=2.0)
             if r.status_code == 200:
                 return
-        except Exception:  # noqa: BLE001
+        except Exception:
             pass
         time.sleep(1)
     # Soft-fail: warn but don't exit; tests that need the stack will fail naturally.
@@ -76,4 +82,15 @@ def _wait_for_stack() -> None:
 def seed_minimal_fixture() -> None:
     """Idempotent minimal seed for tests that need DB objects. Use as an explicit param."""
     from e2e.fixtures.seed_minimal import seed_minimal
+
     seed_minimal()
+
+
+@pytest.fixture(scope="session")
+def api_base_url() -> str:
+    return E2E_BASE_URL
+
+
+@pytest.fixture(scope="session")
+def frontend_base_url() -> str:
+    return E2E_FRONTEND_URL

@@ -5,6 +5,7 @@ mode is opt-in on the schedule. Adding fields is backward-compatible; removing
 them is not. When extending, add `Optional` with a default first, then make
 required in a later release after running schedules have re-emitted.
 """
+
 from __future__ import annotations
 
 from typing import Literal

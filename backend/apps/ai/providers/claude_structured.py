@@ -8,6 +8,7 @@ Uses anthropic>=0.96's native `messages.parse` which takes an `output_format`
 Pydantic class and returns a `ParsedMessage` whose `.parsed_output` is an
 instance of the same class.
 """
+
 from __future__ import annotations
 
 from anthropic import Anthropic

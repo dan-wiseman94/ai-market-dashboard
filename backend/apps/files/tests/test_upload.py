@@ -1,4 +1,5 @@
 """POST /api/files/ uploads to Anthropic via the Files API and persists a UserFile row."""
+
 from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
@@ -56,12 +57,18 @@ def test_list_returns_rows_filtered_by_kind(db, claude_cfg) -> None:
     from apps.files.models import UserFile
 
     UserFile.objects.create(
-        anthropic_id="f1", kind="filing", ticker="AAPL",
-        mime="application/pdf", size=100,
+        anthropic_id="f1",
+        kind="filing",
+        ticker="AAPL",
+        mime="application/pdf",
+        size=100,
     )
     UserFile.objects.create(
-        anthropic_id="f2", kind="transcript", ticker="AAPL",
-        mime="text/plain", size=200,
+        anthropic_id="f2",
+        kind="transcript",
+        ticker="AAPL",
+        mime="text/plain",
+        size=200,
     )
     client = APIClient()
     resp = client.get("/api/files/?kind=filing")
@@ -75,8 +82,11 @@ def test_delete_removes_row_and_calls_api(db, claude_cfg) -> None:
     from apps.files.models import UserFile
 
     f = UserFile.objects.create(
-        anthropic_id="f1", kind="filing", ticker="AAPL",
-        mime="application/pdf", size=100,
+        anthropic_id="f1",
+        kind="filing",
+        ticker="AAPL",
+        mime="application/pdf",
+        size=100,
     )
     with patch("apps.files.services._anthropic_client") as ac:
         client = APIClient()

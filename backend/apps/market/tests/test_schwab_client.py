@@ -20,7 +20,12 @@ def test_raises_when_not_connected():
 def test_returns_client_when_connected():
     ApiCredential.objects.create(
         provider="schwab",
-        token={"access_token": "AT", "refresh_token": "RT", "expires_at": 9999999999, "token_type": "Bearer"},
+        token={
+            "access_token": "AT",
+            "refresh_token": "RT",
+            "expires_at": 9999999999,
+            "token_type": "Bearer",
+        },
         expires_at=timezone.now() + timedelta(hours=1),
     )
     # Mock the schwab-py factory so we don't need real credentials

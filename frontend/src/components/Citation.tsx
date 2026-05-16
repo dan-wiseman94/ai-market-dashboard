@@ -10,6 +10,7 @@ export function Citation({ index, source, title, snippet }: CitationProps) {
   const label = `${title}${snippet ? `: ${snippet}` : ""}`;
   const inner = (
     <sup
+      data-testid={`citation-${index}`}
       className="ml-0.5 text-sky-400 cursor-help"
       aria-label={label}
       title={label}

@@ -1,4 +1,5 @@
 """EventTrigger + TriggerFiring models."""
+
 from __future__ import annotations
 
 from typing import ClassVar
@@ -11,7 +12,8 @@ class EventTrigger(models.Model):
 
     name = models.CharField(max_length=100)
     profile = models.ForeignKey(
-        "profiles.TradingProfile", on_delete=models.CASCADE,
+        "profiles.TradingProfile",
+        on_delete=models.CASCADE,
         related_name="triggers",
     )
     condition = models.JSONField()
@@ -35,6 +37,7 @@ class EventTrigger(models.Model):
 
     def clean(self) -> None:
         from apps.triggers.dsl import validate_condition
+
         validate_condition(self.condition)
 
 
@@ -42,17 +45,25 @@ class TriggerFiring(models.Model):
     """Immutable audit row: one per fire event."""
 
     trigger = models.ForeignKey(
-        EventTrigger, on_delete=models.CASCADE, related_name="firings",
+        EventTrigger,
+        on_delete=models.CASCADE,
+        related_name="firings",
     )
     fired_at = models.DateTimeField(auto_now_add=True)
     matched_values = models.JSONField()
     snapshot = models.ForeignKey(
-        "snapshots.Snapshot", null=True, blank=True,
-        on_delete=models.SET_NULL, related_name="trigger_firings",
+        "snapshots.Snapshot",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="trigger_firings",
     )
     thread = models.ForeignKey(
-        "threads.Thread", null=True, blank=True,
-        on_delete=models.SET_NULL, related_name="trigger_firings",
+        "threads.Thread",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="trigger_firings",
     )
     cost_capped = models.BooleanField(default=False)
 

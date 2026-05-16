@@ -1,4 +1,5 @@
 """Dev settings — debug on, permissive hosts."""
+
 from .base import *
 
 DEBUG = True

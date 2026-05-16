@@ -9,6 +9,7 @@ from apps.market.services.quotes import fetch_quotes
 @pytest.fixture(autouse=True)
 def fake_redis(monkeypatch):
     import fakeredis
+
     r = fakeredis.FakeRedis()
     monkeypatch.setattr(cache_module, "_redis", lambda: r)
     return r
@@ -19,10 +20,28 @@ def test_fetch_quotes_uses_schwab_and_caches():
     # Schwab get_quotes returns a mapping: {"SPY": {...}, "QQQ": {...}}
     schwab_resp = MagicMock()
     schwab_resp.json.return_value = {
-        "SPY": {"quote": {"lastPrice": 550.0, "bidPrice": 549.9, "askPrice": 550.1,
-                          "totalVolume": 1000, "highPrice": 552, "lowPrice": 548, "netPercentChange": 0.5}},
-        "QQQ": {"quote": {"lastPrice": 480.0, "bidPrice": 479.9, "askPrice": 480.1,
-                          "totalVolume": 900, "highPrice": 482, "lowPrice": 478, "netPercentChange": 0.2}},
+        "SPY": {
+            "quote": {
+                "lastPrice": 550.0,
+                "bidPrice": 549.9,
+                "askPrice": 550.1,
+                "totalVolume": 1000,
+                "highPrice": 552,
+                "lowPrice": 548,
+                "netPercentChange": 0.5,
+            }
+        },
+        "QQQ": {
+            "quote": {
+                "lastPrice": 480.0,
+                "bidPrice": 479.9,
+                "askPrice": 480.1,
+                "totalVolume": 900,
+                "highPrice": 482,
+                "lowPrice": 478,
+                "netPercentChange": 0.2,
+            }
+        },
     }
     client = MagicMock()
     client.get_quotes.return_value = schwab_resp

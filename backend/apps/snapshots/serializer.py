@@ -1,4 +1,5 @@
 """AI payload serializer: Snapshot → single markdown string for the user message."""
+
 from __future__ import annotations
 
 import base64
@@ -42,7 +43,7 @@ def serialize_for_ai(
     for kind in snapshot.includes:
         sec = sections_by_kind.get(kind)
         if sec is None or sec.status == "failed":
-            err = (sec.error if sec else "missing")
+            err = sec.error if sec else "missing"
             rendered[kind] = f"## {_title(kind)}\n_(unavailable: {err})_"
             continue
         text = _render_section(kind, sec.payload)
@@ -50,7 +51,10 @@ def serialize_for_ai(
             rendered[kind] = text
 
     pruned_sections, pruned_kinds = prune_to_budget(
-        rendered, max_tokens=max_tokens, provider=provider, model=model,
+        rendered,
+        max_tokens=max_tokens,
+        provider=provider,
+        model=model,
     )
     for kind in snapshot.includes:
         if kind in pruned_sections:
@@ -63,9 +67,14 @@ def serialize_for_ai(
 
 def _title(kind: str) -> str:
     return {
-        "quotes": "Quotes", "ohlc": "OHLC", "chain": "Option chain",
-        "positions": "Positions", "breadth": "Market breadth",
-        "news": "News", "notes": "Notes", "image": "Chart image",
+        "quotes": "Quotes",
+        "ohlc": "OHLC",
+        "chain": "Option chain",
+        "positions": "Positions",
+        "breadth": "Market breadth",
+        "news": "News",
+        "notes": "Notes",
+        "image": "Chart image",
     }.get(kind, kind.title())
 
 
@@ -79,8 +88,11 @@ def _render_section(kind: str, payload) -> str:
 def _render_quotes(payload: dict) -> str:
     if not payload:
         return "## Quotes\n_(empty)_"
-    lines = ["## Quotes", "| Ticker | Last | %chg | Bid | Ask | Vol | High | Low |",
-             "|---|---:|---:|---:|---:|---:|---:|---:|"]
+    lines = [
+        "## Quotes",
+        "| Ticker | Last | %chg | Bid | Ask | Vol | High | Low |",
+        "|---|---:|---:|---:|---:|---:|---:|---:|",
+    ]
     for ticker, q in payload.items():
         lines.append(
             f"| {ticker} | {_fmt(q.get('last'))} | {_fmt(q.get('pct_change'))}% | "
@@ -104,8 +116,11 @@ def _render_ohlc(payload: dict) -> str:
 def _render_positions(payload: list) -> str:
     if not payload:
         return "## Positions\n_(empty)_"
-    lines = ["## Positions", "| Ticker | Qty | Avg | Mkt Val | Day P/L | Unrealized |",
-             "|---|---:|---:|---:|---:|---:|"]
+    lines = [
+        "## Positions",
+        "| Ticker | Qty | Avg | Mkt Val | Day P/L | Unrealized |",
+        "|---|---:|---:|---:|---:|---:|",
+    ]
     total_day = total_unrl = 0.0
     for p in payload:
         total_day += p.get("day_pl") or 0
@@ -124,9 +139,13 @@ def _render_breadth(payload: dict) -> str:
     lines.append(f"- QQQ: {_fmt(payload.get('qqq_last'))}")
     lines.append(f"- VIX: {_fmt(payload.get('vix_last'))}")
     if payload.get("sectors"):
-        lines.append("- Sectors: " + ", ".join(f"{k}={_fmt(v)}" for k, v in payload["sectors"].items()))
+        lines.append(
+            "- Sectors: " + ", ".join(f"{k}={_fmt(v)}" for k, v in payload["sectors"].items())
+        )
     if payload.get("breadth"):
-        lines.append("- Breadth: " + ", ".join(f"{k}={_fmt(v)}" for k, v in payload["breadth"].items()))
+        lines.append(
+            "- Breadth: " + ", ".join(f"{k}={_fmt(v)}" for k, v in payload["breadth"].items())
+        )
     return "\n".join(lines)
 
 
@@ -181,7 +200,9 @@ def _render_chain(payload: dict, *, ticker: str = "?") -> str:
         puts_by_strike = {p["strike"]: p for p in section.get("puts", [])}
         all_strikes = sorted(set(calls_by_strike) | set(puts_by_strike), key=lambda s: float(s))
         lines.append(f"\n### Expiry {exp}")
-        lines.append("| strike | call bid | call ask | call Δ | call IV | put bid | put ask | put Δ | put IV |")
+        lines.append(
+            "| strike | call bid | call ask | call Δ | call IV | put bid | put ask | put Δ | put IV |"
+        )
         lines.append("|---|---:|---:|---:|---:|---:|---:|---:|---:|")
         for strike in all_strikes:
             c = calls_by_strike.get(strike, {})
@@ -219,15 +240,23 @@ def build_image_blocks(image_ids: list[int], *, provider_name: str) -> list[dict
     for img in SnapshotImage.objects.filter(id__in=image_ids).order_by("id"):
         b64 = base64.b64encode(bytes(img.data)).decode("ascii")
         if provider_name == "claude":
-            blocks.append({
-                "type": "image",
-                "source": {"type": "base64", "media_type": img.mime_type or "image/png", "data": b64},
-            })
+            blocks.append(
+                {
+                    "type": "image",
+                    "source": {
+                        "type": "base64",
+                        "media_type": img.mime_type or "image/png",
+                        "data": b64,
+                    },
+                }
+            )
         else:
-            blocks.append({
-                "type": "image_url",
-                "image_url": {"url": f"data:{img.mime_type or 'image/png'};base64,{b64}"},
-            })
+            blocks.append(
+                {
+                    "type": "image_url",
+                    "image_url": {"url": f"data:{img.mime_type or 'image/png'};base64,{b64}"},
+                }
+            )
     return blocks
 
 

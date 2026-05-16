@@ -1,4 +1,5 @@
 """Seed is safe to call twice without duplicating rows."""
+
 from __future__ import annotations
 
 import pytest

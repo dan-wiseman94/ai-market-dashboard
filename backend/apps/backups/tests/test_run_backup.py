@@ -23,9 +23,11 @@ def test_run_backup_creates_record_and_file(tmp_path, monkeypatch) -> None:
             dest.write_bytes(content)
         return MagicMock(returncode=0)
 
-    with patch("apps.backups.services.subprocess.run", side_effect=fake_run) as sub, \
-         patch("apps.backups.services.acquire_lock", return_value=True), \
-         patch("apps.backups.services.release_lock"):
+    with (
+        patch("apps.backups.services.subprocess.run", side_effect=fake_run) as sub,
+        patch("apps.backups.services.acquire_lock", return_value=True),
+        patch("apps.backups.services.release_lock"),
+    ):
         run_backup(kind="manual")
 
     rec = BackupRecord.objects.get()
@@ -45,9 +47,11 @@ def test_run_backup_failure_records_error(tmp_path, monkeypatch) -> None:
     def fake_run(cmd, **kw):
         raise RuntimeError("pg_dump failed: permission denied")
 
-    with patch("apps.backups.services.subprocess.run", side_effect=fake_run), \
-         patch("apps.backups.services.acquire_lock", return_value=True), \
-         patch("apps.backups.services.release_lock"):
+    with (
+        patch("apps.backups.services.subprocess.run", side_effect=fake_run),
+        patch("apps.backups.services.acquire_lock", return_value=True),
+        patch("apps.backups.services.release_lock"),
+    ):
         run_backup(kind="scheduled")
 
     rec = BackupRecord.objects.get()

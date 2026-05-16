@@ -26,6 +26,10 @@ dist/
 .vite/
 .turbo/
 coverage/
+.pnpm-store/
+
+# uv
+.uv-cache/
 
 # Env / secrets
 .env

@@ -16,7 +16,8 @@ def api():
 def test_upload_staged_image_persists_with_null_snapshot(api):
     resp = api.post(
         "/api/snapshots/images/?staged=true",
-        data=PNG_BYTES, content_type="image/png",
+        data=PNG_BYTES,
+        content_type="image/png",
         HTTP_X_CAPTION="SPY 5m",
     )
     assert resp.status_code == 201, resp.content
@@ -32,7 +33,8 @@ def test_upload_staged_image_persists_with_null_snapshot(api):
 def test_upload_invalid_png_returns_400(api):
     resp = api.post(
         "/api/snapshots/images/?staged=true",
-        data=NOT_PNG, content_type="image/png",
+        data=NOT_PNG,
+        content_type="image/png",
     )
     assert resp.status_code == 400
     assert resp.json()["code"] == "invalid_png"

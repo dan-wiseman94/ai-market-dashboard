@@ -43,7 +43,9 @@ class WatchlistSymbolViewSet(
             )
         try:
             sym = WatchlistSymbol.objects.create(
-                watchlist=wl, ticker=ticker, sort_order=wl.symbols.count(),
+                watchlist=wl,
+                ticker=ticker,
+                sort_order=wl.symbols.count(),
             )
         except IntegrityError:
             return Response(

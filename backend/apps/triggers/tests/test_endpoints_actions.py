@@ -24,7 +24,8 @@ def fake_redis():
 def test_fire_now_enqueues_fire_trigger(api):
     p = TradingProfile.objects.create(name="P", style="x")
     t = EventTrigger.objects.create(
-        name="r", profile=p,
+        name="r",
+        profile=p,
         condition={"metric": "price", "ticker": "SPY", "op": ">", "value": 0},
     )
     with patch("apps.triggers.views.fire_trigger") as ft:
@@ -40,7 +41,9 @@ def test_fire_now_enqueues_fire_trigger(api):
 def test_fire_now_rejects_disabled(api):
     p = TradingProfile.objects.create(name="P", style="x")
     t = EventTrigger.objects.create(
-        name="r", profile=p, enabled=False,
+        name="r",
+        profile=p,
+        enabled=False,
         condition={"metric": "price", "ticker": "SPY", "op": ">", "value": 0},
     )
     with patch("apps.triggers.views.fire_trigger") as ft:
@@ -54,10 +57,14 @@ def test_evaluate_with_condition_body(fake_redis, api):
     p = TradingProfile.objects.create(name="P", style="x")
     with patch("apps.triggers.metrics.fetch_quotes") as fq:
         fq.return_value = {"SPY": {"last": 551.0}}
-        resp = api.post("/api/triggers/evaluate/", {
-            "profile": p.id,
-            "condition": {"metric": "price", "ticker": "SPY", "op": ">", "value": 550},
-        }, format="json")
+        resp = api.post(
+            "/api/triggers/evaluate/",
+            {
+                "profile": p.id,
+                "condition": {"metric": "price", "ticker": "SPY", "op": ">", "value": 550},
+            },
+            format="json",
+        )
     assert resp.status_code == 200
     body = resp.json()
     assert body["matched"] is True
@@ -68,9 +75,14 @@ def test_evaluate_with_condition_body(fake_redis, api):
 @pytest.mark.django_db
 def test_evaluate_rejects_invalid_dsl(api):
     p = TradingProfile.objects.create(name="P", style="x")
-    resp = api.post("/api/triggers/evaluate/", {
-        "profile": p.id, "condition": {"metric": "nope", "op": ">", "value": 1},
-    }, format="json")
+    resp = api.post(
+        "/api/triggers/evaluate/",
+        {
+            "profile": p.id,
+            "condition": {"metric": "nope", "op": ">", "value": 1},
+        },
+        format="json",
+    )
     assert resp.status_code == 400
 
 
@@ -79,10 +91,14 @@ def test_evaluate_reports_missing_metric_keys(fake_redis, api):
     p = TradingProfile.objects.create(name="P", style="x")
     with patch("apps.triggers.metrics.fetch_quotes") as fq:
         fq.return_value = {}  # Schwab returned nothing
-        resp = api.post("/api/triggers/evaluate/", {
-            "profile": p.id,
-            "condition": {"metric": "price", "ticker": "SPY", "op": ">", "value": 550},
-        }, format="json")
+        resp = api.post(
+            "/api/triggers/evaluate/",
+            {
+                "profile": p.id,
+                "condition": {"metric": "price", "ticker": "SPY", "op": ">", "value": 550},
+            },
+            format="json",
+        )
     assert resp.status_code == 200
     body = resp.json()
     assert body["matched"] is False

@@ -1,4 +1,5 @@
 """Conversations: Thread + Message + AIRun."""
+
 from __future__ import annotations
 
 from typing import ClassVar
@@ -19,14 +20,25 @@ class Thread(models.Model):
     kind = models.CharField(max_length=16, choices=KIND_CHOICES, default="consult")
     title = models.CharField(max_length=200, blank=True, default="")
     profile = models.ForeignKey(
-        TradingProfile, null=True, blank=True, on_delete=models.PROTECT, related_name="threads",
+        TradingProfile,
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="threads",
     )
     pinned_snapshot = models.ForeignKey(
-        Snapshot, null=True, blank=True, on_delete=models.SET_NULL, related_name="threads",
+        Snapshot,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="threads",
     )
     schedule = models.ForeignKey(
-        "observer.ObserverSchedule", null=True, blank=True,
-        on_delete=models.SET_NULL, related_name="threads",
+        "observer.ObserverSchedule",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="threads",
     )
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -54,10 +66,18 @@ class Message(models.Model):
     role = models.CharField(max_length=16, choices=ROLE_CHOICES)
     content = models.JSONField(default=dict)
     snapshot_ref = models.ForeignKey(
-        Snapshot, null=True, blank=True, on_delete=models.SET_NULL, related_name="messages_referencing",
+        Snapshot,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="messages_referencing",
     )
     parent_message = models.ForeignKey(
-        "self", null=True, blank=True, on_delete=models.CASCADE, related_name="branches",
+        "self",
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="branches",
     )
     status = models.CharField(max_length=16, choices=STATUS_CHOICES, default="done")
     error = models.TextField(blank=True, default="")
@@ -108,7 +128,9 @@ class ToolCall(models.Model):
     """Audit row for one tool_use → tool_result round-trip inside an AI run."""
 
     message = models.ForeignKey(
-        Message, on_delete=models.CASCADE, related_name="tool_calls",
+        Message,
+        on_delete=models.CASCADE,
+        related_name="tool_calls",
     )
     tool_use_id = models.CharField(max_length=64)
     tool_name = models.CharField(max_length=64)

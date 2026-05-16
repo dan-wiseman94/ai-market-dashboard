@@ -26,8 +26,12 @@ def test_unique_per_provider():
 
 @pytest.mark.django_db
 def test_is_expired_helper():
-    past = ApiCredential(provider="schwab", token={}, expires_at=timezone.now() - timedelta(minutes=1))
-    future = ApiCredential(provider="schwab", token={}, expires_at=timezone.now() + timedelta(minutes=10))
+    past = ApiCredential(
+        provider="schwab", token={}, expires_at=timezone.now() - timedelta(minutes=1)
+    )
+    future = ApiCredential(
+        provider="schwab", token={}, expires_at=timezone.now() + timedelta(minutes=10)
+    )
     none = ApiCredential(provider="schwab", token={})
     assert past.is_expired() is True
     assert future.is_expired() is False

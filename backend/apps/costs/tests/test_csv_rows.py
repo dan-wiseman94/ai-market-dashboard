@@ -14,9 +14,15 @@ def test_csv_rows_yields_header_then_data() -> None:
     t = Thread.objects.create(kind="chat", title="t")
     m = Message.objects.create(thread=t, role="assistant", content={"text": ""}, status="done")
     AIRun.objects.create(
-        message=m, provider="claude", model="claude-sonnet-4-6",
-        cost_usd=Decimal("0.0123"), input_tokens=100, output_tokens=10, cached_tokens=50,
-        latency_ms=500, status="done",
+        message=m,
+        provider="claude",
+        model="claude-sonnet-4-6",
+        cost_usd=Decimal("0.0123"),
+        input_tokens=100,
+        output_tokens=10,
+        cached_tokens=50,
+        latency_ms=500,
+        status="done",
     )
     now = datetime.now(tz=UTC)
     rows = list(csv_rows(start=now - timedelta(hours=1), end=now + timedelta(hours=1)))

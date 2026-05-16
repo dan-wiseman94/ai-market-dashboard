@@ -3,6 +3,7 @@
 This is the only module in apps.triggers that talks to Schwab + Redis.
 The evaluator is pure and consumes whatever dict we return here.
 """
+
 from __future__ import annotations
 
 import logging

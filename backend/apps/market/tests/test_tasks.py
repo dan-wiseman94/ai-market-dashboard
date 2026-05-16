@@ -36,9 +36,15 @@ def test_refresh_triggers_when_near_expiry():
         token={"access_token": "A", "refresh_token": "OLD"},
         expires_at=timezone.now() + timedelta(minutes=2),  # <5 min
     )
-    with patch("apps.market.tasks.refresh_token") as refresh, \
-         patch("apps.market.tasks.persist_token") as persist:
-        refresh.return_value = {"access_token": "NEW", "refresh_token": "NEW_R", "expires_at": 9999999999}
+    with (
+        patch("apps.market.tasks.refresh_token") as refresh,
+        patch("apps.market.tasks.persist_token") as persist,
+    ):
+        refresh.return_value = {
+            "access_token": "NEW",
+            "refresh_token": "NEW_R",
+            "expires_at": 9999999999,
+        }
         result = refresh_schwab_token.delay().get(timeout=2)
     assert result == {"ok": True}
     refresh.assert_called_once_with("OLD")

@@ -20,7 +20,7 @@ Everything runs through Docker; Make targets wrap Compose.
 | `make shell` | Bash in the `web` container. Useful for ad-hoc `manage.py` commands. |
 | `make migrate` / `make makemigrations` | Django migrations inside `web`. |
 | `make test` | `pytest` in `web` + `vitest --run` in `frontend`. |
-| `make lint` | `ruff check .` + `mypy .` in `web` + `npm run lint` in `frontend`. |
+| `make lint` | `ruff check .` + `ruff format --check .` + `ty check .` in `web` + `pnpm run lint` in `frontend`. |
 | `make check` | `lint` + `test` (what CI runs). |
 | `make logs s=<service>` | Tail a service. Services: `web`, `worker`, `beat`, `redis`, `db`, `frontend`. |
 | `make down` | Stop and remove containers (volumes kept). |
@@ -31,7 +31,7 @@ Everything runs through Docker; Make targets wrap Compose.
 
 Run one backend test: `docker compose exec web pytest backend/apps/<app>/tests/test_<x>.py::<test_name> -v`
 
-Run one frontend test: `docker compose exec frontend npx vitest run src/__tests__/App.test.tsx -t "specific test name"`
+Run one frontend test: `docker compose exec frontend pnpm exec vitest run src/__tests__/App.test.tsx -t "specific test name"`
 
 Full fresh-rebuild (wipes volumes, catches reproducibility bugs): `docker compose down -v && docker compose build --no-cache && docker compose up -d`
 
@@ -64,11 +64,11 @@ Each is a Channels group. Groups are joined in `connect()` and left in `disconne
 
 ## Non-obvious conventions
 
-- **Everything runs in Docker.** Pyright/mypy/eslint errors about missing modules when you view files in your editor are expected — deps only exist inside the containers. Run lint via `make lint` (which shells into the containers).
+- **Everything runs in Docker.** Pyright/ty/eslint errors about missing modules when you view files in your editor are expected — deps only exist inside the containers. Run lint via `make lint` (which shells into the containers).
 - **`beat` depends on `web` health.** In `compose.yaml`, beat's `depends_on` includes `web: condition: service_healthy`. Without this, `DatabaseScheduler` races `manage.py migrate` and crashes on an empty schema. Do not remove.
-- **Makefile runs `mypy .` not `mypy backend`** because `WORKDIR` inside the `web` container is `/app/backend`. Outside the container (e.g., in CI) you run `mypy backend` from repo root — both invocations are correct for their cwd.
-- **Tool config is duplicated.** `pyproject.toml` has `[tool.ruff]` / `[tool.mypy]` / `[tool.pytest.ini_options]` AND standalone `ruff.toml` / `mypy.ini` / `pytest.ini` exist at repo root. The Dockerfile only copies `pyproject.toml`, so the container uses that; standalone files would be used by local (non-Docker) tool invocations. When editing config, update both for now until consolidation.
-- **`uv.lock` is not committed.** Each fresh Docker build re-resolves dependencies via `uv sync --no-install-project --dev`. For reproducible builds, generate and commit the lockfile (`docker compose exec web uv lock` → copy back to host).
+- **Makefile runs `ty check .` not `ty check backend`** because `WORKDIR` inside the `web` container is `/app/backend`. Outside the container (e.g., in CI) you run `ty check backend` from repo root — both invocations are correct for their cwd.
+- **All tool config lives in `pyproject.toml`.** `[tool.ruff]` / `[tool.pytest.ini_options]` are the single source of truth. Standalone `ruff.toml` / `pytest.ini` are gone — both host (uv) and container tooling read pyproject.
+- **`uv.lock` is committed.** Docker builds and CI both run `uv sync --frozen` against it for reproducible installs. Regenerate with `uv lock` on the host (or `docker compose exec web uv lock` + copy back) when dependencies change.
 - **Worker container has chromium for Playwright.** Cold builds of the worker image are ~3–5min slower because of the chromium download (~150MB binary + ~13 Debian system libs). The `web` and `beat` services use the smaller default image without chromium.
 - **Render route `/render/chart`** is deterministic — URL params fully specify the render. Used by `apps.snapshots.services.render.render_chart_png` to capture chart PNGs via headless chromium. In dev: `http://frontend:5173/render/chart?...`. In prod: hash-route on `index.html` so we can reach the SPA via Whitenoise without solving SPA-mode.
 - **Image bytes live in Postgres** (`SnapshotImage.data` BinaryField), not on disk. `serve_image` view reads via `bytes(img.data)` because Django's BinaryField returns memoryview. `DATA_UPLOAD_MAX_MEMORY_SIZE` in settings is aligned with the 5MB image cap so oversized uploads produce a clean 413 instead of bare 400 from Django's body-buffer guard.
@@ -102,6 +102,11 @@ Each is a Channels group. Groups are joined in `connect()` and left in `disconne
 - **Citations on news** — `apps.ai.citations.news_to_search_result_blocks(items)` serializes news items as Anthropic `search_result` blocks with `citations: {enabled: true}`. The frontend `<Citation/>` component resolves citations back to `news://<id>` or the original URL.
 - **`ChatMessage.content` is `str | list[dict]`.** Messages with a `"blocks"` key in `Message.content` thread through as content-block lists; otherwise as plain text. This is how files / images / citations / tool_result blocks co-exist with text.
 - **Only `apps/ai/providers/claude.py` is M10-aware.** OpenAI / Local providers ignore `tools`, `thinking_budget`, `memory_dir`. Enabling these on a profile whose `default_provider != "claude"` is a silent no-op, not an error — parity is a future milestone.
+- **Analytics are on-demand, never scheduled.** `apps.analytics` has five services — `leaderboard`, `cpi`, `trigger_heatmap`, `observer_timeline`, `unusual_options` — each backed by a single DRF view under `/api/analytics/`. They aggregate off indexed columns (`AIRun.created_at`, `TriggerFiring.fired_at`, `Message.created_at`, `OptionChainSnapshot.fetched_at`) at request time. No Celery tasks, no materialized views.
+- **Provider leaderboard uses stored OHLC.** `provider_leaderboard(forward_hours=N)` correlates each AIRun against the snapshot's primary ticker (first `quotes` key) and the `OHLCBar` rows at capture vs capture+N hours. Runs without a snapshot, without a `quotes` section, or without price history show `coverage_pct=0` and `avg_forward_return_pct=None` — honest about what the data supports rather than inventing a number.
+- **Unusual-options detector operates on `OptionChainSnapshot`.** Flags lines with `volume/oi >= 3.0` or `iv_z >= 1.5 sigma` over the 30-day chain-history mean IV for the ticker. Returns per-line `triggers` list so the UI can show WHY each line was flagged; not a scanner — a *reasoning* surface.
+- **Observer timeline reads Messages, not a run log.** There is no dedicated `ObserverRun` table; the observer writes one Message per fire (assistant/done = success, assistant/failed = failure, system/done = cost-cap skip). The analytics service groups those by day.
+- **AnalyticsPage route is `/analytics`** (keyboard shortcut `g a`, Cmd-K palette `go-analytics`). Cards are each self-contained and call one of the `useAnalytics.ts` hooks — `useLeaderboard`, `useCostPerInsight`, `useTriggerHeatmap`, `useObserverTimeline`, `useUnusualOptions(ticker)`.
 
 ## Testing
 

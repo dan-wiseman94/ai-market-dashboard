@@ -1,4 +1,5 @@
 """Schwab OAuth endpoints."""
+
 from __future__ import annotations
 
 from django.http import HttpRequest, HttpResponseRedirect, JsonResponse
@@ -28,7 +29,10 @@ def schwab_callback(request: HttpRequest) -> JsonResponse | HttpResponseRedirect
     code = request.GET.get("code")
     if not code:
         return JsonResponse(
-            {"code": "missing_code", "message": "Schwab callback did not include a code parameter."},
+            {
+                "code": "missing_code",
+                "message": "Schwab callback did not include a code parameter.",
+            },
             status=400,
         )
     try:
@@ -66,21 +70,29 @@ class ProviderConfigViewSet(viewsets.ModelViewSet):
 def ai_models(request: HttpRequest) -> JsonResponse:
     provider = request.GET.get("provider")
     models = _list_catalog(provider)
-    return JsonResponse({
-        "models": [
-            {
-                "id": m.id, "name": m.name, "provider": m.provider,
-                "input_per_mtok": m.input_per_mtok, "output_per_mtok": m.output_per_mtok,
-                "cached_per_mtok": m.cached_per_mtok, "context_window": m.context_window,
-                "supports_vision": m.supports_vision,
-            }
-            for m in models
-        ],
-    })
+    return JsonResponse(
+        {
+            "models": [
+                {
+                    "id": m.id,
+                    "name": m.name,
+                    "provider": m.provider,
+                    "input_per_mtok": m.input_per_mtok,
+                    "output_per_mtok": m.output_per_mtok,
+                    "cached_per_mtok": m.cached_per_mtok,
+                    "context_window": m.context_window,
+                    "supports_vision": m.supports_vision,
+                }
+                for m in models
+            ],
+        }
+    )
 
 
 @require_GET
 def ai_usage(_request: HttpRequest) -> JsonResponse:
-    return JsonResponse({
-        "today": {p: str(daily_spend_usd(p)) for p in ["claude", "openai", "local"]},
-    })
+    return JsonResponse(
+        {
+            "today": {p: str(daily_spend_usd(p)) for p in ["claude", "openai", "local"]},
+        }
+    )

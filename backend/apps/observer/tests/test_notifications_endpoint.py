@@ -22,9 +22,9 @@ def test_list_notifications_returns_anonymous_only(api):
 @pytest.mark.django_db
 def test_list_unread_filter(api):
     from django.utils import timezone
+
     Notification.objects.create(user=None, kind="error", title="unread")
-    Notification.objects.create(user=None, kind="error", title="read",
-                                read_at=timezone.now())
+    Notification.objects.create(user=None, kind="error", title="read", read_at=timezone.now())
     resp = api.get("/api/observer/notifications/?unread=true")
     assert resp.status_code == 200
     body = resp.json()

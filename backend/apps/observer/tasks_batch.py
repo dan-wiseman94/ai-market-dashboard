@@ -1,4 +1,5 @@
 """Beat-scheduled poller for open Messages Batches."""
+
 from __future__ import annotations
 
 import logging

@@ -1,4 +1,5 @@
 """Triggers HTTP endpoints."""
+
 from __future__ import annotations
 
 from datetime import UTC
@@ -78,12 +79,15 @@ class EventTriggerViewSet(viewsets.ModelViewSet):
             page, size = 1, 20
         total = qs.count()
         start = (page - 1) * size
-        rows = qs[start:start + size]
-        return Response({
-            "results": TriggerFiringSerializer(rows, many=True).data,
-            "count": total,
-            "page": page, "size": size,
-        })
+        rows = qs[start : start + size]
+        return Response(
+            {
+                "results": TriggerFiringSerializer(rows, many=True).data,
+                "count": total,
+                "page": page,
+                "size": size,
+            }
+        )
 
     @action(detail=False, methods=["post"])
     def backtest(self, request: Request) -> Response:
@@ -115,13 +119,12 @@ class EventTriggerViewSet(viewsets.ModelViewSet):
 
         timeframe = data.get("timeframe", "1d")
         matches = run_backtest(condition, start=start, end=end, timeframe=timeframe)
-        return Response({
-            "match_count": len(matches),
-            "matches": [
-                {"ts": m.ts.isoformat(), "values": m.values}
-                for m in matches[:500]
-            ],
-        })
+        return Response(
+            {
+                "match_count": len(matches),
+                "matches": [{"ts": m.ts.isoformat(), "values": m.values} for m in matches[:500]],
+            }
+        )
 
     @action(detail=False, methods=["get"], url_path="firings/recent")
     def firings_recent(self, request: Request) -> Response:
@@ -129,11 +132,9 @@ class EventTriggerViewSet(viewsets.ModelViewSet):
             limit = max(1, min(20, int(request.query_params.get("limit", "5"))))
         except ValueError:
             limit = 5
-        qs = (
-            TriggerFiring.objects
-            .select_related("trigger", "snapshot", "thread")
-            .order_by("-fired_at")[:limit]
-        )
+        qs = TriggerFiring.objects.select_related("trigger", "snapshot", "thread").order_by(
+            "-fired_at"
+        )[:limit]
         return Response(TriggerFiringSerializer(qs, many=True).data)
 
 

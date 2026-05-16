@@ -1,4 +1,5 @@
 """Observer HTTP endpoints."""
+
 from __future__ import annotations
 
 from django.http import HttpRequest, JsonResponse
@@ -34,7 +35,9 @@ class ObserverScheduleViewSet(viewsets.ModelViewSet):
             existing_cron = cron
             if existing_cron is None and instance.periodic_task and instance.periodic_task.crontab:
                 c = instance.periodic_task.crontab
-                existing_cron = f"{c.minute} {c.hour} {c.day_of_month} {c.month_of_year} {c.day_of_week}"
+                existing_cron = (
+                    f"{c.minute} {c.hour} {c.day_of_month} {c.month_of_year} {c.day_of_week}"
+                )
             if existing_cron is None:
                 existing_cron = "0 * * * *"
             sync_periodic_task(instance, cron=existing_cron)
@@ -50,7 +53,9 @@ class ObserverScheduleViewSet(viewsets.ModelViewSet):
 
 
 class NotificationViewSet(
-    mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.GenericViewSet,
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    viewsets.GenericViewSet,
 ):
     serializer_class = NotificationSerializer
 
@@ -83,28 +88,43 @@ class NotificationViewSet(
 @require_GET
 def market_status_view(_request: HttpRequest) -> JsonResponse:
     s = market_status()
-    return JsonResponse({
-        "is_open": s["is_open"],
-        "next_open": s["next_open"].isoformat() if s["next_open"] else None,
-        "next_close": s["next_close"].isoformat() if s["next_close"] else None,
-    })
+    return JsonResponse(
+        {
+            "is_open": s["is_open"],
+            "next_open": s["next_open"].isoformat() if s["next_open"] else None,
+            "next_close": s["next_close"].isoformat() if s["next_close"] else None,
+        }
+    )
 
 
 @require_GET
 def observer_thread_view(_request: HttpRequest, profile_id: int) -> JsonResponse:
     profile = get_object_or_404(TradingProfile, id=profile_id)
     thread = get_or_create_observer_thread(profile)
-    messages = list(thread.messages.all().order_by("created_at").values(
-        "id", "role", "content", "created_at",
-    ))
-    return JsonResponse({
-        "id": thread.id,
-        "kind": thread.kind,
-        "profile_id": thread.profile_id,
-        "title": thread.title,
-        "messages": [
-            {"id": m["id"], "role": m["role"], "content": m["content"],
-             "created_at": m["created_at"].isoformat()}
-            for m in messages
-        ],
-    })
+    messages = list(
+        thread.messages.all()
+        .order_by("created_at")
+        .values(
+            "id",
+            "role",
+            "content",
+            "created_at",
+        )
+    )
+    return JsonResponse(
+        {
+            "id": thread.id,
+            "kind": thread.kind,
+            "profile_id": thread.profile_id,
+            "title": thread.title,
+            "messages": [
+                {
+                    "id": m["id"],
+                    "role": m["role"],
+                    "content": m["content"],
+                    "created_at": m["created_at"].isoformat(),
+                }
+                for m in messages
+            ],
+        }
+    )

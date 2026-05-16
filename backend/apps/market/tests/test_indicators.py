@@ -1,4 +1,5 @@
 """Indicator math is pure: list in, float out. No DB, no cache."""
+
 from __future__ import annotations
 
 import pytest
@@ -14,6 +15,7 @@ def test_ema_weights_recent_more_than_old() -> None:
     flat = compute("EMA", [1.0] * 20, period=10)
     assert flat == pytest.approx(1.0)
     step = compute("EMA", [1.0] * 10 + [2.0] * 10, period=10)
+    assert step is not None
     assert 1.5 < step < 2.0
 
 

@@ -19,8 +19,10 @@ from apps.snapshots.tasks import capture_task
 
 
 class SnapshotViewSet(
-    mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.CreateModelMixin,
-    viewsets.GenericViewSet
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    mixins.CreateModelMixin,
+    viewsets.GenericViewSet,
 ):
     queryset = Snapshot.objects.prefetch_related("sections")
     serializer_class = SnapshotSerializer
@@ -42,7 +44,9 @@ class SnapshotViewSet(
         )
         image_ids = data.get("image_ids") or []
         if image_ids:
-            SnapshotImage.objects.filter(id__in=image_ids, snapshot__isnull=True).update(snapshot=snap)
+            SnapshotImage.objects.filter(id__in=image_ids, snapshot__isnull=True).update(
+                snapshot=snap
+            )
         capture_task.delay(
             snapshot_id=snap.id,
             watchlist_tickers=data.get("watchlist_tickers") or [],
@@ -91,7 +95,11 @@ def images_collection(request):
 
     # GET: list staged
     staged = request.GET.get("staged") == "true"
-    qs = SnapshotImage.objects.filter(snapshot__isnull=True) if staged else SnapshotImage.objects.all()
+    qs = (
+        SnapshotImage.objects.filter(snapshot__isnull=True)
+        if staged
+        else SnapshotImage.objects.all()
+    )
     qs = qs.order_by("-created_at")[:50]
     return JsonResponse({"images": SnapshotImageSerializer(qs, many=True).data})
 

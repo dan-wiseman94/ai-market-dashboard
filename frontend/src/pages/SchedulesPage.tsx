@@ -79,7 +79,7 @@ export default function SchedulesPage() {
 
       <ul className="space-y-2">
         {(Array.isArray(schedules) ? schedules : []).map((s) => (
-          <li key={s.id} className="p-4 rounded border border-slate-700 bg-slate-900 space-y-2">
+          <li key={s.id} data-testid={`schedule-row-${s.id}`} className="p-4 rounded border border-slate-700 bg-slate-900 space-y-2">
             <div className="flex items-center justify-between">
               <div>
                 <div className="font-semibold">{s.name}</div>

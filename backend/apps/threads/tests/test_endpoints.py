@@ -17,9 +17,16 @@ def api():
 def test_create_consult_thread(api):
     p = TradingProfile.objects.create(name="P", style="x")
     s = Snapshot.objects.create(profile=p, includes=["quotes"], source="manual", status="ready")
-    resp = api.post("/api/threads/", {
-        "kind": "consult", "profile_id": p.id, "pinned_snapshot_id": s.id, "title": "NVDA long?",
-    }, format="json")
+    resp = api.post(
+        "/api/threads/",
+        {
+            "kind": "consult",
+            "profile_id": p.id,
+            "pinned_snapshot_id": s.id,
+            "title": "NVDA long?",
+        },
+        format="json",
+    )
     assert resp.status_code == 201
     body = resp.json()
     assert body["kind"] == "consult"

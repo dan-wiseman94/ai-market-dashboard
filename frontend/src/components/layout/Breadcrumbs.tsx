@@ -21,6 +21,7 @@ export default function Breadcrumbs() {
   return (
     <nav
       aria-label="Breadcrumb"
+      data-testid="breadcrumb-trail"
       className="px-6 py-2 text-[11px] font-mono text-ink-500 border-b border-rule flex items-center"
     >
       <span className="text-copper-500/70 mr-2" aria-hidden>◈</span>

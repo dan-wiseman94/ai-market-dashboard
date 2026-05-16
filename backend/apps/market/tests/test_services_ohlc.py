@@ -9,6 +9,7 @@ from apps.market.services.ohlc import fetch_ohlc
 @pytest.fixture(autouse=True)
 def fake_redis(monkeypatch):
     import fakeredis
+
     r = fakeredis.FakeRedis()
     monkeypatch.setattr(cache_module, "_redis", lambda: r)
     return r
@@ -20,8 +21,22 @@ def test_fetch_ohlc_1m_calls_schwab_price_history():
     resp = MagicMock()
     resp.json.return_value = {
         "candles": [
-            {"open": 100, "high": 101, "low": 99, "close": 100.5, "volume": 1000, "datetime": 1700000000000},
-            {"open": 100.5, "high": 101.5, "low": 100, "close": 101, "volume": 1200, "datetime": 1700000060000},
+            {
+                "open": 100,
+                "high": 101,
+                "low": 99,
+                "close": 100.5,
+                "volume": 1000,
+                "datetime": 1700000000000,
+            },
+            {
+                "open": 100.5,
+                "high": 101.5,
+                "low": 100,
+                "close": 101,
+                "volume": 1200,
+                "datetime": 1700000060000,
+            },
         ]
     }
     client = MagicMock()

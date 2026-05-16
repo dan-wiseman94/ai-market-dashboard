@@ -25,7 +25,9 @@ def test_create_enqueues(client: Client) -> None:
 
 @pytest.mark.django_db
 def test_list(client: Client) -> None:
-    ExportJob.objects.create(scope={}, format="zip", status="done", filename="x.zip", size_bytes=1, sha256="a" * 64)
+    ExportJob.objects.create(
+        scope={}, format="zip", status="done", filename="x.zip", size_bytes=1, sha256="a" * 64
+    )
     resp = client.get("/api/export/")
     assert resp.status_code == 200
     body = resp.json()
@@ -46,8 +48,12 @@ def test_download_when_done(client: Client, tmp_path, monkeypatch) -> None:
     f = tmp_path / "done.zip"
     f.write_bytes(b"zipcontent" * 10)
     job = ExportJob.objects.create(
-        scope={}, format="zip", status="done", filename=f.name,
-        size_bytes=f.stat().st_size, sha256="z" * 64,
+        scope={},
+        format="zip",
+        status="done",
+        filename=f.name,
+        size_bytes=f.stat().st_size,
+        sha256="z" * 64,
     )
     resp = client.get(f"/api/export/{job.id}/download/")
     assert resp.status_code == 200
@@ -60,7 +66,12 @@ def test_delete_unlinks_file(client: Client, tmp_path, monkeypatch) -> None:
     f = tmp_path / "del.zip"
     f.write_bytes(b"x")
     job = ExportJob.objects.create(
-        scope={}, format="zip", status="done", filename=f.name, size_bytes=1, sha256="x" * 64,
+        scope={},
+        format="zip",
+        status="done",
+        filename=f.name,
+        size_bytes=1,
+        sha256="x" * 64,
     )
     resp = client.delete(f"/api/export/{job.id}/")
     assert resp.status_code == 204
@@ -72,6 +83,7 @@ def test_delete_unlinks_file(client: Client, tmp_path, monkeypatch) -> None:
 @pytest.mark.django_db
 def test_single_thread_endpoint(client: Client) -> None:
     from apps.threads.models import Thread
+
     t = Thread.objects.create(kind="chat", title="T")
     with patch("apps.export.views.build_export"):
         resp = client.post(f"/api/export/thread/{t.id}/")

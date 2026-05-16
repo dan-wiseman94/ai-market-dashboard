@@ -1,4 +1,5 @@
 """Smoke-test WebSocket consumer. Real domain consumers live in their own apps."""
+
 from __future__ import annotations
 
 from typing import Any

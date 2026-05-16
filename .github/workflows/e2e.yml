@@ -1,0 +1,48 @@
+name: e2e
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+# NB: not run on pull_request — the e2e suite still needs pytest-xdist +
+# pytest-playwright + browser-host wiring to actually pass. Keep it off the
+# PR critical path until those land; trigger manually via workflow_dispatch
+# or on merge to main.
+
+permissions:
+  contents: read
+
+jobs:
+  # Single-job build+run while only e2e/ui/ has tests. When other lanes
+  # (e2e/api, ws, visual, a11y, perf) gain real tests, split back into
+  # per-lane jobs with image artifact reuse.
+  ui:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Provision .env
+        run: |
+          cp .env.example .env
+          python3 -c "import secrets; print('DJANGO_SECRET_KEY=' + secrets.token_urlsafe(50))" >> .env
+      - name: Build + start e2e stack
+        run: docker compose -f compose.yaml -f compose.e2e.yaml up -d --build
+      - name: Wait for web health
+        run: |
+          for i in $(seq 1 60); do
+            if curl -fs http://127.0.0.1:8000/api/health/ >/dev/null 2>&1; then exit 0; fi
+            sleep 2
+          done
+          docker compose logs --tail=200
+          exit 1
+      - name: Run e2e/ui suite
+        run: docker compose exec -T web uv run pytest e2e/ui/ -n 4 --dist=loadscope -v --tracing=retain-on-failure
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-traces
+          path: e2e/artifacts/
+          retention-days: 7
+      - if: always()
+        run: docker compose -f compose.yaml -f compose.e2e.yaml down -v

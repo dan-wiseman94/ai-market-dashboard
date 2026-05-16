@@ -1,4 +1,5 @@
 """Orchestrates a single observer fire."""
+
 from __future__ import annotations
 
 import logging
@@ -42,7 +43,8 @@ def run_observer(schedule_id: int) -> int | None:
     if cfg is None:
         log.warning(
             "observer %s: no ProviderConfig for %s, skipping cost-cap enforcement",
-            schedule_id, provider_name,
+            schedule_id,
+            provider_name,
         )
         cap_usd: Decimal = Decimal("Infinity")
         monthly_cap: Decimal | None = None
@@ -56,11 +58,14 @@ def run_observer(schedule_id: int) -> int | None:
         check_monthly_cap(provider_name, cap_usd=monthly_cap)
     except CostCapExceededError:
         Message.objects.create(
-            thread=thread, role="system",
-            content={"text": (
-                f"Observer fire skipped at {timezone.now():%Y-%m-%d %H:%M UTC}: "
-                f"daily cost cap reached for {provider_name}."
-            )},
+            thread=thread,
+            role="system",
+            content={
+                "text": (
+                    f"Observer fire skipped at {timezone.now():%Y-%m-%d %H:%M UTC}: "
+                    f"daily cost cap reached for {provider_name}."
+                )
+            },
             status="done",
         )
         sched.last_fired_at = timezone.now()
@@ -77,6 +82,7 @@ def run_observer(schedule_id: int) -> int | None:
 
     if sched.use_batch:
         from apps.observer.services.batch import submit_watchlist_batch
+
         try:
             submit_watchlist_batch(sched.id)
         except Exception as exc:
@@ -88,9 +94,9 @@ def run_observer(schedule_id: int) -> int | None:
     if sched.mode == "diff":
         from apps.snapshots.diff import diff_sections
         from apps.snapshots.models import Snapshot as _Snapshot
+
         prev_snap = (
-            _Snapshot.objects
-            .filter(profile=sched.profile, status="ready")
+            _Snapshot.objects.filter(profile=sched.profile, status="ready")
             .exclude(id=snap.id)
             .order_by("-created_at")
             .first()
@@ -109,9 +115,11 @@ def run_observer(schedule_id: int) -> int | None:
         payload_text = serialize_for_ai(snap, provider=provider_name)
 
     msg = Message.objects.create(
-        thread=thread, role="user",
+        thread=thread,
+        role="user",
         content={"text": payload_text},
-        snapshot_ref=snap, status="done",
+        snapshot_ref=snap,
+        status="done",
     )
 
     if sched.structured:
@@ -123,7 +131,8 @@ def run_observer(schedule_id: int) -> int | None:
         if sched.override_model:
             override["model"] = sched.override_model
         run_ai_on_message.delay(
-            thread_id=thread.id, user_message_id=msg.id,
+            thread_id=thread.id,
+            user_message_id=msg.id,
             override=override or None,
         )
 
@@ -131,7 +140,8 @@ def run_observer(schedule_id: int) -> int | None:
     sched.save(update_fields=["last_fired_at"])
 
     notify(
-        user_id=None, kind="observer_done",
+        user_id=None,
+        kind="observer_done",
         title=f"Observer fired: {sched.name}",
         body=f"Snapshot #{snap.id} captured for {sched.profile.name}",
         link=f"/threads/observer/{sched.profile.id}",
@@ -140,15 +150,20 @@ def run_observer(schedule_id: int) -> int | None:
 
 
 def _run_structured_and_record(
-    sched: ObserverSchedule, thread, payload_text: str, provider_name: str,
+    sched: ObserverSchedule,
+    thread,
+    payload_text: str,
+    provider_name: str,
 ) -> None:
     """Invoke messages.parse with ObservationReport and persist the result."""
     cfg = ProviderConfig.objects.filter(provider=provider_name).first()
     if cfg is None or not cfg.api_key:
         Message.objects.create(
-            thread=thread, role="system",
+            thread=thread,
+            role="system",
             content={"text": f"Observer {sched.name}: no {provider_name} key configured"},
-            status="failed", error="no_key",
+            status="failed",
+            error="no_key",
         )
         return
     model_id = sched.override_model or cfg.default_model or "claude-opus-4-7"
@@ -163,13 +178,16 @@ def _run_structured_and_record(
         )
     except Exception as exc:
         Message.objects.create(
-            thread=thread, role="assistant",
+            thread=thread,
+            role="assistant",
             content={"text": f"Structured run failed: {exc}"},
-            status="failed", error=str(exc),
+            status="failed",
+            error=str(exc),
         )
         return
     Message.objects.create(
-        thread=thread, role="assistant",
+        thread=thread,
+        role="assistant",
         content={"kind": "structured_observation", "report": report.model_dump()},
         status="done",
     )

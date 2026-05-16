@@ -1,4 +1,5 @@
 """structlog configuration, used by both dev and prod settings."""
+
 import logging
 
 import structlog
@@ -6,9 +7,7 @@ import structlog
 
 def configure_structlog(*, dev: bool) -> None:
     renderer = (
-        structlog.dev.ConsoleRenderer(colors=True)
-        if dev
-        else structlog.processors.JSONRenderer()
+        structlog.dev.ConsoleRenderer(colors=True) if dev else structlog.processors.JSONRenderer()
     )
     structlog.configure(
         processors=[

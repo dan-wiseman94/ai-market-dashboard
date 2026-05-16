@@ -1,6 +1,7 @@
 """Monthly cost cap must block like the daily cap does. Nullable cap means
 'no monthly limit' — the existing code path on ProviderConfig stores None
 when unset."""
+
 from __future__ import annotations
 
 from datetime import timedelta
@@ -30,11 +31,17 @@ def thread(db, profile: TradingProfile) -> Thread:
 
 def _make_run(thread: Thread, *, days_ago: int, cost: Decimal, provider: str = "claude") -> AIRun:
     msg = Message.objects.create(
-        thread=thread, role="assistant", content={"text": ""}, status="done",
+        thread=thread,
+        role="assistant",
+        content={"text": ""},
+        status="done",
     )
     run = AIRun.objects.create(
-        message=msg, provider=provider, model="claude-opus-4-7",
-        cost_usd=cost, status="done",
+        message=msg,
+        provider=provider,
+        model="claude-opus-4-7",
+        cost_usd=cost,
+        status="done",
     )
     AIRun.objects.filter(id=run.id).update(
         created_at=timezone.now() - timedelta(days=days_ago),

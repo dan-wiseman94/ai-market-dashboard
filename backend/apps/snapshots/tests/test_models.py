@@ -16,8 +16,12 @@ def test_create_snapshot_with_sections():
     assert s.status == "pending"
     assert s.captured_at is not None
 
-    SnapshotSection.objects.create(snapshot=s, kind="quotes", payload={"SPY": {"last": 550}}, status="done")
-    SnapshotSection.objects.create(snapshot=s, kind="positions", payload=[], status="failed", error="network")
+    SnapshotSection.objects.create(
+        snapshot=s, kind="quotes", payload={"SPY": {"last": 550}}, status="done"
+    )
+    SnapshotSection.objects.create(
+        snapshot=s, kind="positions", payload=[], status="failed", error="network"
+    )
     assert s.sections.count() == 2
 
 

@@ -1,4 +1,5 @@
 """Shared types for the AI provider layer."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -26,7 +27,7 @@ class RunRequest:
     cache_last_message: bool = False
     tools: list[dict] = field(default_factory=list)
     thinking_budget: int = 0  # 0 disables extended thinking
-    memory_dir: str = ""       # "" disables Memory tool
+    memory_dir: str = ""  # "" disables Memory tool
 
 
 @dataclass

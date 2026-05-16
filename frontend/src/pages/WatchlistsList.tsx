@@ -34,7 +34,7 @@ export default function WatchlistsList() {
       ) : (
         <ul className="space-y-1">
           {(data ?? []).map((w) => (
-            <li key={w.id} className="flex items-center justify-between p-3 rounded border border-slate-800">
+            <li key={w.id} data-testid={`watchlist-row-${w.name}`} className="flex items-center justify-between p-3 rounded border border-slate-800">
               <Link to={`/watchlists/${w.id}`} className="hover:underline">
                 {w.name} <span className="text-slate-500 text-sm">({w.symbols.length} symbols)</span>
               </Link>

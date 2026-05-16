@@ -1,11 +1,12 @@
 # syntax=docker/dockerfile:1.7
-FROM python:3.12-slim AS base
+FROM python:3.13-slim AS base
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
     UV_LINK_MODE=copy \
     UV_PYTHON_DOWNLOADS=never \
+    UV_COMPILE_BYTECODE=1 \
     UV_PROJECT_ENVIRONMENT=/app/.venv \
     PATH="/app/.venv/bin:$PATH"
 
@@ -15,14 +16,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 
-COPY --from=ghcr.io/astral-sh/uv:0.4 /uv /usr/local/bin/uv
+COPY --from=ghcr.io/astral-sh/uv:0.8 /uv /usr/local/bin/uv
 
 WORKDIR /app
 
 # Deps before code so source edits don't bust the uv-sync layer.
-COPY pyproject.toml ./
+COPY pyproject.toml uv.lock ./
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --no-install-project --dev
+    uv sync --frozen --no-install-project --dev
 
 COPY backend /app/backend
 
@@ -37,7 +38,7 @@ RUN chmod +x /usr/local/bin/entrypoint.sh
 EXPOSE 8000
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
-CMD ["daphne", "-b", "0.0.0.0", "-p", "8000", "config.asgi:application"]
+CMD ["uvicorn", "config.asgi:application", "--host", "0.0.0.0", "--port", "8000"]
 
 FROM base AS worker
 
@@ -47,6 +48,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libxcomposite1 libxdamage1 libxrandr2 libgbm1 libpango-1.0-0 \
     libcairo2 libasound2 fonts-liberation \
     && rm -rf /var/lib/apt/lists/*
-RUN /app/.venv/bin/playwright install chromium --with-deps
+RUN uv run playwright install chromium --with-deps
 
-CMD ["celery", "-A", "config", "worker", "-l", "INFO"]
+CMD ["uv", "run", "celery", "-A", "config", "worker", "-l", "INFO"]

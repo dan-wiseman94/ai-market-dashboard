@@ -14,11 +14,18 @@ def test_capture_broadcasts_section_events():
     def collect(snapshot_id, msg):
         events.append((snapshot_id, msg))
 
-    with patch("apps.snapshots.services.fetch_quotes", return_value={"SPY": {"last": 1}}), \
-         patch("apps.snapshots.services.fetch_positions", side_effect=RuntimeError("x")), \
-         patch("apps.snapshots.services._broadcast", side_effect=collect):
-        capture(profile=p, objective="", includes=["quotes", "positions"],
-                source="manual", watchlist_tickers=["SPY"])
+    with (
+        patch("apps.snapshots.services.fetch_quotes", return_value={"SPY": {"last": 1}}),
+        patch("apps.snapshots.services.fetch_positions", side_effect=RuntimeError("x")),
+        patch("apps.snapshots.services._broadcast", side_effect=collect),
+    ):
+        capture(
+            profile=p,
+            objective="",
+            includes=["quotes", "positions"],
+            source="manual",
+            watchlist_tickers=["SPY"],
+        )
 
     kinds = [msg["event"] for _, msg in events]
     assert "section_started" in kinds

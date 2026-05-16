@@ -20,16 +20,14 @@ def fake_redis():
 @pytest.mark.django_db
 def test_never_fired_never_blocks(fake_redis):
     p = TradingProfile.objects.create(name="P", style="x")
-    t = EventTrigger.objects.create(name="r", profile=p, condition={"all": []},
-                                    cooldown_seconds=60)
+    t = EventTrigger.objects.create(name="r", profile=p, condition={"all": []}, cooldown_seconds=60)
     assert cooldown_blocks(t) is False
 
 
 @pytest.mark.django_db
 def test_within_time_window_blocks(fake_redis):
     p = TradingProfile.objects.create(name="P", style="x")
-    t = EventTrigger.objects.create(name="r", profile=p, condition={"all": []},
-                                    cooldown_seconds=60)
+    t = EventTrigger.objects.create(name="r", profile=p, condition={"all": []}, cooldown_seconds=60)
     t.last_fired_at = timezone.now() - timedelta(seconds=30)
     t.save()
     assert cooldown_blocks(t) is True
@@ -38,8 +36,7 @@ def test_within_time_window_blocks(fake_redis):
 @pytest.mark.django_db
 def test_time_elapsed_but_not_rearmed_blocks(fake_redis):
     p = TradingProfile.objects.create(name="P", style="x")
-    t = EventTrigger.objects.create(name="r", profile=p, condition={"all": []},
-                                    cooldown_seconds=60)
+    t = EventTrigger.objects.create(name="r", profile=p, condition={"all": []}, cooldown_seconds=60)
     t.last_fired_at = timezone.now() - timedelta(seconds=120)
     t.save()
     # No re-arm key set → blocked
@@ -49,8 +46,7 @@ def test_time_elapsed_but_not_rearmed_blocks(fake_redis):
 @pytest.mark.django_db
 def test_time_elapsed_and_rearmed_passes(fake_redis):
     p = TradingProfile.objects.create(name="P", style="x")
-    t = EventTrigger.objects.create(name="r", profile=p, condition={"all": []},
-                                    cooldown_seconds=60)
+    t = EventTrigger.objects.create(name="r", profile=p, condition={"all": []}, cooldown_seconds=60)
     t.last_fired_at = timezone.now() - timedelta(seconds=120)
     t.save()
     mark_rearmed(t.id)

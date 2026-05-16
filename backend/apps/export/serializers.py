@@ -1,4 +1,5 @@
 """Serializers for export: pure-function helpers and DRF serializer."""
+
 from __future__ import annotations
 
 from collections.abc import Iterator
@@ -11,6 +12,7 @@ from apps.export.models import ExportJob
 # ---------------------------------------------------------------------------
 # Thread serializers
 # ---------------------------------------------------------------------------
+
 
 def thread_to_json(thread) -> dict:
     from apps.threads.models import Message
@@ -79,13 +81,16 @@ def thread_to_markdown(thread) -> str:
 # Snapshot serializers
 # ---------------------------------------------------------------------------
 
+
 def snapshot_to_json(snapshot) -> dict:
     from apps.snapshots.models import SnapshotSection
 
     sections = SnapshotSection.objects.filter(snapshot=snapshot).order_by("kind")
     return {
         "id": snapshot.id,
-        "captured_at": snapshot.captured_at.isoformat() if getattr(snapshot, "captured_at", None) else None,
+        "captured_at": snapshot.captured_at.isoformat()
+        if getattr(snapshot, "captured_at", None)
+        else None,
         "sections": [
             {
                 "kind": s.kind,
@@ -127,6 +132,7 @@ def snapshot_images(snapshot) -> Iterator[tuple[str, bytes]]:
 # Observer serializers
 # ---------------------------------------------------------------------------
 
+
 def observer_runs_to_json(schedule) -> dict:
     """Serialize an ObserverSchedule and its linked observer threads as 'runs'."""
     from apps.threads.models import Thread
@@ -167,19 +173,22 @@ def observer_runs_to_markdown(schedule) -> str:
 # Trigger serializer
 # ---------------------------------------------------------------------------
 
+
 def trigger_to_json(trigger) -> dict:
     from apps.triggers.models import TriggerFiring
 
     firings = []
     for f in TriggerFiring.objects.filter(trigger=trigger).order_by("fired_at"):
-        firings.append({
-            "id": f.id,
-            "fired_at": f.fired_at.isoformat(),
-            "matched_values": f.matched_values,
-            "snapshot_id": f.snapshot_id,
-            "thread_id": f.thread_id,
-            "cost_capped": f.cost_capped,
-        })
+        firings.append(
+            {
+                "id": f.id,
+                "fired_at": f.fired_at.isoformat(),
+                "matched_values": f.matched_values,
+                "snapshot_id": f.snapshot_id,
+                "thread_id": f.thread_id,
+                "cost_capped": f.cost_capped,
+            }
+        )
     return {
         "id": trigger.id,
         "name": trigger.name,
@@ -193,6 +202,7 @@ def trigger_to_json(trigger) -> dict:
 # ---------------------------------------------------------------------------
 # Profiles serializer
 # ---------------------------------------------------------------------------
+
 
 def profiles_to_json() -> dict:
     from apps.profiles.models import TradingProfile
@@ -216,20 +226,23 @@ def profiles_to_json() -> dict:
 # Watchlists serializer
 # ---------------------------------------------------------------------------
 
+
 def watchlists_to_json() -> dict:
     from apps.profiles.models import Watchlist, WatchlistSymbol
 
     out = []
     for w in Watchlist.objects.all():
-        out.append({
-            "id": w.id,
-            "name": w.name,
-            "tickers": list(
-                WatchlistSymbol.objects.filter(watchlist=w)
-                .order_by("sort_order")
-                .values_list("ticker", flat=True)
-            ),
-        })
+        out.append(
+            {
+                "id": w.id,
+                "name": w.name,
+                "tickers": list(
+                    WatchlistSymbol.objects.filter(watchlist=w)
+                    .order_by("sort_order")
+                    .values_list("ticker", flat=True)
+                ),
+            }
+        )
     return {"watchlists": out}
 
 
@@ -241,7 +254,26 @@ def watchlists_to_json() -> dict:
 class ExportJobSerializer(drf.ModelSerializer):
     class Meta:
         model = ExportJob
-        fields: ClassVar = ["id", "created_at", "completed_at", "scope", "format",
-                            "status", "filename", "size_bytes", "sha256", "error"]
-        read_only_fields: ClassVar = ["id", "created_at", "completed_at", "status",
-                                      "filename", "size_bytes", "sha256", "error", "format"]
+        fields: ClassVar = [
+            "id",
+            "created_at",
+            "completed_at",
+            "scope",
+            "format",
+            "status",
+            "filename",
+            "size_bytes",
+            "sha256",
+            "error",
+        ]
+        read_only_fields: ClassVar = [
+            "id",
+            "created_at",
+            "completed_at",
+            "status",
+            "filename",
+            "size_bytes",
+            "sha256",
+            "error",
+            "format",
+        ]

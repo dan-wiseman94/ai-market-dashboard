@@ -1,4 +1,5 @@
 """Snapshot capture orchestration."""
+
 from __future__ import annotations
 
 import json
@@ -46,15 +47,21 @@ def _pick_ticker(ohlc_ticker: str | None, watchlist_tickers: list[str]) -> str:
 
 
 def _fetch_ohlc_section(
-    *, watchlist_tickers: list[str], ohlc_ticker: str | None = None,
-    ohlc_timeframe: str = "1m", ohlc_bars: int = 60, **_,
+    *,
+    watchlist_tickers: list[str],
+    ohlc_ticker: str | None = None,
+    ohlc_timeframe: str = "1m",
+    ohlc_bars: int = 60,
+    **_,
 ) -> dict:
     ticker = _pick_ticker(ohlc_ticker, watchlist_tickers)
-    return {"data": {
-        "ticker": ticker,
-        "timeframe": ohlc_timeframe,
-        "bars": fetch_ohlc(ticker, timeframe=ohlc_timeframe, bars=ohlc_bars),
-    }}
+    return {
+        "data": {
+            "ticker": ticker,
+            "timeframe": ohlc_timeframe,
+            "bars": fetch_ohlc(ticker, timeframe=ohlc_timeframe, bars=ohlc_bars),
+        }
+    }
 
 
 _FETCHERS = {
@@ -63,12 +70,16 @@ _FETCHERS = {
         "data": fetch_chain(_pick_ticker(None, watchlist_tickers)),
     },
     "image": lambda *, snapshot_id, watchlist_tickers, ohlc_ticker, ohlc_timeframe, ohlc_bars, **_: {
-        "data": {"image_ids": [
-            render_chart_png(
-                _pick_ticker(ohlc_ticker, watchlist_tickers),
-                ohlc_timeframe, ohlc_bars, snapshot_id=snapshot_id,
-            ).id,
-        ]},
+        "data": {
+            "image_ids": [
+                render_chart_png(
+                    _pick_ticker(ohlc_ticker, watchlist_tickers),
+                    ohlc_timeframe,
+                    ohlc_bars,
+                    snapshot_id=snapshot_id,
+                ).id,
+            ]
+        },
     },
     "news": lambda *, watchlist_tickers, **_: {
         "data": {"items": fetch_news(list(watchlist_tickers))},
@@ -104,7 +115,9 @@ def capture_for_existing(
 
     for kind in snap.includes:
         fetcher = _FETCHERS.get(kind)
-        section = SnapshotSection.objects.create(snapshot=snap, kind=kind, status="pending", payload={})
+        section = SnapshotSection.objects.create(
+            snapshot=snap, kind=kind, status="pending", payload={}
+        )
         _broadcast(snap.id, {"event": "section_started", "kind": kind})
 
         if fetcher is None:
@@ -154,8 +167,12 @@ def capture(
 ) -> Snapshot:
     """Create a Snapshot row and immediately fill it."""
     snap = Snapshot.objects.create(
-        profile=profile, objective=objective, notes=notes,
-        includes=includes, source=source, status="pending",
+        profile=profile,
+        objective=objective,
+        notes=notes,
+        includes=includes,
+        source=source,
+        status="pending",
     )
     return capture_for_existing(
         snap,
