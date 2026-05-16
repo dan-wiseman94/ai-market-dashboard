@@ -88,7 +88,7 @@ def seed_minimal_fixture() -> None:
 
 @pytest.fixture(autouse=True)
 def _unblock_live_db_for_e2e(request, django_db_blocker):
-    """Bypass pytest-django's safety net for tests in e2e/ that write to the live DB.
+    """Bypass pytest-django's safety net for tests under e2e/ that write to the live DB.
 
     The api/, ui/, ws/, visual/, a11y/, perf/ lanes seed data via Django ORM but the
     running web container reads from the same live Postgres — they must share a
@@ -96,14 +96,19 @@ def _unblock_live_db_for_e2e(request, django_db_blocker):
     DB or block them outright; we explicitly unblock here so seeds land where the
     server reads them.
 
-    Tests under e2e/tests/ that DO use @pytest.mark.django_db (the seed-ladder
-    unit-ish tests) are unaffected — pytest-django re-blocks for those.
+    Also unblocks ``e2e/tests/test_seed_ladder.py``: those tests exercise the same
+    idempotent seed functions and would otherwise fight the api lane (the rolled-back
+    transactions wipe shared rows the api tests rely on).
+
+    Tests that explicitly use ``@pytest.mark.django_db`` keep that behavior — the
+    blocker is already unblocked for them by pytest-django itself.
     """
     test_path = str(request.node.fspath)
     is_e2e_lane = any(
         f"/e2e/{lane}/" in test_path for lane in ("api", "ui", "ws", "visual", "a11y", "perf")
     )
-    if not is_e2e_lane:
+    is_seed_ladder = test_path.endswith("e2e/tests/test_seed_ladder.py")
+    if not (is_e2e_lane or is_seed_ladder):
         yield
         return
     with django_db_blocker.unblock():

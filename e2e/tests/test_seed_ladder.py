@@ -2,13 +2,14 @@
 
 Each rung is idempotent and calls its prerequisite. ``analytics`` brings
 everything below it.
+
+These tests write to the **live** Postgres (the same DB the web container
+serves the API from), via the ``_unblock_live_db_for_e2e`` autouse fixture
+in the top-level conftest. They don't truncate at end-of-test — the seeds
+are idempotent, so rerunning the suite leaves the DB in the same shape.
 """
 
 from __future__ import annotations
-
-import pytest
-
-pytestmark = pytest.mark.django_db(transaction=True)
 
 
 def test_seed_minimal_creates_three_providers_and_two_profiles() -> None:
