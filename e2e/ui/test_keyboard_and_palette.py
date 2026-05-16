@@ -33,7 +33,7 @@ def test_g_shortcuts_navigate_all_top_level_routes(page, frontend_base_url, mini
         for key in keys.split():
             page.keyboard.press(key)
         try:
-            page.wait_for_url(lambda u: expected in u, timeout=3_000)
+            page.wait_for_url(lambda u, _expected=expected: _expected in u, timeout=3_000)
         except Exception:
             continue
 

@@ -11,6 +11,7 @@ services:
       PYTHONPATH: "/app/backend:/app"
     volumes:
       - ./e2e:/app/e2e
+      - ./tools:/app/tools:ro
       - ./.github:/app/.github:ro
       - ./Makefile:/app/Makefile:ro
 
@@ -28,6 +29,7 @@ services:
       # Worker carries the chromium playwright build, so the UI / visual / a11y / perf lanes
       # exec inside the worker container. Mount the e2e tree so it can see the tests.
       - ./e2e:/app/e2e
+      - ./tools:/app/tools:ro
       - ./.github:/app/.github:ro
       - ./Makefile:/app/Makefile:ro
 
