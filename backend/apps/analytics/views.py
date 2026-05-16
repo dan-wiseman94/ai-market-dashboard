@@ -72,8 +72,9 @@ class ObserverTimelineView(APIView):
         from apps.analytics.services.observer_timeline import observer_timeline
 
         start, end = _parse_range(request, default_days=30)
-        rows = observer_timeline(start=start, end=end)
-        return Response({"start": start.isoformat(), "end": end.isoformat(), "rows": rows})
+        # Frontend (useObserverTimeline) expects ``{days: [...]}``.
+        days = observer_timeline(start=start, end=end)
+        return Response({"start": start.isoformat(), "end": end.isoformat(), "days": days})
 
 
 class UnusualOptionsView(APIView):
@@ -82,12 +83,13 @@ class UnusualOptionsView(APIView):
 
         ticker = (request.query_params.get("ticker") or "").upper()
         if not ticker:
-            return Response({"ticker": "", "lines": []})
+            return Response({"ticker": "", "rows": []})
         try:
             top_n = max(1, min(100, int(request.query_params.get("top_n", "25"))))
         except ValueError:
             top_n = 25
 
         _, end = _parse_range(request, default_days=1)
-        lines = unusual_options(ticker=ticker, at=end, top_n=top_n)
-        return Response({"ticker": ticker, "at": end.isoformat(), "lines": lines})
+        # Frontend (useUnusualOptions) expects ``{rows: [...]}``.
+        rows = unusual_options(ticker=ticker, at=end, top_n=top_n)
+        return Response({"ticker": ticker, "at": end.isoformat(), "rows": rows})

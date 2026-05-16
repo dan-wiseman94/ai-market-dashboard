@@ -69,6 +69,14 @@ def perform_backup(kind: str) -> BackupRecord:
         filename = f"{ts}.sql.gz"
         path = out_dir / filename
 
+        # Map Django-side POSTGRES_* env vars onto libpq's PG* equivalents that
+        # pg_dump consults. POSTGRES_PASSWORD is the docker-compose convention;
+        # PGPASSWORD is what libpq actually reads.
+        pg_host = os.environ.get("PGHOST") or os.environ.get("POSTGRES_HOST", "db")
+        pg_user = os.environ.get("PGUSER") or os.environ.get("POSTGRES_USER", "postgres")
+        pg_db = os.environ.get("PGDATABASE") or os.environ.get("POSTGRES_DB", "postgres")
+        pg_pw = os.environ.get("PGPASSWORD") or os.environ.get("POSTGRES_PASSWORD", "")
+
         with path.open("wb") as fh:
             cmd = [
                 "pg_dump",
@@ -76,12 +84,14 @@ def perform_backup(kind: str) -> BackupRecord:
                 "-Z",
                 "6",
                 "-h",
-                os.environ.get("PGHOST", "db"),
+                pg_host,
                 "-U",
-                os.environ.get("PGUSER", "postgres"),
-                os.environ.get("PGDATABASE", "postgres"),
+                pg_user,
+                pg_db,
             ]
             env = os.environ.copy()
+            if pg_pw:
+                env["PGPASSWORD"] = pg_pw
             try:
                 subprocess.run(cmd, stdout=fh, check=True, timeout=1800, env=env)
             except Exception as e:
