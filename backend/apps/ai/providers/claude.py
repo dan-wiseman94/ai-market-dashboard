@@ -25,10 +25,10 @@ class ClaudeProvider:
     name = "claude"
 
     def __init__(self, api_key: str, base_url: str = "") -> None:
-        kwargs = {"api_key": api_key}
         if base_url:
-            kwargs["base_url"] = base_url
-        self._client = AsyncAnthropic(**kwargs)  # type: ignore[arg-type]
+            self._client = AsyncAnthropic(api_key=api_key, base_url=base_url)
+        else:
+            self._client = AsyncAnthropic(api_key=api_key)
 
     async def run(self, req: RunRequest) -> AsyncIterator[RunEvent]:
         from apps.core.mocks import is_mock_mode

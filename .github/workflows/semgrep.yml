@@ -1,0 +1,23 @@
+name: semgrep
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "23 4 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  semgrep:
+    runs-on: ubuntu-latest
+    container:
+      image: semgrep/semgrep
+    if: (github.actor != 'dependabot[bot]')
+    steps:
+      - uses: actions/checkout@v4
+      - run: semgrep ci --config=p/default --config=p/python --config=p/django --config=p/react --config=p/typescript --config=p/security-audit

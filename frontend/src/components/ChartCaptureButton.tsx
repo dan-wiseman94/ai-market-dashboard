@@ -3,7 +3,7 @@ import html2canvas from "html2canvas";
 import { useToast } from "@/hooks/useToast";
 
 export interface ChartCaptureButtonProps {
-  targetRef: React.RefObject<HTMLElement>;
+  targetRef: React.RefObject<HTMLElement | null>;
   caption?: string;
 }
 
