@@ -19,7 +19,7 @@ jobs:
       image: semgrep/semgrep
     if: (github.actor != 'dependabot[bot]')
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       # Excluded rules are false positives for a single-user, 127.0.0.1-bound desktop
       # app: containers don't need a non-root USER (no shared host); ws:// is internal
       # to the compose network; csrf_exempt on image upload is intentional under token auth.
