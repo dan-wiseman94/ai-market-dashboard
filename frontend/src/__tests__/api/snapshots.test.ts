@@ -1,9 +1,7 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { createSnapshot, fetchSnapshot, fetchSnapshotDiff } from "@/api/snapshots";
 import { ApiError } from "@/api/client";
-import { mockApiError } from "../testUtils";
-
-// ---- Shared fixture ----
+import { mockApi, mockApiError } from "../testUtils";
 
 const snapshotFixture = {
   id: 42,
@@ -25,42 +23,21 @@ const snapshotFixture = {
   ],
 };
 
-// Stub fetch to return a successful JSON response for a single object.
-// mockApi cannot be used here because snapshotFixture has a `status` string
-// field which isErrorHandler() in testUtils mistakenly treats as an error envelope.
-function stubOkJson(data: unknown): ReturnType<typeof vi.fn> {
-  const fetchMock = vi.fn().mockResolvedValue({
-    ok: true,
-    status: 200,
-    statusText: "OK",
-    json: async () => data,
-  });
-  vi.stubGlobal("fetch", fetchMock);
-  return fetchMock;
-}
-
-afterEach(() => {
-  vi.unstubAllGlobals();
-});
-
-// ---- createSnapshot ----
-
 describe("api/snapshots", () => {
   describe("createSnapshot", () => {
     it("POSTs to /api/snapshots/ with minimal body (profile_id only)", async () => {
-      const fetchMock = stubOkJson(snapshotFixture);
+      const api = mockApi({ "POST /api/snapshots/": snapshotFixture });
       const body = { profile_id: 1 };
       const res = await createSnapshot(body);
       expect(res.id).toBe(42);
-      expect(fetchMock).toHaveBeenCalledTimes(1);
-      const [url, opts] = fetchMock.mock.calls[0] as [string, RequestInit];
-      expect(opts.method).toBe("POST");
-      expect(url).toMatch(/\/api\/snapshots\/$/);
-      expect(JSON.parse(opts.body as string)).toEqual(body);
+      expect(api.calls).toHaveLength(1);
+      expect(api.calls[0].method).toBe("POST");
+      expect(api.calls[0].url).toMatch(/\/api\/snapshots\/$/);
+      expect(api.calls[0].body).toEqual(body);
     });
 
     it("sends full body shape pass-through when all optional fields are set", async () => {
-      const fetchMock = stubOkJson(snapshotFixture);
+      const api = mockApi({ "POST /api/snapshots/": snapshotFixture });
       const fullBody = {
         profile_id: 1,
         objective: "Full scan",
@@ -74,8 +51,7 @@ describe("api/snapshots", () => {
       };
       const res = await createSnapshot(fullBody);
       expect(res.id).toBe(42);
-      const [, opts] = fetchMock.mock.calls[0] as [string, RequestInit];
-      expect(JSON.parse(opts.body as string)).toEqual(fullBody);
+      expect(api.calls[0].body).toEqual(fullBody);
     });
 
     it("throws ApiError with status 400 on validation error", async () => {
@@ -86,20 +62,17 @@ describe("api/snapshots", () => {
     });
   });
 
-  // ---- fetchSnapshot ----
-
   describe("fetchSnapshot", () => {
     it("GETs /api/snapshots/:id/ and returns Snapshot with sections", async () => {
-      const fetchMock = stubOkJson(snapshotFixture);
+      const api = mockApi({ "GET /api/snapshots/42/": snapshotFixture });
       const res = await fetchSnapshot(42);
       expect(res.id).toBe(42);
       expect(res.status).toBe("ready");
       expect(res.sections).toHaveLength(1);
       expect(res.sections[0].kind).toBe("quotes");
-      expect(fetchMock).toHaveBeenCalledTimes(1);
-      const [url, opts] = fetchMock.mock.calls[0] as [string, RequestInit];
-      expect((opts.method ?? "GET").toUpperCase()).toBe("GET");
-      expect(url).toMatch(/\/api\/snapshots\/42\/$/);
+      expect(api.calls).toHaveLength(1);
+      expect(api.calls[0].method).toBe("GET");
+      expect(api.calls[0].url).toMatch(/\/api\/snapshots\/42\/$/);
     });
 
     it("throws ApiError with status 404 when snapshot does not exist", async () => {
@@ -123,32 +96,29 @@ describe("api/snapshots", () => {
           },
         ],
       };
-      const fetchMock = stubOkJson(failedSnapshot);
+      const api = mockApi({ "GET /api/snapshots/42/": failedSnapshot });
       const res = await fetchSnapshot(42);
       expect(res.status).toBe("failed");
       expect(res.sections[0].status).toBe("failed");
       expect(res.sections[0].error).toBe("timeout fetching chain data");
-      const [, opts] = fetchMock.mock.calls[0] as [string, RequestInit];
-      expect((opts.method ?? "GET").toUpperCase()).toBe("GET");
+      expect(api.calls[0].method).toBe("GET");
     });
   });
 
-  // ---- fetchSnapshotDiff ----
-
   describe("fetchSnapshotDiff", () => {
     it("GETs /api/snapshots/:id/diff/ without query param when against is not provided", async () => {
-      const fetchMock = stubOkJson({ delta: "", prev_id: 0, curr_id: 42 });
+      const api = mockApi({ "GET /api/snapshots/42/diff/": { delta: "", prev_id: 0, curr_id: 42 } });
       const res = await fetchSnapshotDiff(42);
       expect(res.curr_id).toBe(42);
-      expect(fetchMock.mock.calls[0][0]).toBe("/api/snapshots/42/diff/");
+      expect(api.calls[0].url).toBe("/api/snapshots/42/diff/");
     });
 
     it("includes ?against=<id> in the URL when against is provided", async () => {
-      const fetchMock = stubOkJson({ delta: "section changed", prev_id: 10, curr_id: 42 });
+      const api = mockApi({ "GET /api/snapshots/42/diff/": { delta: "section changed", prev_id: 10, curr_id: 42 } });
       const res = await fetchSnapshotDiff(42, 10);
       expect(res.delta).toBe("section changed");
       expect(res.prev_id).toBe(10);
-      expect(fetchMock.mock.calls[0][0]).toBe("/api/snapshots/42/diff/?against=10");
+      expect(api.calls[0].url).toBe("/api/snapshots/42/diff/?against=10");
     });
 
     it("throws ApiError with status 500 on server error", async () => {
