@@ -1,9 +1,10 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
+import type { Snapshot } from "@/api/snapshots";
 import { useCreateSnapshot } from "@/hooks/useCreateSnapshot";
 import { hookWrapper, mockApi, mockApiError } from "../testUtils";
 
-const snapshotFixture = {
+const snapshotFixture: Snapshot = {
   id: 5,
   profile_id: 2,
   objective: "Assess morning open",
@@ -21,7 +22,7 @@ describe("useCreateSnapshot", () => {
     const { result } = renderHook(() => useCreateSnapshot(), {
       wrapper: hookWrapper(),
     });
-    let data: typeof snapshotFixture | undefined;
+    let data: Snapshot | undefined;
     await act(async () => {
       data = await result.current.mutateAsync({ profile_id: 2 });
     });
