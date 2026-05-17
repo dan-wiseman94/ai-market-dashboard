@@ -89,12 +89,14 @@ function isErrorHandler(h: Handler): h is ErrorHandler {
   return !!h && typeof h === "object" && "status" in (h as object);
 }
 
-export function mockApi(routes: Record<string, Handler>): FetchMock {
+export function mockApi(routes: Record<Route, Handler>): FetchMock {
   const calls: FetchCall[] = [];
   const entries: Array<[string, string, Handler]> = Object.entries(routes).map(([key, h]) => {
     const [method, path] = key.split(" ", 2);
     return [method, path, h];
   });
+  // Sort longest path first so more-specific routes win over prefix matches.
+  entries.sort((a, b) => b[1].length - a[1].length);
 
   const fetchImpl = vi.fn(async (url: string, opts?: RequestInit) => {
     const method = (opts?.method ?? "GET").toUpperCase();
@@ -138,7 +140,7 @@ export function mockApi(routes: Record<string, Handler>): FetchMock {
 }
 
 export function mockApiError(route: string, status: number, code = "error", message = "err"): FetchMock {
-  return mockApi({ [route]: { status, code, message } });
+  return mockApi({ [route]: { status, code, message } } as Record<Route, Handler>);
 }
 
 // ---- New: installFakeWebSocket / FakeSocket ----
@@ -167,6 +169,7 @@ export class FakeSocket {
     (this.listeners.close ?? []).forEach((l) => l(new Event("close") as CloseEvent));
   }
   emitOpen(): void {
+    if (this.readyState === 3) return;
     this.readyState = 1;
     (this.listeners.open ?? []).forEach((l) => l(new Event("open")));
   }
@@ -196,14 +199,10 @@ export function installFakeWebSocket(): FakeWebSocketController {
       sockets.push(this);
     }
   }
-  const real = globalThis.WebSocket;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (globalThis as any).WebSocket = Stub;
+  vi.stubGlobal("WebSocket", Stub);
   return {
     sockets,
     find: (suffix) => sockets.find((s) => s.url.endsWith(suffix)),
-    restore: () => {
-      (globalThis as typeof globalThis).WebSocket = real;
-    },
+    restore: () => { vi.unstubAllGlobals(); },
   };
 }
