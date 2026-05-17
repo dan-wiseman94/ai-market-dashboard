@@ -19,7 +19,7 @@ const baseData = {
 
 describe("MarketContextStrip", () => {
   beforeEach(() => {
-    mockUseMarketContext.mockReturnValue({ data: undefined } as ReturnType<typeof useMarketContext>);
+    mockUseMarketContext.mockReturnValue({ data: undefined } as unknown as ReturnType<typeof useMarketContext>);
   });
 
   it("shows 'Awaiting tape…' when data is undefined", () => {
@@ -28,7 +28,7 @@ describe("MarketContextStrip", () => {
   });
 
   it("renders SPY, QQQ, VIX values with 2 decimals when data is present", () => {
-    mockUseMarketContext.mockReturnValue({ data: baseData } as ReturnType<typeof useMarketContext>);
+    mockUseMarketContext.mockReturnValue({ data: baseData } as unknown as ReturnType<typeof useMarketContext>);
     render(<MarketContextStrip />);
     expect(screen.getByText("520.15")).toBeInTheDocument();
     expect(screen.getByText("445.32")).toBeInTheDocument();
@@ -36,7 +36,7 @@ describe("MarketContextStrip", () => {
   });
 
   it("VIX value carries the warn tone class text-copper-300", () => {
-    mockUseMarketContext.mockReturnValue({ data: baseData } as ReturnType<typeof useMarketContext>);
+    mockUseMarketContext.mockReturnValue({ data: baseData } as unknown as ReturnType<typeof useMarketContext>);
     const { container } = render(<MarketContextStrip />);
     const vixValue = container.querySelector(".text-copper-300");
     expect(vixValue).not.toBeNull();
@@ -48,7 +48,7 @@ describe("MarketContextStrip", () => {
       ...baseData,
       sectors: { XLK: 1.23, XLF: -0.45, XLE: 0.78 },
     };
-    mockUseMarketContext.mockReturnValue({ data } as ReturnType<typeof useMarketContext>);
+    mockUseMarketContext.mockReturnValue({ data } as unknown as ReturnType<typeof useMarketContext>);
     render(<MarketContextStrip />);
     expect(screen.getByText("XLK")).toBeInTheDocument();
     expect(screen.getByText("XLF")).toBeInTheDocument();
@@ -57,7 +57,7 @@ describe("MarketContextStrip", () => {
   });
 
   it("does not render the Sectors section when sectors is empty", () => {
-    mockUseMarketContext.mockReturnValue({ data: baseData } as ReturnType<typeof useMarketContext>);
+    mockUseMarketContext.mockReturnValue({ data: baseData } as unknown as ReturnType<typeof useMarketContext>);
     render(<MarketContextStrip />);
     expect(screen.queryByText("Sectors")).not.toBeInTheDocument();
     // All 3 headlines are still shown
@@ -74,7 +74,7 @@ describe("MarketContextStrip", () => {
       sectors: {},
       breadth: {},
     };
-    mockUseMarketContext.mockReturnValue({ data } as ReturnType<typeof useMarketContext>);
+    mockUseMarketContext.mockReturnValue({ data } as unknown as ReturnType<typeof useMarketContext>);
     render(<MarketContextStrip />);
     const dashes = screen.getAllByText("—");
     expect(dashes.length).toBeGreaterThanOrEqual(3);
