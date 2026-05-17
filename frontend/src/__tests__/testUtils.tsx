@@ -86,7 +86,12 @@ export type FetchCall = { url: string; method: string; body?: unknown };
 export type FetchMock = { calls: FetchCall[]; restore: () => void };
 
 function isErrorHandler(h: Handler): h is ErrorHandler {
-  return !!h && typeof h === "object" && "status" in (h as object);
+  if (!h || typeof h !== "object") return false;
+  const status = (h as { status?: unknown }).status;
+  // ErrorHandler.status is a number (HTTP code). Response payloads with a
+  // string `status` field (e.g. Snapshot.status="ready") must not be treated
+  // as errors.
+  return typeof status === "number";
 }
 
 export function mockApi(routes: Record<Route, Handler>): FetchMock {
