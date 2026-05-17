@@ -225,6 +225,7 @@ describe("api/observer", () => {
     it("GETs /api/observer/notifications/?limit=50 without unread param by default", async () => {
       const api = mockApi({ "GET /api/observer/notifications/": { results: [notificationFixture] } });
       const res = await listNotifications();
+      expect(res).toEqual({ results: [notificationFixture] });
       expect(api.calls).toHaveLength(1);
       expect(api.calls[0].method).toBe("GET");
       expect(api.calls[0].url).toContain("limit=50");
