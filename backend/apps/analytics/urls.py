@@ -11,7 +11,11 @@ from apps.analytics.views import (
 urlpatterns = [
     path("leaderboard/", LeaderboardView.as_view(), name="analytics-leaderboard"),
     path("cost-per-insight/", CostPerInsightView.as_view(), name="analytics-cpi"),
-    path("trigger-heatmap/", TriggerHeatmapView.as_view(), name="analytics-trigger-heatmap"),
-    path("observer-timeline/", ObserverTimelineView.as_view(), name="analytics-observer-timeline"),
-    path("unusual-options/", UnusualOptionsView.as_view(), name="analytics-unusual-options"),
+    path("trigger-heatmap/", TriggerHeatmapView.as_view(), name="analytics-heatmap"),
+    path("observer-timeline/", ObserverTimelineView.as_view(), name="analytics-timeline"),
+    path(
+        "unusual-options/",
+        UnusualOptionsView.as_view(),
+        name="analytics-unusual-options",
+    ),
 ]

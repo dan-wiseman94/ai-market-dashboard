@@ -7,9 +7,11 @@ services:
       MOCK_EXTERNAL: "true"
       OBSERVER_TEST_MIN_INTERVAL_SECONDS: "1"
       TRIGGER_TEST_COOLDOWN_SECONDS: "1"
+      TRIGGER_EVAL_INTERVAL_SECONDS: "1"
       PYTHONPATH: "/app/backend:/app"
     volumes:
       - ./e2e:/app/e2e
+      - ./tools:/app/tools:ro
       - ./.github:/app/.github:ro
       - ./Makefile:/app/Makefile:ro
 
@@ -18,7 +20,29 @@ services:
       MOCK_EXTERNAL: "true"
       OBSERVER_TEST_MIN_INTERVAL_SECONDS: "1"
       TRIGGER_TEST_COOLDOWN_SECONDS: "1"
+      TRIGGER_EVAL_INTERVAL_SECONDS: "1"
+      PYTHONPATH: "/app/backend:/app"
+      # Permit sync Django ORM access from the worker's async event-loop context — needed when
+      # the UI lane execs pytest inside the worker (which carries the chromium playwright build).
+      DJANGO_ALLOW_ASYNC_UNSAFE: "true"
+    volumes:
+      # Worker carries the chromium playwright build, so the UI / visual / a11y / perf lanes
+      # exec inside the worker container. Mount the e2e tree so it can see the tests.
+      - ./e2e:/app/e2e
+      - ./tools:/app/tools:ro
+      - ./.github:/app/.github:ro
+      - ./Makefile:/app/Makefile:ro
 
   beat:
     environment:
       MOCK_EXTERNAL: "true"
+      TRIGGER_EVAL_INTERVAL_SECONDS: "1"
+
+  frontend:
+    environment:
+      # In e2e mode the browser runs inside the worker container, so the host's
+      # localhost:8000 isn't reachable. Empty base URL means same-origin — the
+      # Vite dev server proxies /api/* to http://web:8000 internally (see
+      # frontend/vite.config.ts).
+      VITE_API_BASE_URL: ""
+      VITE_WS_BASE_URL: ""

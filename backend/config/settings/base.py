@@ -57,6 +57,11 @@ MIDDLEWARE = [
     "django_structlog.middlewares.RequestMiddleware",
 ]
 
+# E2E scenario engine — only loaded when MOCK_EXTERNAL is on, never in prod.
+MOCK_EXTERNAL = env.bool("MOCK_EXTERNAL", default=False)
+if MOCK_EXTERNAL:
+    MIDDLEWARE = [*MIDDLEWARE, "apps.core.mocks.middleware.ScenarioHeaderMiddleware"]
+
 ROOT_URLCONF = "config.urls"
 WSGI_APPLICATION = "config.wsgi.application"
 ASGI_APPLICATION = "config.asgi.application"

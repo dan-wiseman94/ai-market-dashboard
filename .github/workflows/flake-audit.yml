@@ -1,0 +1,76 @@
+name: flake-audit
+
+on:
+  schedule:
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - name: Bring up stack
+        run: docker compose -f compose.yaml -f compose.e2e.yaml up -d --build
+      - name: Wait for health
+        run: |
+          for _ in $(seq 1 60); do
+            if curl -sf http://127.0.0.1:8000/api/health/ >/dev/null; then
+              break
+            fi
+            sleep 2
+          done
+      - name: Run flake audit
+        run: python tools/flake_audit.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: flake_audit
+          path: |
+            flake_audit.json
+            flake_audit_runs/
+
+  weekly-issue:
+    runs-on: ubuntu-latest
+    needs: audit
+    if: github.event_name == 'schedule' && github.event.schedule == '0 6 * * 1'
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: flake_audit
+          path: .
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const data = JSON.parse(fs.readFileSync('flake_audit.json', 'utf8'));
+            if (data.flaky_count === 0) return;
+            const rows = data.flaky.slice(0, 10)
+              .map(t => `| \`${t.test}\` | ${(t.flake_rate * 100).toFixed(1)}% | ${t.passes}/${t.runs} |`)
+              .join('\n');
+            const date = new Date().toISOString().slice(0, 10);
+            const body = [
+              `## Weekly flake audit — ${date}`,
+              ``,
+              `Total tests: ${data.total_tests} | Flaky: ${data.flaky_count}`,
+              ``,
+              `### Top flaky tests`,
+              ``,
+              `| Test | Flake rate | Passes/Runs |`,
+              `|------|-----------:|------------:|`,
+              rows,
+            ].join('\n');
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `E2E flake audit — ${date}`,
+              body,
+              labels: ['e2e', 'flake'],
+            });
