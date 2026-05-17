@@ -64,8 +64,9 @@ describe("api/ai", () => {
 
     it("propagates ApiError on non-2xx", async () => {
       mockApiError("GET /api/schwab/models/", 500, "server_error", "boom");
-      await expect(fetchAiModels()).rejects.toBeInstanceOf(ApiError);
-      await expect(fetchAiModels()).rejects.toMatchObject({ status: 500, code: "server_error", message: "boom" });
+      const promise = fetchAiModels();
+      await expect(promise).rejects.toBeInstanceOf(ApiError);
+      await expect(promise).rejects.toMatchObject({ status: 500, code: "server_error", message: "boom" });
     });
   });
 
@@ -78,7 +79,9 @@ describe("api/ai", () => {
 
     it("throws ApiError on 503", async () => {
       mockApiError("GET /api/schwab/providers/", 503);
-      await expect(fetchProviderConfigs()).rejects.toBeInstanceOf(ApiError);
+      const promise = fetchProviderConfigs();
+      await expect(promise).rejects.toBeInstanceOf(ApiError);
+      await expect(promise).rejects.toMatchObject({ status: 503 });
     });
   });
 
