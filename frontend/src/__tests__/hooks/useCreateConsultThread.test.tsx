@@ -1,17 +1,18 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { useCreateConsultThread } from "@/hooks/useCreateConsultThread";
-import { hookWrapper, mockApi, mockApiError, newQueryClient } from "../testUtils";
+import type { Thread } from "@/api/threads";
+import { hookWrapper, mockApi, mockApiError } from "../testUtils";
 
 const threadFixture = {
   id: 1,
-  kind: "consult",
+  kind: "consult" as const,
   title: "My thread",
   profile: null,
   pinned_snapshot_id: null,
   created_at: "2026-05-17T00:00:00Z",
   messages: [],
-};
+} satisfies Partial<Thread>;
 
 describe("useCreateConsultThread", () => {
   it("returns the created Thread on success", async () => {
@@ -19,7 +20,7 @@ describe("useCreateConsultThread", () => {
     const { result } = renderHook(() => useCreateConsultThread(), {
       wrapper: hookWrapper(),
     });
-    let data: typeof threadFixture | undefined;
+    let data: Thread | undefined;
     await act(async () => {
       data = await result.current.mutateAsync({});
     });
