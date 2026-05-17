@@ -1,5 +1,5 @@
 import "@testing-library/jest-dom/vitest";
-import { vi } from "vitest";
+import { afterEach, vi } from "vitest";
 
 vi.mock("lightweight-charts", () => ({
   createChart: vi.fn(() => ({
@@ -18,3 +18,7 @@ if (typeof globalThis.ResizeObserver === "undefined") {
     disconnect() {}
   };
 }
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
