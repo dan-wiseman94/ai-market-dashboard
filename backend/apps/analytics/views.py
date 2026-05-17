@@ -49,8 +49,13 @@ class CostPerInsightView(APIView):
         from apps.analytics.services.cpi import cost_per_insight
 
         start, end = _parse_range(request, default_days=30)
-        result = cost_per_insight(start=start, end=end)
-        return Response({"start": start.isoformat(), "end": end.isoformat(), **result})
+        return Response(
+            {
+                "start": start.isoformat(),
+                "end": end.isoformat(),
+                **cost_per_insight(start=start, end=end),
+            }
+        )
 
 
 class TriggerHeatmapView(APIView):
@@ -67,6 +72,7 @@ class ObserverTimelineView(APIView):
         from apps.analytics.services.observer_timeline import observer_timeline
 
         start, end = _parse_range(request, default_days=30)
+        # Frontend (useObserverTimeline) expects ``{days: [...]}``.
         days = observer_timeline(start=start, end=end)
         return Response({"start": start.isoformat(), "end": end.isoformat(), "days": days})
 
@@ -75,14 +81,15 @@ class UnusualOptionsView(APIView):
     def get(self, request: Request) -> Response:
         from apps.analytics.services.unusual_options import unusual_options
 
-        ticker = (request.query_params.get("ticker") or "").strip()
+        ticker = (request.query_params.get("ticker") or "").upper()
         if not ticker:
-            return Response({"rows": []})
-        at_raw = request.query_params.get("at")
-        at = datetime.fromisoformat(at_raw).replace(tzinfo=UTC) if at_raw else datetime.now(tz=UTC)
+            return Response({"ticker": "", "rows": []})
         try:
             top_n = max(1, min(100, int(request.query_params.get("top_n", "25"))))
         except ValueError:
             top_n = 25
-        rows = unusual_options(ticker=ticker, at=at, top_n=top_n)
-        return Response({"ticker": ticker.upper(), "at": at.isoformat(), "rows": rows})
+
+        _, end = _parse_range(request, default_days=1)
+        # Frontend (useUnusualOptions) expects ``{rows: [...]}``.
+        rows = unusual_options(ticker=ticker, at=end, top_n=top_n)
+        return Response({"ticker": ticker, "at": end.isoformat(), "rows": rows})

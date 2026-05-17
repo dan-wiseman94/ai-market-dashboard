@@ -17,17 +17,32 @@ def test_lane_packages_importable() -> None:
 
 
 def test_ui_journeys_importable() -> None:
-    import importlib
+    """Phase 3+4 UI lane modules are importable.
 
-    for mod in [
-        "e2e.ui.test_snapshots_capture_gold",
-        "e2e.ui.test_compare_two_branches_gold",
-        "e2e.ui.test_observer_run_now_gold",
-        "e2e.ui.test_trigger_fire_gold",
-        "e2e.ui.test_backups_gold",
-        "e2e.ui.test_export_gold",
-    ]:
-        importlib.import_module(mod)
+    Each file should at least parse — actual journey wiring is exercised at
+    collection time when pytest discovers tests.
+    """
+    # Explicit imports — no dynamic dispatch — so a deleted/renamed module
+    # surfaces as an ImportError at collection time, not at runtime.
+    from e2e.ui import (  # noqa: F401
+        test_analytics,
+        test_backups,
+        test_compare,
+        test_costs,
+        test_dashboard,
+        test_error_paths,
+        test_export,
+        test_files_and_citations,
+        test_keyboard_and_palette,
+        test_observer,
+        test_profiles,
+        test_schwab_oauth,
+        test_settings,
+        test_snapshots,
+        test_threads,
+        test_triggers,
+        test_watchlists,
+    )
 
 
 @pytest.mark.integration

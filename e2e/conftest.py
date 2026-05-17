@@ -86,11 +86,128 @@ def seed_minimal_fixture() -> None:
     seed_minimal()
 
 
+@pytest.fixture(autouse=True)
+def _unblock_live_db_for_e2e(request, django_db_blocker):
+    """Bypass pytest-django's safety net for tests under e2e/ that write to the live DB.
+
+    The api/, ui/, ws/, visual/, a11y/, perf/ lanes seed data via Django ORM but the
+    running web container reads from the same live Postgres — they must share a
+    database. pytest-django would normally redirect ORM calls to a per-process test
+    DB or block them outright; we explicitly unblock here so seeds land where the
+    server reads them.
+
+    Also unblocks ``e2e/tests/test_seed_ladder.py``: those tests exercise the same
+    idempotent seed functions and would otherwise fight the api lane (the rolled-back
+    transactions wipe shared rows the api tests rely on).
+
+    Tests that explicitly use ``@pytest.mark.django_db`` keep that behavior — the
+    blocker is already unblocked for them by pytest-django itself.
+    """
+    test_path = str(request.node.fspath)
+    is_e2e_lane = any(
+        f"/e2e/{lane}/" in test_path for lane in ("api", "ui", "ws", "visual", "a11y", "perf")
+    )
+    is_seed_ladder = test_path.endswith("e2e/tests/test_seed_ladder.py")
+    if not (is_e2e_lane or is_seed_ladder):
+        yield
+        return
+    with django_db_blocker.unblock():
+        yield
+
+
 @pytest.fixture(scope="session")
 def api_base_url() -> str:
     return E2E_BASE_URL
 
 
 @pytest.fixture(scope="session")
+def ws_base_url() -> str:
+    explicit = os.environ.get("E2E_WS_URL")
+    if explicit:
+        return explicit
+    # Container-internal Channels traffic — no public exposure, no TLS termination.
+    scheme = "ws"  # nosem: insecure-websocket — internal-only test stack, not production
+    return f"{scheme}://web:8000"
+
+
+@pytest.fixture(scope="session")
 def frontend_base_url() -> str:
     return E2E_FRONTEND_URL
+
+
+# ---------------------------------------------------------------------------
+# Seed ladder — 7 rungs, each depends on the previous. Tests declare only the
+# highest rung they need; everything below runs automatically.
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def minimal() -> None:
+    from e2e.fixtures.seed_minimal import seed_minimal
+
+    seed_minimal()
+
+
+@pytest.fixture
+def market(minimal) -> None:
+    from e2e.fixtures.seed_market import seed_market
+
+    seed_market()
+
+
+@pytest.fixture
+def snapshots(market) -> None:
+    from e2e.fixtures.seed_snapshots import seed_snapshots
+
+    seed_snapshots()
+
+
+@pytest.fixture
+def threads(snapshots) -> None:
+    from e2e.fixtures.seed_threads import seed_threads
+
+    seed_threads()
+
+
+@pytest.fixture
+def observer(threads) -> None:
+    from e2e.fixtures.seed_observer import seed_observer
+
+    seed_observer()
+
+
+@pytest.fixture
+def triggers(observer) -> None:
+    from e2e.fixtures.seed_triggers import seed_triggers
+
+    seed_triggers()
+
+
+@pytest.fixture
+def analytics(triggers) -> None:
+    from e2e.fixtures.seed_analytics import seed_analytics
+
+    seed_analytics()
+
+
+# ---------------------------------------------------------------------------
+# Scenario engine client — injects X-E2E-Scenario into the Playwright page and
+# the httpx api_client.
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def api_client(api_base_url):
+    import httpx
+
+    with httpx.Client(base_url=api_base_url, timeout=15) as client:
+        yield client
+
+
+@pytest.fixture
+def scenario(page, api_client):
+    from e2e.mocks.client import ScenarioClient
+
+    c = ScenarioClient(page, api_client)
+    yield c
+    c.reset()
