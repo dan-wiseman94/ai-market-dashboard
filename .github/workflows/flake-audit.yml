@@ -42,7 +42,7 @@ jobs:
       issues: write
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: flake_audit
           path: .
