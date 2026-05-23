@@ -45,6 +45,7 @@ class ClaudeProvider:
         messages = _maybe_cache_last_message(messages, cache=req.cache_last_message)
 
         total_in = total_out = total_cached = 0
+        memory_handler = _make_memory_handler(req.memory_dir)
 
         try:
             while True:
@@ -89,7 +90,7 @@ class ClaudeProvider:
                 total_cached += getattr(u, "cache_read_input_tokens", 0) or 0
 
                 stop = getattr(final, "stop_reason", None)
-                if stop != "tool_use" or not req.tools:
+                if stop != "tool_use" or not tools_list:
                     break
 
                 toolset = _resolve_toolset()
@@ -106,7 +107,9 @@ class ClaudeProvider:
                         input=tool_input,
                     )
                     t0 = time.perf_counter()
-                    outcome = toolset.run(block_name, tool_input)
+                    outcome = _dispatch_tool(
+                        block_name, tool_input, memory_handler=memory_handler, toolset=toolset
+                    )
                     latency_ms = int((time.perf_counter() - t0) * 1000)
                     yield ToolResultEvent(
                         tool_use_id=block_id,
@@ -153,6 +156,23 @@ def _resolve_toolset():
     from apps.ai.tools.registry import default_toolset
 
     return default_toolset()
+
+
+def _make_memory_handler(memory_dir: str):
+    """Build the client-side memory tool handler, or None when memory is off."""
+    if not memory_dir:
+        return None
+    from apps.ai.memory import MemoryToolHandler
+
+    return MemoryToolHandler(memory_dir)
+
+
+def _dispatch_tool(name, tool_input, *, memory_handler, toolset) -> dict:
+    """Route a tool_use to the memory handler (client-side memory tool) or the
+    market toolset, keeping the streaming loop agnostic to which tool fired."""
+    if name == "memory" and memory_handler is not None:
+        return memory_handler.run(tool_input)
+    return toolset.run(name, tool_input)
 
 
 def _system_blocks(system: str, *, cache: bool) -> list[dict]:
