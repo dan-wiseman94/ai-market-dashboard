@@ -57,7 +57,7 @@ def validate_condition(node: Any, *, path: str = "") -> None:
     if op not in VALID_OPS:
         raise ValidationError(f"{path}.op: unknown operator {op!r}")
     value = node.get("value")
-    if not isinstance(value, (int, float)) or isinstance(value, bool):
+    if not isinstance(value, int | float) or isinstance(value, bool):
         raise ValidationError(f"{path}.value: must be a number")
     if metric in TICKER_REQUIRED:
         ticker = node.get("ticker")
