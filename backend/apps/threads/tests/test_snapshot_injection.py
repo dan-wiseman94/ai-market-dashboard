@@ -224,3 +224,70 @@ def test_build_request_attaches_snapshot_images_as_blocks(profile, ready_snapsho
     image_blocks = [b for b in first.content if b.get("type") == "image"]
     assert len(image_blocks) == 1, "captured chart image must be attached as an image block"
     assert image_blocks[0]["source"]["media_type"] == "image/png"
+
+
+@pytest.mark.django_db
+def test_build_request_attaches_news_as_search_result_blocks(profile, ready_snapshot) -> None:
+    """A pinned snapshot's news section must reach Claude as citable search_result
+    blocks, not only as markdown text.
+
+    Regression guard: news_to_search_result_blocks existed but was never wired into
+    the request, so the model could never produce news citations.
+    """
+    SnapshotSection.objects.create(
+        snapshot=ready_snapshot,
+        kind="news",
+        status="done",
+        payload={
+            "items": [
+                {
+                    "id": 1,
+                    "headline": "SPY rips higher into the close",
+                    "summary": "Broad-based rally.",
+                    "source": "Reuters",
+                    "url": "https://ex.com/a",
+                }
+            ]
+        },
+    )
+    client = APIClient()
+    resp = client.post(
+        "/api/threads/",
+        data={"kind": "consult", "profile_id": profile.id, "pinned_snapshot_id": ready_snapshot.id},
+        format="json",
+    )
+    assert resp.status_code == 201, resp.content
+    thread = Thread.objects.select_related("profile").get(id=resp.json()["id"])
+    snap_msg = Message.objects.filter(thread=thread, role="user").order_by("created_at").first()
+
+    req = _build_request(thread, snap_msg, provider_name="claude")
+    first = req.messages[0]
+    assert isinstance(first.content, list)
+    blocks = [b for b in first.content if b.get("type") == "search_result"]
+    assert len(blocks) == 1, "news items must be attached as search_result blocks"
+    assert blocks[0]["source"] == "https://ex.com/a"
+    assert blocks[0]["citations"] == {"enabled": True}
+
+
+@pytest.mark.django_db
+def test_news_search_result_blocks_are_claude_only(profile, ready_snapshot) -> None:
+    """search_result blocks are an Anthropic shape; non-Claude providers keep news
+    as plain markdown text (no blocks)."""
+    SnapshotSection.objects.create(
+        snapshot=ready_snapshot,
+        kind="news",
+        status="done",
+        payload={"items": [{"id": 1, "headline": "h", "summary": "s", "source": "x", "url": "u"}]},
+    )
+    client = APIClient()
+    resp = client.post(
+        "/api/threads/",
+        data={"kind": "consult", "profile_id": profile.id, "pinned_snapshot_id": ready_snapshot.id},
+        format="json",
+    )
+    thread = Thread.objects.select_related("profile").get(id=resp.json()["id"])
+    snap_msg = Message.objects.filter(thread=thread, role="user").order_by("created_at").first()
+
+    req = _build_request(thread, snap_msg, provider_name="openai")
+    # No images on this snapshot and news is Claude-only → plain text content.
+    assert isinstance(req.messages[0].content, str)

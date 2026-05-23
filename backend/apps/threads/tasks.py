@@ -31,6 +31,7 @@ from apps.ai.types import (
     UsageEvent,
 )
 from apps.secrets.models import ProviderConfig
+from apps.ai.citations import news_to_search_result_blocks
 from apps.snapshots.models import SnapshotSection
 from apps.snapshots.serializer import build_image_blocks
 from apps.threads.models import AIRun, Message, Thread, ToolCall
@@ -73,6 +74,16 @@ def _snapshot_image_ids(snapshot_id: int) -> list[int]:
     return list(payload.get("image_ids") or [])
 
 
+def _snapshot_news_items(snapshot_id: int) -> list[dict]:
+    section = SnapshotSection.objects.filter(
+        snapshot_id=snapshot_id, kind="news", status="done"
+    ).first()
+    if section is None:
+        return []
+    payload = section.payload or {}
+    return list(payload.get("items") or [])
+
+
 def _message_content(
     m: Message,
     *,
@@ -86,10 +97,18 @@ def _message_content(
     snap_id = getattr(m, "snapshot_ref_id", None)
     if not snap_id:
         return text
+    blocks: list[dict] = []
+    # News as citable search_result blocks — Anthropic-only shape, so Claude only.
+    if provider_name == "claude":
+        news_items = _snapshot_news_items(snap_id)
+        if news_items:
+            blocks.extend(news_to_search_result_blocks(news_items))
+    # Chart images attach for every provider; build_image_blocks picks the shape.
     image_ids = _snapshot_image_ids(snap_id)
-    if not image_ids:
+    if image_ids:
+        blocks.extend(build_image_blocks(image_ids, provider_name=provider_name))
+    if not blocks:
         return text
-    blocks: list[dict] = list(build_image_blocks(image_ids, provider_name=provider_name))
     blocks.append({"type": "text", "text": text})
     return blocks
 
