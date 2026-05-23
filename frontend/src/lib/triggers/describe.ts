@@ -27,6 +27,10 @@ export function describeLeaf(leaf: Leaf): string {
     return `${ticker} moved ${pctLabel(value, op)} over ${window}`;
   }
 
+  if (metric === "volume_z") {
+    return `${ticker} volume z-score ${OP_WORDS[op]} ${value} over ${window}`;
+  }
+
   if (metric === "position_pl_pct") {
     const verb = value < 0 ? "down" : "up";
     const pct = Math.abs(value * 100).toFixed(pctPrecision(value));

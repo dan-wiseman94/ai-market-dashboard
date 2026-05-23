@@ -11,6 +11,10 @@ def test_describe_pct_change():
     assert describe({"pct_change:NVDA:1h": -0.024}) == "NVDA -2.40% / 1h"
 
 
+def test_describe_volume_z():
+    assert describe({"volume_z:NVDA:5m": 3.2}) == "NVDA vol z=3.20 / 5m"
+
+
 def test_describe_vix():
     assert describe({"vix": 22.5}) == "vix=22.50"
 

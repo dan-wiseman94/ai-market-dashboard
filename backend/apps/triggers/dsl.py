@@ -10,11 +10,11 @@ from typing import Any
 
 from django.core.exceptions import ValidationError
 
-VALID_METRICS = {"price", "pct_change", "vix", "position_pl", "position_pl_pct"}
+VALID_METRICS = {"price", "pct_change", "volume_z", "vix", "position_pl", "position_pl_pct"}
 VALID_OPS = {">", ">=", "<", "<=", "==", "crosses_above", "crosses_below"}
 VALID_WINDOWS = {"1m", "5m", "15m", "1h", "1d"}
-TICKER_REQUIRED = {"price", "pct_change"}
-WINDOW_REQUIRED = {"pct_change"}
+TICKER_REQUIRED = {"price", "pct_change", "volume_z"}
+WINDOW_REQUIRED = {"pct_change", "volume_z"}
 LEAF_KEYS = {"metric", "ticker", "op", "value", "window"}
 
 

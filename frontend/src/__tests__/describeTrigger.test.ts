@@ -13,6 +13,13 @@ describe("describeLeaf", () => {
     expect(describeLeaf(leaf)).toBe("NVDA moved ≥1% over 5m");
   });
 
+  it("formats volume_z with window", () => {
+    const leaf: Leaf = { metric: "volume_z", ticker: "NVDA", op: ">=", value: 2, window: "5m" };
+    expect(describeLeaf(leaf)).toBe(
+      "NVDA volume z-score is greater than or equal to 2 over 5m",
+    );
+  });
+
   it("formats vix with implied ticker", () => {
     expect(describeLeaf({ metric: "vix", op: ">", value: 30 }))
       .toBe("VIX is greater than 30");

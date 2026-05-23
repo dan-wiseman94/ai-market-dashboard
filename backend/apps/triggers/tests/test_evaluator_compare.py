@@ -61,6 +61,14 @@ def test_pct_change_reads_keyed_with_window():
     assert values == {"pct_change:SPY:5m": 0.014}
 
 
+def test_volume_z_reads_keyed_with_window():
+    m = {"volume_z:NVDA:5m": 3.2}
+    node = {"metric": "volume_z", "ticker": "NVDA", "op": ">=", "value": 2.0, "window": "5m"}
+    matched, values = evaluate(node, m)
+    assert matched is True
+    assert values == {"volume_z:NVDA:5m": 3.2}
+
+
 def test_missing_metric_returns_false():
     node = {"metric": "price", "ticker": "TSLA", "op": ">", "value": 100}
     matched, values = evaluate(node, METRICS)
