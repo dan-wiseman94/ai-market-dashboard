@@ -20,6 +20,9 @@ def _format_one(key: str, value: float) -> str:
         _, ticker, window = key.split(":")
         sign = "+" if value >= 0 else ""
         return f"{ticker} {sign}{value * 100:.2f}% / {window}"
+    if key.startswith("volume_z:"):
+        _, ticker, window = key.split(":")
+        return f"{ticker} vol z={value:.2f} / {window}"
     if key == "vix":
         return f"vix={value:.2f}"
     if key == "position_pl":

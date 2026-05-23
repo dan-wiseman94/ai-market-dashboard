@@ -46,6 +46,8 @@ def _leaf_key(node: dict) -> str:
         return metric
     if metric == "pct_change":
         return f"pct_change:{node['ticker']}:{node['window']}"
+    if metric == "volume_z":
+        return f"volume_z:{node['ticker']}:{node['window']}"
     # price
     return f"price:{node['ticker']}"
 
