@@ -35,6 +35,9 @@ from apps.ai.citations import news_to_search_result_blocks
 from apps.snapshots.models import SnapshotSection
 from apps.snapshots.serializer import build_image_blocks
 from apps.threads.models import AIRun, Message, Thread, ToolCall
+from apps.threads.stop import clear_stop, is_stop_requested
+
+_STOP_POLL_SECONDS = 0.25  # how often the streaming loop checks the stop flag
 
 
 def _broadcast(thread_id: int, payload: dict) -> None:
@@ -206,6 +209,7 @@ def _build_stream_runner(
     req: RunRequest,
     thread_id: int,
     assistant_id: int,
+    should_stop: Callable[[], bool] = lambda: False,
 ) -> Callable[[], Coroutine[Any, Any, None]]:
     """Return a drive() coroutine that reads from the provider stream.
 
@@ -214,75 +218,88 @@ def _build_stream_runner(
       usage_dict   — updated with input_tokens / output_tokens / cached_tokens.
       err_container — first element set to the error string on provider error.
       tool_events  — tool_call / tool_result event dicts appended in order.
+
+    `should_stop` is polled before each event; when it returns True the loop breaks
+    and the provider generator is closed, aborting the upstream stream.
     """
 
     async def drive() -> None:
-        async for evt in provider.run(req):
-            if isinstance(evt, TextDelta):
-                buffer.append(evt.text)
-                await _broadcast_async(
-                    thread_id,
-                    {
-                        "event": "text_delta",
-                        "message_id": assistant_id,
-                        "text": evt.text,
-                    },
-                )
-            elif isinstance(evt, ThinkingDeltaEvent):
-                await _broadcast_async(
-                    thread_id,
-                    {
-                        "event": "thinking_delta",
-                        "message_id": assistant_id,
-                        "text": evt.text,
-                    },
-                )
-            elif isinstance(evt, ToolCallEvent):
-                tool_events.append(
-                    {
-                        "kind": "call",
-                        "tool_use_id": evt.tool_use_id,
-                        "name": evt.name,
-                        "input": evt.input,
-                    }
-                )
-                await _broadcast_async(
-                    thread_id,
-                    {
-                        "event": "tool_call",
-                        "message_id": assistant_id,
-                        "tool_use_id": evt.tool_use_id,
-                        "name": evt.name,
-                        "input": evt.input,
-                    },
-                )
-            elif isinstance(evt, ToolResultEvent):
-                tool_events.append(
-                    {
-                        "kind": "result",
-                        "tool_use_id": evt.tool_use_id,
-                        "ok": evt.ok,
-                        "result": evt.result,
-                        "error": evt.error,
-                        "latency_ms": evt.latency_ms,
-                    }
-                )
-                await _broadcast_async(
-                    thread_id,
-                    {
-                        "event": "tool_result",
-                        "message_id": assistant_id,
-                        "tool_use_id": evt.tool_use_id,
-                        "ok": evt.ok,
-                        "latency_ms": evt.latency_ms,
-                    },
-                )
-            elif isinstance(evt, UsageEvent):
-                usage_dict.update(_usage_counts(evt.usage))
-            elif isinstance(evt, ErrorEvent):
-                err_container.append(evt.message)
-            elif isinstance(evt, DoneEvent):
-                return
+        gen = provider.run(req)
+        try:
+            async for evt in gen:
+                if should_stop():
+                    break
+                if isinstance(evt, TextDelta):
+                    buffer.append(evt.text)
+                    await _broadcast_async(
+                        thread_id,
+                        {
+                            "event": "text_delta",
+                            "message_id": assistant_id,
+                            "text": evt.text,
+                        },
+                    )
+                elif isinstance(evt, ThinkingDeltaEvent):
+                    await _broadcast_async(
+                        thread_id,
+                        {
+                            "event": "thinking_delta",
+                            "message_id": assistant_id,
+                            "text": evt.text,
+                        },
+                    )
+                elif isinstance(evt, ToolCallEvent):
+                    tool_events.append(
+                        {
+                            "kind": "call",
+                            "tool_use_id": evt.tool_use_id,
+                            "name": evt.name,
+                            "input": evt.input,
+                        }
+                    )
+                    await _broadcast_async(
+                        thread_id,
+                        {
+                            "event": "tool_call",
+                            "message_id": assistant_id,
+                            "tool_use_id": evt.tool_use_id,
+                            "name": evt.name,
+                            "input": evt.input,
+                        },
+                    )
+                elif isinstance(evt, ToolResultEvent):
+                    tool_events.append(
+                        {
+                            "kind": "result",
+                            "tool_use_id": evt.tool_use_id,
+                            "ok": evt.ok,
+                            "result": evt.result,
+                            "error": evt.error,
+                            "latency_ms": evt.latency_ms,
+                        }
+                    )
+                    await _broadcast_async(
+                        thread_id,
+                        {
+                            "event": "tool_result",
+                            "message_id": assistant_id,
+                            "tool_use_id": evt.tool_use_id,
+                            "ok": evt.ok,
+                            "latency_ms": evt.latency_ms,
+                        },
+                    )
+                elif isinstance(evt, UsageEvent):
+                    usage_dict.update(_usage_counts(evt.usage))
+                elif isinstance(evt, ErrorEvent):
+                    err_container.append(evt.message)
+                elif isinstance(evt, DoneEvent):
+                    return
+        finally:
+            # Close the generator so a break aborts the upstream stream. Providers
+            # are async generators (have aclose); guard for plain async iterators.
+            aclose = getattr(gen, "aclose", None)
+            if aclose is not None:
+                await aclose()
 
     return drive
 
@@ -396,6 +413,21 @@ def run_ai_on_message(
     err_container: list[str] = []
 
     tool_events: list[dict] = []
+
+    poll = {"last": 0.0}
+    stopped: list[bool] = []
+
+    def _should_stop() -> bool:
+        if stopped:
+            return True
+        now = time.monotonic()
+        if now - poll["last"] < _STOP_POLL_SECONDS:
+            return False
+        poll["last"] = now
+        if is_stop_requested(assistant.id):
+            stopped.append(True)
+        return bool(stopped)
+
     drive = _build_stream_runner(
         buffer,
         counts,
@@ -405,8 +437,10 @@ def run_ai_on_message(
         req,
         thread_id,
         assistant.id,
+        _should_stop,
     )
     asyncio.run(drive())
+    clear_stop(assistant.id)
     latency_ms = int((time.perf_counter() - t0) * 1000)
     err: str | None = err_container[0] if err_container else None
 
