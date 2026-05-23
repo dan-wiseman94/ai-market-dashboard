@@ -8,6 +8,8 @@ of merely discarding the final write after the model has already finished.
 
 from __future__ import annotations
 
+import contextlib
+
 import redis
 from django.conf import settings
 
@@ -23,11 +25,9 @@ def _key(message_id: int) -> str:
 
 
 def request_stop(message_id: int) -> None:
-    try:
+    # Best-effort: the DB status flip is still recorded by the caller.
+    with contextlib.suppress(Exception):
         _redis().setex(_key(message_id), _TTL_SECONDS, "1")
-    except Exception:
-        # Best-effort: the DB status flip is still recorded by the caller.
-        pass
 
 
 def is_stop_requested(message_id: int) -> bool:
@@ -38,7 +38,5 @@ def is_stop_requested(message_id: int) -> bool:
 
 
 def clear_stop(message_id: int) -> None:
-    try:
+    with contextlib.suppress(Exception):
         _redis().delete(_key(message_id))
-    except Exception:
-        pass

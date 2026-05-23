@@ -65,8 +65,22 @@ def test_fetch_ohlc_persists_bars():
     resp = MagicMock()
     resp.json.return_value = {
         "candles": [
-            {"open": 100, "high": 101, "low": 99, "close": 100.5, "volume": 1000, "datetime": 1700000000000},
-            {"open": 100.5, "high": 101.5, "low": 100, "close": 101, "volume": 1200, "datetime": 1700000060000},
+            {
+                "open": 100,
+                "high": 101,
+                "low": 99,
+                "close": 100.5,
+                "volume": 1000,
+                "datetime": 1700000000000,
+            },
+            {
+                "open": 100.5,
+                "high": 101.5,
+                "low": 100,
+                "close": 101,
+                "volume": 1200,
+                "datetime": 1700000060000,
+            },
         ]
     }
     client = MagicMock()
@@ -86,7 +100,14 @@ def test_persist_bars_is_idempotent_and_updates_on_conflict():
     from apps.market.models import OHLCBar
     from apps.market.services.ohlc import _persist_bars
 
-    bar = {"open": 1, "high": 2, "low": 1, "close": 1.5, "volume": 10, "ts": "2026-01-01T00:00:00+00:00"}
+    bar = {
+        "open": 1,
+        "high": 2,
+        "low": 1,
+        "close": 1.5,
+        "volume": 10,
+        "ts": "2026-01-01T00:00:00+00:00",
+    }
     _persist_bars("AAA", "1d", [bar])
     _persist_bars("AAA", "1d", [bar])  # same (ticker, timeframe, ts) → no duplicate row
     assert OHLCBar.objects.filter(ticker="AAA", timeframe="1d").count() == 1

@@ -13,6 +13,7 @@ from celery import shared_task
 from channels.layers import get_channel_layer
 from django.db import transaction
 
+from apps.ai.citations import news_to_search_result_blocks
 from apps.ai.cost import CostCapExceededError, check_daily_cap, check_monthly_cap, cost_usd_for
 from apps.ai.providers import get_provider
 from apps.ai.providers.base import Provider
@@ -31,7 +32,6 @@ from apps.ai.types import (
     UsageEvent,
 )
 from apps.secrets.models import ProviderConfig
-from apps.ai.citations import news_to_search_result_blocks
 from apps.snapshots.models import SnapshotSection
 from apps.snapshots.serializer import build_image_blocks
 from apps.threads.models import AIRun, Message, Thread, ToolCall

@@ -52,7 +52,9 @@ def handler(tmp_path):
 
 
 def test_create_then_view_file(handler):
-    out = handler.run({"command": "create", "path": "/memories/notes.md", "file_text": "hello\nworld\n"})
+    out = handler.run(
+        {"command": "create", "path": "/memories/notes.md", "file_text": "hello\nworld\n"}
+    )
     assert out["ok"] is True
     v = handler.run({"command": "view", "path": "/memories/notes.md"})
     assert v["ok"] is True
@@ -95,7 +97,9 @@ def test_str_replace_missing_old_str_errors(handler):
 
 def test_insert_adds_line_at_position(handler):
     handler.run({"command": "create", "path": "/memories/n.md", "file_text": "l1\nl3\n"})
-    out = handler.run({"command": "insert", "path": "/memories/n.md", "insert_line": 1, "insert_text": "l2"})
+    out = handler.run(
+        {"command": "insert", "path": "/memories/n.md", "insert_line": 1, "insert_text": "l2"}
+    )
     assert out["ok"] is True
     res = handler.run({"command": "view", "path": "/memories/n.md"})["result"]
     assert res.index("l1") < res.index("l2") < res.index("l3")
@@ -109,14 +113,19 @@ def test_delete_file(handler):
 
 def test_rename_file(handler):
     handler.run({"command": "create", "path": "/memories/a.md", "file_text": "x"})
-    out = handler.run({"command": "rename", "old_path": "/memories/a.md", "new_path": "/memories/b.md"})
+    out = handler.run(
+        {"command": "rename", "old_path": "/memories/a.md", "new_path": "/memories/b.md"}
+    )
     assert out["ok"] is True
     assert handler.run({"command": "view", "path": "/memories/b.md"})["ok"] is True
     assert handler.run({"command": "view", "path": "/memories/a.md"})["ok"] is False
 
 
 def test_path_traversal_is_rejected(handler):
-    assert handler.run({"command": "create", "path": "/memories/../escape.md", "file_text": "x"})["ok"] is False
+    assert (
+        handler.run({"command": "create", "path": "/memories/../escape.md", "file_text": "x"})["ok"]
+        is False
+    )
     assert handler.run({"command": "view", "path": "../../etc/passwd"})["ok"] is False
 
 

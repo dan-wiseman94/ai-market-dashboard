@@ -75,9 +75,7 @@ class MemoryToolHandler:
     def _view(self, ci: dict) -> str:
         target = self._resolve(ci.get("path", ""))
         if target.is_dir():
-            entries = sorted(
-                f"{c.name}/" if c.is_dir() else c.name for c in target.iterdir()
-            )
+            entries = sorted(f"{c.name}/" if c.is_dir() else c.name for c in target.iterdir())
             return "\n".join(entries) if entries else "(empty)"
         if not target.exists():
             raise FileNotFoundError(f"no such file: {ci.get('path')!r}")
