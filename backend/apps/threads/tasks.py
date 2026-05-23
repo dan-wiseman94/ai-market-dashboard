@@ -65,7 +65,7 @@ def _extract_text(m: Message) -> str:
 
 def _snapshot_image_ids(snapshot_id: int) -> list[int]:
     section = SnapshotSection.objects.filter(
-        snapshot_id=snapshot_id, kind="image", status="ready"
+        snapshot_id=snapshot_id, kind="image", status="done"
     ).first()
     if section is None:
         return []

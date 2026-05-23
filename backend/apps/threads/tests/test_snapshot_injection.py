@@ -11,7 +11,7 @@ import pytest
 from rest_framework.test import APIClient
 
 from apps.profiles.models import TradingProfile
-from apps.snapshots.models import Snapshot, SnapshotSection
+from apps.snapshots.models import Snapshot, SnapshotImage, SnapshotSection
 from apps.threads.models import Message, Thread
 from apps.threads.tasks import _build_request
 
@@ -176,3 +176,51 @@ def test_build_request_includes_snapshot_on_first_user_turn(
     assert "SPY" in req.messages[0].content
     assert req.messages[1].role == "user"
     assert req.messages[1].content == "What do you see?"
+
+
+@pytest.mark.django_db
+def test_build_request_attaches_snapshot_images_as_blocks(profile, ready_snapshot) -> None:
+    """A pinned snapshot with a captured chart image must reach the model as an
+    image block, not just a text caption.
+
+    Regression guard: image sections are saved status="done" (SnapshotSection has
+    no "ready" status), but `_snapshot_image_ids` previously filtered status="ready"
+    so images were silently never attached.
+    """
+    img = SnapshotImage.objects.create(
+        snapshot=ready_snapshot,
+        kind="server_render",
+        data=b"\x89PNG\r\n\x1a\n fake png bytes",
+        mime_type="image/png",
+    )
+    SnapshotSection.objects.create(
+        snapshot=ready_snapshot,
+        kind="image",
+        status="done",
+        payload={"image_ids": [img.id]},
+    )
+
+    client = APIClient()
+    resp = client.post(
+        "/api/threads/",
+        data={
+            "kind": "consult",
+            "profile_id": profile.id,
+            "pinned_snapshot_id": ready_snapshot.id,
+        },
+        format="json",
+    )
+    assert resp.status_code == 201, resp.content
+    thread = Thread.objects.select_related("profile").get(id=resp.json()["id"])
+    snap_msg = Message.objects.filter(thread=thread, role="user").order_by("created_at").first()
+    assert snap_msg is not None and snap_msg.snapshot_ref_id == ready_snapshot.id
+
+    req = _build_request(thread, snap_msg, provider_name="claude")
+    first = req.messages[0]
+    assert isinstance(first.content, list), (
+        "snapshot message content must be a block list when images are present, "
+        f"got {type(first.content).__name__}"
+    )
+    image_blocks = [b for b in first.content if b.get("type") == "image"]
+    assert len(image_blocks) == 1, "captured chart image must be attached as an image block"
+    assert image_blocks[0]["source"]["media_type"] == "image/png"
