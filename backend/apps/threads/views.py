@@ -9,6 +9,7 @@ from apps.snapshots.models import Snapshot
 from apps.snapshots.serializer import serialize_for_ai
 from apps.threads.models import Message, Thread
 from apps.threads.serializers import MessageSerializer, ThreadSerializer
+from apps.threads.stop import request_stop
 from apps.threads.tasks import _broadcast, run_ai_on_message
 
 
@@ -161,6 +162,8 @@ class ThreadViewSet(
             return _error("not_found", "Message not found", 404)
         if msg.status != "streaming":
             return _error("not_streaming", "Message is not streaming", 400)
+        # Signal the worker to abort the live stream, then record the cancellation.
+        request_stop(msg.id)
         msg.status = "failed"
         msg.error = "cancelled"
         msg.save()

@@ -22,6 +22,24 @@ def test_validate_price_rejects_window():
     assert "window" in str(exc.value)
 
 
+def test_validate_volume_z_leaf_ok():
+    validate_condition(
+        {"metric": "volume_z", "ticker": "NVDA", "op": ">=", "value": 2.0, "window": "5m"}
+    )
+
+
+def test_validate_volume_z_requires_window():
+    with pytest.raises(ValidationError) as exc:
+        validate_condition({"metric": "volume_z", "ticker": "NVDA", "op": ">=", "value": 2.0})
+    assert "window" in str(exc.value)
+
+
+def test_validate_volume_z_requires_ticker():
+    with pytest.raises(ValidationError) as exc:
+        validate_condition({"metric": "volume_z", "op": ">=", "value": 2.0, "window": "5m"})
+    assert "ticker" in str(exc.value)
+
+
 def test_validate_all_group_ok():
     validate_condition(
         {
