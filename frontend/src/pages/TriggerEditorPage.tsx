@@ -8,9 +8,7 @@ import {
 } from "@/api/triggers";
 import RuleBuilder from "@/components/triggers/RuleBuilder";
 import FiringsTable from "@/components/triggers/FiringsTable";
-import { apiGet } from "@/api/client";
-
-type Profile = { id: number; name: string };
+import { useProfiles } from "@/hooks/useProfiles";
 
 const EMPTY: Pick<EventTrigger, "name" | "condition" | "cooldown_seconds" | "enabled"> = {
   name: "",
@@ -35,10 +33,7 @@ export default function TriggerEditorPage() {
   const navigate = useNavigate();
   const qc = useQueryClient();
 
-  const profilesQ = useQuery({
-    queryKey: ["profiles"],
-    queryFn: () => apiGet<Profile[]>("/api/profiles/"),
-  });
+  const profilesQ = useProfiles();
 
   const triggersQ = useQuery({
     queryKey: ["triggers"],
