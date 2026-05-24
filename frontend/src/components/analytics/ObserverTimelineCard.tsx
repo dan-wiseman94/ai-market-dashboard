@@ -4,7 +4,7 @@ export function ObserverTimelineCard() {
   const { data, isLoading, error } = useObserverTimeline();
   const max = Math.max(
     1,
-    ...(data?.days.map((d) => d.success + d.failed + d.skipped) ?? [1]),
+    ...(data?.days ?? []).map((d) => d.success + d.failed + d.skipped),
   );
   return (
     <section data-testid="analytics-card-timeline" className="ledger-surface p-5 md:col-span-2">
@@ -13,7 +13,7 @@ export function ObserverTimelineCard() {
       {error && <p className="text-sm text-rose-400">{String(error)}</p>}
       {data && (
         <ul className="flex items-end gap-1 h-32">
-          {data.days.map((d) => (
+          {(data.days ?? []).map((d) => (
             <li key={d.date} className="flex-1 flex flex-col-reverse" title={d.date}>
               <span
                 className="bg-emerald-700"

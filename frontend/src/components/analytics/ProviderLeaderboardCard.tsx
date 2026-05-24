@@ -16,7 +16,7 @@ export function ProviderLeaderboardCard() {
             </tr>
           </thead>
           <tbody>
-            {data.rows.map((r) => (
+            {(data.rows ?? []).map((r) => (
               <tr
                 key={`${r.provider}:${r.model}`}
                 className="border-t border-slate-800"
