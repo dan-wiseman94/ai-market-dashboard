@@ -69,7 +69,13 @@ _FETCHERS = {
     "chain": lambda *, watchlist_tickers, **_: {
         "data": fetch_chain(_pick_ticker(None, watchlist_tickers)),
     },
-    "image": lambda *, snapshot_id, watchlist_tickers, ohlc_ticker, ohlc_timeframe, ohlc_bars, **_: {
+    "image": lambda *,
+    snapshot_id,
+    watchlist_tickers,
+    ohlc_ticker,
+    ohlc_timeframe,
+    ohlc_bars,
+    **_: {
         "data": {
             "image_ids": [
                 render_chart_png(
