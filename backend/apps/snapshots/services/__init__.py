@@ -5,9 +5,7 @@ from __future__ import annotations
 import json
 from collections.abc import Iterable
 
-from asgiref.sync import async_to_sync
-from channels.layers import get_channel_layer
-
+from apps.core.realtime import group_broadcast
 from apps.market.services.chain import fetch_chain
 from apps.market.services.context import fetch_market_context
 from apps.market.services.news import fetch_news
@@ -69,13 +67,7 @@ _FETCHERS = {
     "chain": lambda *, watchlist_tickers, **_: {
         "data": fetch_chain(_pick_ticker(None, watchlist_tickers)),
     },
-    "image": lambda *,
-    snapshot_id,
-    watchlist_tickers,
-    ohlc_ticker,
-    ohlc_timeframe,
-    ohlc_bars,
-    **_: {
+    "image": lambda *, snapshot_id, watchlist_tickers, ohlc_ticker, ohlc_timeframe, ohlc_bars, **_: {
         "data": {
             "image_ids": [
                 render_chart_png(
@@ -98,13 +90,7 @@ _FETCHERS = {
 
 
 def _broadcast(snapshot_id: int, payload: dict) -> None:
-    layer = get_channel_layer()
-    if layer is None:
-        return
-    async_to_sync(layer.group_send)(
-        f"snapshot.{snapshot_id}",
-        {"type": "snapshot_event", "payload": payload},
-    )
+    group_broadcast(f"snapshot.{snapshot_id}", "snapshot_event", payload)
 
 
 def capture_for_existing(

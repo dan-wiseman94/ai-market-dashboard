@@ -9,9 +9,7 @@ from dataclasses import asdict
 from decimal import Decimal
 from typing import Any, cast
 
-from asgiref.sync import async_to_sync
 from celery import shared_task
-from channels.layers import get_channel_layer
 from django.db import transaction
 
 from apps.ai.citations import news_to_search_result_blocks
@@ -32,6 +30,7 @@ from apps.ai.types import (
     ToolResultEvent,
     UsageEvent,
 )
+from apps.core.realtime import group_broadcast, group_broadcast_async
 from apps.secrets.models import ProviderConfig
 from apps.snapshots.models import SnapshotSection
 from apps.snapshots.serializer import build_image_blocks
@@ -42,23 +41,11 @@ _STOP_POLL_SECONDS = 0.25  # how often the streaming loop checks the stop flag
 
 
 def _broadcast(thread_id: int, payload: dict) -> None:
-    layer = get_channel_layer()
-    if layer is None:
-        return
-    async_to_sync(layer.group_send)(
-        f"thread.{thread_id}",
-        {"type": "thread_event", "payload": payload},
-    )
+    group_broadcast(f"thread.{thread_id}", "thread_event", payload)
 
 
 async def _broadcast_async(thread_id: int, payload: dict) -> None:
-    layer = get_channel_layer()
-    if layer is None:
-        return
-    await layer.group_send(
-        f"thread.{thread_id}",
-        {"type": "thread_event", "payload": payload},
-    )
+    await group_broadcast_async(f"thread.{thread_id}", "thread_event", payload)
 
 
 def _extract_text(m: Message) -> str:
