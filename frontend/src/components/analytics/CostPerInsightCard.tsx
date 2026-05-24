@@ -1,13 +1,11 @@
 import { useCostPerInsight } from "@/hooks/useAnalytics";
+import { AnalyticsCard } from "./AnalyticsCard";
 
 export function CostPerInsightCard() {
-  const { data, isLoading, error } = useCostPerInsight();
+  const q = useCostPerInsight();
   return (
-    <section data-testid="analytics-card-cpi" className="ledger-surface p-5">
-      <header className="ledger-eyebrow mb-3">Cost per insight (30d)</header>
-      {isLoading && <p className="text-sm text-slate-400">Loading…</p>}
-      {error && <p className="text-sm text-rose-400">{String(error)}</p>}
-      {data && (
+    <AnalyticsCard testid="analytics-card-cpi" title="Cost per insight (30d)" query={q}>
+      {(data) => (
         <dl className="grid grid-cols-2 gap-3 font-mono text-sm">
           <Row label="Total" value={`$${Number(data.total_cost_usd).toFixed(2)}`} />
           <Row label="Threads" value={data.threads_with_ai} />
@@ -24,7 +22,7 @@ export function CostPerInsightCard() {
           />
         </dl>
       )}
-    </section>
+    </AnalyticsCard>
   );
 }
 

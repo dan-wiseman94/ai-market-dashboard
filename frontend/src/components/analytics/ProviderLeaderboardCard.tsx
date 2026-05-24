@@ -1,13 +1,11 @@
 import { useLeaderboard } from "@/hooks/useAnalytics";
+import { AnalyticsCard } from "./AnalyticsCard";
 
 export function ProviderLeaderboardCard() {
-  const { data, isLoading, error } = useLeaderboard();
+  const q = useLeaderboard();
   return (
-    <section data-testid="analytics-card-leaderboard" className="ledger-surface p-5">
-      <header className="ledger-eyebrow mb-3">Provider leaderboard (30d)</header>
-      {isLoading && <p className="text-sm text-slate-400">Loading…</p>}
-      {error && <p className="text-sm text-rose-400">{String(error)}</p>}
-      {data && (
+    <AnalyticsCard testid="analytics-card-leaderboard" title="Provider leaderboard (30d)" query={q}>
+      {(data) => (
         <table className="w-full text-sm font-mono">
           <thead>
             <tr className="text-slate-400 text-left">
@@ -35,6 +33,6 @@ export function ProviderLeaderboardCard() {
           </tbody>
         </table>
       )}
-    </section>
+    </AnalyticsCard>
   );
 }
