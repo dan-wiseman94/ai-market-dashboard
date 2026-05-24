@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { installFakeWebSocket } from "./testUtils";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -18,10 +19,7 @@ beforeEach(() => {
     Promise.resolve({ ok: true, json: () => Promise.resolve({ results: NOTIFS }) }),
   ) as never;
   // Stub WebSocket so the constructor inside the component doesn't actually open one.
-  (globalThis as { WebSocket?: unknown }).WebSocket = vi.fn(() => ({
-    onmessage: null, onerror: null, onopen: null, onclose: null,
-    close: vi.fn(),
-  }));
+  installFakeWebSocket();
 });
 
 const qc = () => new QueryClient({ defaultOptions: { queries: { retry: false } } });

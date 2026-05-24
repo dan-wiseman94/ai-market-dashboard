@@ -1,5 +1,11 @@
-import { vi, test, expect } from "vitest";
+import { vi, test, expect, afterEach } from "vitest";
 import { fetchCostsSummary, fetchCostsCaps, fetchCostsSnapshot } from "@/api/costs";
+
+// Restore the fetch spy between tests so each test's mock.calls starts empty
+// (vitest 4 reuses the existing spy across tests rather than re-creating it).
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 test("fetchCostsSummary GETs /api/costs/summary with range", async () => {
   const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
