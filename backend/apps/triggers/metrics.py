@@ -10,14 +10,14 @@ import logging
 import statistics
 import time
 from collections.abc import Iterable
-from typing import Any, cast
+from typing import cast
 
 import redis
 from django.conf import settings
 
 from apps.market.services.positions import fetch_positions
 from apps.market.services.quotes import fetch_quotes
-from apps.triggers.evaluator import MetricsSnapshot
+from apps.triggers.evaluator import CROSSING_OPS, MetricsSnapshot, iter_leaves, leaf_key
 from apps.triggers.models import EventTrigger
 
 log = logging.getLogger(__name__)
@@ -33,7 +33,7 @@ def _redis() -> redis.Redis:
 
 def build_snapshot(triggers: Iterable[EventTrigger]) -> MetricsSnapshot:
     """Populate the flat metrics dict the evaluator will read."""
-    leaves = _collect_leaves(triggers)
+    leaves = [leaf for t in triggers for leaf in iter_leaves(t.condition)]
     tickers = _ticker_union(leaves)
     needs_positions = any(leaf["metric"].startswith("position_") for leaf in leaves)
     has_vix = any(leaf["metric"] == "vix" for leaf in leaves)
@@ -67,30 +67,27 @@ def build_snapshot(triggers: Iterable[EventTrigger]) -> MetricsSnapshot:
         op = leaf["op"]
         window = leaf.get("window")
         ticker = leaf.get("ticker")
+        key = leaf_key(leaf)
 
         if metric == "price":
             assert ticker is not None
-            key = f"price:{ticker}"
             last = _extract_last(quotes.get(ticker))
             snapshot[key] = last
-            if op in ("crosses_above", "crosses_below"):
-                prior = _read_redis_float(r, f"trigger:last:{ticker}")
-                snapshot[f"_prior:{key}"] = prior
+            if op in CROSSING_OPS:
+                snapshot[f"_prior:{key}"] = _read_redis_float(r, f"trigger:last:{ticker}")
             if last is not None:
                 r.setex(f"trigger:last:{ticker}", 60, str(last))
 
         elif metric == "vix":
             last = _extract_last(quotes.get("$VIX"))
-            snapshot["vix"] = last
-            if op in ("crosses_above", "crosses_below"):
-                prior = _read_redis_float(r, "trigger:last:$VIX")
-                snapshot["_prior:vix"] = prior
+            snapshot[key] = last
+            if op in CROSSING_OPS:
+                snapshot[f"_prior:{key}"] = _read_redis_float(r, "trigger:last:$VIX")
             if last is not None:
                 r.setex("trigger:last:$VIX", 60, str(last))
 
         elif metric == "pct_change":
             assert ticker is not None and window is not None
-            key = f"pct_change:{ticker}:{window}"
             last = _extract_last(quotes.get(ticker))
             window_key = f"trigger:window:{ticker}:{window}"
             prior = _read_redis_float(r, window_key)
@@ -106,17 +103,19 @@ def build_snapshot(triggers: Iterable[EventTrigger]) -> MetricsSnapshot:
 
         elif metric == "volume_z":
             assert ticker is not None and window is not None
-            key = f"volume_z:{ticker}:{window}"
-            snapshot[key] = _volume_z(r, ticker, window, _extract_volume(quotes.get(ticker)))
+            # _volume_z mutates the rolling Redis baseline, so compute once per
+            # (ticker, window) even when several triggers share the same leaf.
+            if key not in snapshot:
+                snapshot[key] = _volume_z(r, ticker, window, _extract_volume(quotes.get(ticker)))
 
         elif metric == "position_pl":
-            snapshot["position_pl"] = positions_total_pl
+            snapshot[key] = positions_total_pl
 
         elif metric == "position_pl_pct":
             if positions_total_mkt and positions_total_mkt > 0:
-                snapshot["position_pl_pct"] = (positions_total_pl or 0) / positions_total_mkt
+                snapshot[key] = (positions_total_pl or 0) / positions_total_mkt
             else:
-                snapshot["position_pl_pct"] = None
+                snapshot[key] = None
 
     try:
         r.setex("trigger:last_tick_at", 120, str(int(time.time())))
@@ -124,31 +123,6 @@ def build_snapshot(triggers: Iterable[EventTrigger]) -> MetricsSnapshot:
         log.warning("trigger.metrics.last_tick_at_failed: %s", exc)
 
     return snapshot
-
-
-def _collect_leaves(triggers: Iterable[EventTrigger]) -> list[dict]:
-    leaves: list[dict] = []
-    for t in triggers:
-        _walk(t.condition, leaves)
-    return leaves
-
-
-def _walk(node: Any, out: list[dict]) -> None:
-    if not isinstance(node, dict):
-        return
-    if "all" in node:
-        for c in node["all"]:
-            _walk(c, out)
-        return
-    if "any" in node:
-        for c in node["any"]:
-            _walk(c, out)
-        return
-    if "not" in node:
-        _walk(node["not"], out)
-        return
-    if "metric" in node:
-        out.append(node)
 
 
 def _ticker_union(leaves: list[dict]) -> set[str]:

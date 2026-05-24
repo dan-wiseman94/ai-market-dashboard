@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import operator
 from collections.abc import Mapping
+from typing import Any
 
 MetricsSnapshot = Mapping[str, float | None]
 
@@ -19,6 +20,7 @@ _COMPARE_OPS = {
     "<=": operator.le,
     "==": operator.eq,
 }
+CROSSING_OPS = ("crosses_above", "crosses_below")
 
 
 def evaluate(node: dict, metrics: MetricsSnapshot) -> tuple[bool, dict[str, float | None]]:
@@ -38,7 +40,7 @@ def _eval_node(node: dict, metrics: MetricsSnapshot, values: dict) -> bool:
     return _eval_leaf(node, metrics, values)
 
 
-def _leaf_key(node: dict) -> str:
+def leaf_key(node: dict) -> str:
     metric = node["metric"]
     if metric == "vix":
         return "vix"
@@ -52,8 +54,33 @@ def _leaf_key(node: dict) -> str:
     return f"price:{node['ticker']}"
 
 
+def iter_leaves(condition: Any) -> list[dict]:
+    """Return every leaf (metric) node in a condition tree, in document order.
+
+    Shared by metrics.build_snapshot and backtest so the DSL is walked one way.
+    """
+    leaves: list[dict] = []
+
+    def _walk(node: Any) -> None:
+        if not isinstance(node, dict):
+            return
+        if "all" in node:
+            for child in node["all"]:
+                _walk(child)
+        elif "any" in node:
+            for child in node["any"]:
+                _walk(child)
+        elif "not" in node:
+            _walk(node["not"])
+        elif "metric" in node:
+            leaves.append(node)
+
+    _walk(condition or {})
+    return leaves
+
+
 def _eval_leaf(node: dict, metrics: MetricsSnapshot, values: dict) -> bool:
-    key = _leaf_key(node)
+    key = leaf_key(node)
     current = metrics.get(key)
     values[key] = current
     op = node["op"]
@@ -61,7 +88,7 @@ def _eval_leaf(node: dict, metrics: MetricsSnapshot, values: dict) -> bool:
         if current is None:
             return False
         return bool(_COMPARE_OPS[op](current, node["value"]))
-    if op in ("crosses_above", "crosses_below"):
+    if op in CROSSING_OPS:
         prior_key = f"_prior:{key}"
         prior = metrics.get(prior_key)
         values[prior_key] = prior
