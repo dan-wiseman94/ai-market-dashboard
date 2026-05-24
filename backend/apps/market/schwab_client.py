@@ -30,11 +30,7 @@ def _write_token(token: Any) -> None:
     persist_token(token)
 
 
-# Back-compat factories; tests import _make_write_func and call it.
-def _make_read_func():
-    return _read_token
-
-
+# Back-compat factory; tests import _make_write_func and call it.
 def _make_write_func():
     return _write_token
 
