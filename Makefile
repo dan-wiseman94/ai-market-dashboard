@@ -93,8 +93,9 @@ e2e: ## Run all E2E lanes sequentially
 	$(COMPOSE) -f compose.yaml -f compose.e2e.yaml down
 
 .PHONY: e2e-one
-e2e-one: ## make e2e-one t=test_compare_flow
-	$(COMPOSE) exec web uv run pytest e2e/journeys/$(t).py -v
+e2e-one: ## Run one E2E file: make e2e-one t=ui/test_snapshots_capture_gold.py (HEADED=1 for visual)
+	@test -n "$(t)" || (echo "usage: make e2e-one t=<lane>/<file>.py  (e.g. ui/test_snapshots_capture_gold.py)" >&2; exit 1)
+	$(COMPOSE) exec -e HEADED=$(HEADED) web uv run pytest e2e/$(t) -v
 
 .PHONY: e2e-up
 e2e-up: ## Bring e2e stack up with overlay, leave running
