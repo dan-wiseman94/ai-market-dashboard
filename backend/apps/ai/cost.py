@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 from apps.ai.catalog import ceiling_for_provider, get_model
@@ -36,18 +36,23 @@ def _dec(v: float | int) -> Decimal:
     return Decimal(str(v))
 
 
-def daily_spend_usd(provider: str) -> Decimal:
-    """Sum today's AIRun.cost_usd for the given provider (UTC day)."""
+def _spend_since(provider: str, start: datetime) -> Decimal:
+    """Sum a provider's AIRun.cost_usd since ``start``."""
     from django.db.models import Sum
 
     from apps.threads.models import AIRun
 
-    today_start = datetime.now(tz=UTC).replace(hour=0, minute=0, second=0, microsecond=0)
     agg = AIRun.objects.filter(
         provider=provider,
-        created_at__gte=today_start,
+        created_at__gte=start,
     ).aggregate(total=Sum("cost_usd"))
     return agg["total"] or Decimal("0")
+
+
+def daily_spend_usd(provider: str) -> Decimal:
+    """Sum today's AIRun.cost_usd for the given provider (UTC day)."""
+    today_start = datetime.now(tz=UTC).replace(hour=0, minute=0, second=0, microsecond=0)
+    return _spend_since(provider, today_start)
 
 
 def check_daily_cap(
@@ -64,18 +69,8 @@ def check_daily_cap(
 
 def monthly_spend_usd(provider: str) -> Decimal:
     """Sum the last 30 days of AIRun.cost_usd for the given provider."""
-    from datetime import timedelta
-
-    from django.db.models import Sum
-
-    from apps.threads.models import AIRun
-
     window_start = datetime.now(tz=UTC) - timedelta(days=30)
-    agg = AIRun.objects.filter(
-        provider=provider,
-        created_at__gte=window_start,
-    ).aggregate(total=Sum("cost_usd"))
-    return agg["total"] or Decimal("0")
+    return _spend_since(provider, window_start)
 
 
 def check_monthly_cap(
