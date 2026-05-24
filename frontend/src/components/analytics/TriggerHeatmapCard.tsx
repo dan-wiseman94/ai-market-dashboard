@@ -4,7 +4,7 @@ const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 export function TriggerHeatmapCard() {
   const { data, isLoading, error } = useTriggerHeatmap();
-  const max = Math.max(1, ...(data?.cells.map((c) => c.count) ?? [1]));
+  const max = Math.max(1, ...(data?.cells ?? []).map((c) => c.count));
   return (
     <section data-testid="analytics-card-heatmap" className="ledger-surface p-5 md:col-span-2">
       <header className="ledger-eyebrow mb-3">
@@ -18,7 +18,7 @@ export function TriggerHeatmapCard() {
             className="grid gap-0.5"
             style={{ gridTemplateColumns: "repeat(24, minmax(0, 1fr))" }}
           >
-            {data.cells.map((c) => {
+            {(data.cells ?? []).map((c) => {
               const intensity = c.count / max;
               return (
                 <div
@@ -37,7 +37,7 @@ export function TriggerHeatmapCard() {
             })}
           </div>
           <p className="mt-3 text-xs text-slate-500 font-mono">
-            Hottest cell: {Math.max(...data.cells.map((c) => c.count))} fires
+            Hottest cell: {Math.max(0, ...(data.cells ?? []).map((c) => c.count))} fires
           </p>
         </>
       )}
