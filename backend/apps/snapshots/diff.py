@@ -40,11 +40,22 @@ def diff_sections(prev: dict[str, Any], curr: dict[str, Any]) -> str:
     return "\n".join(lines) if lines else "No meaningful changes."
 
 
+def _news_items(payload: Any) -> list:
+    """News is stored as {"items": [...]}; tolerate a bare list for back-compat."""
+    if isinstance(payload, dict):
+        return payload.get("items") or []
+    return payload or []
+
+
+def _headline(item: dict) -> str:
+    return item.get("headline") or item.get("title") or "(untitled)"
+
+
 def _summarize_new(kind: str, payload: Any) -> str:
     if kind == "quotes" and isinstance(payload, dict):
         return ", ".join(f"{t}={q.get('last', '?')}" for t, q in list(payload.items())[:8])
-    if kind == "news" and isinstance(payload, list):
-        return "\n".join(f"- {item.get('title', '(untitled)')}" for item in payload[:5])
+    if kind == "news":
+        return "\n".join(f"- {_headline(item)}" for item in _news_items(payload)[:5])
     return "(section content added)"
 
 
@@ -52,7 +63,7 @@ def _diff_one(kind: str, prev: Any, curr: Any) -> str:
     if kind == "quotes":
         return _diff_quotes(prev or {}, curr or {})
     if kind == "news":
-        return _diff_news(prev or [], curr or [])
+        return _diff_news(_news_items(prev), _news_items(curr))
     if kind == "breadth":
         return _diff_breadth(prev or {}, curr or {})
     return ""
@@ -82,7 +93,7 @@ def _diff_news(prev: list, curr: list) -> str:
     new_items = [item for item in curr if isinstance(item, dict) and item.get("id") not in prev_ids]
     if not new_items:
         return "- (no new headlines)"
-    return "\n".join(f"- {item.get('title', '(untitled)')}" for item in new_items[:10])
+    return "\n".join(f"- {_headline(item)}" for item in new_items[:10])
 
 
 def _diff_breadth(prev: dict, curr: dict) -> str:
