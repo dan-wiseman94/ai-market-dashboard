@@ -75,8 +75,8 @@ export default function DailyCostChart({ data }: { data: Row[] }) {
             />
             <Tooltip
               cursor={{ stroke: "rgba(200,150,88,0.4)", strokeDasharray: "2 2" }}
-              formatter={(v: number) => [`$${v.toFixed(4)}`, "cost"]}
-              labelFormatter={(l: string) => l}
+              formatter={(value) => [`$${Number(value).toFixed(4)}`, "cost"]}
+              labelFormatter={(label) => String(label)}
               contentStyle={{
                 background: "var(--ink-900)",
                 border: "1px solid var(--rule-strong)",
