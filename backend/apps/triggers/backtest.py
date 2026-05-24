@@ -12,32 +12,13 @@ from datetime import datetime
 
 from apps.market.models import OHLCBar
 from apps.triggers.evaluator import evaluate as evaluate_condition
+from apps.triggers.evaluator import iter_leaves
 
 
 @dataclass
 class BacktestMatch:
     ts: datetime
     values: dict[str, float | None]
-
-
-def collect_leaves(condition: dict) -> list[dict]:
-    """Walk a condition tree and return all leaf (metric) nodes."""
-    leaves: list[dict] = []
-
-    def _walk(node: dict) -> None:
-        if not isinstance(node, dict):
-            return
-        if "metric" in node:
-            leaves.append(node)
-            return
-        for key in ("all", "any"):
-            for child in node.get(key, []) or []:
-                _walk(child)
-        if "not" in node:
-            _walk(node["not"])
-
-    _walk(condition or {})
-    return leaves
 
 
 def backtest(
@@ -72,7 +53,7 @@ def backtest(
             snapshot[f"price:{ticker}"] = close
             prev = prev_closes.get(ticker)
             if prev is not None and prev > 0:
-                # pct_change keyed the way evaluator._leaf_key expects: pct_change:<ticker>:<window>
+                # pct_change keyed the way evaluator.leaf_key expects: pct_change:<ticker>:<window>
                 # Raw decimal to match live metrics.py (0.01 == 1%).
                 pct = (close - prev) / prev
                 for window in ("1m", "5m", "15m", "1h", "1d"):
@@ -88,6 +69,6 @@ def backtest(
 def _unique_tickers(condition: dict) -> set[str]:
     return {
         leaf["ticker"]
-        for leaf in collect_leaves(condition)
+        for leaf in iter_leaves(condition)
         if isinstance(leaf.get("ticker"), str) and leaf["ticker"]
     }
