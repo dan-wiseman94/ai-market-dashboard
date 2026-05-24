@@ -42,6 +42,16 @@ def _make_write_func():
 class _MockSchwabClient:
     """Minimal stand-in for schwab.client.Client used in MOCK_EXTERNAL mode."""
 
+    class Options:
+        class ContractType:
+            ALL = "ALL"
+            CALL = "CALL"
+            PUT = "PUT"
+
+    class Account:
+        class Fields:
+            POSITIONS = "positions"
+
     def get_quotes(self, tickers):
         import types
 
@@ -62,10 +72,39 @@ class _MockSchwabClient:
         resp = types.SimpleNamespace(json=lambda: mock_data)
         return resp
 
+    def get_option_chain(self, *_args, **_kwargs):
+        """Empty-but-well-shaped chain payload — matches the structure ``_normalize_chain`` expects."""
+        import types
+
+        return types.SimpleNamespace(
+            json=lambda: {
+                "symbol": "MOCK",
+                "underlying": {"last": 100.0},
+                "callExpDateMap": {},
+                "putExpDateMap": {},
+            }
+        )
+
+    def get_account_numbers(self):
+        import types
+
+        return types.SimpleNamespace(json=lambda: [])
+
+    def get_accounts(self, *_args, **_kwargs):
+        """Mock-mode positions surface — empty list keeps the positions view at zero."""
+        import types
+
+        return types.SimpleNamespace(json=lambda: [])
+
+    def get_movers(self, *_args, **_kwargs):
+        import types
+
+        return types.SimpleNamespace(json=lambda: {"screeners": []})
+
     def __getattr__(self, name: str):
         """Return a callable that yields an empty candles response for any OHLC method."""
 
-        def _mock_ohlc(*args, **kwargs):
+        def _mock_ohlc(*_args, **_kwargs):
             import types
 
             return types.SimpleNamespace(json=lambda: {"candles": []})
