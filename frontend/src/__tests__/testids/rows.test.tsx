@@ -9,6 +9,7 @@
  */
 import { render, screen } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { installFakeWebSocket } from "../testUtils";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ToastProvider } from "@/hooks/useToast";
@@ -35,16 +36,7 @@ function wrap(ui: React.ReactElement) {
 // Stub WebSocket so components that open sockets don't throw.
 // Must include addEventListener since WebSocketProvider uses it.
 beforeEach(() => {
-  (globalThis as { WebSocket?: unknown }).WebSocket = vi.fn(() => ({
-    onmessage: null,
-    onerror: null,
-    onopen: null,
-    onclose: null,
-    close: vi.fn(),
-    addEventListener: vi.fn(),
-    removeEventListener: vi.fn(),
-    send: vi.fn(),
-  }));
+  installFakeWebSocket();
 });
 
 // ---------------------------------------------------------------------------
