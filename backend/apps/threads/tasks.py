@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import time
 from collections.abc import Callable, Coroutine
+from dataclasses import asdict
 from decimal import Decimal
 from typing import Any, cast
 
@@ -190,16 +191,6 @@ def _fail(
     return assistant
 
 
-def _usage_counts(usage: TokenUsage | None) -> dict[str, int]:
-    if usage is None:
-        return {"input_tokens": 0, "output_tokens": 0, "cached_tokens": 0}
-    return {
-        "input_tokens": usage.input_tokens,
-        "output_tokens": usage.output_tokens,
-        "cached_tokens": usage.cached_tokens,
-    }
-
-
 def _build_stream_runner(
     buffer: list[str],
     usage_dict: dict[str, int],
@@ -289,7 +280,7 @@ def _build_stream_runner(
                         },
                     )
                 elif isinstance(evt, UsageEvent):
-                    usage_dict.update(_usage_counts(evt.usage))
+                    usage_dict.update(asdict(evt.usage))
                 elif isinstance(evt, ErrorEvent):
                     err_container.append(evt.message)
                 elif isinstance(evt, DoneEvent):
@@ -414,19 +405,20 @@ def run_ai_on_message(
 
     tool_events: list[dict] = []
 
-    poll = {"last": 0.0}
-    stopped: list[bool] = []
+    last_poll = 0.0
+    stopped = False
 
     def _should_stop() -> bool:
+        nonlocal last_poll, stopped
         if stopped:
             return True
         now = time.monotonic()
-        if now - poll["last"] < _STOP_POLL_SECONDS:
+        if now - last_poll < _STOP_POLL_SECONDS:
             return False
-        poll["last"] = now
+        last_poll = now
         if is_stop_requested(assistant.id):
-            stopped.append(True)
-        return bool(stopped)
+            stopped = True
+        return stopped
 
     drive = _build_stream_runner(
         buffer,
