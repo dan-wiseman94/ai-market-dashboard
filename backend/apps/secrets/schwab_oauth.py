@@ -29,15 +29,11 @@ def build_authorize_url(*, state: str = "") -> str:
     return f"{settings.SCHWAB_AUTHORIZE_URL}?{urlencode(params)}"
 
 
-def exchange_code_for_token(code: str) -> dict:
-    """Exchange an authorization code for an access/refresh token."""
+def _post_token(data: dict) -> dict:
+    """POST to Schwab's token endpoint and stamp the absolute expiry."""
     resp = httpx.post(
         settings.SCHWAB_TOKEN_URL,
-        data={
-            "grant_type": "authorization_code",
-            "code": code,
-            "redirect_uri": settings.SCHWAB_CALLBACK_URL,
-        },
+        data=data,
         auth=(settings.SCHWAB_CLIENT_ID, settings.SCHWAB_CLIENT_SECRET),
         timeout=15.0,
     )
@@ -45,20 +41,22 @@ def exchange_code_for_token(code: str) -> dict:
     body = resp.json()
     body["expires_at"] = int(time.time()) + int(body.get("expires_in", 1800))
     return body
+
+
+def exchange_code_for_token(code: str) -> dict:
+    """Exchange an authorization code for an access/refresh token."""
+    return _post_token(
+        {
+            "grant_type": "authorization_code",
+            "code": code,
+            "redirect_uri": settings.SCHWAB_CALLBACK_URL,
+        }
+    )
 
 
 def refresh_token(refresh_token_value: str) -> dict:
     """Use a refresh token to obtain a new access token."""
-    resp = httpx.post(
-        settings.SCHWAB_TOKEN_URL,
-        data={"grant_type": "refresh_token", "refresh_token": refresh_token_value},
-        auth=(settings.SCHWAB_CLIENT_ID, settings.SCHWAB_CLIENT_SECRET),
-        timeout=15.0,
-    )
-    resp.raise_for_status()
-    body = resp.json()
-    body["expires_at"] = int(time.time()) + int(body.get("expires_in", 1800))
-    return body
+    return _post_token({"grant_type": "refresh_token", "refresh_token": refresh_token_value})
 
 
 def persist_token(token: dict) -> None:

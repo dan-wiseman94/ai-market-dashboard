@@ -35,11 +35,12 @@ class UserFileViewSet(viewsets.ModelViewSet):
         upload = request.FILES.get("file")
         if upload is None:
             return Response({"code": "no_file"}, status=400)
+        mime = upload.content_type or "application/octet-stream"
         try:
             anthropic_id, size = upload_to_anthropic(
                 upload.file,
                 filename=upload.name,
-                mime=upload.content_type or "application/octet-stream",
+                mime=mime,
             )
         except NoKeyError:
             return Response({"code": "no_key", "message": "Claude key not configured"}, status=400)
@@ -47,7 +48,7 @@ class UserFileViewSet(viewsets.ModelViewSet):
             anthropic_id=anthropic_id,
             kind=request.data.get("kind", "other"),
             ticker=(request.data.get("ticker") or "").upper(),
-            mime=upload.content_type or "application/octet-stream",
+            mime=mime,
             size=size,
             filename=upload.name[:200],
         )

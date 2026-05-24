@@ -5,7 +5,6 @@ import logging
 import os
 import subprocess
 import traceback
-from datetime import datetime
 from pathlib import Path
 
 import redis
@@ -65,7 +64,7 @@ def perform_backup(kind: str) -> BackupRecord:
     try:
         out_dir = backups_dir()
         out_dir.mkdir(parents=True, exist_ok=True)
-        ts = datetime.utcnow().strftime("%Y-%m-%d-%H%M%S")
+        ts = timezone.now().strftime("%Y-%m-%d-%H%M%S")
         filename = f"{ts}.sql.gz"
         path = out_dir / filename
 
