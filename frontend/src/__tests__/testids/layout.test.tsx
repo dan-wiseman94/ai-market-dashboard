@@ -51,7 +51,11 @@ describe("layout testids", () => {
   });
 
   it("ConnectionStatusDot has data-testid='connection-status-dot'", () => {
-    render(<ConnectionStatusDot />);
+    render(
+      <QueryClientProvider client={makeQc()}>
+        <ConnectionStatusDot />
+      </QueryClientProvider>,
+    );
     expect(screen.getByTestId("connection-status-dot")).toBeInTheDocument();
   });
 

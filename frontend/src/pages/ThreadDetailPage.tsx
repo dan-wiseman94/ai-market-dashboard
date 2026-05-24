@@ -89,7 +89,7 @@ export default function ThreadDetailPage() {
   // Seed the live-message map from the loaded thread. Render-phase guarded
   // update keyed on the thread object (matches the prior effect's [thread] dep)
   // instead of an effect, per react-hooks v7 (set-state-in-effect).
-  const [prevThread, setPrevThread] = useState(thread);
+  const [prevThread, setPrevThread] = useState<typeof thread>(undefined);
   if (thread !== prevThread) {
     setPrevThread(thread);
     if (thread) {
