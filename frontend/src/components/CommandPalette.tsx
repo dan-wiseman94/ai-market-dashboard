@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 export interface Command {
   id: string;
@@ -19,12 +19,17 @@ export function CommandPalette({
   const [q, setQ] = useState("");
   const [idx, setIdx] = useState(0);
 
-  useEffect(() => {
+  // Reset transient state when the palette closes. Render-phase guarded update
+  // (React's "adjust state when a prop changes" pattern) rather than an effect,
+  // which avoids react-hooks/set-state-in-effect cascading renders.
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (open !== prevOpen) {
+    setPrevOpen(open);
     if (!open) {
       setQ("");
       setIdx(0);
     }
-  }, [open]);
+  }
 
   const filtered = useMemo(() => {
     const needle = q.toLowerCase().trim();
@@ -35,10 +40,6 @@ export function CommandPalette({
         (c.keywords ?? "").toLowerCase().includes(needle),
     );
   }, [q, commands]);
-
-  useEffect(() => {
-    setIdx(0);
-  }, [q]);
 
   if (!open) return null;
 
@@ -78,7 +79,10 @@ export function CommandPalette({
           autoFocus
           placeholder="Search commands…"
           value={q}
-          onChange={(e) => setQ(e.target.value)}
+          onChange={(e) => {
+            setQ(e.target.value);
+            setIdx(0);
+          }}
           className="w-full px-4 py-3 bg-transparent text-slate-100 outline-none border-b border-slate-700"
         />
         <ul className="max-h-[400px] overflow-y-auto">

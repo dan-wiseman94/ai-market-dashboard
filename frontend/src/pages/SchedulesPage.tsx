@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   useSchedules, useToggleSchedule, useDeleteSchedule,
   useRunSchedule, useCreateSchedule,
@@ -33,11 +33,12 @@ export default function SchedulesPage() {
   const cron = cronMode === "preset" ? CRON_PRESETS[presetIdx].cron : advancedCron;
   const cronEnglish = useMemo(() => explainCron(cron), [cron]);
 
-  useEffect(() => {
-    if (profileId === null && profiles && profiles.length > 0) {
-      setProfileId(profiles[0].id);
-    }
-  }, [profiles, profileId]);
+  // Default to the first profile once loaded. Render-phase guarded update
+  // (React's "adjust state when data changes") rather than an effect, which
+  // avoids react-hooks/set-state-in-effect cascading renders.
+  if (profileId === null && profiles && profiles.length > 0) {
+    setProfileId(profiles[0].id);
+  }
 
   const profileName = (id: number) =>
     profiles?.find((p) => p.id === id)?.name ?? `#${id}`;
