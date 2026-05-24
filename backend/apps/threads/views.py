@@ -99,6 +99,10 @@ class ThreadViewSet(
         if not branches:
             return _error("no_branches", "Provide at least one branch", 400)
 
+        for b in branches:
+            if not (isinstance(b, dict) and b.get("provider") and b.get("model")):
+                return _error("bad_branch", "Each branch needs a provider and model", 400)
+
         user_msg = _create_user_message(thread, text)
         branch_ids: list[dict] = []
         for b in branches:
