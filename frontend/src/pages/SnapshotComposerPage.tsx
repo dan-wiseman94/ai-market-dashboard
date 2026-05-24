@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import SnapshotSectionPicker from "@/components/SnapshotSectionPicker";
 import { useProfiles } from "@/hooks/useProfiles";
@@ -29,17 +29,16 @@ export default function SnapshotComposerPage() {
     localStorage.setItem("staged_image_ids", JSON.stringify(next));
   }
 
-  useEffect(() => {
-    if (profileId === null && profiles && profiles.length > 0) {
-      setProfileId(profiles[0].id);
-      setIncludes(profiles[0].default_includes);
-    }
-  }, [profiles, profileId]);
-  useEffect(() => {
-    if (watchlistId === null && watchlists && watchlists.length > 0) {
-      setWatchlistId(watchlists[0].id);
-    }
-  }, [watchlists, watchlistId]);
+  // Default selections to the first profile/watchlist once loaded. Render-phase
+  // guarded updates (React's "adjust state when data changes") rather than
+  // effects, which avoids react-hooks/set-state-in-effect cascading renders.
+  if (profileId === null && profiles && profiles.length > 0) {
+    setProfileId(profiles[0].id);
+    setIncludes(profiles[0].default_includes);
+  }
+  if (watchlistId === null && watchlists && watchlists.length > 0) {
+    setWatchlistId(watchlists[0].id);
+  }
 
   const tickers = useMemo(
     () => watchlists?.find((w) => w.id === watchlistId)?.symbols.map((s) => s.ticker) ?? [],

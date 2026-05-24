@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import BranchTabs from "@/components/BranchTabs";
 import CompareTotalsStrip from "@/components/CompareTotalsStrip";
@@ -86,25 +86,31 @@ export default function ThreadDetailPage() {
     Record<number, Record<string, ToolCallRecord>>
   >({});
 
-  useEffect(() => {
-    if (!thread) return;
-    const seed: Record<number, LiveMessage> = {};
-    for (const m of thread.messages) {
-      seed[m.id] = {
-        id: m.id,
-        role: m.role === "system" ? "assistant" : m.role,
-        text: m.content?.text ?? "",
-        status: m.status,
-        error: m.error,
-        cost: m.ai_run?.cost_usd,
-        model: m.ai_run?.model,
-        provider: m.ai_run?.provider,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        parent_message_id: (m as any).parent_message_id ?? null,
-      };
+  // Seed the live-message map from the loaded thread. Render-phase guarded
+  // update keyed on the thread object (matches the prior effect's [thread] dep)
+  // instead of an effect, per react-hooks v7 (set-state-in-effect).
+  const [prevThread, setPrevThread] = useState(thread);
+  if (thread !== prevThread) {
+    setPrevThread(thread);
+    if (thread) {
+      const seed: Record<number, LiveMessage> = {};
+      for (const m of thread.messages) {
+        seed[m.id] = {
+          id: m.id,
+          role: m.role === "system" ? "assistant" : m.role,
+          text: m.content?.text ?? "",
+          status: m.status,
+          error: m.error,
+          cost: m.ai_run?.cost_usd,
+          model: m.ai_run?.model,
+          provider: m.ai_run?.provider,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          parent_message_id: (m as any).parent_message_id ?? null,
+        };
+      }
+      setLive(seed);
     }
-    setLive(seed);
-  }, [thread]);
+  }
 
   const onWs = useCallback((msg: WsMsg) => {
     if (msg.event === "message_started") {

@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { createMemoryRouter, RouterProvider } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, vi } from "vitest";
+import { installFakeWebSocket } from "./testUtils";
 import AppLayout from "@/components/layout/AppLayout";
 
 function makeQc() {
@@ -39,10 +40,7 @@ beforeEach(() => {
   globalThis.fetch = vi.fn(() =>
     Promise.resolve({ ok: true, json: () => Promise.resolve({ results: [] }) }),
   ) as never;
-  (globalThis as { WebSocket?: unknown }).WebSocket = vi.fn(() => ({
-    onmessage: null, onerror: null, onopen: null, onclose: null,
-    close: vi.fn(),
-  }));
+  installFakeWebSocket();
 });
 
 test("g t navigates to /triggers", async () => {
