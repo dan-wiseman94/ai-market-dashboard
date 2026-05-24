@@ -31,12 +31,36 @@ class ClaudeProvider:
             self._client = AsyncAnthropic(api_key=api_key)
 
     async def run(self, req: RunRequest) -> AsyncIterator[RunEvent]:
-        from apps.core.mocks import is_mock_mode
+        from apps.core.mocks import current_scenario, is_mock_mode
+        from apps.core.mocks.providers import get_ai_stream_for_scenario
 
         if is_mock_mode():
-            yield TextDelta(text="Mocked ")
-            yield TextDelta(text="response")
-            yield UsageEvent(usage=TokenUsage(input_tokens=10, output_tokens=5, cached_tokens=0))
+            try:
+                events = get_ai_stream_for_scenario(current_scenario(), "claude")
+            except Exception as exc:
+                yield ErrorEvent(message=str(exc))
+                return
+            for ev in events:
+                if ev.type == "text_delta":
+                    yield TextDelta(text=ev.text)
+                elif ev.type == "thinking_delta":
+                    yield ThinkingDeltaEvent(text=ev.text)
+                elif ev.type == "tool_call":
+                    yield ToolCallEvent(
+                        tool_use_id="mock-1", name=ev.text, input={"ticker": "AAPL"}
+                    )
+                elif ev.type == "tool_result":
+                    yield ToolResultEvent(tool_use_id="mock-1", result={"last": 175.0}, ok=True)
+                elif ev.type == "usage":
+                    yield UsageEvent(
+                        usage=TokenUsage(input_tokens=10, output_tokens=5, cached_tokens=0)
+                    )
+                elif ev.type == "error":
+                    yield ErrorEvent(message=ev.text or "mock error")
+                    return
+                elif ev.type == "done":
+                    yield DoneEvent()
+                    return
             yield DoneEvent()
             return
 
