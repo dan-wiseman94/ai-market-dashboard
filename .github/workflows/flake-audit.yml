@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Bring up stack
         run: docker compose -f compose.yaml -f compose.e2e.yaml up -d --build
       - name: Wait for health
@@ -26,7 +26,7 @@ jobs:
           done
       - name: Run flake audit
         run: python tools/flake_audit.py
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: flake_audit
           path: |
@@ -41,8 +41,8 @@ jobs:
       contents: read
       issues: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v8
+      - uses: actions/checkout@v6
+      - uses: actions/download-artifact@v4
         with:
           name: flake_audit
           path: .
