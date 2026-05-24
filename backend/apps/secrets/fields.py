@@ -37,7 +37,7 @@ class EncryptedJSONField(models.BinaryField):
 
     def to_python(self, value: Any) -> Any:
         # Pass-through for freshly-assigned Python values; only decrypt raw DB bytes.
-        if value is None or isinstance(value, (dict, list, str, int, float, bool)):
+        if value is None or isinstance(value, dict | list | str | int | float | bool):
             return value
         return self.from_db_value(value, None, None)
 

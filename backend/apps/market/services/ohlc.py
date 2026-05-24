@@ -2,10 +2,15 @@
 
 from __future__ import annotations
 
+import logging
 from datetime import UTC, datetime
+from decimal import Decimal, InvalidOperation
 
 from apps.market import cache
+from apps.market.models import OHLCBar
 from apps.market.schwab_client import get_schwab_client
+
+log = logging.getLogger(__name__)
 
 # Schwab exposes 30m bars; we map "1h" to that endpoint.
 _METHOD_BY_TIMEFRAME = {
@@ -32,7 +37,7 @@ def _fetch_from_schwab(ticker: str, timeframe: str, bars: int) -> list[dict]:
     client = get_schwab_client()
     method = getattr(client, _METHOD_BY_TIMEFRAME[timeframe])
     candles = method(ticker).json().get("candles", [])[-bars:]
-    return [
+    rows = [
         {
             "open": c.get("open"),
             "high": c.get("high"),
@@ -43,3 +48,40 @@ def _fetch_from_schwab(ticker: str, timeframe: str, bars: int) -> list[dict]:
         }
         for c in candles
     ]
+    _persist_bars(ticker, timeframe, rows)
+    return rows
+
+
+def _persist_bars(ticker: str, timeframe: str, bars: list[dict]) -> None:
+    """Upsert fetched bars into OHLCBar so trigger backtests have history to replay.
+
+    Idempotent on the (ticker, timeframe, ts) unique constraint — re-fetching the
+    same window updates values in place rather than duplicating rows.
+    """
+    rows: list[OHLCBar] = []
+    for b in bars:
+        try:
+            if any(b.get(k) is None for k in ("open", "high", "low", "close", "volume", "ts")):
+                continue
+            rows.append(
+                OHLCBar(
+                    ticker=ticker,
+                    timeframe=timeframe,
+                    open=Decimal(str(b["open"])),
+                    high=Decimal(str(b["high"])),
+                    low=Decimal(str(b["low"])),
+                    close=Decimal(str(b["close"])),
+                    volume=int(b["volume"]),
+                    ts=datetime.fromisoformat(b["ts"]),
+                )
+            )
+        except (InvalidOperation, ValueError, TypeError) as exc:
+            log.warning("ohlc.persist.skip_bar ticker=%s ts=%s: %s", ticker, b.get("ts"), exc)
+    if not rows:
+        return
+    OHLCBar.objects.bulk_create(
+        rows,
+        update_conflicts=True,
+        unique_fields=["ticker", "timeframe", "ts"],
+        update_fields=["open", "high", "low", "close", "volume"],
+    )

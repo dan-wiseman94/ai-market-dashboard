@@ -4,6 +4,7 @@ import { describeLeaf } from "@/lib/triggers/describe";
 const METRICS: { value: Metric; label: string }[] = [
   { value: "price", label: "price" },
   { value: "pct_change", label: "pct_change" },
+  { value: "volume_z", label: "volume_z" },
   { value: "vix", label: "vix" },
   { value: "position_pl", label: "position_pl" },
   { value: "position_pl_pct", label: "position_pl_pct" },
@@ -13,10 +14,10 @@ const OPS: Op[] = [">", ">=", "<", "<=", "==", "crosses_above", "crosses_below"]
 const WINDOWS: Window[] = ["1m", "5m", "15m", "1h", "1d"];
 
 function needsTicker(m: Metric): boolean {
-  return m === "price" || m === "pct_change";
+  return m === "price" || m === "pct_change" || m === "volume_z";
 }
 function needsWindow(m: Metric): boolean {
-  return m === "pct_change";
+  return m === "pct_change" || m === "volume_z";
 }
 
 export interface LeafRowProps {

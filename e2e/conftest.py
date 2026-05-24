@@ -1,6 +1,6 @@
 """E2E harness — Playwright browser + a healthy compose stack.
 
-Run: make e2e  (or `make e2e-one t=<test_module>`).
+Run: make e2e  (or `make e2e-one t=<lane>/<file>.py`).
 Requires MOCK_EXTERNAL=true + apps/core/mocks.py for deterministic fixtures.
 """
 
@@ -37,7 +37,7 @@ try:
 
     @pytest.fixture(scope="session")
     def browser(playwright_session: Playwright) -> Iterator[Browser]:
-        b = playwright_session.chromium.launch(headless=True)
+        b = playwright_session.chromium.launch(headless=os.environ.get("HEADED") != "1")
         yield b
         b.close()
 
