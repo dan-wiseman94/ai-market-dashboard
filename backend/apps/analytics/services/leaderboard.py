@@ -51,7 +51,7 @@ def provider_leaderboard(
         key = (run.provider, run.model)
         returns.setdefault(key, [])
         priced.setdefault(key, 0)
-        snap = run.message.thread.pinned_snapshot if run.message_id else None
+        snap = run.message.thread.pinned_snapshot
         if snap is None:
             continue
         primary = _primary_ticker(snap)
@@ -109,6 +109,7 @@ def _forward_return_pct(
 def _nearest_bar_close(ticker: str, at: datetime) -> float | None:
     bar = (
         OHLCBar.objects.filter(ticker=ticker, ts__lte=at + timedelta(hours=1))
+        .only("close")
         .order_by("-ts")
         .first()
     )
