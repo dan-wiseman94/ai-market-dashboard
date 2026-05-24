@@ -22,7 +22,7 @@
     "react-dom": "^19.0.0",
     "react-markdown": "^10.1.0",
     "react-router-dom": "^7.0.0",
-    "recharts": "^2.15.4",
+    "recharts": "^3.8.1",
     "remark-gfm": "^4.0.0"
   },
   "devDependencies": {
