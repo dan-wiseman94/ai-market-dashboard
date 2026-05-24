@@ -50,10 +50,12 @@ export default function TriggerEditorPage() {
   const [form, setForm] = useState(EMPTY);
   const [profileId, setProfileId] = useState<number | null>(null);
   const [tab, setTab] = useState<"condition" | "firings" | "backtest">("condition");
-  const ninetyAgo = new Date(Date.now() - 90 * 24 * 3600_000).toISOString().slice(0, 10);
-  const today = new Date().toISOString().slice(0, 10);
-  const [btStart, setBtStart] = useState(ninetyAgo);
-  const [btEnd, setBtEnd] = useState(today);
+  // Lazy initializers keep these impure Date reads out of render
+  // (react-hooks/purity: "Cannot call impure function during render").
+  const [btStart, setBtStart] = useState(() =>
+    new Date(Date.now() - 90 * 24 * 3600_000).toISOString().slice(0, 10),
+  );
+  const [btEnd, setBtEnd] = useState(() => new Date().toISOString().slice(0, 10));
   const [btResult, setBtResult] = useState<{ match_count: number; matches: BacktestMatch[] } | null>(null);
   const backtest = useMutation({
     mutationFn: () =>
@@ -65,23 +67,24 @@ export default function TriggerEditorPage() {
     onSuccess: (data) => setBtResult(data),
   });
 
-  useEffect(() => {
-    if (existing) {
-      setForm({
-        name: existing.name,
-        condition: existing.condition,
-        cooldown_seconds: existing.cooldown_seconds,
-        enabled: existing.enabled,
-      });
-      setProfileId(existing.profile);
-    }
-  }, [existing]);
-
-  useEffect(() => {
-    if (profilesQ.data && profileId === null && profilesQ.data.length > 0) {
-      setProfileId(profilesQ.data[0].id);
-    }
-  }, [profilesQ.data, profileId]);
+  // Seed the form from the loaded trigger, and default the profile to the first
+  // one once profiles load. Render-phase guarded updates instead of effects
+  // (avoids react-hooks/set-state-in-effect), keyed to match the prior
+  // [existing] / [profilesQ.data, profileId] dependencies.
+  const [seededExisting, setSeededExisting] = useState(existing);
+  if (existing && existing !== seededExisting) {
+    setSeededExisting(existing);
+    setForm({
+      name: existing.name,
+      condition: existing.condition,
+      cooldown_seconds: existing.cooldown_seconds,
+      enabled: existing.enabled,
+    });
+    setProfileId(existing.profile);
+  }
+  if (profilesQ.data && profileId === null && profilesQ.data.length > 0) {
+    setProfileId(profilesQ.data[0].id);
+  }
 
   const debounced = useDebounced(form.condition, 600);
   const previewQ = useQuery({

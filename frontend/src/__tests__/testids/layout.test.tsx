@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { installFakeWebSocket } from "../testUtils";
 import { MemoryRouter, createMemoryRouter, RouterProvider } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import Breadcrumbs from "../../components/layout/Breadcrumbs";
@@ -18,13 +19,7 @@ beforeEach(() => {
     Promise.resolve({ ok: true, json: () => Promise.resolve({ results: [] }) }),
   ) as never;
   // Stub WebSocket so NotificationBell doesn't open a real socket
-  (globalThis as { WebSocket?: unknown }).WebSocket = vi.fn(() => ({
-    onmessage: null,
-    onerror: null,
-    onopen: null,
-    onclose: null,
-    close: vi.fn(),
-  }));
+  installFakeWebSocket();
 });
 
 describe("layout testids", () => {
