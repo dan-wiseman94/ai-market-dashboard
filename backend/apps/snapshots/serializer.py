@@ -265,7 +265,9 @@ def _render_image(payload: dict) -> str:
     if not ids:
         return "## Charts attached\n_(none)_"
     rows = ["## Charts attached"]
-    for img in SnapshotImage.objects.filter(id__in=ids).order_by("id"):
+    # Only metadata is rendered here; skip loading the (up to 5 MB) image BLOBs.
+    images = SnapshotImage.objects.filter(id__in=ids).order_by("id").only("id", "kind", "caption")
+    for img in images:
         suffix = "server-rendered" if img.kind == "server_render" else "your screenshot"
         cap = img.caption or "(no caption)"
         rows.append(f"- chart_{img.id}: {cap} ({suffix})")
