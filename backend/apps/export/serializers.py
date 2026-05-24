@@ -17,7 +17,7 @@ from apps.export.models import ExportJob
 def thread_to_json(thread) -> dict:
     from apps.threads.models import Message
 
-    msgs = Message.objects.filter(thread=thread).order_by("created_at")
+    msgs = Message.objects.filter(thread=thread).select_related("ai_run").order_by("created_at")
     return {
         "id": thread.id,
         "kind": thread.kind,
@@ -123,8 +123,7 @@ def snapshot_images(snapshot) -> Iterator[tuple[str, bytes]]:
     from apps.snapshots.models import SnapshotImage
 
     for img in SnapshotImage.objects.filter(snapshot=snapshot):
-        ext = "png"  # images are always PNG in our pipeline
-        name = f"{img.kind}-{img.id}.{ext}"
+        name = f"{img.kind}-{img.id}.png"  # images are always PNG in our pipeline
         yield name, bytes(img.data)
 
 

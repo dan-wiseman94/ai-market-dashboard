@@ -9,11 +9,20 @@ from django.db.models.functions import TruncDate
 
 from apps.threads.models import AIRun
 
+# Shared per-(provider/model) token + cost aggregation applied across the breakdowns.
+_TOKEN_AGG = {
+    "cost_usd": Sum("cost_usd"),
+    "runs": Count("id"),
+    "input_tokens": Sum("input_tokens"),
+    "output_tokens": Sum("output_tokens"),
+    "cached_tokens": Sum("cached_tokens"),
+}
+
 
 def cost_breakdown_today() -> dict:
     """Legacy shape for the existing /api/costs/today/ endpoint. Kept for back-compat."""
     start = datetime.now(tz=UTC).replace(hour=0, minute=0, second=0, microsecond=0)
-    by_provider = _aggregate_by("provider", start=start, end=None)
+    by_provider = _provider_breakdown(start=start)
     return {
         "total_usd": sum((row["cost_usd"] for row in by_provider), Decimal("0")),
         "by_provider": by_provider,
@@ -33,28 +42,8 @@ def summary(*, start: datetime, end: datetime) -> dict:
       }
     """
     qs = AIRun.objects.filter(created_at__gte=start, created_at__lt=end)
-    by_provider = list(
-        qs.values("provider")
-        .annotate(
-            cost_usd=Sum("cost_usd"),
-            runs=Count("id"),
-            input_tokens=Sum("input_tokens"),
-            output_tokens=Sum("output_tokens"),
-            cached_tokens=Sum("cached_tokens"),
-        )
-        .order_by("-cost_usd")
-    )
-    by_model = list(
-        qs.values("provider", "model")
-        .annotate(
-            cost_usd=Sum("cost_usd"),
-            runs=Count("id"),
-            input_tokens=Sum("input_tokens"),
-            output_tokens=Sum("output_tokens"),
-            cached_tokens=Sum("cached_tokens"),
-        )
-        .order_by("-cost_usd")
-    )
+    by_provider = list(qs.values("provider").annotate(**_TOKEN_AGG).order_by("-cost_usd"))
+    by_model = list(qs.values("provider", "model").annotate(**_TOKEN_AGG).order_by("-cost_usd"))
     by_thread = list(
         qs.values("message__thread_id", "message__thread__title")
         .annotate(cost_usd=Sum("cost_usd"), runs=Count("id"))
@@ -105,28 +94,20 @@ def _fill_daily_gaps(rows: list[dict], start: date, end: date) -> list[dict]:
     return out
 
 
-def _aggregate_by(field: str, *, start: datetime, end: datetime | None) -> list[dict]:
+def _provider_breakdown(*, start: datetime, end: datetime | None = None) -> list[dict]:
     qs = AIRun.objects.filter(created_at__gte=start)
     if end is not None:
         qs = qs.filter(created_at__lt=end)
     return [
         {
-            "provider": row[field] if field == "provider" else None,
+            "provider": row["provider"],
             "cost_usd": row["cost_usd"] or Decimal("0"),
             "input_tokens": row["input_tokens"] or 0,
             "output_tokens": row["output_tokens"] or 0,
             "cached_tokens": row["cached_tokens"] or 0,
             "runs": row["runs"],
         }
-        for row in qs.values(field)
-        .annotate(
-            cost_usd=Sum("cost_usd"),
-            input_tokens=Sum("input_tokens"),
-            output_tokens=Sum("output_tokens"),
-            cached_tokens=Sum("cached_tokens"),
-            runs=Count("id"),
-        )
-        .order_by(field)
+        for row in qs.values("provider").annotate(**_TOKEN_AGG).order_by("provider")
     ]
 
 
