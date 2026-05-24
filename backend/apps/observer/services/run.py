@@ -23,6 +23,11 @@ from apps.threads.tasks import run_ai_on_message
 log = logging.getLogger(__name__)
 
 
+def _stamp_fired(sched: ObserverSchedule) -> None:
+    sched.last_fired_at = timezone.now()
+    sched.save(update_fields=["last_fired_at"])
+
+
 def run_observer(schedule_id: int) -> int | None:
     """Fire one observer iteration. Returns snapshot_id, or None on skip."""
     sched = ObserverSchedule.objects.select_related("profile").get(id=schedule_id)
@@ -56,20 +61,19 @@ def run_observer(schedule_id: int) -> int | None:
     try:
         check_daily_cap(provider_name, cap_usd=cap_usd)
         check_monthly_cap(provider_name, cap_usd=monthly_cap)
-    except CostCapExceededError:
+    except CostCapExceededError as exc:
         Message.objects.create(
             thread=thread,
             role="system",
             content={
                 "text": (
                     f"Observer fire skipped at {timezone.now():%Y-%m-%d %H:%M UTC}: "
-                    f"daily cost cap reached for {provider_name}."
+                    f"cost cap exceeded — {exc}"
                 )
             },
             status="done",
         )
-        sched.last_fired_at = timezone.now()
-        sched.save(update_fields=["last_fired_at"])
+        _stamp_fired(sched)
         return None
 
     snap = capture(
@@ -87,16 +91,15 @@ def run_observer(schedule_id: int) -> int | None:
             submit_watchlist_batch(sched.id)
         except Exception as exc:
             log.exception("observer %s batch submit failed: %s", sched.id, exc)
-        sched.last_fired_at = timezone.now()
-        sched.save(update_fields=["last_fired_at"])
+        _stamp_fired(sched)
         return snap.id
 
     if sched.mode == "diff":
         from apps.snapshots.diff import diff_sections
-        from apps.snapshots.models import Snapshot as _Snapshot
+        from apps.snapshots.models import Snapshot
 
         prev_snap = (
-            _Snapshot.objects.filter(profile=sched.profile, status="ready")
+            Snapshot.objects.filter(profile=sched.profile, status="ready")
             .exclude(id=snap.id)
             .order_by("-created_at")
             .first()
@@ -123,7 +126,7 @@ def run_observer(schedule_id: int) -> int | None:
     )
 
     if sched.structured:
-        _run_structured_and_record(sched, thread, payload_text, provider_name)
+        _run_structured_and_record(sched, thread, payload_text, provider_name, cfg)
     else:
         override: dict = {}
         if sched.override_provider:
@@ -136,8 +139,7 @@ def run_observer(schedule_id: int) -> int | None:
             override=override or None,
         )
 
-    sched.last_fired_at = timezone.now()
-    sched.save(update_fields=["last_fired_at"])
+    _stamp_fired(sched)
 
     notify(
         user_id=None,
@@ -154,9 +156,9 @@ def _run_structured_and_record(
     thread,
     payload_text: str,
     provider_name: str,
+    cfg: ProviderConfig | None,
 ) -> None:
     """Invoke messages.parse with ObservationReport and persist the result."""
-    cfg = ProviderConfig.objects.filter(provider=provider_name).first()
     if cfg is None or not cfg.api_key:
         Message.objects.create(
             thread=thread,
