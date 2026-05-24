@@ -15,6 +15,10 @@ function describeMatched(values: Firing["matched_values"]): string {
         const pct = (Number(v) * 100).toFixed(2);
         return `${ticker} ${Number(v) >= 0 ? "+" : ""}${pct}% /${window}`;
       }
+      if (k.startsWith("volume_z:")) {
+        const [, ticker, window] = k.split(":");
+        return `${ticker} vol z${Number(v).toFixed(2)} /${window}`;
+      }
       if (k === "vix") return `VIX ${Number(v).toFixed(2)}`;
       return `${k} ${v}`;
     })

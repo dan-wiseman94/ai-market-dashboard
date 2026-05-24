@@ -5,7 +5,7 @@ export type Op =
   | "crosses_above" | "crosses_below";
 
 export type Metric =
-  | "price" | "pct_change" | "vix" | "position_pl" | "position_pl_pct";
+  | "price" | "pct_change" | "volume_z" | "vix" | "position_pl" | "position_pl_pct";
 
 export type Window = "1m" | "5m" | "15m" | "1h" | "1d";
 
