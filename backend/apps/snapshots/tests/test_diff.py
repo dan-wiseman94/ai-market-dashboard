@@ -22,6 +22,16 @@ def test_news_delta_lists_only_new_headlines() -> None:
     assert "- B" not in out
 
 
+def test_news_delta_handles_stored_items_shape() -> None:
+    # Regression: news is stored as {"items": [...]} with `headline`, not a flat
+    # list with `title`; the diff must read that real shape, not silently skip it.
+    prev = {"news": {"items": [{"id": 1, "headline": "Old"}]}}
+    curr = {"news": {"items": [{"id": 1, "headline": "Old"}, {"id": 2, "headline": "Fresh take"}]}}
+    out = diff_sections(prev, curr)
+    assert "Fresh take" in out
+    assert "Old" not in out
+
+
 def test_empty_prev_shows_everything_as_new() -> None:
     curr = {"quotes": {"SPY": {"last": 525.0}}}
     out = diff_sections({}, curr)
