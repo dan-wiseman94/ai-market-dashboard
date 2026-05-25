@@ -1,7 +1,9 @@
 import { createBrowserRouter } from "react-router-dom";
 import AppLayout from "./components/layout/AppLayout";
 import Dashboard from "./pages/Dashboard";
-import Settings from "./pages/Settings";
+import SettingsLayout from "./pages/settings/SettingsLayout";
+import ProvidersSettings from "./pages/settings/ProvidersSettings";
+import ConnectionsSettings from "./pages/settings/ConnectionsSettings";
 import WatchlistsList from "./pages/WatchlistsList";
 import WatchlistDetail from "./pages/WatchlistDetail";
 import MarketTicker from "./pages/MarketTickerPage";
@@ -29,7 +31,17 @@ export const router = createBrowserRouter([
     handle: { crumb: "Home" },
     children: [
       { index: true, element: <Dashboard />, handle: { crumb: "Dashboard" } },
-      { path: "settings", element: <Settings />, handle: { crumb: "Settings" } },
+      {
+        path: "settings",
+        element: <SettingsLayout />,
+        handle: { crumb: "Settings" },
+        children: [
+          { index: true, element: <ProvidersSettings />, handle: { crumb: "AI Providers" } },
+          { path: "connections", element: <ConnectionsSettings />, handle: { crumb: "Connections" } },
+          { path: "backups", element: <BackupsPage />, handle: { crumb: "Backups" } },
+          { path: "export", element: <ExportPage />, handle: { crumb: "Export" } },
+        ],
+      },
       { path: "watchlists", element: <WatchlistsList />, handle: { crumb: "Watchlists" } },
       { path: "watchlists/:id", element: <WatchlistDetail />,
         handle: { crumb: ({ params }: { params: { id?: string } }) => `Watchlist ${params.id}` } },
@@ -50,8 +62,6 @@ export const router = createBrowserRouter([
       { path: "triggers/new", element: <TriggerEditorPage />, handle: { crumb: "New trigger" } },
       { path: "triggers/:id", element: <TriggerEditorPage />,
         handle: { crumb: ({ params }: { params: { id?: string } }) => `Trigger ${params.id}` } },
-      { path: "settings/backups", element: <BackupsPage />, handle: { crumb: "Backups" } },
-      { path: "settings/export", element: <ExportPage />, handle: { crumb: "Export" } },
       { path: "analytics", element: <AnalyticsPage />, handle: { crumb: "Analytics" } },
     ],
   },

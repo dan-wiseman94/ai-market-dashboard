@@ -9,6 +9,10 @@ export function useUpsertProviderConfig() {
   return useMutation({
     mutationFn: ({ provider, body }: { provider: string; body: Parameters<typeof upsertProviderConfig>[1] }) =>
       upsertProviderConfig(provider, body),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["provider-configs"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["provider-configs"] });
+      qc.invalidateQueries({ queryKey: ["ai-usage"] });
+      qc.invalidateQueries({ queryKey: ["costs-caps"] });
+    },
   });
 }
