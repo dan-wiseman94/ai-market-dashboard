@@ -3,9 +3,20 @@ import { expect } from "storybook/test";
 import NewsFeed from "./NewsFeed";
 
 const meta = {
+  title: "Market/NewsFeed",
   component: NewsFeed,
   tags: ["ai-generated"],
-  parameters: { layout: "padded" },
+  parameters: {
+    layout: "padded",
+    docs: {
+      description: {
+        component: "Headline list sorted newest-first (capped at 15). Empty input shows a quiet placeholder.",
+      },
+    },
+  },
+  argTypes: {
+    items: { control: "object", description: "News items; sorted by datetime descending at render." },
+  },
 } satisfies Meta<typeof NewsFeed>;
 
 export default meta;

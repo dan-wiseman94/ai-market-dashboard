@@ -4,9 +4,20 @@ import type { BranchState } from "@/hooks/useBranchState";
 import CompareTotalsStrip from "./CompareTotalsStrip";
 
 const meta = {
+  title: "Thread/CompareTotalsStrip",
   component: CompareTotalsStrip,
   tags: ["ai-generated"],
-  parameters: { layout: "padded" },
+  parameters: {
+    layout: "padded",
+    docs: {
+      description: {
+        component: "Footer strip summing cost across Compare branches and reporting the slowest leg.",
+      },
+    },
+  },
+  argTypes: {
+    state: { control: "object", description: "Branch id → BranchState (cost, durationMs, …)." },
+  },
 } satisfies Meta<typeof CompareTotalsStrip>;
 
 export default meta;

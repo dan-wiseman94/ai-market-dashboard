@@ -3,9 +3,24 @@ import { expect } from "storybook/test";
 import { Citation } from "./Citation";
 
 const meta = {
+  title: "Content/Citation",
   component: Citation,
   tags: ["ai-generated"],
-  parameters: { layout: "centered" },
+  parameters: {
+    layout: "centered",
+    docs: {
+      description: {
+        component:
+          "Inline citation marker. An http source renders an external link; other sources (e.g. news://) render a bare marker with the title/snippet as its accessible label.",
+      },
+    },
+  },
+  argTypes: {
+    index: { control: { type: "number", min: 1 }, description: "Citation number, shown as [n]." },
+    source: { control: "text", description: "URL or scheme (news://…); http(s) renders a link." },
+    title: { control: "text", description: "Citation title (part of the accessible label)." },
+    snippet: { control: "text", description: "Optional snippet appended to the label." },
+  },
 } satisfies Meta<typeof Citation>;
 
 export default meta;
