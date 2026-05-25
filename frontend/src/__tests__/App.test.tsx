@@ -2,7 +2,7 @@ import { screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { queryClient } from "../hooks/queryClient";
 import Dashboard from "../pages/Dashboard";
-import Settings from "../pages/Settings";
+import SettingsLayout from "../pages/settings/SettingsLayout";
 import { renderWithProviders } from "./testUtils";
 
 describe("pages", () => {
@@ -11,8 +11,8 @@ describe("pages", () => {
     expect(screen.getByText(/Market context/i)).toBeInTheDocument();
   });
 
-  it("renders Settings heading", () => {
-    renderWithProviders(<Settings />, { client: queryClient });
-    expect(screen.getByText(/Settings/i)).toBeInTheDocument();
+  it("renders Settings hub heading", () => {
+    renderWithProviders(<SettingsLayout />, { client: queryClient });
+    expect(screen.getByText(/Ledger · Settings/i)).toBeInTheDocument();
   });
 });
