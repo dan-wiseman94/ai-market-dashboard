@@ -86,3 +86,32 @@ describe("ProviderCard", () => {
     expect(screen.getByLabelText("Base URL")).toBeInTheDocument();
   });
 });
+
+describe("ProviderCard — toggle, meters, validation", () => {
+  it("persists the enable toggle immediately", async () => {
+    render(<ProviderCard provider="claude" />);
+    await userEvent.click(screen.getByRole("switch", { name: "Claude enabled" }));
+    expect(mockMutate).toHaveBeenCalledWith(
+      { provider: "claude", body: { enabled: false } },
+      expect.any(Object),
+    );
+  });
+
+  it("renders daily and monthly cap meters from costs-caps", () => {
+    mockUseCostsCaps.mockReturnValue({ data: [
+      { provider: "claude", daily: { cap: "10.00", spent: "6.00", pct: 0.6 },
+        monthly: { cap: "100.00", spent: "20.00", pct: 0.2 } },
+    ] });
+    render(<ProviderCard provider="claude" />);
+    expect(screen.getByText("$6.00 / $10.00")).toBeInTheDocument();
+    expect(screen.getByText("$20.00 / $100.00")).toBeInTheDocument();
+  });
+
+  it("disables Save when the daily cap is invalid", async () => {
+    render(<ProviderCard provider="claude" />);
+    const daily = screen.getByLabelText("Daily cap (USD)");
+    await userEvent.clear(daily);
+    await userEvent.type(daily, "-5");
+    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+  });
+});
