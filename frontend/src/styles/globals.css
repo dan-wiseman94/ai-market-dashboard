@@ -8,9 +8,11 @@
 @import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap');
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* Tailwind v4: single import replaces the v3 @tailwind base/components/utilities
+   directives. @config keeps the existing JS config (content globs, dark-mode
+   class, theme.extend tokens) rather than porting it to CSS-first @theme. */
+@import "tailwindcss";
+@config "../../tailwind.config.ts";
 
 @layer base {
   :root {
