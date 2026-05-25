@@ -49,6 +49,10 @@ test-frontend: ## Run frontend tests
 test-cov: ## Run frontend tests with v8 coverage
 	$(COMPOSE) exec frontend pnpm run test:cov
 
+.PHONY: storybook
+storybook: ## Serve Storybook from the frontend container on :6006
+	$(COMPOSE) exec frontend pnpm run storybook
+
 .PHONY: fmt
 fmt: ## Format backend (ruff) + frontend (prettier via eslint)
 	$(COMPOSE) exec -w /app web uv run ruff format .
