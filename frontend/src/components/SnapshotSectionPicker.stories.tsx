@@ -3,10 +3,22 @@ import { expect, fn } from "storybook/test";
 import SnapshotSectionPicker from "./SnapshotSectionPicker";
 
 const meta = {
+  title: "Snapshot/SnapshotSectionPicker",
   component: SnapshotSectionPicker,
   tags: ["ai-generated"],
-  parameters: { layout: "padded" },
+  parameters: {
+    layout: "padded",
+    docs: {
+      description: {
+        component: "Checkbox set choosing which sections a snapshot captures; toggling emits the next selection.",
+      },
+    },
+  },
   args: { onChange: fn() },
+  argTypes: {
+    value: { control: "object", description: "Currently selected section keys." },
+    onChange: { description: "Fired with the next selection array." },
+  },
 } satisfies Meta<typeof SnapshotSectionPicker>;
 
 export default meta;
