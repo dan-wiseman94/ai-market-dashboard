@@ -188,7 +188,7 @@ Same Ledger treatment.
 ## Data flow
 
 No new endpoints. `useUpsertProviderConfig` is broadened to invalidate
-`["provider-configs"]`, `["costs","caps"]`, and `["ai-usage"]` on success so the
+`["provider-configs"]`, `["ai-usage"]`, and `["costs-caps"]` on success so the
 pill and cap meters refresh. Toasts are pushed from `ProviderCard` (it has
 `useToast`).
 
