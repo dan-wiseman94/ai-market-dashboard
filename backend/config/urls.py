@@ -17,6 +17,7 @@ urlpatterns = [
     path("api/", include("apps.profiles.urls")),
     path("api/", include("apps.snapshots.urls")),
     path("api/", include("apps.threads.urls")),
+    path("api/", include("apps.thesis.urls")),
     # SPA fallback — must be last. Excludes api/, static/, render/, ws/, admin/.
     re_path(
         r"^(?!api/|static/|render/|ws/|admin/).*$",

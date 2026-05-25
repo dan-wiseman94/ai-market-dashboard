@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     "apps.backups",
     "apps.export",
     "apps.files",
+    "apps.thesis",
 ]
 
 MIDDLEWARE = [
@@ -117,6 +118,8 @@ CELERY_TIMEZONE = "UTC"
 CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
 OBSERVER_BEAT_TIMEZONE = env("OBSERVER_BEAT_TIMEZONE", default="UTC")
 TRIGGER_TICK_SECONDS = env.int("TRIGGER_TICK_SECONDS", default=10)
+# M11 — Thesis post-mortem horizons in days. Phase 2 will schedule AI replays at each.
+THESIS_POSTMORTEM_HORIZONS: list[int] = [7, 30, 90]
 
 # Auth / i18n / etc
 AUTH_PASSWORD_VALIDATORS: list[dict[str, str]] = []
