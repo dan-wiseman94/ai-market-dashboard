@@ -1,2 +1,4 @@
 allowBuilds:
   esbuild: true
+  # msw's build script copies its service worker into public/ (msw.workerDirectory).
+  msw: true
