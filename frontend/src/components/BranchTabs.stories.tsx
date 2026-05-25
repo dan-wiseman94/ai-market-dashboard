@@ -3,10 +3,24 @@ import { expect, fn } from "storybook/test";
 import BranchTabs from "./BranchTabs";
 
 const meta = {
+  title: "Thread/BranchTabs",
   component: BranchTabs,
   tags: ["ai-generated"],
-  parameters: { layout: "padded" },
+  parameters: {
+    layout: "padded",
+    docs: {
+      description: {
+        component:
+          "Tabs across parallel Compare branches: the active branch is copper, finished branches show their cost, streaming ones pulse, failed ones flag a ✗.",
+      },
+    },
+  },
   args: { onSelect: fn(), activeId: 1 },
+  argTypes: {
+    activeId: { control: "number", description: "Id of the currently selected branch." },
+    branches: { control: false, description: "Branch tabs to render (id, label, status, cost)." },
+    onSelect: { description: "Fired with the clicked branch id." },
+  },
 } satisfies Meta<typeof BranchTabs>;
 
 export default meta;

@@ -3,9 +3,21 @@ import { expect } from "storybook/test";
 import ObservationReportCard, { type ObservationReport } from "./ObservationReportCard";
 
 const meta = {
+  title: "Observer/ObservationReportCard",
   component: ObservationReportCard,
   tags: ["ai-generated"],
-  parameters: { layout: "padded" },
+  parameters: {
+    layout: "padded",
+    docs: {
+      description: {
+        component:
+          "Typed structured-observation card: bias chip, summary, signals, key levels, and risks. Sections hide when empty.",
+      },
+    },
+  },
+  argTypes: {
+    report: { control: "object", description: "The structured ObservationReport payload." },
+  },
 } satisfies Meta<typeof ObservationReportCard>;
 
 export default meta;

@@ -3,9 +3,28 @@ import { expect } from "storybook/test";
 import StreamingMessage from "./StreamingMessage";
 
 const meta = {
+  title: "Thread/StreamingMessage",
   component: StreamingMessage,
   tags: ["ai-generated"],
-  parameters: { layout: "padded" },
+  parameters: {
+    layout: "padded",
+    docs: {
+      description: {
+        component:
+          "One chat turn — user (serif body, copper rule), assistant (markdown body, provider/model label, cost pill), mid-stream, or failed.",
+      },
+    },
+  },
+  argTypes: {
+    role: { control: "inline-radio", options: ["user", "assistant", "system"], description: "Message author." },
+    status: { control: "inline-radio", options: ["done", "streaming", "failed"], description: "Lifecycle state." },
+    text: { control: "text", description: "Markdown body (assistant) or plain text (user)." },
+    provider: { control: "text", description: "Provider label; capitalized in the header." },
+    model: { control: "text", description: "Model id, shown beside the provider." },
+    cost: { control: "text", description: "Cost in USD (string); formatted into the header pill." },
+    error: { control: "text", description: "Error message, shown when status is failed." },
+    bare: { control: "boolean", description: "Drop the outer surface (caller provides one)." },
+  },
 } satisfies Meta<typeof StreamingMessage>;
 
 export default meta;
