@@ -1,4 +1,4 @@
-"""Rung 2 — market data: watchlists, OHLC, positions, news, option chains.
+"""Rung 2 — market data: watchlists, OHLC, news, option chains.
 
 Deterministic via ``rng = random.Random(42)``. Spans 30 days x 4 tickers x 7
 bars per day at the ``1h`` timeframe. One option-chain snapshot contains an
@@ -24,7 +24,6 @@ def seed_market() -> None:
         NewsItem,
         OHLCBar,
         OptionChainSnapshot,
-        Position,
     )
     from apps.profiles.models import Watchlist, WatchlistSymbol
 
@@ -63,18 +62,6 @@ def seed_market() -> None:
                         "volume": rng.randint(1_000_000, 10_000_000),
                     },
                 )
-
-    for sym, qty, px in (
-        ("AAPL", 100, 150.0),
-        ("MSFT", 50, 380.0),
-        ("NVDA", 30, 450.0),
-        ("SPY", 10, 480.0),
-        ("GOOGL", 20, 140.0),
-    ):
-        Position.objects.update_or_create(
-            ticker=sym,
-            defaults={"qty": Decimal(str(qty)), "avg_cost": Decimal(str(px)), "as_of": now},
-        )
 
     for i in range(10):
         NewsItem.objects.update_or_create(
