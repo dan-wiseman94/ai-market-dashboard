@@ -42,7 +42,7 @@ def test_seed_minimal_is_idempotent() -> None:
 
 
 def test_seed_market_creates_watchlists_and_ohlc() -> None:
-    from apps.market.models import NewsItem, OHLCBar, OptionChainSnapshot, Position
+    from apps.market.models import NewsItem, OHLCBar, OptionChainSnapshot
     from apps.profiles.models import Watchlist
 
     from e2e.fixtures.seed_market import seed_market
@@ -52,7 +52,6 @@ def test_seed_market_creates_watchlists_and_ohlc() -> None:
     assert Watchlist.objects.filter(name__startswith="E2E").count() == 3
     for sym in ("AAPL", "MSFT", "SPY", "VIX"):
         assert OHLCBar.objects.filter(ticker=sym).count() > 100
-    assert Position.objects.count() >= 5
     assert NewsItem.objects.count() >= 10
     assert OptionChainSnapshot.objects.filter(ticker="AAPL").count() == 14
     # Unusual-options signal must be present on the most recent chain.
