@@ -1,9 +1,11 @@
+// frontend/src/pages/ExportPage.tsx
 import { useState } from "react";
 import { useCreateExport, useDeleteExport, useExports } from "@/hooks/useExport";
 import type { ExportScope } from "@/api/export";
 import { SkeletonRows } from "@/components/Skeleton";
 import { EmptyState } from "@/components/EmptyState";
 import { useToast } from "@/hooks/useToast";
+import SettingsSection from "@/components/settings/SettingsSection";
 
 const ONE_GB = 1024 * 1024 * 1024;
 
@@ -29,29 +31,30 @@ export default function ExportPage() {
   const anyRunning = data.some((j) => j.status === "pending" || j.status === "running");
 
   return (
-    <main className="p-6 max-w-4xl mx-auto space-y-6">
-      <h1 className="text-2xl font-semibold">Export</h1>
-
+    <SettingsSection title="Export" description="Bundle your data into a downloadable zip.">
       {overThreshold && (
-        <div className="px-3 py-2 rounded bg-amber-900/40 border border-amber-700 text-sm text-amber-200">
+        <div className="ledger-surface px-4 py-3 text-[13px] text-copper-200"
+             style={{ borderColor: "var(--rule-strong)" }}>
           Exports currently occupy {fmtSize(totalBytes)}. Consider deleting old ones.
         </div>
       )}
 
-      <section className="border border-slate-800 rounded p-4 space-y-2">
-        <h2 className="text-sm uppercase text-slate-500">Choose what to include</h2>
-        <Toggle label="Threads (all)" checked={!!scope.threads}
-                onChange={(v) => setScope((s) => ({ ...s, threads: v ? "all" : undefined }))} />
-        <Toggle label="Snapshots (all)" checked={!!scope.snapshots}
-                onChange={(v) => setScope((s) => ({ ...s, snapshots: v ? "all" : undefined }))} />
-        <Toggle label="Observations" checked={!!scope.observations}
-                onChange={(v) => setScope((s) => ({ ...s, observations: v }))} />
-        <Toggle label="Triggers + firings" checked={!!scope.triggers}
-                onChange={(v) => setScope((s) => ({ ...s, triggers: v }))} />
-        <Toggle label="Profiles + Watchlists" checked={!!scope.profiles && !!scope.watchlists}
-                onChange={(v) => setScope((s) => ({ ...s, profiles: v, watchlists: v }))} />
+      <div className="ledger-surface p-5 space-y-3">
+        <h3 className="ledger-eyebrow">Choose what to include</h3>
+        <div className="grid sm:grid-cols-2 gap-2">
+          <ScopeCheck label="Threads (all)" checked={!!scope.threads}
+                      onChange={(v) => setScope((s) => ({ ...s, threads: v ? "all" : undefined }))} />
+          <ScopeCheck label="Snapshots (all)" checked={!!scope.snapshots}
+                      onChange={(v) => setScope((s) => ({ ...s, snapshots: v ? "all" : undefined }))} />
+          <ScopeCheck label="Observations" checked={!!scope.observations}
+                      onChange={(v) => setScope((s) => ({ ...s, observations: v }))} />
+          <ScopeCheck label="Triggers + firings" checked={!!scope.triggers}
+                      onChange={(v) => setScope((s) => ({ ...s, triggers: v }))} />
+          <ScopeCheck label="Profiles + Watchlists" checked={!!scope.profiles && !!scope.watchlists}
+                      onChange={(v) => setScope((s) => ({ ...s, profiles: v, watchlists: v }))} />
+        </div>
         <button
-          className="mt-2 px-3 py-1.5 rounded bg-emerald-600 hover:bg-emerald-500 text-sm disabled:opacity-50"
+          className="ledger-cta disabled:opacity-50"
           disabled={create.isPending || anyRunning}
           onClick={() => create.mutate(scope, {
             onSuccess: () => push({ kind: "info", text: "Export job queued." }),
@@ -60,10 +63,10 @@ export default function ExportPage() {
         >
           {create.isPending ? "Queuing…" : "Start export"}
         </button>
-      </section>
+      </div>
 
-      <section>
-        <h2 className="text-sm uppercase text-slate-500 mb-2">Recent exports</h2>
+      <div>
+        <h3 className="ledger-eyebrow mb-2">Recent exports</h3>
         {isLoading && <SkeletonRows rows={3} />}
         {!isLoading && data.length === 0 && (
           <EmptyState
@@ -72,58 +75,57 @@ export default function ExportPage() {
           />
         )}
         {data.length > 0 && (
-        <table className="w-full text-sm border border-slate-800 rounded">
-          <thead className="bg-slate-900 text-slate-400 text-left">
-            <tr>
-              <th className="px-2 py-1.5">Created</th>
-              <th className="px-2 py-1.5">Status</th>
-              <th className="px-2 py-1.5">Size</th>
-              <th className="px-2 py-1.5">Filename</th>
-              <th className="px-2 py-1.5"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {data.map((j) => (
-              <tr key={j.id} data-testid={`export-row-${j.id}`} className="border-t border-slate-800">
-                <td className="px-2 py-1.5">{new Date(j.created_at).toLocaleString()}</td>
-                <td className="px-2 py-1.5">
-                  {j.status === "running" || j.status === "pending"
-                    ? <span className="text-amber-300">{j.status}…</span>
-                    : j.status === "done" ? "done"
-                    : <span className="text-rose-400" title={j.error}>{j.status}</span>}
-                </td>
-                <td className="px-2 py-1.5 tabular-nums">{fmtSize(j.size_bytes)}</td>
-                <td className="px-2 py-1.5 font-mono text-xs">{j.filename}</td>
-                <td className="px-2 py-1.5 text-right">
-                  {j.status === "done" && (
-                    <>
-                      <a className="text-emerald-300 hover:underline text-xs mr-3"
-                         href={`/api/export/${j.id}/download/`}>Download</a>
-                      <button className="text-rose-400 hover:underline text-xs"
-                              onClick={() => del.mutate(j.id)}>Delete</button>
-                    </>
-                  )}
-                  {j.status === "failed" && (
-                    <button
-                      className="text-amber-300 hover:underline text-xs"
-                      onClick={() => create.mutate(j.scope as ExportScope)}
-                    >Retry</button>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+          <div className="ledger-surface overflow-hidden">
+            <table className="w-full text-[13px]">
+              <thead>
+                <tr className="border-b border-rule text-left">
+                  {["Created", "Status", "Size", "Filename", ""].map((h, i) => (
+                    <th key={i} className="px-4 py-2.5 font-mono text-[10px] uppercase tracking-wider text-copper-400">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-rule-soft">
+                {data.map((j) => (
+                  <tr key={j.id} data-testid={`export-row-${j.id}`}>
+                    <td className="px-4 py-2.5 text-ink-300">{new Date(j.created_at).toLocaleString()}</td>
+                    <td className="px-4 py-2.5">
+                      {j.status === "running" || j.status === "pending"
+                        ? <span className="text-copper-300">{j.status}…</span>
+                        : j.status === "done" ? <span className="text-gain">done</span>
+                        : <span className="text-loss" title={j.error}>{j.status}</span>}
+                    </td>
+                    <td className="px-4 py-2.5 tabular-nums text-ink-200">{fmtSize(j.size_bytes)}</td>
+                    <td className="px-4 py-2.5 font-mono text-[11px] text-ink-200">{j.filename}</td>
+                    <td className="px-4 py-2.5 text-right whitespace-nowrap">
+                      {j.status === "done" && (
+                        <>
+                          <a className="text-copper-300 hover:text-copper-200 text-[12px] mr-4"
+                             href={`/api/export/${j.id}/download/`}>Download</a>
+                          <button className="text-loss hover:underline text-[12px]"
+                                  onClick={() => del.mutate(j.id)}>Delete</button>
+                        </>
+                      )}
+                      {j.status === "failed" && (
+                        <button className="text-copper-300 hover:text-copper-200 text-[12px]"
+                                onClick={() => create.mutate(j.scope as ExportScope)}>Retry</button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
-      </section>
-    </main>
+      </div>
+    </SettingsSection>
   );
 }
 
-function Toggle({ label, checked, onChange }: { label: string; checked: boolean; onChange: (v: boolean) => void }) {
+function ScopeCheck({ label, checked, onChange }: { label: string; checked: boolean; onChange: (v: boolean) => void }) {
   return (
-    <label className="flex items-center gap-2 text-sm">
-      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} />
+    <label className="flex items-center gap-2 text-[13px] text-ink-200">
+      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)}
+             className="accent-[var(--copper-500)]" />
       <span>{label}</span>
     </label>
   );
