@@ -53,6 +53,10 @@ test-cov: ## Run frontend tests with v8 coverage
 storybook: ## Serve Storybook from the frontend container on :6006
 	$(COMPOSE) exec frontend pnpm run storybook
 
+.PHONY: test-storybook
+test-storybook: ## Run Storybook stories as browser tests (needs chromium in the frontend image)
+	$(COMPOSE) exec frontend pnpm exec vitest --project storybook run
+
 .PHONY: fmt
 fmt: ## Format backend (ruff) + frontend (prettier via eslint)
 	$(COMPOSE) exec -w /app web uv run ruff format .
