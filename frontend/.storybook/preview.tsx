@@ -28,6 +28,10 @@ const preview: Preview = {
         className="dark"
         style={{ background: "#0b0d12", minHeight: "100vh", padding: "2rem" }}
       >
+        {/* Settle entrance animations (e.g. .ledger-reveal starts at opacity 0)
+            instantly so components are visible immediately — keeps the vitest
+            browser lane deterministic without waiting on 520ms reveals. */}
+        <style>{`*, *::before, *::after { animation-duration: 0s !important; animation-delay: 0s !important; transition-duration: 0s !important; }`}</style>
         <Story />
       </div>
     ),
