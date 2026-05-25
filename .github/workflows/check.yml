@@ -100,6 +100,29 @@ jobs:
           path: frontend/coverage/
           retention-days: 14
 
+  storybook:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 11
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: "pnpm"
+          cache-dependency-path: frontend/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      # Bare runner (not the Alpine image), so use Playwright's own Chromium —
+      # vite.config falls back to it when CHROMIUM_BIN is unset.
+      - name: Install Playwright Chromium
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Storybook stories (vitest browser lane)
+        run: pnpm exec vitest --project storybook run
+
   audit:
     runs-on: ubuntu-latest
     steps:
