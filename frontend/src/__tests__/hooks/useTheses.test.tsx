@@ -1,6 +1,6 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { useTheses, useThesis, useCreateThesis, useCloseThesis, useDeleteThesis } from "@/hooks/useTheses";
+import { useTheses, useThesis, useCreateThesis, useCloseThesis, useDeleteThesis, useRunPostmortem } from "@/hooks/useTheses";
 import { hookWrapper, mockApi, mockApiError, newQueryClient } from "../testUtils";
 
 const thesisFixture = {
@@ -24,6 +24,7 @@ const thesisFixture = {
   close_note: "",
   created_at: "2026-05-01T00:00:00Z",
   updated_at: "2026-05-01T00:00:00Z",
+  postmortems: [],
 };
 
 describe("useTheses", () => {
@@ -143,5 +144,50 @@ describe("useDeleteThesis", () => {
       await result.current.mutateAsync(1);
     });
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["theses"] });
+  });
+});
+
+describe("useRunPostmortem", () => {
+  it("POSTs to /api/theses/{id}/run-postmortem/ and returns postmortem_id", async () => {
+    const { calls } = mockApi({
+      "POST /api/theses/1/run-postmortem/": { postmortem_id: 42 },
+    });
+    const { result } = renderHook(() => useRunPostmortem(), {
+      wrapper: hookWrapper(),
+    });
+    let response: { postmortem_id?: number } | undefined;
+    await act(async () => {
+      response = await result.current.mutateAsync(1);
+    });
+    expect(calls[0].url).toContain("/api/theses/1/run-postmortem/");
+    expect(calls[0].method).toBe("POST");
+    expect(response).toEqual({ postmortem_id: 42 });
+  });
+
+  it("invalidates ['theses', id] and ['theses'] on success", async () => {
+    const client = newQueryClient();
+    const invalidateSpy = vi.spyOn(client, "invalidateQueries");
+    mockApi({
+      "POST /api/theses/5/run-postmortem/": { postmortem_id: 99 },
+    });
+    const { result } = renderHook(() => useRunPostmortem(), {
+      wrapper: hookWrapper(client),
+    });
+    await act(async () => {
+      await result.current.mutateAsync(5);
+    });
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["theses", 5] });
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["theses"] });
+  });
+
+  it("isError on mutation failure", async () => {
+    mockApiError("POST /api/theses/1/run-postmortem/", 500);
+    const { result } = renderHook(() => useRunPostmortem(), {
+      wrapper: hookWrapper(),
+    });
+    await act(async () => {
+      await result.current.mutateAsync(1).catch(() => {});
+    });
+    await waitFor(() => expect(result.current.isError).toBe(true));
   });
 });

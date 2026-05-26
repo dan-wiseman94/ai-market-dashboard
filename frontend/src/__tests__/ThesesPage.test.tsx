@@ -24,6 +24,7 @@ const OPEN_THESIS = {
   close_note: "",
   created_at: "2026-05-01T00:00:00Z",
   updated_at: "2026-05-01T00:00:00Z",
+  postmortems: [],
 };
 
 const WIN_THESIS = {

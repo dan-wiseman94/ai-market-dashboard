@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { useThesis, useCloseThesis } from "@/hooks/useTheses";
+import { useThesis, useCloseThesis, useRunPostmortem } from "@/hooks/useTheses";
 import { SkeletonRows } from "@/components/Skeleton";
 import { EmptyState } from "@/components/EmptyState";
 import { useToast } from "@/hooks/useToast";
-import { STATUS_BADGE, DIRECTION_LABEL } from "@/components/thesis/ThesisBadges";
-import type { ThesisStatus } from "@/api/thesis";
+import { STATUS_BADGE, DIRECTION_LABEL, VerdictBadge } from "@/components/thesis/ThesisBadges";
+import type { PostMortem, PostMortemReport, ThesisStatus } from "@/api/thesis";
 
 const CLOSE_STATUSES: Array<{
   value: Exclude<ThesisStatus, "open">;
@@ -26,11 +26,121 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
+function formatReturn(pct: number | null): string {
+  if (pct === null) return "—";
+  const sign = pct >= 0 ? "+" : "−";
+  return `${sign}${Math.abs(pct).toFixed(1)}%`;
+}
+
+function isPopulatedReport(
+  report: PostMortem["report"],
+): report is PostMortemReport {
+  return typeof (report as PostMortemReport).summary === "string";
+}
+
+function PostMortemCard({ pm }: { pm: PostMortem }) {
+  const isScheduled = pm.status === "scheduled";
+  const report = isPopulatedReport(pm.report) ? pm.report : null;
+
+  return (
+    <div
+      className="ledger-surface px-5 py-4 rounded"
+      data-testid={`pm-card-${pm.horizon_days}`}
+    >
+      <div className="flex items-center gap-3 mb-3 flex-wrap">
+        <span className="font-mono text-[13px] text-copper-400 font-medium">
+          {pm.horizon_days}-day
+        </span>
+        <span className="font-mono text-[11px] text-ink-400 uppercase tracking-wide">
+          {pm.status}
+        </span>
+        {!isScheduled && <VerdictBadge verdict={pm.verdict} />}
+        {!isScheduled && pm.forward_return_pct !== null && (
+          <span
+            className={`font-mono text-[13px] font-medium ${
+              pm.forward_return_pct >= 0 ? "text-emerald-300" : "text-rose-300"
+            }`}
+            data-testid={`pm-return-${pm.horizon_days}`}
+          >
+            {formatReturn(pm.forward_return_pct)}
+          </span>
+        )}
+        {!isScheduled && pm.forward_return_pct === null && (
+          <span
+            className="font-mono text-[13px] text-ink-500"
+            data-testid={`pm-return-${pm.horizon_days}`}
+          >
+            —
+          </span>
+        )}
+      </div>
+
+      {isScheduled ? (
+        <p className="text-ink-400 text-[13px]">
+          Scheduled for{" "}
+          {new Date(pm.due_at).toLocaleDateString(undefined, {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+          })}
+        </p>
+      ) : report ? (
+        <div className="space-y-3">
+            <p className="text-ink-100 text-[13px] leading-relaxed">
+              {report.summary}
+            </p>
+            {report.lessons.length > 0 && (
+              <div>
+                <div className="ledger-eyebrow mb-1">Lessons</div>
+                <ul className="list-disc list-inside space-y-0.5">
+                  {report.lessons.map((lesson, i) => (
+                    <li key={i} className="text-ink-300 text-[12px]">
+                      {lesson}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {report.what_worked.length > 0 && (
+              <div>
+                <div className="ledger-eyebrow mb-1">What worked</div>
+                <ul className="list-disc list-inside space-y-0.5">
+                  {report.what_worked.map((item, i) => (
+                    <li key={i} className="text-emerald-400 text-[12px]">
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {report.what_missed.length > 0 && (
+              <div>
+                <div className="ledger-eyebrow mb-1">What missed</div>
+                <ul className="list-disc list-inside space-y-0.5">
+                  {report.what_missed.map((item, i) => (
+                    <li key={i} className="text-rose-400 text-[12px]">
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+      ) : pm.status === "running" ? (
+        <p className="text-ink-500 text-[13px] italic">Analysis in progress…</p>
+      ) : pm.status === "failed" ? (
+        <p className="text-ink-500 text-[13px] italic">Analysis failed.</p>
+      ) : null}
+    </div>
+  );
+}
+
 export default function ThesisDetailPage() {
   const { id } = useParams<{ id: string }>();
   const tid = id ? parseInt(id, 10) : null;
   const { data: thesis, isLoading } = useThesis(tid);
   const closeThesis = useCloseThesis();
+  const runPostmortem = useRunPostmortem();
   const { push } = useToast();
 
   const [showCloseForm, setShowCloseForm] = useState(false);
@@ -263,17 +373,41 @@ export default function ThesisDetailPage() {
         </section>
       )}
 
-      {/* Post-mortems placeholder — Phase 2 */}
+      {/* Post-mortems */}
       <section>
-        <div className="flex items-center gap-3 mb-3">
+        <div className="flex items-center gap-3 mb-4">
           <h2 className="ledger-eyebrow">Post-mortems</h2>
           <span className="flex-1 h-px bg-rule" />
+          <button
+            type="button"
+            className="ledger-ghost px-3 py-1 text-[12px]"
+            onClick={() =>
+              runPostmortem.mutate(thesis.id, {
+                onSuccess: () => push({ kind: "success", text: "Post-mortem queued." }),
+                onError: (err) =>
+                  push({ kind: "error", text: (err as Error).message }),
+              })
+            }
+            disabled={runPostmortem.isPending}
+            data-testid="run-postmortem-btn"
+          >
+            {runPostmortem.isPending ? "Queuing…" : "Run now"}
+          </button>
         </div>
-        {/* Phase 2: post-mortem cards */}
-        <EmptyState
-          title="Post-mortems appear here"
-          body="AI-assisted post-mortems will be available in a future update."
-        />
+        {thesis.postmortems.length === 0 ? (
+          <EmptyState
+            title="No post-mortems yet"
+            body="Post-mortems are created automatically when a thesis is saved."
+          />
+        ) : (
+          <div className="space-y-4">
+            {[...thesis.postmortems]
+              .sort((a, b) => a.horizon_days - b.horizon_days)
+              .map((pm) => (
+                <PostMortemCard key={pm.id} pm={pm} />
+              ))}
+          </div>
+        )}
       </section>
     </main>
   );
