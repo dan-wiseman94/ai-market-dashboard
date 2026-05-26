@@ -86,3 +86,56 @@ class Thesis(models.Model):
     def save(self, *args, **kwargs) -> None:
         self.ticker = (self.ticker or "").upper()
         super().save(*args, **kwargs)
+
+
+class PostMortem(models.Model):
+    """A scheduled review of a thesis at a fixed horizon after it was opened.
+
+    Closes the decision loop: at 7/30/90 days we compute the ACTUAL forward
+    return + price path, assign a deterministic verdict (so the loop closes
+    even with no AI key), and best-effort generate an AI narrative.
+    """
+
+    STATUS_CHOICES: ClassVar[list[tuple[str, str]]] = [
+        ("scheduled", "Scheduled"),
+        ("done", "Done"),
+        ("failed", "Failed"),
+        ("skipped", "Skipped"),
+    ]
+    VERDICT_CHOICES: ClassVar[list[tuple[str, str]]] = [
+        ("correct", "Correct"),
+        ("incorrect", "Incorrect"),
+        ("mixed", "Mixed"),
+        ("inconclusive", "Inconclusive"),
+    ]
+
+    thesis = models.ForeignKey(
+        Thesis,
+        on_delete=models.CASCADE,
+        related_name="postmortems",
+    )
+    horizon_days = models.IntegerField()
+    due_at = models.DateTimeField()
+    status = models.CharField(max_length=16, choices=STATUS_CHOICES, default="scheduled")
+    forward_return_pct = models.FloatField(null=True, blank=True)
+    verdict = models.CharField(max_length=16, choices=VERDICT_CHOICES, blank=True, default="")
+    report = models.JSONField(default=dict)
+    message = models.ForeignKey(
+        "threads.Message",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        help_text="The assistant Message posted into the review thread, if any.",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering: ClassVar[list[str]] = ["thesis_id", "horizon_days"]
+        constraints: ClassVar = [
+            models.UniqueConstraint(fields=["thesis", "horizon_days"], name="uniq_thesis_horizon"),
+        ]
+
+    def __str__(self) -> str:
+        return f"PostMortem(thesis#{self.thesis_id} {self.horizon_days}d {self.status})"
