@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
-import { Link, useParams, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import BranchTabs from "@/components/BranchTabs";
 import CompareTotalsStrip from "@/components/CompareTotalsStrip";
 import CompareDialog from "@/components/CompareDialog";
@@ -14,6 +14,9 @@ import ThreadExportButton from "@/components/ThreadExportButton";
 import { ToolCallTrace, type ToolCallRecord } from "@/components/ToolCallTrace";
 import { FileAttachPanel } from "@/components/FileAttachPanel";
 import { useFiles, useAttachFileToThread } from "@/hooks/useFiles";
+import { useCreateThesis } from "@/hooks/useTheses";
+import { useToast } from "@/hooks/useToast";
+import type { ThesisDirection } from "@/api/thesis";
 
 type LiveMessage = {
   id: number;
@@ -73,9 +76,53 @@ export default function ThreadDetailPage() {
   const [search] = useSearchParams();
   const tid = id ? parseInt(id, 10) : null;
   const snapshotId = search.get("snapshot") ? parseInt(search.get("snapshot")!, 10) : null;
+  const navigate = useNavigate();
 
   const { data: thread, refetch } = useThread(tid);
   const { data: snap } = useSnapshot(snapshotId);
+
+  // New thesis from this thread
+  const createThesis = useCreateThesis();
+  const { push } = useToast();
+  const [showThesisForm, setShowThesisForm] = useState(false);
+  const [thesisTitle, setThesisTitle] = useState("");
+  const [thesisTicker, setThesisTicker] = useState("");
+  const [thesisDirection, setThesisDirection] = useState<ThesisDirection>("bullish");
+  const [thesisConviction, setThesisConviction] = useState(3);
+  const [thesisTarget, setThesisTarget] = useState("");
+  const [thesisInvalidation, setThesisInvalidation] = useState("");
+
+  const handleCreateThesis = (e: React.FormEvent) => {
+    e.preventDefault();
+    createThesis.mutate(
+      {
+        title: thesisTitle,
+        ticker: thesisTicker,
+        direction: thesisDirection,
+        conviction: thesisConviction,
+        target_price: thesisTarget || null,
+        invalidation_price: thesisInvalidation || null,
+        thread_id: tid,
+        snapshot_id: thread?.pinned_snapshot_id ?? undefined,
+        profile: thread?.profile?.id ?? undefined,
+      },
+      {
+        onSuccess: (thesis) => {
+          push({ kind: "success", text: `Thesis created: ${thesis.title}` });
+          setShowThesisForm(false);
+          setThesisTitle("");
+          setThesisTicker("");
+          setThesisDirection("bullish");
+          setThesisConviction(3);
+          setThesisTarget("");
+          setThesisInvalidation("");
+          navigate(`/theses/${thesis.id}`);
+        },
+        onError: (err) =>
+          push({ kind: "error", text: (err as Error).message }),
+      },
+    );
+  };
 
   const [live, setLive] = useState<Record<number, LiveMessage>>({});
   const [activeBranchByParent, setActiveBranchByParent] = useState<Record<number, number>>({});
@@ -205,6 +252,13 @@ export default function ThreadDetailPage() {
           <span className="ledger-eyebrow">Thread · #{thread.id}</span>
           <span className="flex-1 h-px bg-rule-soft" />
           <ThreadExportButton threadId={tid!} />
+          <button
+            onClick={() => setShowThesisForm((v) => !v)}
+            className="ledger-ghost py-1 px-2.5 text-[11px] font-mono uppercase tracking-wider"
+            data-testid="new-thesis-btn"
+          >
+            + New thesis from this
+          </button>
           <Link
             to="/"
             className="font-mono text-[11px] text-ink-400 hover:text-copper-300 transition-colors uppercase tracking-wider"
@@ -219,6 +273,102 @@ export default function ThreadDetailPage() {
           {thread.title || <em className="italic text-copper-300">Untitled consultation</em>}
         </h1>
       </header>
+
+      {/* New thesis inline form */}
+      {showThesisForm && (
+        <form
+          onSubmit={handleCreateThesis}
+          className="ledger-surface px-5 py-4 mb-8 space-y-4"
+          data-testid="new-thesis-form"
+        >
+          <div className="ledger-eyebrow mb-1">New thesis from this thread</div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="col-span-2">
+              <label htmlFor="thesis-title" className="block text-[12px] text-ink-400 mb-1">Title</label>
+              <input
+                id="thesis-title"
+                required
+                value={thesisTitle}
+                onChange={(e) => setThesisTitle(e.target.value)}
+                placeholder="e.g. SPY breaks 600 by Q3"
+                className="bg-ink-void border border-rule rounded px-3 py-1.5 text-[13px] text-ink-100 w-full focus:outline-none focus:border-copper-500 placeholder:text-ink-500"
+              />
+            </div>
+            <div>
+              <label htmlFor="thesis-ticker" className="block text-[12px] text-ink-400 mb-1">Ticker</label>
+              <input
+                id="thesis-ticker"
+                required
+                value={thesisTicker}
+                onChange={(e) => setThesisTicker(e.target.value.toUpperCase())}
+                placeholder="SPY"
+                className="bg-ink-void border border-rule rounded px-3 py-1.5 text-[13px] text-ink-100 w-full focus:outline-none focus:border-copper-500 placeholder:text-ink-500"
+              />
+            </div>
+            <div>
+              <label htmlFor="thesis-direction" className="block text-[12px] text-ink-400 mb-1">Direction</label>
+              <select
+                id="thesis-direction"
+                value={thesisDirection}
+                onChange={(e) => setThesisDirection(e.target.value as ThesisDirection)}
+                className="bg-ink-void border border-rule rounded px-3 py-1.5 text-[13px] text-ink-100 w-full focus:outline-none focus:border-copper-500"
+              >
+                <option value="bullish">Bullish</option>
+                <option value="bearish">Bearish</option>
+                <option value="neutral">Neutral</option>
+              </select>
+            </div>
+            <div>
+              <label htmlFor="thesis-conviction" className="block text-[12px] text-ink-400 mb-1">Conviction (1–5)</label>
+              <input
+                id="thesis-conviction"
+                type="number"
+                min={1}
+                max={5}
+                value={thesisConviction}
+                onChange={(e) => setThesisConviction(Number(e.target.value))}
+                className="bg-ink-void border border-rule rounded px-3 py-1.5 text-[13px] text-ink-100 w-full focus:outline-none focus:border-copper-500"
+              />
+            </div>
+            <div>
+              <label htmlFor="thesis-target" className="block text-[12px] text-ink-400 mb-1">Target price (optional)</label>
+              <input
+                id="thesis-target"
+                value={thesisTarget}
+                onChange={(e) => setThesisTarget(e.target.value)}
+                placeholder="600.00"
+                className="bg-ink-void border border-rule rounded px-3 py-1.5 text-[13px] text-ink-100 w-full focus:outline-none focus:border-copper-500 placeholder:text-ink-500"
+              />
+            </div>
+            <div>
+              <label htmlFor="thesis-invalidation" className="block text-[12px] text-ink-400 mb-1">Invalidation price (optional)</label>
+              <input
+                id="thesis-invalidation"
+                value={thesisInvalidation}
+                onChange={(e) => setThesisInvalidation(e.target.value)}
+                placeholder="540.00"
+                className="bg-ink-void border border-rule rounded px-3 py-1.5 text-[13px] text-ink-100 w-full focus:outline-none focus:border-copper-500 placeholder:text-ink-500"
+              />
+            </div>
+          </div>
+          <div className="flex gap-2 pt-1">
+            <button
+              type="submit"
+              disabled={createThesis.isPending}
+              className="ledger-cta px-4 py-1.5 text-[13px]"
+            >
+              {createThesis.isPending ? "Creating…" : "Create thesis"}
+            </button>
+            <button
+              type="button"
+              className="ledger-ghost px-4 py-1.5 text-[13px]"
+              onClick={() => setShowThesisForm(false)}
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      )}
 
       {/* Snapshot context — folded */}
       {snap && (
