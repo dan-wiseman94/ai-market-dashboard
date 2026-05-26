@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import date as _date
 from datetime import datetime, timedelta
@@ -158,3 +159,13 @@ def session_close_on(market: str, on_date: _date) -> datetime | None:
     if sched.empty:
         return None
     return sched.iloc[0]["market_close"].to_pydatetime()
+
+
+def any_market_open(symbols: Iterable[str], at: datetime | None = None) -> bool:
+    """True if any symbol's market is open. Empty -> us_equity check."""
+    syms = [s for s in symbols if s]
+    if not syms:
+        return is_open(market="us_equity", at=at)
+    # Resolve to distinct markets first so we call market_state once per market.
+    markets = {calendar_for(s) for s in syms}
+    return any(is_open(market=m, at=at) for m in markets)
