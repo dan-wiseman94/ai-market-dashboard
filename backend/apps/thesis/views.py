@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from datetime import timedelta
+
+from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 from rest_framework import viewsets
@@ -13,8 +16,10 @@ from apps.profiles.models import TradingProfile
 from apps.snapshots.models import Snapshot, SnapshotSection
 from apps.threads.models import Thread
 
-from .models import Thesis
+from .models import PostMortem, Thesis
 from .serializers import ThesisSerializer
+from .services.postmortem import schedule_postmortems
+from .tasks import run_postmortem_task
 
 # Statuses that mean the thesis is no longer "open" — derived from the model to
 # avoid divergence when a new status is added later.
@@ -42,9 +47,11 @@ def _default_entry_from_snapshot(snapshot: Snapshot, ticker: str) -> str | None:
 
 
 class ThesisViewSet(viewsets.ModelViewSet):
-    queryset = Thesis.objects.select_related(
-        "profile", "thread", "snapshot", "review_thread"
-    ).order_by("-opened_at")
+    queryset = (
+        Thesis.objects.select_related("profile", "thread", "snapshot", "review_thread")
+        .prefetch_related("postmortems")
+        .order_by("-opened_at")
+    )
     serializer_class = ThesisSerializer
 
     def create(self, request: Request, *args: object, **kwargs: object) -> Response:
@@ -84,7 +91,8 @@ class ThesisViewSet(viewsets.ModelViewSet):
                 thread=thread,
                 snapshot=snapshot,
             )
-            # Phase 2: schedule_postmortems(thesis)
+            # Lay down the 7/30/90-day post-mortems for this new thesis.
+            schedule_postmortems(thesis)
 
         return Response(ThesisSerializer(thesis).data, status=201)
 
@@ -112,7 +120,37 @@ class ThesisViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"], url_path="run-postmortem")
     def run_postmortem(self, request: Request, pk: str | None = None) -> Response:
-        """Stub — Phase 2 will dispatch the real post-mortem AI run."""
-        self.get_object()  # raises 404 for unknown pk
-        # Phase 2: dispatch real post-mortem run
-        return Response({"detail": "scheduled"}, status=202)
+        """Replay a post-mortem for this thesis now (out of band of the scheduler).
+
+        Picks which PostMortem to run:
+        1. If a *scheduled* PM is already due, run the earliest such one.
+        2. Otherwise create/get an ad-hoc PM for the smallest configured horizon
+           whose due window has elapsed; if none has elapsed yet, fall back to
+           the smallest horizon so the replay still works immediately.
+
+        Returns 202 with the chosen pm id; the actual run is dispatched async.
+        """
+        thesis = self.get_object()  # raises 404 for unknown pk
+        now = timezone.now()
+
+        # 1) An already-due scheduled PM takes priority.
+        pm = (
+            PostMortem.objects.filter(thesis=thesis, status="scheduled", due_at__lte=now)
+            .order_by("due_at")
+            .first()
+        )
+
+        if pm is None:
+            # 2) Smallest horizon whose due window has elapsed, else the smallest
+            #    configured horizon (horizons are sorted ascending).
+            horizons = sorted(settings.THESIS_POSTMORTEM_HORIZONS)
+            elapsed = [d for d in horizons if thesis.opened_at + timedelta(days=d) <= now]
+            horizon = elapsed[0] if elapsed else horizons[0]
+            pm, _ = PostMortem.objects.get_or_create(
+                thesis=thesis,
+                horizon_days=horizon,
+                defaults={"due_at": thesis.opened_at + timedelta(days=horizon)},
+            )
+
+        run_postmortem_task.delay(pm.id)
+        return Response({"detail": "scheduled", "postmortem_id": pm.id}, status=202)

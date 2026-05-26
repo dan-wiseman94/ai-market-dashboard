@@ -6,11 +6,28 @@ from typing import ClassVar
 
 from rest_framework import serializers
 
-from .models import Thesis
+from .models import PostMortem, Thesis
+
+
+class PostMortemSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PostMortem
+        fields: ClassVar = [
+            "id",
+            "horizon_days",
+            "due_at",
+            "status",
+            "forward_return_pct",
+            "verdict",
+            "report",
+            "message_id",
+            "created_at",
+            "completed_at",
+        ]
 
 
 class ThesisSerializer(serializers.ModelSerializer):
-    # Phase 2 will add: postmortems = PostMortemSerializer(many=True, read_only=True)
+    postmortems = PostMortemSerializer(many=True, read_only=True)
 
     class Meta:
         model = Thesis
@@ -37,6 +54,7 @@ class ThesisSerializer(serializers.ModelSerializer):
             "close_note",
             "created_at",
             "updated_at",
+            "postmortems",
         ]
         read_only_fields: ClassVar = [
             "status",

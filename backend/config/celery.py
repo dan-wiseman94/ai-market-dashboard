@@ -26,6 +26,7 @@ app.autodiscover_tasks(
         "apps.triggers",
         "apps.backups",
         "apps.export",
+        "apps.thesis",
     ]
 )
 
@@ -37,5 +38,9 @@ app.conf.beat_schedule = {
     "poll-open-observer-batches": {
         "task": "observer.poll_open_batches",
         "schedule": 60.0,
+    },
+    "run-due-postmortems": {
+        "task": "thesis.run_due_postmortems",
+        "schedule": 300.0,
     },
 }
