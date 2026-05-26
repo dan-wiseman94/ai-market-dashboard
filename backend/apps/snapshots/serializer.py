@@ -38,6 +38,15 @@ def serialize_for_ai(
     if snapshot.notes.strip():
         parts.append(f"**Notes:** {snapshot.notes.strip()}")
 
+    ms = snapshot.market_state
+    if ms and not ms.get("any_open", True):
+        closed = [m for m, s in ms.get("markets", {}).items() if not s.get("is_open")]
+        if closed:
+            parts.append(
+                f"> **Market state:** {', '.join(closed)} closed at capture — "
+                f"data is as-of the last session close."
+            )
+
     rendered: dict[str, str] = {}
 
     for kind in snapshot.includes:
