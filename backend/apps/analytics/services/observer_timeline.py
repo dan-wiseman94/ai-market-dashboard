@@ -4,6 +4,8 @@ Bins Messages on observer-kind Threads per-day inside the window:
   success = role=assistant, status=done
   failed  = role=assistant, status=failed
   skipped = role=system, status=done   # observer writes these on cost-cap skip
+Capability-warning system messages (content.kind == "capability_warning") are
+excluded — they share the system/done shape but are not cost-cap skips.
 Gaps are zero-filled so the UI can draw a clean bar chart without reshaping.
 """
 
@@ -22,7 +24,7 @@ def observer_timeline(*, start: datetime, end: datetime) -> list[dict]:
         thread__kind="observer",
         created_at__gte=start,
         created_at__lt=end,
-    )
+    ).exclude(role="system", content__contains={"kind": "capability_warning"})
     rows = list(
         qs.annotate(d=TruncDate("created_at")).values("d", "role", "status").annotate(n=Count("id"))
     )

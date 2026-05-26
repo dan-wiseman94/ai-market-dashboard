@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import time
 from collections.abc import Callable, Coroutine
 from dataclasses import asdict
@@ -12,6 +13,7 @@ from typing import Any, cast
 from celery import shared_task
 from django.db import transaction
 
+from apps.ai.capabilities import unsupported_features
 from apps.ai.citations import news_to_search_result_blocks
 from apps.ai.cost import CostCapExceededError, check_daily_cap, check_monthly_cap, cost_usd_for
 from apps.ai.providers import get_provider
@@ -109,6 +111,7 @@ def _build_request(
     user_msg: Message,
     *,
     provider_name: str = "claude",
+    supports_tools: bool = False,
 ) -> RunRequest:
     system = thread.profile.style if thread.profile else ""
     history = list(
@@ -130,21 +133,29 @@ def _build_request(
                 content=_message_content(user_msg, provider_name=provider_name),
             )
         )
-    # M10: opt-in tool use / thinking / memory (Claude-only; other providers ignore).
+    # M10: opt-in tool use / thinking / memory.
+    # Tools: Claude always (anthropic shape); OpenAI/local when the endpoint opts in
+    # (openai shape). Thinking + memory remain Claude-only.
     tools: list[dict] = []
     thinking_budget = 0
     memory_dir = ""
-    if thread.profile and provider_name == "claude":
-        if getattr(thread.profile, "enable_tools", False):
+    if thread.profile:
+        enable_tools = getattr(thread.profile, "enable_tools", False)
+        if enable_tools and provider_name == "claude":
             from apps.ai.tools.registry import default_toolset
 
             tools = default_toolset().anthropic_tools()
-        if getattr(thread.profile, "enable_thinking", False):
-            thinking_budget = int(getattr(thread.profile, "thinking_budget", 0) or 0)
-        if getattr(thread.profile, "enable_memory", False):
-            from apps.ai.memory import memory_dir_for_profile
+        elif enable_tools and supports_tools:
+            from apps.ai.tools.registry import default_toolset
 
-            memory_dir = memory_dir_for_profile(profile_id=thread.profile.id)
+            tools = default_toolset().openai_tools()
+        if provider_name == "claude":
+            if getattr(thread.profile, "enable_thinking", False):
+                thinking_budget = int(getattr(thread.profile, "thinking_budget", 0) or 0)
+            if getattr(thread.profile, "enable_memory", False):
+                from apps.ai.memory import memory_dir_for_profile
+
+                memory_dir = memory_dir_for_profile(profile_id=thread.profile.id)
 
     return RunRequest(
         model="",
@@ -176,6 +187,30 @@ def _fail(
     )
     _broadcast(thread_id, {"event": event, "message_id": assistant.id, "error": error})
     return assistant
+
+
+def _emit_capability_warning(*, thread_id: int, features: list[str], provider_name: str) -> bool:
+    """Write a system/done message + broadcast a WS warning when the selected
+    provider can't honor enabled profile features. Deduped against the thread's
+    most recent system message. Returns True if a message was written."""
+    feature_list = ", ".join(features)
+    text = (
+        f"Heads up: provider '{provider_name}' does not support "
+        f"{feature_list}. Those settings were ignored for this run."
+    )
+    last_system = (
+        Message.objects.filter(thread_id=thread_id, role="system").order_by("-created_at").first()
+    )
+    if last_system is not None and last_system.content.get("text") == text:
+        return False
+    msg = Message.objects.create(
+        thread_id=thread_id,
+        role="system",
+        content={"text": text, "kind": "capability_warning"},
+        status="done",
+    )
+    _broadcast(thread_id, {"event": "warning", "message_id": msg.id, "text": text})
+    return True
 
 
 def _build_stream_runner(
@@ -363,7 +398,17 @@ def run_ai_on_message(
         )
         return {"ok": False, "error": "cost_capped"}
 
-    req = _build_request(thread, user_msg, provider_name=provider_name)
+    gaps = unsupported_features(provider_name, thread.profile, supports_tools=cfg.supports_tools)
+    if gaps:
+        # Best-effort: a warning failure (DB/broadcast error) must never abort a valid run.
+        with contextlib.suppress(Exception):
+            _emit_capability_warning(
+                thread_id=thread_id, features=gaps, provider_name=provider_name
+            )
+
+    req = _build_request(
+        thread, user_msg, provider_name=provider_name, supports_tools=cfg.supports_tools
+    )
     req.model = model_id
 
     assistant = Message.objects.create(

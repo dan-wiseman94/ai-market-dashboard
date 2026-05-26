@@ -1,4 +1,4 @@
-"""OpenAI provider — streams via openai SDK.
+"""OpenAI provider — streams via openai SDK, loops on tool_calls.
 
 Also serves as the base for LocalProvider (see local.py) — the only difference
 is base_url.
@@ -6,6 +6,8 @@ is base_url.
 
 from __future__ import annotations
 
+import json
+import time
 from collections.abc import AsyncIterator
 from typing import cast
 
@@ -19,6 +21,8 @@ from apps.ai.types import (
     RunRequest,
     TextDelta,
     TokenUsage,
+    ToolCallEvent,
+    ToolResultEvent,
     UsageEvent,
 )
 
@@ -42,41 +46,143 @@ class OpenAIProvider:
                 yield ev
             return
 
-        raw: list[dict] = [
-            {"role": "system", "content": req.system},
-        ]
+        raw: list[dict] = [{"role": "system", "content": req.system}]
         for m in req.messages:
             raw.append({"role": m.role, "content": _openai_content(m.content)})
-        messages = cast(list[ChatCompletionMessageParam], raw)
+
+        total_in = total_out = total_cached = 0
 
         try:
-            stream = await self._client.chat.completions.create(
-                model=req.model,
-                messages=messages,
-                max_tokens=req.max_tokens,
-                temperature=req.temperature,
-                stream=True,
-                stream_options={"include_usage": True},
-            )
-            usage_data = TokenUsage()
-            async for chunk in stream:
-                if getattr(chunk, "choices", None):
-                    for choice in chunk.choices:
+            while True:
+                create_kwargs: dict = dict(
+                    model=req.model,
+                    messages=cast(list[ChatCompletionMessageParam], raw),
+                    max_tokens=req.max_tokens,
+                    temperature=req.temperature,
+                    stream=True,
+                    stream_options={"include_usage": True},
+                )
+                if req.tools:
+                    create_kwargs["tools"] = req.tools
+
+                stream = await self._client.chat.completions.create(**create_kwargs)
+
+                iter_text = ""
+                tool_acc: dict[int, dict] = {}
+                finish_reason: str | None = None
+
+                async for chunk in stream:
+                    for choice in getattr(chunk, "choices", None) or []:
                         delta = getattr(choice, "delta", None)
-                        text = getattr(delta, "content", None) if delta else None
-                        if text:
-                            yield TextDelta(text=text)
-                u = getattr(chunk, "usage", None)
-                if u is not None:
-                    usage_data = TokenUsage(
-                        input_tokens=getattr(u, "prompt_tokens", 0) or 0,
-                        output_tokens=getattr(u, "completion_tokens", 0) or 0,
-                        cached_tokens=_cached(u),
+                        if delta is not None:
+                            text = getattr(delta, "content", None)
+                            if text:
+                                iter_text += text
+                                yield TextDelta(text=text)
+                            for tc in getattr(delta, "tool_calls", None) or []:
+                                slot = tool_acc.setdefault(
+                                    tc.index, {"id": "", "name": "", "args": ""}
+                                )
+                                if getattr(tc, "id", None):
+                                    slot["id"] = tc.id
+                                fn = getattr(tc, "function", None)
+                                if fn is not None:
+                                    if getattr(fn, "name", None):
+                                        slot["name"] = fn.name
+                                    if getattr(fn, "arguments", None):
+                                        slot["args"] += fn.arguments
+                        if getattr(choice, "finish_reason", None):
+                            finish_reason = choice.finish_reason
+                    u = getattr(chunk, "usage", None)
+                    if u is not None:
+                        total_in += getattr(u, "prompt_tokens", 0) or 0
+                        total_out += getattr(u, "completion_tokens", 0) or 0
+                        total_cached += _cached(u)
+
+                if finish_reason != "tool_calls" or not tool_acc:
+                    break
+
+                # Reconstruct the assistant tool_calls turn for the next request.
+                ordered = [tool_acc[i] for i in sorted(tool_acc)]
+                raw.append(
+                    {
+                        "role": "assistant",
+                        "content": iter_text or None,
+                        "tool_calls": [
+                            {
+                                "id": s["id"],
+                                "type": "function",
+                                "function": {"name": s["name"], "arguments": s["args"]},
+                            }
+                            for s in ordered
+                        ],
+                    }
+                )
+
+                toolset = _resolve_toolset()
+                for s in ordered:
+                    try:
+                        parsed = json.loads(s["args"] or "{}")
+                    except json.JSONDecodeError as exc:
+                        parsed = {}
+                        outcome = {
+                            "ok": False,
+                            "error": f"Invalid tool arguments JSON: {exc} (raw: {s['args']!r})",
+                        }
+                    else:
+                        yield ToolCallEvent(tool_use_id=s["id"], name=s["name"], input=parsed)
+                        t0 = time.perf_counter()
+                        outcome = toolset.run(s["name"], parsed)
+                        latency_ms = int((time.perf_counter() - t0) * 1000)
+                        yield ToolResultEvent(
+                            tool_use_id=s["id"],
+                            ok=bool(outcome.get("ok")),
+                            result=outcome.get("result"),
+                            error=str(outcome.get("error", "")),
+                            latency_ms=latency_ms,
+                        )
+                        raw.append(
+                            {
+                                "role": "tool",
+                                "tool_call_id": s["id"],
+                                "content": str(
+                                    outcome.get("result")
+                                    if outcome.get("ok")
+                                    else outcome.get("error")
+                                ),
+                            }
+                        )
+                        continue
+                    # malformed-args branch: emit call (empty input) + error result
+                    yield ToolCallEvent(tool_use_id=s["id"], name=s["name"], input=parsed)
+                    yield ToolResultEvent(
+                        tool_use_id=s["id"], ok=False, error=str(outcome.get("error", ""))
                     )
-            yield UsageEvent(usage=usage_data)
+                    raw.append(
+                        {
+                            "role": "tool",
+                            "tool_call_id": s["id"],
+                            "content": str(outcome.get("error")),
+                        }
+                    )
+
+            yield UsageEvent(
+                usage=TokenUsage(
+                    input_tokens=total_in,
+                    output_tokens=total_out,
+                    cached_tokens=total_cached,
+                )
+            )
             yield DoneEvent()
         except Exception as exc:
             yield ErrorEvent(message=f"{type(exc).__name__}: {exc}")
+
+
+def _resolve_toolset():
+    """Late import so tests can patch without importing market services."""
+    from apps.ai.tools.registry import default_toolset
+
+    return default_toolset()
 
 
 def _cached(usage) -> int:

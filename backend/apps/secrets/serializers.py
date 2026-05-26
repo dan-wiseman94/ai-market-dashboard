@@ -17,6 +17,7 @@ class ProviderConfigSerializer(serializers.ModelSerializer):
             "default_model",
             "enabled",
             "supports_vision",
+            "supports_tools",
             "daily_cost_cap_usd",
             "monthly_cost_cap_usd",
             "api_key_present",
