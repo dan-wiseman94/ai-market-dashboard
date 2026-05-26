@@ -6,6 +6,8 @@ from typing import ClassVar
 
 from django.db import models
 
+from apps.market.calendar.registry import MARKET_CHOICES
+
 
 class OHLCBar(models.Model):
     TIMEFRAMES: ClassVar = [("1m", "1m"), ("5m", "5m"), ("15m", "15m"), ("1h", "1h"), ("1d", "1d")]
@@ -67,3 +69,30 @@ class NewsItem(models.Model):
 
     def __str__(self) -> str:
         return f"NewsItem({self.provider}/{self.external_id})"
+
+
+class CalendarOverride(models.Model):
+    """Explicit symbol -> market-key override; beats heuristics in calendar_for()."""
+
+    symbol = models.CharField(max_length=16, unique=True)
+    market_key = models.CharField(max_length=16, choices=MARKET_CHOICES)
+    note = models.CharField(max_length=200, blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self) -> str:
+        return f"{self.symbol} -> {self.market_key}"
+
+    def save(self, *args, **kwargs) -> None:
+        self.symbol = (self.symbol or "").strip().upper()
+        super().save(*args, **kwargs)
+        from apps.market.calendar.resolve import clear_resolution_cache
+
+        clear_resolution_cache()
+
+    def delete(self, *args, **kwargs):
+        from apps.market.calendar.resolve import clear_resolution_cache
+
+        result = super().delete(*args, **kwargs)
+        clear_resolution_cache()
+        return result
