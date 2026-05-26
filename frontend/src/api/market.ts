@@ -1,4 +1,4 @@
-import { apiGet } from "./client";
+import { apiGet, apiPost, apiDelete } from "./client";
 
 export type Quote = {
   last: number | null;
@@ -35,3 +35,37 @@ export const fetchOhlc = (ticker: string, timeframe: string, bars = 60) =>
 
 export const fetchPositions = () => apiGet<Position[]>("/api/market/positions/");
 export const fetchMarketContext = () => apiGet<MarketContext>("/api/market/context/");
+
+export type MarketKey =
+  | "us_equity" | "us_bond" | "cme_futures" | "cfe_futures" | "crypto" | "lse" | "jpx";
+
+export interface CalendarOverride {
+  id: number;
+  symbol: string;
+  market_key: MarketKey;
+  note: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CalendarMarketStatus {
+  is_open: boolean;
+  phase: string;
+  is_early_close: boolean;
+  next_open: string | null;
+  next_close: string | null;
+}
+
+export const listCalendarOverrides = () =>
+  apiGet<CalendarOverride[]>("/api/market/calendar-overrides/");
+export const createCalendarOverride = (body: { symbol: string; market_key: MarketKey; note?: string }) =>
+  apiPost<CalendarOverride>("/api/market/calendar-overrides/", body);
+export const deleteCalendarOverride = (id: number) =>
+  apiDelete(`/api/market/calendar-overrides/${id}/`);
+
+export const getCalendarStatus = (symbols: string[] = []) => {
+  const qs = symbols.map((s) => `symbol=${encodeURIComponent(s)}`).join("&");
+  return apiGet<{ markets: Record<string, CalendarMarketStatus> }>(
+    `/api/market/calendar-status/${qs ? `?${qs}` : ""}`,
+  );
+};
