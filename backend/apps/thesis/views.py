@@ -129,6 +129,10 @@ class ThesisViewSet(viewsets.ModelViewSet):
            the smallest horizon so the replay still works immediately.
 
         Returns 202 with the chosen pm id; the actual run is dispatched async.
+        Run-now resets the chosen PM to "scheduled" before dispatch, so it
+        doubles as an explicit replay AND recovers a crashed/stuck "running"
+        row. The atomic claim in run_postmortem then ensures exactly one run
+        happens per click even if beat dispatches the same row concurrently.
         """
         thesis = self.get_object()  # raises 404 for unknown pk
         now = timezone.now()
@@ -152,5 +156,8 @@ class ThesisViewSet(viewsets.ModelViewSet):
                 defaults={"due_at": thesis.opened_at + timedelta(days=horizon)},
             )
 
+        # Reset to a runnable state so run-now is an explicit replay and also
+        # recovers a row left stuck in "running" by a crashed worker.
+        PostMortem.objects.filter(id=pm.id).update(status="scheduled", completed_at=None)
         run_postmortem_task.delay(pm.id)
         return Response({"detail": "scheduled", "postmortem_id": pm.id}, status=202)

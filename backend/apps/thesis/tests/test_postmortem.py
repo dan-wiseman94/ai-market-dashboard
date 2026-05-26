@@ -24,10 +24,12 @@ from apps.thesis.schemas import PostMortemReport
 from apps.thesis.services import postmortem as pm_service
 from apps.thesis.services.postmortem import (
     DEADZONE,
+    _build_prompt,
     objective_verdict,
     run_postmortem,
     schedule_postmortems,
 )
+from apps.threads.models import Message
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -485,3 +487,210 @@ def test_run_now_creates_adhoc_when_none_scheduled(api, profile):
 def test_run_now_404_for_unknown_pk(api):
     resp = api.post("/api/theses/999999/run-postmortem/", format="json")
     assert resp.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# Idempotency — the atomic status claim makes a second run a no-op
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_run_postmortem_is_idempotent_when_already_done(thesis, fake_report):
+    """Calling run_postmortem twice exercises the AI once and posts ONE message.
+
+    The second call sees status != "scheduled" (it is now "done") and bails on
+    the atomic claim before touching the AI path — no duplicate review message,
+    no second $ charge.
+    """
+    cfg = ProviderConfig.objects.create(provider="claude", enabled=True)
+    cfg.api_key = "sk-test"
+    cfg.save()
+
+    pm = PostMortem.objects.create(
+        thesis=thesis,
+        horizon_days=30,
+        due_at=thesis.opened_at + timedelta(days=30),
+        status="scheduled",
+    )
+    _seed_bars("AAPL", thesis.opened_at, start_close=100.0, end_close=115.0, end=pm.due_at)
+
+    with patch.object(pm_service, "run_structured", return_value=fake_report) as mock_run:
+        run_postmortem(pm.id)  # first run: claims, runs AI, posts message
+        run_postmortem(pm.id)  # second run: status is "done" → no-op
+
+    # The AI path ran exactly once.
+    mock_run.assert_called_once()
+
+    pm.refresh_from_db()
+    assert pm.status == "done"
+
+    # Exactly ONE assistant message exists in the review thread — not two.
+    thesis.refresh_from_db()
+    msgs = Message.objects.filter(thread=thesis.review_thread, role="assistant")
+    assert msgs.count() == 1
+    assert pm.message_id == msgs.first().id
+
+
+@pytest.mark.django_db
+def test_run_postmortem_noop_when_already_running(thesis, fake_report):
+    """A row forced to "running" (e.g. concurrent claim) is not re-run."""
+    cfg = ProviderConfig.objects.create(provider="claude", enabled=True)
+    cfg.api_key = "sk-test"
+    cfg.save()
+
+    pm = PostMortem.objects.create(
+        thesis=thesis,
+        horizon_days=30,
+        due_at=thesis.opened_at + timedelta(days=30),
+        status="running",  # simulate a claim already taken by another worker
+    )
+    _seed_bars("AAPL", thesis.opened_at, start_close=100.0, end_close=115.0, end=pm.due_at)
+
+    with patch.object(pm_service, "run_structured", return_value=fake_report) as mock_run:
+        run_postmortem(pm.id)
+
+    # Claim filter (status="scheduled") did not match → AI never ran.
+    mock_run.assert_not_called()
+    pm.refresh_from_db()
+    assert pm.status == "running"  # untouched
+    assert pm.verdict == ""
+    assert pm.report == {}
+    assert Message.objects.filter(thread=thesis.review_thread).count() == 0
+
+
+# ---------------------------------------------------------------------------
+# Null-profile provider fallback — resolve claude via ProviderConfig
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_run_postmortem_null_profile_falls_back_to_provider_config(db, fake_report):
+    """thesis.profile is None → provider resolves from the single ProviderConfig."""
+    thesis = Thesis.objects.create(
+        title="No-profile call",
+        ticker="AAPL",
+        direction="bullish",
+        conviction=3,
+        profile=None,
+        opened_at=timezone.now() - timedelta(days=120),
+    )
+    cfg = ProviderConfig.objects.create(provider="claude", enabled=True)
+    cfg.api_key = "sk-test"
+    cfg.save()
+
+    pm = PostMortem.objects.create(
+        thesis=thesis,
+        horizon_days=7,
+        due_at=thesis.opened_at + timedelta(days=7),
+        status="scheduled",
+    )
+    _seed_bars("AAPL", thesis.opened_at, start_close=100.0, end_close=112.0, end=pm.due_at)
+
+    with patch.object(pm_service, "run_structured", return_value=fake_report) as mock_run:
+        run_postmortem(pm.id)  # must not crash with profile=None
+
+    mock_run.assert_called_once()
+    pm.refresh_from_db()
+    assert pm.status == "done"
+    assert pm.verdict == "correct"  # bullish, +12%
+    # Report populated via the ProviderConfig fallback (no profile to read from).
+    assert pm.report["summary"] == fake_report.summary
+    assert pm.message is not None
+
+
+# ---------------------------------------------------------------------------
+# _build_prompt / notify None formatting — "unavailable", not "None%"
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_build_prompt_renders_unavailable_for_none_forward_return(thesis):
+    """Forward return None must read 'unavailable', never 'None%'."""
+    pm = PostMortem.objects.create(
+        thesis=thesis,
+        horizon_days=7,
+        due_at=thesis.opened_at + timedelta(days=7),
+        status="scheduled",
+    )
+    prompt = _build_prompt(thesis, pm, None, {"return_pct": None})
+    assert "unavailable" in prompt
+    assert "None%" not in prompt
+
+    # A real value still renders as a percentage.
+    prompt_with_value = _build_prompt(thesis, pm, 12.5, {"return_pct": 12.5})
+    assert "12.5%" in prompt_with_value
+
+
+@pytest.mark.django_db
+def test_run_postmortem_notify_body_says_unavailable_when_no_bars(thesis):
+    """No OHLC data → forward return None → notify body says 'unavailable'."""
+    pm = PostMortem.objects.create(
+        thesis=thesis,
+        horizon_days=7,
+        due_at=thesis.opened_at + timedelta(days=7),
+        status="scheduled",
+    )
+    with patch.object(pm_service, "notify") as mock_notify:
+        run_postmortem(pm.id)
+
+    mock_notify.assert_called_once()
+    body = mock_notify.call_args.kwargs["body"]
+    assert "unavailable" in body
+    assert "None%" not in body
+
+
+# ---------------------------------------------------------------------------
+# run-now replay — POST twice, both 202, PM ends "done" (not stuck)
+# ---------------------------------------------------------------------------
+
+
+@override_settings(CELERY_TASK_ALWAYS_EAGER=True, CELERY_TASK_EAGER_PROPAGATES=True)
+@pytest.mark.django_db
+def test_run_now_replay_twice_ends_done(api, thesis):
+    """Two run-now POSTs each return 202 and leave their PM "done", not stuck.
+
+    Run-now resets the chosen PM to "scheduled" before dispatch, so each click
+    actually runs (never a no-op) and the row never gets stuck in "running".
+    The first click consumes the earliest due 7d PM; once that is "done", the
+    endpoint picks the next earliest scheduled+due PM (30d) on the second click.
+    """
+    schedule_postmortems(thesis)  # opened 120d ago => all 7/30/90 due
+    # One start bar shared by both horizons (the uniq_bar constraint forbids a
+    # duplicate (ticker, timeframe, ts)), plus an end bar at each horizon.
+    OHLCBar.objects.create(
+        ticker="AAPL",
+        timeframe="1d",
+        open=100.0,
+        high=100.0,
+        low=100.0,
+        close=100.0,
+        volume=1_000_000,
+        ts=thesis.opened_at,
+    )
+    for horizon in (7, 30):
+        OHLCBar.objects.create(
+            ticker="AAPL",
+            timeframe="1d",
+            open=108.0,
+            high=108.0,
+            low=108.0,
+            close=108.0,
+            volume=1_000_000,
+            ts=thesis.opened_at + timedelta(days=horizon),
+        )
+
+    resp1 = api.post(f"/api/theses/{thesis.id}/run-postmortem/", format="json")
+    assert resp1.status_code == 202
+    pm1 = PostMortem.objects.get(id=resp1.json()["postmortem_id"])
+    assert pm1.horizon_days == 7  # earliest due chosen first
+    assert pm1.status == "done"  # not stuck in "running"
+    assert pm1.completed_at is not None
+
+    resp2 = api.post(f"/api/theses/{thesis.id}/run-postmortem/", format="json")
+    assert resp2.status_code == 202
+    pm2 = PostMortem.objects.get(id=resp2.json()["postmortem_id"])
+    assert pm2.status == "done"  # second click also completes cleanly
+    assert pm2.completed_at is not None
+
+    # No PM left stuck in the "running" claim state.
+    assert not PostMortem.objects.filter(thesis=thesis, status="running").exists()
