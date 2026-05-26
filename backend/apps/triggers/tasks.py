@@ -11,7 +11,7 @@ from django.conf import settings
 from django.utils import timezone
 
 from apps.ai.cost import CostCapExceededError, check_daily_cap, check_monthly_cap
-from apps.observer.services.market_hours import is_market_open
+from apps.market.calendar import any_market_open
 from apps.observer.services.notifications import notify
 from apps.secrets.models import ProviderConfig
 from apps.snapshots.serializer import serialize_for_ai
@@ -19,6 +19,7 @@ from apps.snapshots.services import capture
 from apps.threads.models import Message, Thread
 from apps.threads.tasks import run_ai_on_message
 from apps.triggers import evaluator, metrics
+from apps.triggers.dsl import tickers_in_condition
 from apps.triggers.models import EventTrigger, TriggerFiring
 from apps.triggers.services.cooldown import cooldown_blocks, mark_fired, mark_rearmed
 from apps.triggers.services.describe import describe
@@ -36,10 +37,6 @@ def _redis() -> redis.Redis:
 @shared_task(name="triggers.evaluate_triggers")
 def evaluate_triggers() -> dict:
     """Beat-scheduled tick. Fires matching triggers; returns a summary for logs."""
-    if not is_market_open():
-        logger.debug("trigger.tick.market_closed")
-        return {"evaluated": 0, "fires": 0, "skipped": "market_closed"}
-
     t0 = time.perf_counter()
     triggers = list(
         EventTrigger.objects.filter(enabled=True).select_related("profile"),
@@ -47,9 +44,14 @@ def evaluate_triggers() -> dict:
     if not triggers:
         return {"evaluated": 0, "fires": 0}
 
-    snapshot = metrics.build_snapshot(triggers)
+    live = [t for t in triggers if any_market_open(tickers_in_condition(t.condition))]
+    if not live:
+        logger.debug("trigger.tick.all_markets_closed")
+        return {"evaluated": 0, "fires": 0, "skipped": "all_markets_closed"}
+
+    snapshot = metrics.build_snapshot(live)
     fires = 0
-    for trigger in triggers:
+    for trigger in live:
         try:
             if cooldown_blocks(trigger):
                 continue
@@ -74,11 +76,11 @@ def evaluate_triggers() -> dict:
     duration_ms = int((time.perf_counter() - t0) * 1000)
     logger.info(
         "trigger.tick",
-        triggers_evaluated=len(triggers),
+        triggers_evaluated=len(live),
         fires_enqueued=fires,
         duration_ms=duration_ms,
     )
-    return {"evaluated": len(triggers), "fires": fires, "duration_ms": duration_ms}
+    return {"evaluated": len(live), "fires": fires, "duration_ms": duration_ms}
 
 
 def _disable_on_bad_condition(trigger: EventTrigger, exc: Exception) -> None:

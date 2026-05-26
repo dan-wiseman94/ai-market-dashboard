@@ -4,8 +4,12 @@ from __future__ import annotations
 
 from django.http import HttpRequest, JsonResponse
 from django.views.decorators.http import require_GET
+from rest_framework import viewsets
 
+from apps.market.calendar import MARKETS, calendar_for, market_state
+from apps.market.models import CalendarOverride
 from apps.market.schwab_client import SchwabNotConnectedError
+from apps.market.serializers import CalendarOverrideSerializer
 from apps.market.services.chain import fetch_chain
 from apps.market.services.context import fetch_market_context
 from apps.market.services.news import fetch_news
@@ -87,3 +91,32 @@ def news(request: HttpRequest) -> JsonResponse:
     except ValueError:
         return _err("invalid_lookback", "lookback must be int hours", 400)
     return JsonResponse({"items": fetch_news(tickers, lookback_hours=lookback)})
+
+
+class CalendarOverrideViewSet(viewsets.ModelViewSet):
+    queryset = CalendarOverride.objects.all().order_by("symbol")
+    serializer_class = CalendarOverrideSerializer
+
+
+@require_GET
+def calendar_status(request: HttpRequest) -> JsonResponse:
+    symbols = request.GET.getlist("symbol")
+    markets: set[str] = set(request.GET.getlist("market"))
+    for s in symbols:
+        markets.add(calendar_for(s))
+    if not markets:
+        markets.add("us_equity")
+        markets.update(CalendarOverride.objects.values_list("market_key", flat=True).distinct())
+    out: dict[str, dict] = {}
+    for m in sorted(markets):
+        if m not in MARKETS:
+            continue
+        st = market_state(market=m)
+        out[m] = {
+            "is_open": st.is_open,
+            "phase": st.phase,
+            "is_early_close": st.is_early_close,
+            "next_open": st.next_open.isoformat() if st.next_open else None,
+            "next_close": st.next_close.isoformat() if st.next_close else None,
+        }
+    return JsonResponse({"markets": out})

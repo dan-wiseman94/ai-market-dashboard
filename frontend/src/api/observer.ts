@@ -2,6 +2,8 @@ import { apiGet, apiPost, apiPatch, apiDelete } from "./client";
 
 export type ObserverMode = "full" | "diff";
 
+export type ObserverFireMode = "cron" | "relative_to_close";
+
 export interface ObserverSchedule {
   id: number;
   name: string;
@@ -21,12 +23,14 @@ export interface ObserverSchedule {
   cron_display: string;
   created_at: string;
   updated_at: string;
+  fire_mode: ObserverFireMode;
+  close_offset_minutes: number;
 }
 
 export interface CreateScheduleBody {
   name: string;
   profile: number;
-  cron: string;
+  cron?: string;
   enabled?: boolean;
   market_hours_only?: boolean;
   objective_template?: string;
@@ -37,6 +41,8 @@ export interface CreateScheduleBody {
   mode?: ObserverMode;
   structured?: boolean;
   use_batch?: boolean;
+  fire_mode?: ObserverFireMode;
+  close_offset_minutes?: number;
 }
 
 export const listSchedules = () => apiGet<ObserverSchedule[]>("/api/observer/schedules/");

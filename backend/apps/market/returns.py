@@ -92,3 +92,42 @@ def price_path_summary(ticker: str, start: datetime, end: datetime) -> dict:
         "min_low": min_low,
         "bars": agg["bars"],
     }
+
+
+def nearest_bar_close_within(ticker: str, at: datetime, *, tolerance_hours: float) -> float | None:
+    """Most-recent bar close at/just before ``at``, only within ``tolerance_hours``.
+
+    Unlike :func:`nearest_bar_close` (which looks back unbounded), this returns
+    ``None`` when no real bar exists near ``at`` — so callers report an honest
+    coverage gap instead of a stale fill.
+    """
+    lo = at - timedelta(hours=tolerance_hours)
+    bar = (
+        OHLCBar.objects.filter(ticker=ticker, ts__lte=at, ts__gte=lo)
+        .only("close")
+        .order_by("-ts")
+        .first()
+    )
+    if bar is None:
+        return None
+    return float(bar.close)
+
+
+def trading_day_forward_return_pct(ticker: str, at: datetime, forward_hours: int) -> float | None:
+    """% change of ``ticker`` from ``at`` to +N trading sessions on its calendar.
+
+    ``forward_hours`` is reinterpreted as trading sessions (24h -> 1 session).
+    Returns ``None`` (coverage gap) when a real bar is missing within 12h of
+    either endpoint — never a stale fill.
+    """
+    from apps.market.calendar import add_trading_days, calendar_for, session_close_on
+
+    market = calendar_for(ticker)
+    sessions = max(1, round(forward_hours / 24))
+    target_day = add_trading_days(market, at, sessions)
+    target_close = session_close_on(market, target_day.date()) or target_day
+    t0 = nearest_bar_close_within(ticker, at, tolerance_hours=12)
+    t1 = nearest_bar_close_within(ticker, target_close, tolerance_hours=12)
+    if t0 is None or t1 is None or t0 == 0:
+        return None
+    return (t1 - t0) / t0 * 100.0

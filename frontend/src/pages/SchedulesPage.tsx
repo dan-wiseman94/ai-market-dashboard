@@ -7,7 +7,7 @@ import { useProfiles } from "@/hooks/useProfiles";
 import { CRON_PRESETS, explainCron } from "@/lib/cronPreview";
 import { SkeletonRows } from "@/components/Skeleton";
 import { EmptyState } from "@/components/EmptyState";
-import type { ObserverMode } from "@/api/observer";
+import type { ObserverFireMode, ObserverMode } from "@/api/observer";
 
 export default function SchedulesPage() {
   const { data: schedules, isLoading } = useSchedules();
@@ -29,6 +29,8 @@ export default function SchedulesPage() {
   const [mode, setMode] = useState<ObserverMode>("full");
   const [structured, setStructured] = useState(false);
   const [useBatch, setUseBatch] = useState(false);
+  const [fireMode, setFireMode] = useState<ObserverFireMode>("cron");
+  const [closeOffset, setCloseOffset] = useState(5);
 
   const cron = cronMode === "preset" ? CRON_PRESETS[presetIdx].cron : advancedCron;
   const cronEnglish = useMemo(() => explainCron(cron), [cron]);
@@ -47,12 +49,15 @@ export default function SchedulesPage() {
     e.preventDefault();
     if (!profileId) return;
     await create.mutateAsync({
-      name, profile: profileId, cron, enabled, market_hours_only: marketHoursOnly,
+      name, profile: profileId, enabled, market_hours_only: marketHoursOnly,
       objective_template: objective,
       mode, structured, use_batch: useBatch,
+      fire_mode: fireMode,
+      ...(fireMode === "cron" ? { cron } : { close_offset_minutes: closeOffset }),
     });
     setName(""); setObjective("");
     setMode("full"); setStructured(false); setUseBatch(false);
+    setFireMode("cron"); setCloseOffset(5);
     setShowForm(false);
   }
 
@@ -153,6 +158,33 @@ export default function SchedulesPage() {
           </div>
 
           <div>
+            <label className="block text-xs text-slate-500 mb-1" htmlFor="sched-fire-mode">Fire mode</label>
+            <select
+              id="sched-fire-mode"
+              value={fireMode}
+              onChange={(e) => setFireMode(e.target.value as ObserverFireMode)}
+              className="w-full px-2 py-1.5 rounded bg-slate-950 border border-slate-700"
+            >
+              <option value="cron">Cron schedule</option>
+              <option value="relative_to_close">Relative to market close</option>
+            </select>
+            {fireMode === "relative_to_close" && (
+              <label className="block text-xs text-slate-500 mt-2" htmlFor="sched-close-offset">
+                Minutes before close
+                <input
+                  id="sched-close-offset"
+                  type="number"
+                  min={0}
+                  value={closeOffset}
+                  onChange={(e) => setCloseOffset(parseInt(e.target.value, 10) || 0)}
+                  className="w-full px-2 py-1.5 rounded bg-slate-950 border border-slate-700 mt-1"
+                />
+              </label>
+            )}
+          </div>
+
+          {fireMode === "cron" && (
+          <div>
             <div className="flex gap-2 mb-1">
               <button type="button" onClick={() => setCronMode("preset")}
                       className={`px-2 py-1 text-xs rounded ${cronMode === "preset" ? "bg-slate-700" : "bg-slate-800"}`}>Preset</button>
@@ -170,6 +202,7 @@ export default function SchedulesPage() {
             )}
             <div className="text-xs text-slate-500 mt-1">{cron} — {cronEnglish}</div>
           </div>
+          )}
 
           <div>
             <label className="block text-xs text-slate-500 mb-1" htmlFor="sched-objective">Objective template (sent with every fire)</label>

@@ -11,16 +11,21 @@ For each (provider, model) pair in the given window, report:
 We pick the "primary ticker" of a snapshot as the first key of the
 first `quotes` section. This is a best-effort proxy; runs without a
 snapshot or without usable price history show coverage=0.
+
+Forward returns use trading-day horizons on the ticker's market calendar
+(see apps.market.returns.trading_day_forward_return_pct): forward_hours is
+reinterpreted as trading sessions, and a missing bar is an honest coverage
+gap (None) rather than a stale fill.
 """
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import datetime
 from decimal import Decimal
 
 from django.db.models import Avg, Count, Sum
 
-from apps.market.returns import forward_return_pct
+from apps.market.returns import trading_day_forward_return_pct
 from apps.threads.models import AIRun
 
 
@@ -57,9 +62,7 @@ def provider_leaderboard(
         primary = _primary_ticker(snap)
         if primary is None:
             continue
-        ret = forward_return_pct(
-            primary, run.created_at, run.created_at + timedelta(hours=forward_hours)
-        )
+        ret = trading_day_forward_return_pct(primary, run.created_at, forward_hours)
         if ret is None:
             continue
         returns[key].append(ret)

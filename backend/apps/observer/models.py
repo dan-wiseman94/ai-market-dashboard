@@ -18,6 +18,11 @@ class ObserverSchedule(models.Model):
         ("diff", "Diff vs previous capture"),
     ]
 
+    FIRE_MODE_CHOICES: ClassVar[list[tuple[str, str]]] = [
+        ("cron", "Cron"),
+        ("relative_to_close", "Relative to close"),
+    ]
+
     name = models.CharField(max_length=100)
     profile = models.ForeignKey(
         TradingProfile,
@@ -48,6 +53,10 @@ class ObserverSchedule(models.Model):
         "ticker instead of streaming. 50% cheaper; not interactive.",
     )
     last_batch_id = models.CharField(max_length=64, blank=True, default="")
+    fire_mode = models.CharField(max_length=20, choices=FIRE_MODE_CHOICES, default="cron")
+    close_offset_minutes = models.PositiveIntegerField(
+        default=5, help_text="Minutes before the actual session close to fire (relative_to_close)."
+    )
     periodic_task = models.OneToOneField(
         "django_celery_beat.PeriodicTask",
         null=True,
