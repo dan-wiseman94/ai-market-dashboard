@@ -6,6 +6,11 @@ import ConnectionsSettings from "@/pages/settings/ConnectionsSettings";
 const mockUseSchwabStatus = vi.fn();
 vi.mock("@/hooks/useSchwabStatus", () => ({ useSchwabStatus: () => mockUseSchwabStatus() }));
 vi.mock("@/api/schwab", () => ({ fetchSchwabAuthorizeUrl: vi.fn(async () => ({ url: "/x" })) }));
+vi.mock("@/hooks/useCalendarOverrides", () => ({
+  useCalendarOverrides: () => ({ data: [] }),
+  useCreateCalendarOverride: () => ({ mutate: vi.fn() }),
+  useDeleteCalendarOverride: () => ({ mutate: vi.fn() }),
+}));
 
 beforeEach(() => vi.clearAllMocks());
 
