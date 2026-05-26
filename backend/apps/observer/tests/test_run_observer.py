@@ -27,7 +27,7 @@ def test_run_observer_skips_when_market_closed():
         profile=_profile(),
         market_hours_only=True,
     )
-    with patch("apps.observer.services.run.is_market_open", return_value=False):
+    with patch("apps.observer.services.run.any_market_open", return_value=False):
         assert run_observer(s.id) is None
     assert Snapshot.objects.count() == 0
 
@@ -43,7 +43,7 @@ def test_run_observer_writes_placeholder_when_cost_capped():
     from apps.ai.cost import CostCapExceededError
 
     with (
-        patch("apps.observer.services.run.is_market_open", return_value=True),
+        patch("apps.observer.services.run.any_market_open", return_value=True),
         patch(
             "apps.observer.services.run.check_daily_cap", side_effect=CostCapExceededError("cap")
         ),
@@ -81,7 +81,7 @@ def test_run_observer_happy_path_creates_snapshot_message_and_notification():
     fake_serialize = "## SNAPSHOT BODY"
 
     with (
-        patch("apps.observer.services.run.is_market_open", return_value=True),
+        patch("apps.observer.services.run.any_market_open", return_value=True),
         patch("apps.observer.services.run.check_daily_cap"),
         patch("apps.observer.services.run.capture", return_value=fake_snap) as cap,
         patch("apps.observer.services.run.serialize_for_ai", return_value=fake_serialize),
