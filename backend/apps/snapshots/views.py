@@ -1,3 +1,4 @@
+from django.core.exceptions import RequestDataTooBig
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404
 from django.views.decorators.csrf import csrf_exempt
@@ -83,7 +84,14 @@ class SnapshotViewSet(
 @require_http_methods(["GET", "POST"])
 def images_collection(request):
     if request.method == "POST":
-        body = request.body
+        try:
+            body = request.body
+        except RequestDataTooBig as e:
+            # Django's body-buffer guard (DATA_UPLOAD_MAX_MEMORY_SIZE) fires before
+            # we can reach attach_client_image's own size check. Translate it into the
+            # same clean 413 the image cap would have produced, rather than Django's
+            # bare 400 HTML page. See apps/snapshots/services/screenshot.MAX_BYTES.
+            return JsonResponse({"code": "too_large", "message": str(e)}, status=413)
         caption = request.headers.get("X-Caption", "")
         try:
             img = attach_client_image(snapshot_id=None, png_bytes=body, caption=caption)

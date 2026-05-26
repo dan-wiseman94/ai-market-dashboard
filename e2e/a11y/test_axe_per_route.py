@@ -24,6 +24,8 @@ ROUTES: list[tuple[str, str, str]] = [
     ("/watchlists/<wl>", "market", "watchlist_detail"),
     ("/profiles", "minimal", "profiles"),
     ("/costs", "analytics", "costs"),
+    ("/theses", "thesis", "theses_list"),
+    ("/theses/<thesis>", "thesis", "thesis_detail"),
     ("/settings/backups", "minimal", "backups"),
     ("/settings/export", "threads", "export"),
 ]
@@ -48,6 +50,11 @@ def _resolve_path(path: str) -> str:
 
         p = TradingProfile.objects.first()
         return f"/threads/observer/{p.id}" if p else "/threads"
+    if path == "/theses/<thesis>":
+        from apps.thesis.models import Thesis
+
+        th = Thesis.objects.first()
+        return f"/theses/{th.id}" if th else "/theses"
     return path
 
 
