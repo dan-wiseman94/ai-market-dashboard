@@ -34,6 +34,8 @@ ROUTES: list[tuple[str, str, str]] = [
     ("/triggers", "triggers", "triggers_list"),
     ("/triggers/new", "minimal", "trigger_editor"),
     ("/analytics", "analytics", "analytics"),
+    # Thesis list rows carry no timestamps, so the byte-diff stays stable.
+    ("/theses", "thesis", "theses_list"),
 ]
 
 

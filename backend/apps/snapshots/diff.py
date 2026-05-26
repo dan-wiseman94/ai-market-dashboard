@@ -61,18 +61,28 @@ def _summarize_new(kind: str, payload: Any) -> str:
 
 def _diff_one(kind: str, prev: Any, curr: Any) -> str:
     if kind == "quotes":
-        return _diff_quotes(prev or {}, curr or {})
+        return _diff_quotes(
+            prev if isinstance(prev, dict) else {}, curr if isinstance(curr, dict) else {}
+        )
     if kind == "news":
         return _diff_news(_news_items(prev), _news_items(curr))
     if kind == "breadth":
-        return _diff_breadth(prev or {}, curr or {})
+        return _diff_breadth(
+            prev if isinstance(prev, dict) else {}, curr if isinstance(curr, dict) else {}
+        )
     return ""
 
 
 def _diff_quotes(prev: dict, curr: dict) -> str:
     rows: list[str] = []
     for ticker, c in curr.items():
+        # Quote values are normally {last, ...}; tolerate anything else without
+        # raising — this endpoint must never 500 on an unexpected payload shape.
+        if not isinstance(c, dict):
+            continue
         p = prev.get(ticker, {})
+        if not isinstance(p, dict):
+            p = {}
         p_last = p.get("last")
         c_last = c.get("last")
         if p_last is None or c_last is None:
