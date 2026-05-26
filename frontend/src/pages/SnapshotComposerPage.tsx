@@ -6,6 +6,7 @@ import { useAgentPresets } from "@/hooks/useAgentPresets";
 import { useCreateSnapshot } from "@/hooks/useCreateSnapshot";
 import { useCreateConsultThread } from "@/hooks/useCreateConsultThread";
 import { useWatchlists } from "@/hooks/useWatchlists";
+import { useMarketStatus } from "@/hooks/useMarketStatus";
 
 export default function SnapshotComposerPage() {
   const navigate = useNavigate();
@@ -47,6 +48,11 @@ export default function SnapshotComposerPage() {
     [watchlists, watchlistId],
   );
 
+  const { data: marketStatus } = useMarketStatus(tickers);
+  const closedMarkets = marketStatus
+    ? Object.entries(marketStatus.markets).filter(([, s]) => !s.is_open).map(([k]) => k)
+    : [];
+
   const onCapture = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!profileId) return;
@@ -71,6 +77,13 @@ export default function SnapshotComposerPage() {
   return (
     <main className="p-6 max-w-3xl mx-auto space-y-4">
       <h1 className="text-2xl font-semibold">New snapshot</h1>
+
+      {closedMarkets.length > 0 && (
+        <div role="status" className="rounded border border-amber-700/50 bg-amber-950/40 px-3 py-2 text-sm text-amber-200">
+          Market closed ({closedMarkets.join(", ")}) — this snapshot will be captured and labeled
+          as-of the last session close.
+        </div>
+      )}
 
       <form onSubmit={onCapture} className="space-y-4">
         <div>
