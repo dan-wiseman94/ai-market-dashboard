@@ -5,6 +5,7 @@ import {
   deleteThesis,
   getThesis,
   listTheses,
+  runPostmortem,
   type CloseThesisBody,
   type CreateThesisBody,
 } from "@/api/thesis";
@@ -49,5 +50,16 @@ export function useDeleteThesis() {
   return useMutation({
     mutationFn: (id: number) => deleteThesis(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["theses"] }),
+  });
+}
+
+export function useRunPostmortem() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => runPostmortem(id),
+    onSuccess: (_data, id) => {
+      qc.invalidateQueries({ queryKey: ["theses", id] });
+      qc.invalidateQueries({ queryKey: ["theses"] });
+    },
   });
 }

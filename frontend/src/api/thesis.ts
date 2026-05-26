@@ -8,6 +8,42 @@ export type ThesisStatus =
   | "closed_scratch"
   | "invalidated";
 
+export type PostMortemVerdict =
+  | "correct"
+  | "incorrect"
+  | "mixed"
+  | "inconclusive"
+  | "";
+
+export type PostMortemStatus =
+  | "scheduled"
+  | "running"
+  | "done"
+  | "failed"
+  | "skipped";
+
+export interface PostMortemReport {
+  summary: string;
+  what_worked: string[];
+  what_missed: string[];
+  lessons: string[];
+  would_repeat: boolean;
+  narrative_verdict: PostMortemVerdict;
+}
+
+export interface PostMortem {
+  id: number;
+  horizon_days: number;
+  due_at: string;
+  status: PostMortemStatus;
+  forward_return_pct: number | null;
+  verdict: PostMortemVerdict;
+  report: PostMortemReport | Record<string, never>;
+  message_id: number | null;
+  created_at: string;
+  completed_at: string | null;
+}
+
 export interface Thesis {
   id: number;
   title: string;
@@ -29,6 +65,7 @@ export interface Thesis {
   close_note: string;
   created_at: string;
   updated_at: string;
+  postmortems: PostMortem[];
 }
 
 export interface CreateThesisBody {
@@ -58,3 +95,5 @@ export const createThesis = (body: CreateThesisBody) =>
 export const closeThesis = (id: number, body: CloseThesisBody) =>
   apiPost<Thesis>(`/api/theses/${id}/close/`, body);
 export const deleteThesis = (id: number) => apiDelete(`/api/theses/${id}/`);
+export const runPostmortem = (id: number) =>
+  apiPost<{ postmortem_id?: number }>(`/api/theses/${id}/run-postmortem/`);
