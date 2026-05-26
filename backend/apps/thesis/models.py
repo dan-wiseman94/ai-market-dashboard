@@ -88,6 +88,47 @@ class Thesis(models.Model):
         super().save(*args, **kwargs)
 
 
+class DecisionJournalEntry(models.Model):
+    """A user's recorded decision on a thread — what action they took and why."""
+
+    DECISION_CHOICES: ClassVar[list[tuple[str, str]]] = [
+        ("acted", "Acted"),
+        ("passed", "Passed"),
+        ("watching", "Watching"),
+        ("hedged", "Hedged"),
+    ]
+
+    thread = models.ForeignKey(
+        "threads.Thread",
+        on_delete=models.CASCADE,
+        related_name="journal_entries",
+    )
+    thesis = models.ForeignKey(
+        Thesis,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="journal_entries",
+    )
+    snapshot = models.ForeignKey(
+        "snapshots.Snapshot",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="journal_entries",
+    )
+    decision = models.CharField(max_length=16, choices=DECISION_CHOICES)
+    note = models.TextField(blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering: ClassVar[list[str]] = ["-created_at"]
+        indexes: ClassVar = [models.Index(fields=["thread", "-created_at"])]
+
+    def __str__(self) -> str:
+        return f"DecisionJournalEntry(thread#{self.thread_id} {self.decision})"
+
+
 class PostMortem(models.Model):
     """A scheduled review of a thesis at a fixed horizon after it was opened.
 
