@@ -9,9 +9,9 @@ from django.utils import timezone
 
 from apps.ai.cost import CostCapExceededError, check_daily_cap, check_monthly_cap
 from apps.ai.providers.claude_structured import run_structured
+from apps.market.calendar import any_market_open
 from apps.observer.models import ObserverSchedule
 from apps.observer.schemas import ObservationReport
-from apps.observer.services.market_hours import is_market_open
 from apps.observer.services.notifications import notify
 from apps.observer.services.threads import get_or_create_observer_thread
 from apps.secrets.models import ProviderConfig
@@ -36,8 +36,8 @@ def run_observer(schedule_id: int) -> int | None:
         log.info("observer %s skipped: disabled", schedule_id)
         return None
 
-    if sched.market_hours_only and not is_market_open():
-        log.info("observer %s skipped: market closed", schedule_id)
+    if sched.market_hours_only and not any_market_open(sched.default_watchlist_tickers):
+        log.info("observer %s skipped: all watched markets closed", schedule_id)
         return None
 
     thread = get_or_create_observer_thread(sched.profile)
