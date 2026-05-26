@@ -17,6 +17,9 @@ import { useFiles, useAttachFileToThread } from "@/hooks/useFiles";
 import { useCreateThesis } from "@/hooks/useTheses";
 import { useToast } from "@/hooks/useToast";
 import type { ThesisDirection } from "@/api/thesis";
+import { useJournal, useCreateJournalEntry } from "@/hooks/useJournal";
+import type { JournalDecision } from "@/api/journal";
+import { EmptyState } from "@/components/EmptyState";
 
 type LiveMessage = {
   id: number;
@@ -92,6 +95,16 @@ export default function ThreadDetailPage() {
   const [thesisTarget, setThesisTarget] = useState("");
   const [thesisInvalidation, setThesisInvalidation] = useState("");
 
+  // Close & journal panel state
+  const [showJournalPanel, setShowJournalPanel] = useState(false);
+  const [journalDecision, setJournalDecision] = useState<JournalDecision>("acted");
+  const [journalNote, setJournalNote] = useState("");
+  // promoteMode: when true, submitting the thesis form also logs a linked journal entry
+  const [promoteMode, setPromoteMode] = useState(false);
+
+  const createJournalEntry = useCreateJournalEntry();
+  const { data: journalEntries = [] } = useJournal(tid);
+
   const handleCreateThesis = (e: React.FormEvent) => {
     e.preventDefault();
     createThesis.mutate(
@@ -109,7 +122,24 @@ export default function ThreadDetailPage() {
       {
         onSuccess: (thesis) => {
           push({ kind: "success", text: `Thesis created: ${thesis.title}` });
+          // In promote mode, link a journal entry to the newly created thesis
+          if (promoteMode && tid) {
+            createJournalEntry.mutate(
+              {
+                thread_id: tid,
+                decision: journalDecision,
+                note: journalNote.trim() || "Promoted to thesis",
+                thesis_id: thesis.id,
+                snapshot_id: thread?.pinned_snapshot_id ?? undefined,
+              },
+              {
+                onError: () =>
+                  push({ kind: "error", text: "Thesis created, but journaling the decision failed." }),
+              },
+            );
+          }
           setShowThesisForm(false);
+          setPromoteMode(false);
           setThesisTitle("");
           setThesisTicker("");
           setThesisDirection("bullish");
@@ -117,6 +147,28 @@ export default function ThreadDetailPage() {
           setThesisTarget("");
           setThesisInvalidation("");
           navigate(`/theses/${thesis.id}`);
+        },
+        onError: (err) =>
+          push({ kind: "error", text: (err as Error).message }),
+      },
+    );
+  };
+
+  const handleLogDecision = () => {
+    if (!tid) return;
+    createJournalEntry.mutate(
+      {
+        thread_id: tid,
+        decision: journalDecision,
+        note: journalNote.trim() || undefined,
+        snapshot_id: thread?.pinned_snapshot_id ?? undefined,
+      },
+      {
+        onSuccess: () => {
+          push({ kind: "success", text: "Decision logged." });
+          setJournalDecision("acted");
+          setJournalNote("");
+          setShowJournalPanel(false);
         },
         onError: (err) =>
           push({ kind: "error", text: (err as Error).message }),
@@ -253,6 +305,13 @@ export default function ThreadDetailPage() {
           <span className="flex-1 h-px bg-rule-soft" />
           <ThreadExportButton threadId={tid!} />
           <button
+            onClick={() => setShowJournalPanel((v) => !v)}
+            className="ledger-ghost py-1 px-2.5 text-[11px] font-mono uppercase tracking-wider"
+            data-testid="journal-panel-btn"
+          >
+            ✎ Close & journal
+          </button>
+          <button
             onClick={() => setShowThesisForm((v) => !v)}
             className="ledger-ghost py-1 px-2.5 text-[11px] font-mono uppercase tracking-wider"
             data-testid="new-thesis-btn"
@@ -281,7 +340,7 @@ export default function ThreadDetailPage() {
           className="ledger-surface px-5 py-4 mb-8 space-y-4"
           data-testid="new-thesis-form"
         >
-          <div className="ledger-eyebrow mb-1">New thesis from this thread</div>
+          <div className="ledger-eyebrow mb-1">{promoteMode ? "Promote to thesis" : "New thesis from this thread"}</div>
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2">
               <label htmlFor="thesis-title" className="block text-[12px] text-ink-400 mb-1">Title</label>
@@ -362,12 +421,130 @@ export default function ThreadDetailPage() {
             <button
               type="button"
               className="ledger-ghost px-4 py-1.5 text-[13px]"
-              onClick={() => setShowThesisForm(false)}
+              onClick={() => {
+                setShowThesisForm(false);
+                setPromoteMode(false);
+              }}
             >
               Cancel
             </button>
           </div>
         </form>
+      )}
+
+      {/* Close & journal panel */}
+      {showJournalPanel && (
+        <div
+          className="ledger-surface px-5 py-4 mb-8 space-y-4"
+          data-testid="journal-panel"
+        >
+          <div className="ledger-eyebrow mb-1">Close &amp; journal this thread</div>
+
+          {/* Decision log form */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="col-span-2">
+              <label htmlFor="journal-decision" className="block text-[12px] text-ink-400 mb-1">Decision</label>
+              <select
+                id="journal-decision"
+                value={journalDecision}
+                onChange={(e) => setJournalDecision(e.target.value as JournalDecision)}
+                className="bg-ink-void border border-rule rounded px-3 py-1.5 text-[13px] text-ink-100 w-full focus:outline-none focus:border-copper-500"
+                data-testid="journal-decision-select"
+              >
+                <option value="acted">Acted</option>
+                <option value="passed">Passed</option>
+                <option value="watching">Watching</option>
+                <option value="hedged">Hedged</option>
+              </select>
+            </div>
+            <div className="col-span-2">
+              <label htmlFor="journal-note" className="block text-[12px] text-ink-400 mb-1">Note (optional)</label>
+              <textarea
+                id="journal-note"
+                value={journalNote}
+                onChange={(e) => setJournalNote(e.target.value)}
+                placeholder="What did you decide and why?"
+                rows={3}
+                className="bg-ink-void border border-rule rounded px-3 py-1.5 text-[13px] text-ink-100 w-full focus:outline-none focus:border-copper-500 placeholder:text-ink-500 resize-none"
+                data-testid="journal-note-textarea"
+              />
+            </div>
+          </div>
+          <div className="flex gap-2 pt-1 flex-wrap">
+            <button
+              type="button"
+              disabled={createJournalEntry.isPending}
+              onClick={handleLogDecision}
+              className="ledger-cta px-4 py-1.5 text-[13px]"
+              data-testid="journal-log-btn"
+            >
+              {createJournalEntry.isPending ? "Logging…" : "Log decision"}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setPromoteMode(true);
+                setShowThesisForm(true);
+              }}
+              className="ledger-ghost px-4 py-1.5 text-[13px]"
+              data-testid="journal-promote-btn"
+            >
+              Promote to thesis
+            </button>
+            <button
+              type="button"
+              className="ledger-ghost px-4 py-1.5 text-[13px] ml-auto"
+              onClick={() => setShowJournalPanel(false)}
+            >
+              Close
+            </button>
+          </div>
+
+          {/* Existing journal entries */}
+          <div className="border-t border-rule-soft pt-4 mt-2">
+            <div className="ledger-eyebrow mb-3">Prior decisions</div>
+            {journalEntries.length === 0 ? (
+              <EmptyState title="No decisions logged yet" body="Use the form above to record what you decided on this thread." />
+            ) : (
+              <ul className="space-y-3" data-testid="journal-entries-list">
+                {journalEntries.map((entry) => (
+                  <li key={entry.id} className="flex items-start gap-3 py-2 border-b border-rule-soft last:border-b-0" data-testid={`journal-entry-${entry.id}`}>
+                    <span className={`font-mono text-[10px] uppercase tracking-widest px-2 py-0.5 rounded border shrink-0 mt-0.5 ${
+                      entry.decision === "acted"
+                        ? "text-emerald-400 border-emerald-800 bg-emerald-950/40"
+                        : entry.decision === "passed"
+                        ? "text-slate-400 border-slate-700 bg-slate-900/40"
+                        : entry.decision === "watching"
+                        ? "text-amber-400 border-amber-800 bg-amber-950/40"
+                        : "text-violet-400 border-violet-800 bg-violet-950/40"
+                    }`}>
+                      {entry.decision}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      {entry.note && (
+                        <p className="text-[13px] text-ink-100 leading-relaxed mb-1">{entry.note}</p>
+                      )}
+                      <div className="flex items-center gap-3 flex-wrap">
+                        <span className="font-mono text-[11px] text-ink-500">
+                          {new Date(entry.created_at).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })}
+                        </span>
+                        {entry.thesis_id != null && (
+                          <Link
+                            to={`/theses/${entry.thesis_id}`}
+                            className="font-mono text-[11px] text-copper-300 hover:text-copper-200 transition-colors"
+                            data-testid={`journal-thesis-link-${entry.id}`}
+                          >
+                            → Thesis #{entry.thesis_id}
+                          </Link>
+                        )}
+                      </div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
       )}
 
       {/* Snapshot context — folded */}
