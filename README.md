@@ -116,10 +116,26 @@ make dev        # docker compose up --watch (hot reload)
 
 First run builds images (3–8 minutes). Then:
 
-- **Frontend (dev, Vite):** <http://localhost:5173>
-- **Django API + WebSockets:** <http://localhost:8000>
+- **App (dev, Vite):** <http://localhost:5173> — the browser talks only to Vite, which proxies `/api` and `/ws` to `web` internally.
+- **HTTPS endpoint:** <https://127.0.0.1:8000> — a dev-only Caddy `tls-proxy` terminates TLS here and forwards to `web`. This exists so Schwab's HTTPS OAuth callback can land; you normally use the app via `:5173`.
 
 There is no login screen — the stack is single-user and protected by network isolation (see [Security notes](#security-notes)). **Provider API keys** (Claude / OpenAI) are entered in-app under **Settings** and stored encrypted — *not* in `.env`. Only Schwab OAuth client credentials live in `.env`.
+
+### Connecting Schwab
+
+Schwab **requires** an HTTPS loopback callback (`127.0.0.1`, never `localhost`; a port is allowed). The registered portal URL, `SCHWAB_CALLBACK_URL` in `.env`, and the token-exchange `redirect_uri` must all match **byte-for-byte** — use `https://127.0.0.1:8000/api/schwab/callback` for all three, and make sure the app status is **"Ready For Use."**
+
+> ⚠️ **Editing the callback URL on an existing Schwab app resets its status to "Approved - Pending"**, and the app stops working (Schwab shows a generic *"We are unable to complete your request"* on the login page) until re-approval completes — that's on Schwab's side and can take hours to a day or two. Set the callback **once** and avoid further edits.
+
+A dev-only `tls-proxy` (Caddy) terminates HTTPS on `https://127.0.0.1:8000` and forwards to `web`, so Schwab's callback lands on a live endpoint instead of failing the TLS handshake. The proxy starts automatically with `make dev` / `make up` (it's gated behind the `dev` compose profile, so it never runs in the prod or e2e overlays).
+
+1. **Settings → Connect Schwab**, log in, consent.
+2. Schwab redirects to `https://127.0.0.1:8000/api/schwab/callback?code=…`. The proxy's cert is self-signed (Caddy's internal CA), so **the first time** Firefox shows "Warning: Potential Security Risk" → **Advanced → Accept the Risk and Continue**. The exception is remembered for future connects.
+3. The backend exchanges the code and redirects to `http://localhost:5173/settings?schwab=connected` (`FRONTEND_BASE_URL`). Done.
+
+Refresh tokens last ~7 days; after that, click **Connect Schwab** again — with the cert already trusted, the reconnect is a single click with no manual steps.
+
+> To drop the one-time cert warning entirely, install Caddy's local CA into your trust store (`docker compose exec tls-proxy caddy trust`, or copy the root from the `caddy_data` volume) — optional, and it modifies your system trust store.
 
 ## Common commands
 

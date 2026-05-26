@@ -22,7 +22,11 @@ function pathForChannel(channel: string): string {
 export function WebSocketProvider({ children }: { children: React.ReactNode }) {
   const broker = useMemo(() => new Broker(), []);
   const sockets = useRef(new Map<string, WebSocket>());
-  const wsBase = import.meta.env.VITE_WS_BASE_URL ?? "";
+  // Empty VITE_WS_BASE_URL means same-origin: build the base from the current
+  // location so the WebSocket goes through the Vite dev proxy (/ws → web:8000).
+  const configured = import.meta.env.VITE_WS_BASE_URL as string | undefined;
+  const proto = window.location.protocol === "https:" ? "wss" : "ws";
+  const wsBase = configured && configured.length > 0 ? configured : `${proto}://${window.location.host}`;
 
   const ctx = useMemo<Ctx>(() => {
     function openForChannel(channel: string): void {

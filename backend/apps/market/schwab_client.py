@@ -20,14 +20,36 @@ class SchwabNotConnectedError(RuntimeError):
 
 
 def _read_token() -> dict | None:
-    return load_token()
+    """Return the token in schwab-py's metadata-wrapped format.
+
+    We persist the *bare* OAuth token (so our own code — the status view, the
+    proactive-refresh task — reads its fields directly). schwab-py's
+    ``client_from_access_functions`` instead expects a
+    ``{"creation_timestamp", "token"}`` wrapper (``TokenMetadata.from_loaded_token``
+    raises "token format has changed" without it), so wrap on the way out.
+    """
+    raw = load_token()
+    if raw is None:
+        return None
+    creation = int(raw.get("creation_timestamp") or time.time())
+    return {"creation_timestamp": creation, "token": raw}
 
 
 def _write_token(token: Any) -> None:
-    # schwab-py calls this after refresh; persist_token expects 'expires_at' (unix seconds).
-    if "expires_at" not in token and "expires_in" in token:
-        token["expires_at"] = int(time.time()) + int(token["expires_in"])
-    persist_token(token)
+    """Persist a token, accepting either schwab-py's wrapper or a bare token.
+
+    On refresh, schwab-py hands back ``{"creation_timestamp", "token"}``; unwrap
+    it and carry the creation timestamp into the stored bare token so a later
+    ``_read_token`` re-wraps it faithfully. Also stamps absolute ``expires_at``.
+    """
+    if isinstance(token, dict) and "token" in token and "creation_timestamp" in token:
+        inner = dict(token["token"])
+        inner["creation_timestamp"] = int(token["creation_timestamp"])
+    else:
+        inner = dict(token)
+    if "expires_at" not in inner and "expires_in" in inner:
+        inner["expires_at"] = int(time.time()) + int(inner["expires_in"])
+    persist_token(inner)
 
 
 # Back-compat factory; tests import _make_write_func and call it.
