@@ -37,7 +37,11 @@ jobs:
           docker compose logs --tail=200
           exit 1
       - name: Run e2e/ui suite
-        run: docker compose exec -T web uv run pytest e2e/ui/ -n 4 --dist=loadscope -v --tracing=retain-on-failure
+        # Must exec in `worker` (carries the chromium playwright build), with --workdir /app
+        # so pytest sees the repo-root layout (web's WORKDIR is /app/backend), and -m integration
+        # to override the default `-m 'not integration'` addopts that would otherwise deselect
+        # every e2e test. Mirrors `make e2e-ui`.
+        run: docker compose -f compose.yaml -f compose.e2e.yaml exec -T --workdir /app worker uv run pytest e2e/ui/ -n 4 --dist=loadscope -m integration -v --tracing=retain-on-failure
       - if: failure()
         uses: actions/upload-artifact@v7
         with:
