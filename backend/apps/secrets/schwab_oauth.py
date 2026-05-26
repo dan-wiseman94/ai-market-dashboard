@@ -63,6 +63,9 @@ def persist_token(token: dict) -> None:
     """Upsert the schwab token into ApiCredential."""
     from apps.secrets.models import ApiCredential
 
+    # Record when the token was first created (schwab-py tracks refresh-token age
+    # off this). Set once; refresh writes carry the original value through.
+    token.setdefault("creation_timestamp", int(time.time()))
     expires_at = datetime.fromtimestamp(token["expires_at"], tz=timezone.get_current_timezone())
     ApiCredential.objects.update_or_create(
         provider="schwab",

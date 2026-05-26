@@ -8,11 +8,11 @@ help: ## Show this help
 
 .PHONY: dev
 dev: ## Start dev stack with hot reload
-	$(COMPOSE) up --watch
+	$(COMPOSE) --profile dev up --watch
 
 .PHONY: up
 up: ## Start stack detached
-	$(COMPOSE) up -d
+	$(COMPOSE) --profile dev up -d
 
 .PHONY: down
 down: ## Stop and remove containers

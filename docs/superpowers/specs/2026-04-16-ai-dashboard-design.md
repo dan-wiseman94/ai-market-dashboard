@@ -402,9 +402,9 @@ Dark by default, Tailwind `dark:` variants, toggle in settings.
 ## 10. Schwab auth flow
 
 1. User clicks "Connect Schwab" in `/settings`.
-2. Frontend opens Schwab's auth URL in a new tab (app `client_id` + `redirect_uri=http://127.0.0.1:8000/api/schwab/callback`).
-3. Consent → Schwab redirects to the callback with `code`.
-4. Backend exchanges code → tokens; stores encrypted in `ApiCredential`; redirects to `/settings?schwab=connected`.
+2. Frontend opens Schwab's auth URL in a new tab (app `client_id` + `redirect_uri=https://127.0.0.1:8000/api/schwab/callback`). Schwab **requires HTTPS** and `127.0.0.1` (never `localhost`) for the callback; the registered portal URL, `SCHWAB_CALLBACK_URL`, and the token-exchange `redirect_uri` must all match byte-for-byte. The app itself serves HTTP, so a dev-only Caddy `tls-proxy` (compose `dev` profile) terminates HTTPS on `https://127.0.0.1:8000` and reverse-proxies to `web` — giving Schwab's callback a live endpoint to land on. Its cert is self-signed (Caddy internal CA), accepted once in the browser. In dev the browser otherwise uses the Vite dev server (`:5173`), which proxies `/api` and `/ws` to `web`, so it never hits host `:8000` directly.
+3. Consent → Schwab redirects to the callback with `code` (via the tls-proxy).
+4. Backend exchanges code → tokens; stores encrypted in `ApiCredential`; redirects to `FRONTEND_BASE_URL + /settings?schwab=connected` (dev: the Vite SPA on `:5173`; prod: same-origin relative).
 5. Refresh tokens last 7 days; notification fires 24h before expiry.
 
 ## 11. Error handling
