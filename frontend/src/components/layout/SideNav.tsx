@@ -2,6 +2,7 @@ import { NavLink } from "react-router-dom";
 import { useSidebarCollapsed } from "@/hooks/useSidebarCollapsed";
 
 const TRADING: Array<[string, string, string]> = [
+  ["/theses", "Theses", "TH"],
   ["/profiles", "Profiles", "PR"],
   ["/watchlists", "Watchlists", "WL"],
 ];
