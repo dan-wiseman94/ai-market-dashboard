@@ -1,11 +1,17 @@
 import pytest
 
-from apps.market.calendar.registry import MARKETS, MARKET_CHOICES, get_market_calendar
+from apps.market.calendar.registry import MARKET_CHOICES, MARKETS, get_market_calendar
 
 
 def test_markets_has_the_seven_keys():
     assert set(MARKETS) == {
-        "us_equity", "us_bond", "cme_futures", "cfe_futures", "crypto", "lse", "jpx"
+        "us_equity",
+        "us_bond",
+        "cme_futures",
+        "cfe_futures",
+        "crypto",
+        "lse",
+        "jpx",
     }
 
 

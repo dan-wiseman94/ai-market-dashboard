@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from functools import lru_cache
+from functools import cache
 from typing import Any
 
 import pandas_market_calendars as mcal
@@ -32,7 +32,7 @@ MARKET_CHOICES: list[tuple[str, str]] = [
 DEFAULT_MARKET = "us_equity"
 
 
-@lru_cache(maxsize=None)
+@cache
 def get_market_calendar(market_key: str) -> Any:
     """Return the cached mcal calendar for a market key; unknown -> us_equity."""
     if market_key not in MARKETS:
