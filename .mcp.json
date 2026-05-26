@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "postgres": {
+      "command": "uvx",
+      "args": ["postgres-mcp", "--access-mode=restricted"],
+      "env": {
+        "DATABASE_URI": "postgresql://${POSTGRES_USER:-ai_dashboard}:${POSTGRES_PASSWORD:-devpassword}@127.0.0.1:5432/${POSTGRES_DB:-ai_dashboard}"
+      }
+    }
+  }
+}
