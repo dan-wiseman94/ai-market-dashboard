@@ -109,6 +109,7 @@ def _build_request(
     user_msg: Message,
     *,
     provider_name: str = "claude",
+    supports_tools: bool = False,
 ) -> RunRequest:
     system = thread.profile.style if thread.profile else ""
     history = list(
@@ -130,21 +131,29 @@ def _build_request(
                 content=_message_content(user_msg, provider_name=provider_name),
             )
         )
-    # M10: opt-in tool use / thinking / memory (Claude-only; other providers ignore).
+    # M10: opt-in tool use / thinking / memory.
+    # Tools: Claude always (anthropic shape); OpenAI/local when the endpoint opts in
+    # (openai shape). Thinking + memory remain Claude-only.
     tools: list[dict] = []
     thinking_budget = 0
     memory_dir = ""
-    if thread.profile and provider_name == "claude":
-        if getattr(thread.profile, "enable_tools", False):
+    if thread.profile:
+        enable_tools = getattr(thread.profile, "enable_tools", False)
+        if enable_tools and provider_name == "claude":
             from apps.ai.tools.registry import default_toolset
 
             tools = default_toolset().anthropic_tools()
-        if getattr(thread.profile, "enable_thinking", False):
-            thinking_budget = int(getattr(thread.profile, "thinking_budget", 0) or 0)
-        if getattr(thread.profile, "enable_memory", False):
-            from apps.ai.memory import memory_dir_for_profile
+        elif enable_tools and supports_tools:
+            from apps.ai.tools.registry import default_toolset
 
-            memory_dir = memory_dir_for_profile(profile_id=thread.profile.id)
+            tools = default_toolset().openai_tools()
+        if provider_name == "claude":
+            if getattr(thread.profile, "enable_thinking", False):
+                thinking_budget = int(getattr(thread.profile, "thinking_budget", 0) or 0)
+            if getattr(thread.profile, "enable_memory", False):
+                from apps.ai.memory import memory_dir_for_profile
+
+                memory_dir = memory_dir_for_profile(profile_id=thread.profile.id)
 
     return RunRequest(
         model="",
@@ -363,7 +372,9 @@ def run_ai_on_message(
         )
         return {"ok": False, "error": "cost_capped"}
 
-    req = _build_request(thread, user_msg, provider_name=provider_name)
+    req = _build_request(
+        thread, user_msg, provider_name=provider_name, supports_tools=cfg.supports_tools
+    )
     req.model = model_id
 
     assistant = Message.objects.create(
