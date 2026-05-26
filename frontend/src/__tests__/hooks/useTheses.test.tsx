@@ -15,10 +15,10 @@ const thesisFixture = {
   invalidation_price: "520.00",
   horizon_days: 90,
   status: "open" as const,
-  profile: null,
-  thread: 42,
-  snapshot: null,
-  review_thread: null,
+  profile_id: null,
+  thread_id: 42,
+  snapshot_id: null,
+  review_thread_id: null,
   opened_at: "2026-05-01T00:00:00Z",
   closed_at: null,
   close_note: "",
@@ -85,7 +85,8 @@ describe("useCreateThesis", () => {
         direction: "bullish",
         conviction: 4,
         thread_id: 42,
-        snapshot_id: null,
+        snapshot_id: 7,
+        profile_id: 3,
       });
     });
     expect(calls[0].body).toMatchObject({
@@ -94,6 +95,8 @@ describe("useCreateThesis", () => {
       direction: "bullish",
       conviction: 4,
       thread_id: 42,
+      snapshot_id: 7,
+      profile_id: 3,
     });
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["theses"] });
   });

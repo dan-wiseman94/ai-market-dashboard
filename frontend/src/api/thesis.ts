@@ -1,4 +1,4 @@
-import { apiDelete, apiGet, apiPatch, apiPost } from "./client";
+import { apiDelete, apiGet, apiPost } from "./client";
 
 export type ThesisDirection = "bullish" | "bearish" | "neutral";
 export type ThesisStatus =
@@ -20,10 +20,10 @@ export interface Thesis {
   invalidation_price: string | null;
   horizon_days: number | null;
   status: ThesisStatus;
-  profile: number | null;
-  thread: number | null;
-  snapshot: number | null;
-  review_thread: number | null;
+  profile_id: number | null;
+  thread_id: number | null;
+  snapshot_id: number | null;
+  review_thread_id: number | null;
   opened_at: string;
   closed_at: string | null;
   close_note: string;
@@ -41,7 +41,7 @@ export interface CreateThesisBody {
   target_price?: string | null;
   invalidation_price?: string | null;
   horizon_days?: number | null;
-  profile?: number | null;
+  profile_id?: number | null;
   thread_id?: number | null;
   snapshot_id?: number | null;
 }
@@ -55,8 +55,6 @@ export const listTheses = () => apiGet<Thesis[]>("/api/theses/");
 export const getThesis = (id: number) => apiGet<Thesis>(`/api/theses/${id}/`);
 export const createThesis = (body: CreateThesisBody) =>
   apiPost<Thesis>("/api/theses/", body);
-export const patchThesis = (id: number, body: Partial<CreateThesisBody>) =>
-  apiPatch<Thesis>(`/api/theses/${id}/`, body);
 export const closeThesis = (id: number, body: CloseThesisBody) =>
   apiPost<Thesis>(`/api/theses/${id}/close/`, body);
 export const deleteThesis = (id: number) => apiDelete(`/api/theses/${id}/`);
