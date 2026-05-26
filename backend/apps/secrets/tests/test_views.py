@@ -33,6 +33,7 @@ def test_callback_without_code_returns_400():
 
 @pytest.mark.django_db
 @override_settings(SCHWAB_CLIENT_ID="cid", SCHWAB_CLIENT_SECRET="csec")
+@override_settings(FRONTEND_BASE_URL="https://app.test")
 def test_callback_exchanges_code_and_redirects_to_settings():
     with (
         patch("apps.secrets.views.exchange_code_for_token") as ex,
@@ -42,7 +43,9 @@ def test_callback_exchanges_code_and_redirects_to_settings():
         client = Client()
         response = client.get("/api/schwab/callback/", {"code": "abc"})
         assert response.status_code == 302
-        assert response["Location"] == "/settings?schwab=connected"
+        # Redirect is prefixed with FRONTEND_BASE_URL so the dev callback (arriving via the
+        # tls-proxy on :8000) bounces to the Vite SPA; empty base → same-origin /settings.
+        assert response["Location"] == "https://app.test/settings?schwab=connected"
         ex.assert_called_once_with("abc")
         ps.assert_called_once()
 

@@ -10,6 +10,10 @@ services:
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.prod
       DJANGO_DEBUG: "0"
+    # Prod serves the SPA + API directly on host:8000 (no Vite, no tls-proxy). The base
+    # compose.yaml drops web's host port for the dev tls-proxy; re-add it here.
+    ports:
+      - "127.0.0.1:8000:8000"
     volumes:
       - ./frontend/dist:/app/frontend/dist:ro
       - app_data:/data

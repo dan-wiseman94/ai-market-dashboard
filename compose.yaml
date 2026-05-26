@@ -45,8 +45,10 @@ services:
     volumes:
       - ./backend:/app/backend
       - app_data:/data
-    ports:
-      - "127.0.0.1:8000:8000"
+    # No host port publish in dev: the `tls-proxy` service owns host 127.0.0.1:8000
+    # (HTTPS, for the Schwab OAuth callback) and forwards to web:8000 over the Docker
+    # network. The frontend reaches web via the Vite proxy (web:8000), also internal.
+    # The prod overlay re-adds a host:8000 publish (plain HTTP, no proxy).
     healthcheck:
       test: ["CMD-SHELL", "curl -fs http://localhost:8000/api/health/ || exit 1"]
       interval: 5s
@@ -116,6 +118,23 @@ services:
           path: ./backend
           target: /app/backend
 
+  # Dev-only HTTPS terminator for host 127.0.0.1:8000. Schwab requires an HTTPS
+  # loopback callback; our app serves plain HTTP. Caddy terminates TLS (self-signed
+  # via `tls internal`) and reverse-proxies to web:8000, so the post-consent redirect
+  # to https://127.0.0.1:8000/api/schwab/callback actually lands. Gated behind the
+  # `dev` profile so it never runs in the prod or e2e overlays (which don't activate it).
+  tls-proxy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    profiles: ["dev"]
+    depends_on:
+      - web
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - ./infra/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+
   frontend:
     build:
       context: ./frontend
@@ -143,3 +162,4 @@ volumes:
   redis_data:
   app_data:
   frontend_node_modules:
+  caddy_data:

@@ -165,5 +165,10 @@ SCHWAB_CALLBACK_URL = env(
 SCHWAB_AUTHORIZE_URL = "https://api.schwabapi.com/v1/oauth/authorize"
 SCHWAB_TOKEN_URL = "https://api.schwabapi.com/v1/oauth/token"
 
+# Where the Schwab OAuth callback sends the browser after a successful connect.
+# Dev: the Vite SPA on :5173 (the callback itself arrives via the tls-proxy on :8000).
+# Prod: empty → same-origin relative redirect (SPA is served by web on :8000).
+FRONTEND_BASE_URL = env("FRONTEND_BASE_URL", default="")
+
 # Logging: handled by apps.core.logging.configure_structlog, called from dev/prod settings.
 # We intentionally leave LOGGING at Django's default and reconfigure structlog imperatively.

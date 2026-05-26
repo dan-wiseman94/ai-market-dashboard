@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from django.conf import settings
 from django.http import HttpRequest, HttpResponseRedirect, JsonResponse
 from django.views.decorators.http import require_GET
 from rest_framework import viewsets
@@ -43,7 +44,7 @@ def schwab_callback(request: HttpRequest) -> JsonResponse | HttpResponseRedirect
             status=502,
         )
     persist_token(token)
-    return HttpResponseRedirect("/settings?schwab=connected")
+    return HttpResponseRedirect(f"{settings.FRONTEND_BASE_URL}/settings?schwab=connected")
 
 
 @require_GET

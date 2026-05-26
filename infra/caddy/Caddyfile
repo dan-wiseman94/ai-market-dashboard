@@ -1,0 +1,22 @@
+# Dev-only TLS terminator for the Schwab OAuth callback.
+#
+# Schwab mandates an HTTPS loopback callback (https://127.0.0.1:8000/api/schwab/callback),
+# but the dev stack serves plain HTTP. Caddy listens HTTPS on :8000 (published to the
+# host as 127.0.0.1:8000 by compose) and reverse-proxies everything to web:8000 over the
+# Docker network. `tls internal` issues a cert from Caddy's own local CA — the browser
+# isn't expected to trust it, so you accept the warning once on the callback navigation.
+# The CA + leaf cert persist in the caddy_data volume, so the acceptance sticks across
+# restarts (until the volume is wiped).
+{
+	admin off
+	auto_https disable_redirects
+	# Clients connecting to an IP literal (127.0.0.1) don't send SNI, so Caddy can't
+	# match a cert and aborts the handshake with a TLS internal error. Pin the default
+	# ServerName so the 127.0.0.1 cert is selected when SNI is absent.
+	default_sni 127.0.0.1
+}
+
+https://127.0.0.1:8000 {
+	tls internal
+	reverse_proxy web:8000
+}
