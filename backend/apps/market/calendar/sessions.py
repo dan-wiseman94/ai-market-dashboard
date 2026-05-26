@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
+from datetime import date as _date
 from datetime import datetime, timedelta
 
 from django.utils import timezone
@@ -117,3 +118,43 @@ def is_open(
     *, symbol: str | None = None, market: str | None = None, at: datetime | None = None
 ) -> bool:
     return market_state(symbol=symbol, market=market, at=at).is_open
+
+
+def add_trading_days(market: str, anchor: datetime, n: int) -> datetime:
+    """Return `anchor` advanced by `n` trading sessions on `market`'s calendar.
+
+    The returned datetime keeps `anchor`'s time-of-day but lands on the date of
+    the n-th valid trading day at/after the next session. crypto counts daily.
+    """
+    cal = get_market_calendar(market)
+    buffer_days = max(n * 3 + 10, 16)
+    valid = cal.valid_days(
+        start_date=anchor.date(), end_date=(anchor + timedelta(days=buffer_days)).date()
+    )
+    dates = [d.date() for d in valid]
+    if not dates:
+        return anchor + timedelta(days=n)
+    # index of the first valid day >= anchor's date
+    base = 0
+    for i, d in enumerate(dates):
+        if d >= anchor.date():
+            base = i
+            break
+    target_idx = min(base + n, len(dates) - 1)
+    target = dates[target_idx]
+    return datetime(
+        target.year, target.month, target.day, anchor.hour, anchor.minute, tzinfo=anchor.tzinfo
+    )
+
+
+def session_close_on(market: str, on_date: _date) -> datetime | None:
+    """The actual close (half-day-aware) for `market` on `on_date`, or None."""
+    cal = get_market_calendar(market)
+    try:
+        sched = cal.schedule(start_date=on_date, end_date=on_date)
+    except Exception as exc:
+        log.warning("session_close_on failed for %s %s: %s", market, on_date, exc)
+        return None
+    if sched.empty:
+        return None
+    return sched.iloc[0]["market_close"].to_pydatetime()
