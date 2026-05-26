@@ -1,47 +1,25 @@
-"""NYSE market-hours check for observer firings."""
+"""Back-compat shim. Canonical service is apps.market.calendar.
+
+Existing callers import is_market_open / market_status (NYSE). New code should
+import from apps.market.calendar instead.
+"""
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import datetime
 
-import pandas_market_calendars as mcal
-from django.utils import timezone
-
-_NYSE = mcal.get_calendar("XNYS")  # cached at import time
+from apps.market.calendar import is_open as _is_open
+from apps.market.calendar import market_state as _market_state
 
 
 def is_market_open(at: datetime | None = None) -> bool:
-    """Half-day and holiday-aware NYSE regular-session check."""
-    now = at or timezone.now()
-    sched = _NYSE.schedule(start_date=now.date(), end_date=now.date())
-    if sched.empty:
-        return False
-    open_t = sched.iloc[0]["market_open"].to_pydatetime()
-    close_t = sched.iloc[0]["market_close"].to_pydatetime()
-    return open_t <= now <= close_t
+    return _is_open(market="us_equity", at=at)
 
 
 def market_status(at: datetime | None = None) -> dict:
-    """Returns {is_open, next_open, next_close} for the bell tooltip + UI badge."""
-    now = at or timezone.now()
-    sched = _NYSE.schedule(
-        start_date=now.date(),
-        end_date=(now + timedelta(days=14)).date(),
-    )
-    is_open = False
-    next_open = None
-    next_close = None
-    today = sched[sched.index.date == now.date()]
-    if not today.empty:
-        o = today.iloc[0]["market_open"].to_pydatetime()
-        c = today.iloc[0]["market_close"].to_pydatetime()
-        is_open = o <= now <= c
-        if now < o:
-            next_open = o
-        if now < c:
-            next_close = c
-    if next_open is None:
-        future = sched[sched["market_open"] > now]
-        if not future.empty:
-            next_open = future.iloc[0]["market_open"].to_pydatetime()
-    return {"is_open": is_open, "next_open": next_open, "next_close": next_close}
+    st = _market_state(market="us_equity", at=at)
+    return {
+        "is_open": st.is_open,
+        "next_open": st.next_open,
+        "next_close": st.next_close,
+    }
