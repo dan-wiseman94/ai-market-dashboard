@@ -95,7 +95,7 @@ Replace the `provider_name == "claude"`-only tool block:
 - **OpenAI / local:** `default_toolset().openai_tools()` when `profile.enable_tools AND supports_tools`.
 - `thinking_budget` / `memory_dir` remain Claude-only.
 
-`_build_request` needs the resolved `supports_tools` value. **All three callers** (`run_ai_on_message`, observer `services/run.py`, `triggers/tasks.py`) already fetch the `ProviderConfig`; each passes `supports_tools=cfg.supports_tools` so tool parity is uniform across interactive, observer, and trigger runs. The signature default is `supports_tools: bool = False` — a conservative guard so any caller that forgets to wire it through sends *no* tools rather than risking a 400 against a local endpoint, never the reverse.
+`_build_request` needs the resolved `supports_tools` value. In practice `run_ai_on_message` is the **sole** caller of `_build_request`, and it passes `supports_tools=cfg.supports_tools`. The observer (`services/run.py`) and trigger (`tasks.py`) paths do not build requests themselves — they *delegate* to `run_ai_on_message.delay(...)`, so tool parity reaches them automatically (and capability warnings can land on observer-kind threads — see the analytics note below). The signature default is `supports_tools: bool = False` — a conservative guard so any hypothetical future caller that forgets to wire it through sends *no* tools rather than risking a 400 against a local endpoint, never the reverse.
 
 **5. `apps/ai/capabilities.py` — pure helper (new)**
 
