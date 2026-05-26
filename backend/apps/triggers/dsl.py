@@ -70,3 +70,21 @@ def validate_condition(node: Any, *, path: str = "") -> None:
         raise ValidationError(f"{path}.window: not allowed for metric {metric!r}")
     if window is not None and window not in VALID_WINDOWS:
         raise ValidationError(f"{path}.window: {window!r} is not a valid window")
+
+
+def tickers_in_condition(node: Any) -> set[str]:
+    """Collect all leaf `ticker` values from a (validated or raw) condition tree."""
+    out: set[str] = set()
+    if not isinstance(node, dict):
+        return out
+    for key in ("all", "any"):
+        if key in node and isinstance(node[key], list):
+            for child in node[key]:
+                out |= tickers_in_condition(child)
+            return out
+    if "not" in node:
+        return tickers_in_condition(node["not"])
+    ticker = node.get("ticker")
+    if isinstance(ticker, str) and ticker:
+        out.add(ticker)
+    return out
