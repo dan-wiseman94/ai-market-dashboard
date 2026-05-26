@@ -7,7 +7,7 @@ from datetime import timedelta
 from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
-from rest_framework import viewsets
+from rest_framework import mixins, viewsets
 from rest_framework.decorators import action
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -16,8 +16,8 @@ from apps.profiles.models import TradingProfile
 from apps.snapshots.models import Snapshot, SnapshotSection
 from apps.threads.models import Thread
 
-from .models import PostMortem, Thesis
-from .serializers import ThesisSerializer
+from .models import DecisionJournalEntry, PostMortem, Thesis
+from .serializers import JournalEntrySerializer, ThesisSerializer
 from .services.postmortem import schedule_postmortems
 from .tasks import run_postmortem_task
 
@@ -161,3 +161,29 @@ class ThesisViewSet(viewsets.ModelViewSet):
         PostMortem.objects.filter(id=pm.id).update(status="scheduled", completed_at=None)
         run_postmortem_task.delay(pm.id)
         return Response({"detail": "scheduled", "postmortem_id": pm.id}, status=202)
+
+
+class JournalEntryViewSet(
+    mixins.CreateModelMixin,
+    mixins.ListModelMixin,
+    viewsets.GenericViewSet,
+):
+    """Create and list decision journal entries.
+
+    Create: POST /api/journal/  {thread_id, decision, note?, thesis_id?, snapshot_id?}
+    List:   GET  /api/journal/?thread=<id>   (filter by thread; omit for all entries)
+    """
+
+    serializer_class = JournalEntrySerializer
+
+    def get_queryset(self):  # type: ignore[override]
+        qs = DecisionJournalEntry.objects.select_related("thread", "thesis", "snapshot").order_by(
+            "-created_at"
+        )
+        thread_id = self.request.query_params.get("thread")
+        if thread_id:
+            try:
+                qs = qs.filter(thread_id=int(thread_id))
+            except (ValueError, TypeError):
+                return qs.none()
+        return qs

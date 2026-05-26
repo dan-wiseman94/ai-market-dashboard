@@ -6,7 +6,10 @@ from typing import ClassVar
 
 from rest_framework import serializers
 
-from .models import PostMortem, Thesis
+from apps.snapshots.models import Snapshot
+from apps.threads.models import Thread
+
+from .models import DecisionJournalEntry, PostMortem, Thesis
 
 
 class PostMortemSerializer(serializers.ModelSerializer):
@@ -62,3 +65,40 @@ class ThesisSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
+
+
+class JournalEntrySerializer(serializers.ModelSerializer):
+    # Explicit PrimaryKeyRelatedField declarations so the serializer reads and
+    # writes via *_id keys (consistent with ThesisSerializer convention).
+    # No circular import: apps.thesis already imports Thread + Snapshot in views.py.
+    thread_id = serializers.PrimaryKeyRelatedField(
+        source="thread",
+        queryset=Thread.objects.all(),
+    )
+    thesis_id = serializers.PrimaryKeyRelatedField(
+        source="thesis",
+        queryset=Thesis.objects.all(),
+        required=False,
+        allow_null=True,
+        default=None,
+    )
+    snapshot_id = serializers.PrimaryKeyRelatedField(
+        source="snapshot",
+        queryset=Snapshot.objects.all(),
+        required=False,
+        allow_null=True,
+        default=None,
+    )
+
+    class Meta:
+        model = DecisionJournalEntry
+        fields: ClassVar = [
+            "id",
+            "thread_id",
+            "thesis_id",
+            "snapshot_id",
+            "decision",
+            "note",
+            "created_at",
+        ]
+        read_only_fields: ClassVar = ["id", "created_at"]
