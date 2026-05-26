@@ -3,6 +3,8 @@ and the create-from-source entry_price defaulting behaviour."""
 
 from __future__ import annotations
 
+from unittest.mock import patch
+
 import pytest
 from rest_framework.test import APIClient
 
@@ -222,15 +224,18 @@ def test_close_rejects_missing_status(api, profile):
 
 
 # ---------------------------------------------------------------------------
-# run-postmortem stub
+# run-postmortem endpoint (full behaviour covered in test_postmortem.py)
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.django_db
 def test_run_postmortem_returns_202(api, profile):
     t = Thesis.objects.create(title="pm", ticker="NVDA", direction="bullish", profile=profile)
-    resp = api.post(f"/api/theses/{t.id}/run-postmortem/", format="json")
+    with patch("apps.thesis.views.run_postmortem_task.delay") as mock_delay:
+        resp = api.post(f"/api/theses/{t.id}/run-postmortem/", format="json")
     assert resp.status_code == 202
+    assert "postmortem_id" in resp.json()
+    mock_delay.assert_called_once()
 
 
 # ---------------------------------------------------------------------------
