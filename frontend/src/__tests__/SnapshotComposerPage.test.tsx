@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderWithProviders, LocationProbe } from "./testUtils";
 import SnapshotComposerPage from "@/pages/SnapshotComposerPage";
+import type { AgentPreset } from "@/api/presets";
 
 // ---- Module-level mocks ----
 
@@ -40,6 +41,12 @@ vi.mock("@/hooks/useWatchlists", () => ({
     ],
   }),
 }));
+
+vi.mock("@/hooks/useAgentPresets", () => ({
+  useAgentPresets: vi.fn().mockReturnValue({ data: [] }),
+}));
+import { useAgentPresets } from "@/hooks/useAgentPresets";
+const mockUseAgentPresets = vi.mocked(useAgentPresets);
 
 // ---- Helpers ----
 
@@ -268,5 +275,69 @@ describe("SnapshotComposerPage", () => {
     });
 
     expect(localStorage.getItem("staged_image_ids")).toBeNull();
+  });
+});
+
+// ---- Preset dropdown tests ----
+
+const PRESET_A: AgentPreset = {
+  id: 10,
+  name: "Morning Scan",
+  slug: "morning-scan",
+  description: "Daily morning check",
+  objective_template: "What are the key market moves this morning?",
+  default_includes: ["quotes", "news"],
+  structured: false,
+  builtin: false,
+  active: true,
+  created_at: "2026-05-25T00:00:00Z",
+  updated_at: "2026-05-25T00:00:00Z",
+};
+
+describe("SnapshotComposerPage – preset dropdown", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    localStorage.clear();
+    // Reset to no presets by default
+    mockUseAgentPresets.mockReturnValue({ data: [] } as never);
+  });
+
+  afterEach(() => {
+    localStorage.clear();
+  });
+
+  it("does not show preset dropdown when no active presets", () => {
+    mockUseAgentPresets.mockReturnValue({ data: [] } as never);
+    renderComposer();
+    expect(screen.queryByLabelText("Apply a preset")).not.toBeInTheDocument();
+  });
+
+  it("shows preset dropdown with options when active presets exist", () => {
+    mockUseAgentPresets.mockReturnValue({ data: [PRESET_A] } as never);
+    renderComposer();
+    expect(screen.getByLabelText("Apply a preset")).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Morning Scan" })).toBeInTheDocument();
+  });
+
+  it("selecting a preset fills objective and sections", async () => {
+    const user = userEvent.setup();
+    mockUseAgentPresets.mockReturnValue({ data: [PRESET_A] } as never);
+    renderComposer();
+
+    const presetSelect = screen.getByLabelText("Apply a preset");
+    await user.selectOptions(presetSelect, String(PRESET_A.id));
+
+    // Objective textarea should now have the template text
+    const objectiveTextarea = screen.getByPlaceholderText(/what do you want/i);
+    expect(objectiveTextarea).toHaveValue(PRESET_A.objective_template);
+
+    // The preset's default_includes should be reflected in section checkboxes:
+    // "quotes" and "news" should be checked (preset's includes)
+    // "positions" should NOT be checked (was in default but not in preset)
+    await waitFor(() => {
+      expect(screen.getByRole("checkbox", { name: /quotes/i })).toBeChecked();
+    });
+    expect(screen.getByRole("checkbox", { name: /news/i })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: /positions/i })).not.toBeChecked();
   });
 });
