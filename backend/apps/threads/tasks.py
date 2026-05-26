@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import time
 from collections.abc import Callable, Coroutine
 from dataclasses import asdict
@@ -12,6 +13,7 @@ from typing import Any, cast
 from celery import shared_task
 from django.db import transaction
 
+from apps.ai.capabilities import unsupported_features
 from apps.ai.citations import news_to_search_result_blocks
 from apps.ai.cost import CostCapExceededError, check_daily_cap, check_monthly_cap, cost_usd_for
 from apps.ai.providers import get_provider
@@ -185,6 +187,30 @@ def _fail(
     )
     _broadcast(thread_id, {"event": event, "message_id": assistant.id, "error": error})
     return assistant
+
+
+def _emit_capability_warning(*, thread_id: int, features: list[str], provider_name: str) -> bool:
+    """Write a system/done message + broadcast a WS warning when the selected
+    provider can't honor enabled profile features. Deduped against the thread's
+    most recent system message. Returns True if a message was written."""
+    feature_list = ", ".join(features)
+    text = (
+        f"Heads up: provider '{provider_name}' does not support "
+        f"{feature_list}. Those settings were ignored for this run."
+    )
+    last_system = (
+        Message.objects.filter(thread_id=thread_id, role="system").order_by("-created_at").first()
+    )
+    if last_system is not None and last_system.content.get("text") == text:
+        return False
+    msg = Message.objects.create(
+        thread_id=thread_id,
+        role="system",
+        content={"text": text, "kind": "capability_warning"},
+        status="done",
+    )
+    _broadcast(thread_id, {"event": "warning", "message_id": msg.id, "text": text})
+    return True
 
 
 def _build_stream_runner(
@@ -371,6 +397,14 @@ def run_ai_on_message(
             event="cost_capped",
         )
         return {"ok": False, "error": "cost_capped"}
+
+    gaps = unsupported_features(provider_name, thread.profile, supports_tools=cfg.supports_tools)
+    if gaps:
+        # Best-effort: a warning failure (DB/broadcast error) must never abort a valid run.
+        with contextlib.suppress(Exception):
+            _emit_capability_warning(
+                thread_id=thread_id, features=gaps, provider_name=provider_name
+            )
 
     req = _build_request(
         thread, user_msg, provider_name=provider_name, supports_tools=cfg.supports_tools
