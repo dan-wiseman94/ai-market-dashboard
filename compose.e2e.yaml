@@ -1,7 +1,28 @@
 # compose.e2e.yaml — overlay for end-to-end tests
 # Usage: docker compose -f compose.yaml -f compose.e2e.yaml up -d
+#
+# Database isolation: e2e runs against a DEDICATED throwaway Postgres (`db-e2e`),
+# never the dev `db`. The seed ladder (e2e/fixtures/seed_*.py) and scenario
+# engine reset/seed aggressively, so pointing web/worker/beat at a separate
+# database keeps real dev data safe. `web`'s entrypoint runs `migrate` on start,
+# so `db-e2e` is provisioned automatically; CI tears it down with `down -v`.
 
 services:
+  # Dedicated, isolated e2e database — separate server + volume from dev `db`.
+  db-e2e:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - pg_data_e2e:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 3s
+      timeout: 2s
+      retries: 20
+
   web:
     environment:
       MOCK_EXTERNAL: "true"
@@ -9,6 +30,12 @@ services:
       TRIGGER_TEST_COOLDOWN_SECONDS: "1"
       TRIGGER_EVAL_INTERVAL_SECONDS: "1"
       PYTHONPATH: "/app/backend:/app"
+      POSTGRES_HOST: db-e2e
+    depends_on:
+      db-e2e:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     volumes:
       - ./e2e:/app/e2e
       - ./tools:/app/tools:ro
@@ -25,6 +52,12 @@ services:
       # Permit sync Django ORM access from the worker's async event-loop context — needed when
       # the UI lane execs pytest inside the worker (which carries the chromium playwright build).
       DJANGO_ALLOW_ASYNC_UNSAFE: "true"
+      POSTGRES_HOST: db-e2e
+    depends_on:
+      db-e2e:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     volumes:
       # Worker carries the chromium playwright build, so the UI / visual / a11y / perf lanes
       # exec inside the worker container. Mount the e2e tree so it can see the tests.
@@ -37,6 +70,12 @@ services:
     environment:
       MOCK_EXTERNAL: "true"
       TRIGGER_EVAL_INTERVAL_SECONDS: "1"
+      POSTGRES_HOST: db-e2e
+    depends_on:
+      web:
+        condition: service_healthy
+      db-e2e:
+        condition: service_healthy
 
   frontend:
     environment:
@@ -46,3 +85,6 @@ services:
       # frontend/vite.config.ts).
       VITE_API_BASE_URL: ""
       VITE_WS_BASE_URL: ""
+
+volumes:
+  pg_data_e2e:
