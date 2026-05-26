@@ -6,8 +6,13 @@ from rest_framework import mixins, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
-from .models import TradingProfile, Watchlist, WatchlistSymbol
-from .serializers import TradingProfileSerializer, WatchlistSerializer, WatchlistSymbolSerializer
+from .models import AgentPreset, TradingProfile, Watchlist, WatchlistSymbol
+from .serializers import (
+    AgentPresetSerializer,
+    TradingProfileSerializer,
+    WatchlistSerializer,
+    WatchlistSymbolSerializer,
+)
 
 
 class WatchlistViewSet(viewsets.ModelViewSet):
@@ -58,3 +63,26 @@ class WatchlistSymbolViewSet(
 class TradingProfileViewSet(viewsets.ModelViewSet):
     queryset = TradingProfile.objects.all()
     serializer_class = TradingProfileSerializer
+
+
+class AgentPresetViewSet(viewsets.ModelViewSet):
+    queryset = AgentPreset.objects.all()
+    serializer_class = AgentPresetSerializer
+
+    def create(self, request, *args, **kwargs):
+        try:
+            return super().create(request, *args, **kwargs)
+        except IntegrityError:
+            return Response(
+                {"code": "duplicate", "message": "A preset with this slug already exists."},
+                status=400,
+            )
+
+    def update(self, request, *args, **kwargs):
+        try:
+            return super().update(request, *args, **kwargs)
+        except IntegrityError:
+            return Response(
+                {"code": "duplicate", "message": "A preset with this slug already exists."},
+                status=400,
+            )
