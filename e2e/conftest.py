@@ -190,6 +190,13 @@ def analytics(triggers) -> None:
     seed_analytics()
 
 
+@pytest.fixture
+def thesis(threads) -> None:
+    from e2e.fixtures.seed_thesis import seed_thesis
+
+    seed_thesis()
+
+
 # ---------------------------------------------------------------------------
 # Scenario engine client — injects X-E2E-Scenario into the Playwright page and
 # the httpx api_client.
