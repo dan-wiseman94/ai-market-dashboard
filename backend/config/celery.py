@@ -43,4 +43,8 @@ app.conf.beat_schedule = {
         "task": "thesis.run_due_postmortems",
         "schedule": 300.0,
     },
+    "fire-close-relative-schedules": {
+        "task": "observer.fire_close_relative_schedules",
+        "schedule": crontab(minute="*"),
+    },
 }
