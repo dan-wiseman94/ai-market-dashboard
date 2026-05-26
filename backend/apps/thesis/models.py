@@ -96,8 +96,13 @@ class PostMortem(models.Model):
     even with no AI key), and best-effort generate an AI narrative.
     """
 
+    # "running" is the in-flight claim between an atomic dispatch and completion;
+    # the run_postmortem claim transitions scheduled -> running -> done. "failed"
+    # and "skipped" are reserved — graceful-degradation AI failures intentionally
+    # stay "done" with report={} per the design, so they are not set today.
     STATUS_CHOICES: ClassVar[list[tuple[str, str]]] = [
         ("scheduled", "Scheduled"),
+        ("running", "Running"),
         ("done", "Done"),
         ("failed", "Failed"),
         ("skipped", "Skipped"),

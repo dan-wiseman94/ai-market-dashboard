@@ -76,6 +76,11 @@ def objective_verdict(thesis: Thesis, fwd_pct: float | None) -> str:
     return "mixed"
 
 
+def _fmt_fwd(fwd: float | None) -> str:
+    """Render the forward return for humans/prompt: 'unavailable' when None."""
+    return "unavailable" if fwd is None else f"{fwd}%"
+
+
 def _build_prompt(thesis: Thesis, pm: PostMortem, fwd: float | None, path: dict) -> str:
     """Compose the user prompt: the thesis as stated, then the actual outcome."""
     return (
@@ -91,7 +96,7 @@ def _build_prompt(thesis: Thesis, pm: PostMortem, fwd: float | None, path: dict)
         f"- Invalidation price: {thesis.invalidation_price}\n"
         f"- Horizon under review: {pm.horizon_days} days\n\n"
         "ACTUAL OUTCOME:\n"
-        f"- Forward return over the horizon: {fwd}%\n"
+        f"- Forward return over the horizon: {_fmt_fwd(fwd)}\n"
         f"- Price path summary: {path}\n\n"
         "Assess what worked, what was missed, the lessons, whether you would "
         "repeat the call, and your own verdict on whether the thesis was correct."
@@ -128,7 +133,9 @@ def _attempt_ai_narrative(
         log.warning("postmortem %s: no claude key configured — skipping AI narrative", pm.id)
         return
 
-    # Cost caps: Infinity daily / None monthly when no row (cfg is non-None here).
+    # Cost caps: cfg is guaranteed non-None here (we returned above otherwise),
+    # so read its configured caps directly. daily defaults to 10.00; monthly is
+    # nullable and a None monthly cap is a no-op in check_monthly_cap.
     cap_usd = cfg.daily_cost_cap_usd
     monthly_cap = cfg.monthly_cost_cap_usd
     try:
@@ -173,7 +180,21 @@ def _attempt_ai_narrative(
 
 
 def run_postmortem(pm_id: int) -> None:
-    """Run one post-mortem. Objective verdict/return/status always persist."""
+    """Run one post-mortem. Objective verdict/return/status always persist.
+
+    Idempotent against double-dispatch: a beat re-tick, a run-now+beat overlap,
+    or repeated run-now clicks could otherwise each re-run the AI and post a
+    DUPLICATE review message at real $ cost. We guard with an atomic
+    compare-and-set status claim — only ONE concurrent caller transitions the
+    row out of "scheduled", so the rest are no-ops.
+    """
+    # Atomic claim: .update() under a row lock means only one concurrent caller
+    # gets claimed=1; everyone else (already running/done/failed) is a no-op.
+    claimed = PostMortem.objects.filter(id=pm_id, status="scheduled").update(status="running")
+    if not claimed:
+        log.info("post-mortem %s not claimable (already running/done); skipping", pm_id)
+        return
+
     pm = PostMortem.objects.select_related("thesis", "thesis__profile").get(id=pm_id)
     thesis = pm.thesis
 
@@ -201,6 +222,6 @@ def run_postmortem(pm_id: int) -> None:
         user_id=None,
         kind="postmortem",
         title=f"Post-mortem: {thesis.title} ({pm.horizon_days}d)",
-        body=f"Verdict: {pm.verdict}, forward return {fwd}%",
+        body=f"Verdict: {pm.verdict}, forward return {_fmt_fwd(fwd)}",
         link=f"/theses/{thesis.id}",
     )
