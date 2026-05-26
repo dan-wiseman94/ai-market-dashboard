@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import SnapshotSectionPicker from "@/components/SnapshotSectionPicker";
 import { useProfiles } from "@/hooks/useProfiles";
+import { useAgentPresets } from "@/hooks/useAgentPresets";
 import { useCreateSnapshot } from "@/hooks/useCreateSnapshot";
 import { useCreateConsultThread } from "@/hooks/useCreateConsultThread";
 import { useWatchlists } from "@/hooks/useWatchlists";
@@ -10,6 +11,7 @@ export default function SnapshotComposerPage() {
   const navigate = useNavigate();
   const { data: profiles } = useProfiles();
   const { data: watchlists } = useWatchlists();
+  const { data: presets } = useAgentPresets();
   const createSnap = useCreateSnapshot();
   const createThread = useCreateConsultThread();
 
@@ -102,6 +104,31 @@ export default function SnapshotComposerPage() {
           <label className="block text-xs text-slate-500 mb-1">Sections</label>
           <SnapshotSectionPicker value={includes} onChange={setIncludes} />
         </div>
+
+        {(presets ?? []).filter((p) => p.active).length > 0 && (
+          <div>
+            <label className="block text-xs text-slate-500 mb-1">Apply a preset</label>
+            <select
+              defaultValue=""
+              onChange={(e) => {
+                const preset = (presets ?? []).find((p) => String(p.id) === e.target.value);
+                if (preset) {
+                  setIncludes(preset.default_includes);
+                  setObjective(preset.objective_template);
+                }
+                // Reset to placeholder so the user can re-apply the same preset
+                e.target.value = "";
+              }}
+              className="w-full px-2 py-1.5 rounded bg-slate-900 border border-slate-700 text-slate-300"
+              aria-label="Apply a preset"
+            >
+              <option value="" disabled>Apply a preset…</option>
+              {(presets ?? []).filter((p) => p.active).map((p) => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
+          </div>
+        )}
 
         <div>
           <label className="block text-xs text-slate-500 mb-1">Objective</label>

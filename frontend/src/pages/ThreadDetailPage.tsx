@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
-import { Link, useParams, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import BranchTabs from "@/components/BranchTabs";
 import CompareTotalsStrip from "@/components/CompareTotalsStrip";
 import CompareDialog from "@/components/CompareDialog";
@@ -14,6 +14,12 @@ import ThreadExportButton from "@/components/ThreadExportButton";
 import { ToolCallTrace, type ToolCallRecord } from "@/components/ToolCallTrace";
 import { FileAttachPanel } from "@/components/FileAttachPanel";
 import { useFiles, useAttachFileToThread } from "@/hooks/useFiles";
+import { useCreateThesis } from "@/hooks/useTheses";
+import { useToast } from "@/hooks/useToast";
+import type { ThesisDirection } from "@/api/thesis";
+import { useJournal, useCreateJournalEntry } from "@/hooks/useJournal";
+import type { JournalDecision } from "@/api/journal";
+import { EmptyState } from "@/components/EmptyState";
 
 type LiveMessage = {
   id: number;
@@ -73,9 +79,102 @@ export default function ThreadDetailPage() {
   const [search] = useSearchParams();
   const tid = id ? parseInt(id, 10) : null;
   const snapshotId = search.get("snapshot") ? parseInt(search.get("snapshot")!, 10) : null;
+  const navigate = useNavigate();
 
   const { data: thread, refetch } = useThread(tid);
   const { data: snap } = useSnapshot(snapshotId);
+
+  // New thesis from this thread
+  const createThesis = useCreateThesis();
+  const { push } = useToast();
+  const [showThesisForm, setShowThesisForm] = useState(false);
+  const [thesisTitle, setThesisTitle] = useState("");
+  const [thesisTicker, setThesisTicker] = useState("");
+  const [thesisDirection, setThesisDirection] = useState<ThesisDirection>("bullish");
+  const [thesisConviction, setThesisConviction] = useState(3);
+  const [thesisTarget, setThesisTarget] = useState("");
+  const [thesisInvalidation, setThesisInvalidation] = useState("");
+
+  // Close & journal panel state
+  const [showJournalPanel, setShowJournalPanel] = useState(false);
+  const [journalDecision, setJournalDecision] = useState<JournalDecision>("acted");
+  const [journalNote, setJournalNote] = useState("");
+  // promoteMode: when true, submitting the thesis form also logs a linked journal entry
+  const [promoteMode, setPromoteMode] = useState(false);
+
+  const createJournalEntry = useCreateJournalEntry();
+  const { data: journalEntries = [] } = useJournal(tid);
+
+  const handleCreateThesis = (e: React.FormEvent) => {
+    e.preventDefault();
+    createThesis.mutate(
+      {
+        title: thesisTitle,
+        ticker: thesisTicker,
+        direction: thesisDirection,
+        conviction: thesisConviction,
+        target_price: thesisTarget || null,
+        invalidation_price: thesisInvalidation || null,
+        thread_id: tid,
+        snapshot_id: thread?.pinned_snapshot_id ?? undefined,
+        profile_id: thread?.profile?.id ?? undefined,
+      },
+      {
+        onSuccess: (thesis) => {
+          push({ kind: "success", text: `Thesis created: ${thesis.title}` });
+          // In promote mode, link a journal entry to the newly created thesis
+          if (promoteMode && tid) {
+            createJournalEntry.mutate(
+              {
+                thread_id: tid,
+                decision: journalDecision,
+                note: journalNote.trim() || "Promoted to thesis",
+                thesis_id: thesis.id,
+                snapshot_id: thread?.pinned_snapshot_id ?? undefined,
+              },
+              {
+                onError: () =>
+                  push({ kind: "error", text: "Thesis created, but journaling the decision failed." }),
+              },
+            );
+          }
+          setShowThesisForm(false);
+          setPromoteMode(false);
+          setThesisTitle("");
+          setThesisTicker("");
+          setThesisDirection("bullish");
+          setThesisConviction(3);
+          setThesisTarget("");
+          setThesisInvalidation("");
+          navigate(`/theses/${thesis.id}`);
+        },
+        onError: (err) =>
+          push({ kind: "error", text: (err as Error).message }),
+      },
+    );
+  };
+
+  const handleLogDecision = () => {
+    if (!tid) return;
+    createJournalEntry.mutate(
+      {
+        thread_id: tid,
+        decision: journalDecision,
+        note: journalNote.trim() || undefined,
+        snapshot_id: thread?.pinned_snapshot_id ?? undefined,
+      },
+      {
+        onSuccess: () => {
+          push({ kind: "success", text: "Decision logged." });
+          setJournalDecision("acted");
+          setJournalNote("");
+          setShowJournalPanel(false);
+        },
+        onError: (err) =>
+          push({ kind: "error", text: (err as Error).message }),
+      },
+    );
+  };
 
   const [live, setLive] = useState<Record<number, LiveMessage>>({});
   const [activeBranchByParent, setActiveBranchByParent] = useState<Record<number, number>>({});
@@ -205,6 +304,20 @@ export default function ThreadDetailPage() {
           <span className="ledger-eyebrow">Thread · #{thread.id}</span>
           <span className="flex-1 h-px bg-rule-soft" />
           <ThreadExportButton threadId={tid!} />
+          <button
+            onClick={() => setShowJournalPanel((v) => !v)}
+            className="ledger-ghost py-1 px-2.5 text-[11px] font-mono uppercase tracking-wider"
+            data-testid="journal-panel-btn"
+          >
+            ✎ Close & journal
+          </button>
+          <button
+            onClick={() => setShowThesisForm((v) => !v)}
+            className="ledger-ghost py-1 px-2.5 text-[11px] font-mono uppercase tracking-wider"
+            data-testid="new-thesis-btn"
+          >
+            + New thesis from this
+          </button>
           <Link
             to="/"
             className="font-mono text-[11px] text-ink-400 hover:text-copper-300 transition-colors uppercase tracking-wider"
@@ -219,6 +332,220 @@ export default function ThreadDetailPage() {
           {thread.title || <em className="italic text-copper-300">Untitled consultation</em>}
         </h1>
       </header>
+
+      {/* New thesis inline form */}
+      {showThesisForm && (
+        <form
+          onSubmit={handleCreateThesis}
+          className="ledger-surface px-5 py-4 mb-8 space-y-4"
+          data-testid="new-thesis-form"
+        >
+          <div className="ledger-eyebrow mb-1">{promoteMode ? "Promote to thesis" : "New thesis from this thread"}</div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="col-span-2">
+              <label htmlFor="thesis-title" className="block text-[12px] text-ink-400 mb-1">Title</label>
+              <input
+                id="thesis-title"
+                required
+                value={thesisTitle}
+                onChange={(e) => setThesisTitle(e.target.value)}
+                placeholder="e.g. SPY breaks 600 by Q3"
+                className="bg-ink-void border border-rule rounded px-3 py-1.5 text-[13px] text-ink-100 w-full focus:outline-none focus:border-copper-500 placeholder:text-ink-500"
+              />
+            </div>
+            <div>
+              <label htmlFor="thesis-ticker" className="block text-[12px] text-ink-400 mb-1">Ticker</label>
+              <input
+                id="thesis-ticker"
+                required
+                value={thesisTicker}
+                onChange={(e) => setThesisTicker(e.target.value.toUpperCase())}
+                placeholder="SPY"
+                className="bg-ink-void border border-rule rounded px-3 py-1.5 text-[13px] text-ink-100 w-full focus:outline-none focus:border-copper-500 placeholder:text-ink-500"
+              />
+            </div>
+            <div>
+              <label htmlFor="thesis-direction" className="block text-[12px] text-ink-400 mb-1">Direction</label>
+              <select
+                id="thesis-direction"
+                value={thesisDirection}
+                onChange={(e) => setThesisDirection(e.target.value as ThesisDirection)}
+                className="bg-ink-void border border-rule rounded px-3 py-1.5 text-[13px] text-ink-100 w-full focus:outline-none focus:border-copper-500"
+              >
+                <option value="bullish">Bullish</option>
+                <option value="bearish">Bearish</option>
+                <option value="neutral">Neutral</option>
+              </select>
+            </div>
+            <div>
+              <label htmlFor="thesis-conviction" className="block text-[12px] text-ink-400 mb-1">Conviction (1–5)</label>
+              <input
+                id="thesis-conviction"
+                type="number"
+                min={1}
+                max={5}
+                value={thesisConviction}
+                onChange={(e) => setThesisConviction(Number(e.target.value))}
+                className="bg-ink-void border border-rule rounded px-3 py-1.5 text-[13px] text-ink-100 w-full focus:outline-none focus:border-copper-500"
+              />
+            </div>
+            <div>
+              <label htmlFor="thesis-target" className="block text-[12px] text-ink-400 mb-1">Target price (optional)</label>
+              <input
+                id="thesis-target"
+                value={thesisTarget}
+                onChange={(e) => setThesisTarget(e.target.value)}
+                placeholder="600.00"
+                className="bg-ink-void border border-rule rounded px-3 py-1.5 text-[13px] text-ink-100 w-full focus:outline-none focus:border-copper-500 placeholder:text-ink-500"
+              />
+            </div>
+            <div>
+              <label htmlFor="thesis-invalidation" className="block text-[12px] text-ink-400 mb-1">Invalidation price (optional)</label>
+              <input
+                id="thesis-invalidation"
+                value={thesisInvalidation}
+                onChange={(e) => setThesisInvalidation(e.target.value)}
+                placeholder="540.00"
+                className="bg-ink-void border border-rule rounded px-3 py-1.5 text-[13px] text-ink-100 w-full focus:outline-none focus:border-copper-500 placeholder:text-ink-500"
+              />
+            </div>
+          </div>
+          <div className="flex gap-2 pt-1">
+            <button
+              type="submit"
+              disabled={createThesis.isPending}
+              className="ledger-cta px-4 py-1.5 text-[13px]"
+            >
+              {createThesis.isPending ? "Creating…" : "Create thesis"}
+            </button>
+            <button
+              type="button"
+              className="ledger-ghost px-4 py-1.5 text-[13px]"
+              onClick={() => {
+                setShowThesisForm(false);
+                setPromoteMode(false);
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      )}
+
+      {/* Close & journal panel */}
+      {showJournalPanel && (
+        <div
+          className="ledger-surface px-5 py-4 mb-8 space-y-4"
+          data-testid="journal-panel"
+        >
+          <div className="ledger-eyebrow mb-1">Close &amp; journal this thread</div>
+
+          {/* Decision log form */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="col-span-2">
+              <label htmlFor="journal-decision" className="block text-[12px] text-ink-400 mb-1">Decision</label>
+              <select
+                id="journal-decision"
+                value={journalDecision}
+                onChange={(e) => setJournalDecision(e.target.value as JournalDecision)}
+                className="bg-ink-void border border-rule rounded px-3 py-1.5 text-[13px] text-ink-100 w-full focus:outline-none focus:border-copper-500"
+                data-testid="journal-decision-select"
+              >
+                <option value="acted">Acted</option>
+                <option value="passed">Passed</option>
+                <option value="watching">Watching</option>
+                <option value="hedged">Hedged</option>
+              </select>
+            </div>
+            <div className="col-span-2">
+              <label htmlFor="journal-note" className="block text-[12px] text-ink-400 mb-1">Note (optional)</label>
+              <textarea
+                id="journal-note"
+                value={journalNote}
+                onChange={(e) => setJournalNote(e.target.value)}
+                placeholder="What did you decide and why?"
+                rows={3}
+                className="bg-ink-void border border-rule rounded px-3 py-1.5 text-[13px] text-ink-100 w-full focus:outline-none focus:border-copper-500 placeholder:text-ink-500 resize-none"
+                data-testid="journal-note-textarea"
+              />
+            </div>
+          </div>
+          <div className="flex gap-2 pt-1 flex-wrap">
+            <button
+              type="button"
+              disabled={createJournalEntry.isPending}
+              onClick={handleLogDecision}
+              className="ledger-cta px-4 py-1.5 text-[13px]"
+              data-testid="journal-log-btn"
+            >
+              {createJournalEntry.isPending ? "Logging…" : "Log decision"}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setPromoteMode(true);
+                setShowThesisForm(true);
+              }}
+              className="ledger-ghost px-4 py-1.5 text-[13px]"
+              data-testid="journal-promote-btn"
+            >
+              Promote to thesis
+            </button>
+            <button
+              type="button"
+              className="ledger-ghost px-4 py-1.5 text-[13px] ml-auto"
+              onClick={() => setShowJournalPanel(false)}
+            >
+              Close
+            </button>
+          </div>
+
+          {/* Existing journal entries */}
+          <div className="border-t border-rule-soft pt-4 mt-2">
+            <div className="ledger-eyebrow mb-3">Prior decisions</div>
+            {journalEntries.length === 0 ? (
+              <EmptyState title="No decisions logged yet" body="Use the form above to record what you decided on this thread." />
+            ) : (
+              <ul className="space-y-3" data-testid="journal-entries-list">
+                {journalEntries.map((entry) => (
+                  <li key={entry.id} className="flex items-start gap-3 py-2 border-b border-rule-soft last:border-b-0" data-testid={`journal-entry-${entry.id}`}>
+                    <span className={`font-mono text-[10px] uppercase tracking-widest px-2 py-0.5 rounded border shrink-0 mt-0.5 ${
+                      entry.decision === "acted"
+                        ? "text-emerald-400 border-emerald-800 bg-emerald-950/40"
+                        : entry.decision === "passed"
+                        ? "text-slate-400 border-slate-700 bg-slate-900/40"
+                        : entry.decision === "watching"
+                        ? "text-amber-400 border-amber-800 bg-amber-950/40"
+                        : "text-violet-400 border-violet-800 bg-violet-950/40"
+                    }`}>
+                      {entry.decision}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      {entry.note && (
+                        <p className="text-[13px] text-ink-100 leading-relaxed mb-1">{entry.note}</p>
+                      )}
+                      <div className="flex items-center gap-3 flex-wrap">
+                        <span className="font-mono text-[11px] text-ink-500">
+                          {new Date(entry.created_at).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })}
+                        </span>
+                        {entry.thesis_id != null && (
+                          <Link
+                            to={`/theses/${entry.thesis_id}`}
+                            className="font-mono text-[11px] text-copper-300 hover:text-copper-200 transition-colors"
+                            data-testid={`journal-thesis-link-${entry.id}`}
+                          >
+                            → Thesis #{entry.thesis_id}
+                          </Link>
+                        )}
+                      </div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Snapshot context — folded */}
       {snap && (

@@ -7,6 +7,7 @@ from . import views
 router = DefaultRouter()
 router.register("watchlists", views.WatchlistViewSet, basename="watchlist")
 router.register("profiles", views.TradingProfileViewSet, basename="profile")
+router.register("presets", views.AgentPresetViewSet, basename="preset")
 
 symbols_router = nested_routers.NestedDefaultRouter(router, "watchlists", lookup="watchlist")
 symbols_router.register("symbols", views.WatchlistSymbolViewSet, basename="watchlist-symbols")

@@ -29,6 +29,8 @@ function useDefaultCommands(): Command[] {
       { id: "go-exports", label: "Go to Exports", keywords: "download zip", run: () => nav("/settings/export") },
       { id: "go-analytics", label: "Go to Analytics", keywords: "leaderboard cpi heatmap",
         run: () => nav("/analytics") },
+      { id: "go-theses", label: "Go to Theses", keywords: "thesis decision call",
+        run: () => nav("/theses") },
     ],
     [nav],
   );
