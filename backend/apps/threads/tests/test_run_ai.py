@@ -59,3 +59,38 @@ def test_run_ai_marks_failed_on_error():
     assistant = Message.objects.filter(thread=t, role="assistant").latest("created_at")
     assert assistant.status == "failed"
     assert "rate limit" in assistant.error
+
+
+@pytest.mark.django_db
+def test_emit_capability_warning_writes_system_message():
+    from apps.threads.models import Message, Thread
+    from apps.threads.tasks import _emit_capability_warning
+
+    thread = Thread.objects.create(kind="consult")
+    with patch("apps.threads.tasks._broadcast") as bc:
+        wrote = _emit_capability_warning(
+            thread_id=thread.id, features=["extended thinking"], provider_name="openai"
+        )
+    assert wrote is True
+    msg = Message.objects.filter(thread=thread, role="system").latest("created_at")
+    assert "extended thinking" in msg.content["text"]
+    assert "openai" in msg.content["text"]
+    assert bc.call_args[0][1]["event"] == "warning"
+
+
+@pytest.mark.django_db
+def test_emit_capability_warning_dedupes():
+    from apps.threads.models import Message, Thread
+    from apps.threads.tasks import _emit_capability_warning
+
+    thread = Thread.objects.create(kind="consult")
+    with patch("apps.threads.tasks._broadcast"):
+        first = _emit_capability_warning(
+            thread_id=thread.id, features=["memory"], provider_name="local"
+        )
+        second = _emit_capability_warning(
+            thread_id=thread.id, features=["memory"], provider_name="local"
+        )
+    assert first is True
+    assert second is False
+    assert Message.objects.filter(thread=thread, role="system").count() == 1

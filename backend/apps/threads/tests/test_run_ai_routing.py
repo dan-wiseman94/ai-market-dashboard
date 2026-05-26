@@ -6,7 +6,7 @@ from django.test import override_settings
 from apps.profiles.models import TradingProfile
 from apps.secrets.models import ProviderConfig
 from apps.threads.models import Message, Thread
-from apps.threads.tasks import run_ai_on_message
+from apps.threads.tasks import _build_request, run_ai_on_message
 
 
 @pytest.mark.django_db
@@ -75,3 +75,40 @@ def test_override_routes_to_claude():
     assert result["ok"] is True
     assert calls["provider_name"] == "claude"
     assert calls["model"] == "claude-opus-4-7"
+
+
+@pytest.fixture
+def tools_thread(db):
+    profile = TradingProfile.objects.create(name="Tooler", style="be helpful", enable_tools=True)
+    thread = Thread.objects.create(kind="consult", profile=profile)
+    msg = Message.objects.create(
+        thread=thread, role="user", content={"text": "quote AAPL"}, status="done"
+    )
+    return thread, msg
+
+
+@pytest.mark.django_db
+def test_build_request_openai_tools_when_supported(tools_thread):
+    thread, msg = tools_thread
+    fake_tools = [{"type": "function", "function": {"name": "get_quote"}}]
+    with patch("apps.ai.tools.registry.default_toolset") as ts:
+        ts.return_value.openai_tools.return_value = fake_tools
+        req = _build_request(thread, msg, provider_name="openai", supports_tools=True)
+    assert req.tools == fake_tools
+
+
+@pytest.mark.django_db
+def test_build_request_openai_no_tools_when_unsupported(tools_thread):
+    thread, msg = tools_thread
+    req = _build_request(thread, msg, provider_name="local", supports_tools=False)
+    assert req.tools == []
+
+
+@pytest.mark.django_db
+def test_build_request_claude_uses_anthropic_tools(tools_thread):
+    thread, msg = tools_thread
+    fake_tools = [{"name": "get_quote", "description": "", "input_schema": {}}]
+    with patch("apps.ai.tools.registry.default_toolset") as ts:
+        ts.return_value.anthropic_tools.return_value = fake_tools
+        req = _build_request(thread, msg, provider_name="claude", supports_tools=False)
+    assert req.tools == fake_tools

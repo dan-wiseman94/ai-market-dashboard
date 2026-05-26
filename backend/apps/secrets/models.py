@@ -57,6 +57,7 @@ class ProviderConfig(models.Model):
     default_model = models.CharField(max_length=100, blank=True, default="")
     enabled = models.BooleanField(default=True)
     supports_vision = models.BooleanField(default=True)
+    supports_tools = models.BooleanField(default=True)
     daily_cost_cap_usd = models.DecimalField(
         max_digits=10, decimal_places=2, default=Decimal("10.00")
     )
