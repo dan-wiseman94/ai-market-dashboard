@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import ClassVar
 
 from django.db import models
+from django.utils.text import slugify
 
 
 class Watchlist(models.Model):
@@ -82,4 +83,30 @@ class TradingProfile(models.Model):
     def save(self, *args, **kwargs) -> None:
         if not self.default_includes:
             self.default_includes = list(self.DEFAULT_INCLUDES)
+        super().save(*args, **kwargs)
+
+
+class AgentPreset(models.Model):
+    """A capture template that pre-fills the snapshot composer's objective text and section includes."""
+
+    name = models.CharField(max_length=100)
+    slug = models.SlugField(unique=True)
+    description = models.CharField(max_length=300, blank=True, default="")
+    objective_template = models.TextField()
+    default_includes = models.JSONField(default=list)
+    structured = models.BooleanField(default=False)
+    builtin = models.BooleanField(default=False)
+    active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering: ClassVar[list[str]] = ["-active", "name"]
+
+    def __str__(self) -> str:
+        return self.name
+
+    def save(self, *args, **kwargs) -> None:
+        if not self.slug:
+            self.slug = slugify(self.name)
         super().save(*args, **kwargs)
