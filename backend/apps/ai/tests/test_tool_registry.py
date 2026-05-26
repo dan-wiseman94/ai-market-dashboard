@@ -74,3 +74,31 @@ def test_anthropic_tools_shape() -> None:
     assert len(tools) == 5
     first = tools[0]
     assert {"name", "description", "input_schema"} <= set(first)
+
+
+def test_openai_tools_shape() -> None:
+    from apps.ai.tools import Toolset, ToolSpec
+
+    ts = Toolset()
+    ts.register(
+        ToolSpec(
+            name="get_quote",
+            description="Get a quote.",
+            input_schema={"type": "object", "properties": {"ticker": {"type": "string"}}},
+            fn=lambda **kw: kw,
+        )
+    )
+    tools = ts.openai_tools()
+    assert tools == [
+        {
+            "type": "function",
+            "function": {
+                "name": "get_quote",
+                "description": "Get a quote.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {"ticker": {"type": "string"}},
+                },
+            },
+        }
+    ]

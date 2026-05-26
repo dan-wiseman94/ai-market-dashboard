@@ -15,7 +15,7 @@ from typing import Any
 class ToolSpec:
     name: str
     description: str
-    input_schema: dict  # JSON schema, passed verbatim to Anthropic
+    input_schema: dict  # JSON Schema object — passed verbatim to Anthropic and OpenAI
     fn: Callable[..., Any]
 
 
@@ -30,6 +30,20 @@ class Toolset:
         """Serialize specs to the shape Claude's tools= param expects."""
         return [
             {"name": s.name, "description": s.description, "input_schema": s.input_schema}
+            for s in self.specs.values()
+        ]
+
+    def openai_tools(self) -> list[dict]:
+        """Serialize specs to the shape OpenAI's tools= param expects."""
+        return [
+            {
+                "type": "function",
+                "function": {
+                    "name": s.name,
+                    "description": s.description,
+                    "parameters": s.input_schema,
+                },
+            }
             for s in self.specs.values()
         ]
 
