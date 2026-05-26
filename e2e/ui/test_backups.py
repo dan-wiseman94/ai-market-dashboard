@@ -29,7 +29,7 @@ def _poll_for_ok_backup(timeout_s: int = 60) -> dict:
 @pytest.mark.ui
 def test_backup_roundtrip(page, tmp_path: Path) -> None:
     page.goto(f"{E2E_FRONTEND_URL}/settings/backups")
-    page.get_by_role("button", name="Back up now ↻").click()
+    page.get_by_role("button", name="Back up now").click()
 
     # The frontend's React Query doesn't refetchInterval — wait via the API for
     # the worker to finish pg_dump, then reload the page so the UI re-fetches.
