@@ -2,59 +2,8 @@ import { Link } from "react-router-dom";
 import { useTheses } from "@/hooks/useTheses";
 import { SkeletonRows } from "@/components/Skeleton";
 import { EmptyState } from "@/components/EmptyState";
-import type { Thesis, ThesisStatus } from "@/api/thesis";
-
-const STATUS_BADGE: Record<ThesisStatus, { label: string; className: string }> = {
-  open: {
-    label: "Open",
-    className:
-      "bg-copper-500/20 text-copper-300 border border-copper-500/40",
-  },
-  closed_win: {
-    label: "Win",
-    className:
-      "bg-emerald-900/40 text-emerald-300 border border-emerald-700/40",
-  },
-  closed_loss: {
-    label: "Loss",
-    className:
-      "bg-rose-900/40 text-rose-300 border border-rose-700/40",
-  },
-  closed_scratch: {
-    label: "Scratch",
-    className:
-      "bg-neutral-800/60 text-neutral-400 border border-neutral-700/40",
-  },
-  invalidated: {
-    label: "Invalidated",
-    className:
-      "bg-amber-900/30 text-amber-300 border border-amber-700/40",
-  },
-};
-
-const DIRECTION_LABEL: Record<string, string> = {
-  bullish: "↑ Bullish",
-  bearish: "↓ Bearish",
-  neutral: "— Neutral",
-};
-
-const DIRECTION_CLASS: Record<string, string> = {
-  bullish: "text-emerald-400",
-  bearish: "text-rose-400",
-  neutral: "text-neutral-400",
-};
-
-function StatusBadge({ status }: { status: ThesisStatus }) {
-  const { label, className } = STATUS_BADGE[status];
-  return (
-    <span
-      className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-mono font-medium ${className}`}
-      data-testid={`status-badge-${status}`}
-    >
-      {label}
-    </span>
-  );
-}
+import { StatusBadge, DIRECTION_LABEL, DIRECTION_CLASS } from "@/components/thesis/ThesisBadges";
+import type { Thesis } from "@/api/thesis";
 
 function ThesisRow({ thesis }: { thesis: Thesis }) {
   return (

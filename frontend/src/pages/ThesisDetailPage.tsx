@@ -4,41 +4,8 @@ import { useThesis, useCloseThesis } from "@/hooks/useTheses";
 import { SkeletonRows } from "@/components/Skeleton";
 import { EmptyState } from "@/components/EmptyState";
 import { useToast } from "@/hooks/useToast";
+import { STATUS_BADGE, DIRECTION_LABEL } from "@/components/thesis/ThesisBadges";
 import type { ThesisStatus } from "@/api/thesis";
-
-const STATUS_BADGE: Record<
-  ThesisStatus,
-  { label: string; className: string }
-> = {
-  open: {
-    label: "Open",
-    className: "bg-copper-500/20 text-copper-300 border border-copper-500/40",
-  },
-  closed_win: {
-    label: "Win",
-    className:
-      "bg-emerald-900/40 text-emerald-300 border border-emerald-700/40",
-  },
-  closed_loss: {
-    label: "Loss",
-    className: "bg-rose-900/40 text-rose-300 border border-rose-700/40",
-  },
-  closed_scratch: {
-    label: "Scratch",
-    className:
-      "bg-neutral-800/60 text-neutral-400 border border-neutral-700/40",
-  },
-  invalidated: {
-    label: "Invalidated",
-    className: "bg-amber-900/30 text-amber-300 border border-amber-700/40",
-  },
-};
-
-const DIRECTION_LABEL: Record<string, string> = {
-  bullish: "↑ Bullish",
-  bearish: "↓ Bearish",
-  neutral: "— Neutral",
-};
 
 const CLOSE_STATUSES: Array<{
   value: Exclude<ThesisStatus, "open">;
@@ -188,32 +155,29 @@ export default function ThesisDetailPage() {
       </dl>
 
       {/* Source links */}
-      {(thesis.thread || thesis.snapshot) && (
+      {(thesis.thread_id || thesis.snapshot_id) && (
         <section className="mb-8 ledger-surface px-5 py-4">
           <div className="ledger-eyebrow mb-3">Source</div>
           <div className="flex gap-4">
-            {thesis.thread && (
+            {thesis.thread_id && (
               <Link
-                to={`/threads/${thesis.thread}`}
+                to={`/threads/${thesis.thread_id}`}
                 className="font-mono text-[12px] text-copper-400 hover:text-copper-300 transition-colors"
               >
-                Thread #{thesis.thread} →
+                Thread #{thesis.thread_id} →
               </Link>
             )}
-            {thesis.snapshot && (
-              <Link
-                to={`/threads/${thesis.thread ?? thesis.snapshot}`}
-                className="font-mono text-[12px] text-ink-400 hover:text-copper-300 transition-colors"
-              >
-                Snapshot #{thesis.snapshot} →
-              </Link>
+            {thesis.snapshot_id && (
+              <span className="font-mono text-[12px] text-ink-400">
+                Snapshot #{thesis.snapshot_id}
+              </span>
             )}
-            {thesis.review_thread && (
+            {thesis.review_thread_id && (
               <Link
-                to={`/threads/${thesis.review_thread}`}
+                to={`/threads/${thesis.review_thread_id}`}
                 className="font-mono text-[12px] text-ink-400 hover:text-copper-300 transition-colors"
               >
-                Review thread #{thesis.review_thread} →
+                Review thread #{thesis.review_thread_id} →
               </Link>
             )}
           </div>

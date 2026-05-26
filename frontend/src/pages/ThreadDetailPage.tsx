@@ -104,7 +104,7 @@ export default function ThreadDetailPage() {
         invalidation_price: thesisInvalidation || null,
         thread_id: tid,
         snapshot_id: thread?.pinned_snapshot_id ?? undefined,
-        profile: thread?.profile?.id ?? undefined,
+        profile_id: thread?.profile?.id ?? undefined,
       },
       {
         onSuccess: (thesis) => {

@@ -15,10 +15,10 @@ const THESIS = {
   invalidation_price: "520.00",
   horizon_days: 90,
   status: "open" as const,
-  profile: null,
-  thread: 42,
-  snapshot: null,
-  review_thread: null,
+  profile_id: null,
+  thread_id: 42,
+  snapshot_id: null,
+  review_thread_id: null,
   opened_at: "2026-05-01T00:00:00Z",
   closed_at: null,
   close_note: "",
@@ -127,7 +127,7 @@ describe("ThesisDetailPage", () => {
     expect(screen.getByText("Post-mortems appear here")).toBeInTheDocument();
   });
 
-  it("shows thread link when thread is set", async () => {
+  it("shows thread link with correct href when thread_id is set", async () => {
     mockApi({ "GET /api/theses/1/": THESIS });
     renderWithProviders(<ThesisDetailPage />, {
       initialEntries: ["/theses/1"],
@@ -136,5 +136,26 @@ describe("ThesisDetailPage", () => {
     await waitFor(() =>
       expect(screen.getByText(/Thread #42/)).toBeInTheDocument(),
     );
+    const link = screen.getByText(/Thread #42/).closest("a");
+    expect(link).toHaveAttribute("href", "/threads/42");
+  });
+
+  it("renders snapshot as plain text (not a link) when only snapshot_id is set", async () => {
+    const SNAPSHOT_ONLY = {
+      ...THESIS,
+      thread_id: null,
+      snapshot_id: 99,
+    };
+    mockApi({ "GET /api/theses/1/": SNAPSHOT_ONLY });
+    renderWithProviders(<ThesisDetailPage />, {
+      initialEntries: ["/theses/1"],
+      routePath: "/theses/:id",
+    });
+    await waitFor(() =>
+      expect(screen.getByText(/Snapshot #99/)).toBeInTheDocument(),
+    );
+    // Must not be rendered inside an <a> element
+    const el = screen.getByText(/Snapshot #99/);
+    expect(el.closest("a")).toBeNull();
   });
 });
