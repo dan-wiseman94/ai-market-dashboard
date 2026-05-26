@@ -7,6 +7,7 @@ const mockMarketStatus = vi.fn();
 
 vi.mock("@/hooks/useMarketStatus", () => ({ useMarketStatus: () => mockMarketStatus() }));
 vi.mock("@/hooks/useProfiles", () => ({ useProfiles: () => ({ data: [{ id: 1, name: "P", default_includes: [] }] }) }));
+vi.mock("@/hooks/useAgentPresets", () => ({ useAgentPresets: () => ({ data: [] }) }));
 vi.mock("@/hooks/useWatchlists", () => ({
   useWatchlists: () => ({ data: [{ id: 1, name: "W", symbols: [{ ticker: "SPY" }] }] }),
 }));
