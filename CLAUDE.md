@@ -30,7 +30,7 @@ Everything runs through Docker; Make targets wrap Compose.
 | `make e2e-visual-update` | Regenerate visual baselines under `e2e/visual/__screenshots__/`, then `git diff` to inspect. |
 | `make restore file=<name>` | Restore DB from `/data/backups/<name>`. Stops beat+worker, pg_restores, restarts. |
 
-Run one backend test: `docker compose exec web pytest backend/apps/<app>/tests/test_<x>.py::<test_name> -v`
+Run one backend test: `docker compose exec web pytest apps/<app>/tests/test_<x>.py::<test_name> -v` (the container WORKDIR is `/app/backend`, so test paths drop the `backend/` prefix — same reason `make lint` runs `ty check .`)
 
 Run one frontend test: `docker compose exec frontend pnpm exec vitest run src/__tests__/App.test.tsx -t "specific test name"`
 
