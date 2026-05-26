@@ -4,12 +4,20 @@ import userEvent from "@testing-library/user-event";
 import { renderWithProviders } from "./testUtils";
 import ProfilesPage from "@/pages/ProfilesPage";
 import type { TradingProfile } from "@/api/profiles";
+import type { AgentPreset } from "@/api/presets";
 
 vi.mock("@/hooks/useProfiles", () => ({
   useProfiles: vi.fn(),
   useCreateProfile: vi.fn(),
   useUpdateProfile: vi.fn(),
   useDeleteProfile: vi.fn(),
+}));
+
+vi.mock("@/hooks/useAgentPresets", () => ({
+  useAgentPresets: vi.fn(),
+  useCreatePreset: vi.fn(),
+  useUpdatePreset: vi.fn(),
+  useDeletePreset: vi.fn(),
 }));
 
 import {
@@ -19,10 +27,21 @@ import {
   useDeleteProfile,
 } from "@/hooks/useProfiles";
 
+import {
+  useAgentPresets,
+  useCreatePreset,
+  useUpdatePreset,
+  useDeletePreset,
+} from "@/hooks/useAgentPresets";
+
 const mockUseProfiles = vi.mocked(useProfiles);
 const mockUseCreateProfile = vi.mocked(useCreateProfile);
 const mockUseUpdateProfile = vi.mocked(useUpdateProfile);
 const mockUseDeleteProfile = vi.mocked(useDeleteProfile);
+const mockUseAgentPresets = vi.mocked(useAgentPresets);
+const mockUseCreatePreset = vi.mocked(useCreatePreset);
+const mockUseUpdatePreset = vi.mocked(useUpdatePreset);
+const mockUseDeletePreset = vi.mocked(useDeletePreset);
 
 const PROFILE_A: TradingProfile = {
   id: 1,
@@ -54,12 +73,36 @@ function makeDelete() {
   return mockMutate;
 }
 
+function makeCreatePreset(impl?: (body: unknown, opts?: { onSuccess?: () => void }) => void) {
+  const mockMutate = vi.fn();
+  mockMutate.mockImplementation(impl ?? ((_body, opts) => opts?.onSuccess?.()));
+  mockUseCreatePreset.mockReturnValue({ mutate: mockMutate, isPending: false } as never);
+  return mockMutate;
+}
+
+function makeUpdatePreset(impl?: (args: unknown, opts?: { onSuccess?: () => void }) => void) {
+  const mockMutate = vi.fn();
+  mockMutate.mockImplementation(impl ?? ((_args, opts) => opts?.onSuccess?.()));
+  mockUseUpdatePreset.mockReturnValue({ mutate: mockMutate, isPending: false } as never);
+  return mockMutate;
+}
+
+function makeDeletePreset() {
+  const mockMutate = vi.fn();
+  mockUseDeletePreset.mockReturnValue({ mutate: mockMutate, isPending: false } as never);
+  return mockMutate;
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   mockUseProfiles.mockReturnValue({ data: [] } as never);
+  mockUseAgentPresets.mockReturnValue({ data: [] } as never);
   makeCreate();
   makeUpdate();
   makeDelete();
+  makeCreatePreset();
+  makeUpdatePreset();
+  makeDeletePreset();
 });
 
 describe("ProfilesPage", () => {
@@ -219,5 +262,137 @@ describe("ProfilesPage", () => {
     renderWithProviders(<ProfilesPage />);
     expect(screen.getByTestId("profile-row-Swing Trader")).toBeInTheDocument();
     expect(screen.getByText("Swing Trader")).toBeInTheDocument();
+  });
+});
+
+// ---- Preset management section ----
+
+const PRESET_A: AgentPreset = {
+  id: 1,
+  name: "Morning Scan",
+  slug: "morning-scan",
+  description: "Daily morning market scan",
+  objective_template: "What are the key moves this morning?",
+  default_includes: ["quotes", "ohlc", "news"],
+  structured: false,
+  builtin: false,
+  active: true,
+  created_at: "2026-05-25T00:00:00Z",
+  updated_at: "2026-05-25T00:00:00Z",
+};
+
+const BUILTIN_PRESET: AgentPreset = {
+  id: 2,
+  name: "Options Screener",
+  slug: "options-screener",
+  description: "Built-in options scan",
+  objective_template: "Screen unusual options activity",
+  default_includes: ["chain"],
+  structured: true,
+  builtin: true,
+  active: true,
+  created_at: "2026-05-25T00:00:00Z",
+  updated_at: "2026-05-25T00:00:00Z",
+};
+
+describe("ProfilesPage – preset management", () => {
+  it("renders the 'Agent presets' heading", () => {
+    renderWithProviders(<ProfilesPage />);
+    expect(screen.getByRole("heading", { name: /agent presets/i })).toBeInTheDocument();
+  });
+
+  it("lists presets with name and includes", () => {
+    mockUseAgentPresets.mockReturnValue({ data: [PRESET_A] } as never);
+    renderWithProviders(<ProfilesPage />);
+    expect(screen.getByTestId("preset-row-Morning Scan")).toBeInTheDocument();
+    expect(screen.getByText("Morning Scan")).toBeInTheDocument();
+    expect(screen.getByText(/quotes.*ohlc.*news/)).toBeInTheDocument();
+  });
+
+  it("shows 'builtin' badge for builtin presets", () => {
+    mockUseAgentPresets.mockReturnValue({ data: [BUILTIN_PRESET] } as never);
+    renderWithProviders(<ProfilesPage />);
+    expect(screen.getByText("builtin")).toBeInTheDocument();
+  });
+
+  it("does not show 'builtin' badge for user-created presets", () => {
+    mockUseAgentPresets.mockReturnValue({ data: [PRESET_A] } as never);
+    renderWithProviders(<ProfilesPage />);
+    expect(screen.queryByText("builtin")).not.toBeInTheDocument();
+  });
+
+  it("submitting the preset form calls createPreset.mutate with the right body", async () => {
+    const user = userEvent.setup();
+    const createMutate = vi.fn();
+    mockUseCreatePreset.mockReturnValue({ mutate: createMutate, isPending: false } as never);
+
+    renderWithProviders(<ProfilesPage />);
+    // Open the preset form first
+    await user.click(screen.getByRole("button", { name: /new preset/i }));
+    await user.type(screen.getByPlaceholderText("Preset name"), "Earnings Check");
+    await user.type(
+      screen.getByPlaceholderText(/objective template/i),
+      "Any earnings surprises today?",
+    );
+    fireEvent.click(screen.getByRole("button", { name: /create preset/i }));
+
+    expect(createMutate).toHaveBeenCalledOnce();
+    const [body] = createMutate.mock.calls[0];
+    expect(body).toMatchObject({
+      name: "Earnings Check",
+      objective_template: "Any earnings surprises today?",
+      default_includes: expect.arrayContaining(["quotes"]),
+    });
+  });
+
+  it("clicking Edit on a preset populates the preset form", async () => {
+    mockUseAgentPresets.mockReturnValue({ data: [PRESET_A] } as never);
+    const user = userEvent.setup();
+    renderWithProviders(<ProfilesPage />);
+
+    // Find the edit button in the preset row
+    const presetRow = screen.getByTestId("preset-row-Morning Scan");
+    const editBtn = presetRow.querySelector("button");
+    await user.click(editBtn!);
+
+    expect(screen.getByPlaceholderText("Preset name")).toHaveValue("Morning Scan");
+    expect(screen.getByRole("button", { name: /save preset/i })).toBeInTheDocument();
+  });
+
+  it("submitting while editing a preset calls updatePreset.mutate", async () => {
+    mockUseAgentPresets.mockReturnValue({ data: [PRESET_A] } as never);
+    const createMutate = vi.fn();
+    const updateMutate = vi.fn();
+    mockUseCreatePreset.mockReturnValue({ mutate: createMutate, isPending: false } as never);
+    mockUseUpdatePreset.mockReturnValue({ mutate: updateMutate, isPending: false } as never);
+
+    const user = userEvent.setup();
+    renderWithProviders(<ProfilesPage />);
+
+    const presetRow = screen.getByTestId("preset-row-Morning Scan");
+    const editBtn = presetRow.querySelector("button");
+    await user.click(editBtn!);
+
+    fireEvent.click(screen.getByRole("button", { name: /save preset/i }));
+
+    expect(updateMutate).toHaveBeenCalledOnce();
+    expect(createMutate).not.toHaveBeenCalled();
+    const [args] = updateMutate.mock.calls[0];
+    expect(args.id).toBe(PRESET_A.id);
+  });
+
+  it("clicking Delete on a preset calls deletePreset.mutate with preset id", async () => {
+    mockUseAgentPresets.mockReturnValue({ data: [PRESET_A] } as never);
+    const delMutate = vi.fn();
+    mockUseDeletePreset.mockReturnValue({ mutate: delMutate, isPending: false } as never);
+
+    const user = userEvent.setup();
+    renderWithProviders(<ProfilesPage />);
+
+    const presetRow = screen.getByTestId("preset-row-Morning Scan");
+    const deleteBtn = presetRow.querySelectorAll("button")[1]; // second button is Delete
+    await user.click(deleteBtn!);
+
+    expect(delMutate).toHaveBeenCalledWith(PRESET_A.id);
   });
 });

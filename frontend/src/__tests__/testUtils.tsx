@@ -4,6 +4,7 @@ import type { ReactElement, ReactNode } from "react";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { vi } from "vitest";
 import { ToastProvider } from "@/hooks/useToast";
+import { Toasts } from "@/components/Toasts";
 
 export function newQueryClient(): QueryClient {
   return new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -44,7 +45,10 @@ export function renderWithProviders(
     );
     return (
       <QueryClientProvider client={client}>
-        <ToastProvider>{router}</ToastProvider>
+        <ToastProvider>
+          <Toasts />
+          {router}
+        </ToastProvider>
       </QueryClientProvider>
     );
   }
@@ -62,7 +66,10 @@ export function hookWrapper(client: QueryClient = newQueryClient()) {
   return function Wrapper({ children }: { children: ReactNode }) {
     return (
       <QueryClientProvider client={client}>
-        <ToastProvider>{children}</ToastProvider>
+        <ToastProvider>
+          <Toasts />
+          {children}
+        </ToastProvider>
       </QueryClientProvider>
     );
   };

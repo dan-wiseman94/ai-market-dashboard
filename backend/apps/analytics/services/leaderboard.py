@@ -20,7 +20,7 @@ from decimal import Decimal
 
 from django.db.models import Avg, Count, Sum
 
-from apps.market.models import OHLCBar
+from apps.market.returns import forward_return_pct
 from apps.threads.models import AIRun
 
 
@@ -57,7 +57,9 @@ def provider_leaderboard(
         primary = _primary_ticker(snap)
         if primary is None:
             continue
-        ret = _forward_return_pct(primary, run.created_at, forward_hours)
+        ret = forward_return_pct(
+            primary, run.created_at, run.created_at + timedelta(hours=forward_hours)
+        )
         if ret is None:
             continue
         returns[key].append(ret)
@@ -90,29 +92,3 @@ def _primary_ticker(snap) -> str | None:
             for key in sec.payload:
                 return str(key)
     return None
-
-
-def _forward_return_pct(
-    ticker: str,
-    at: datetime,
-    forward_hours: int,
-) -> float | None:
-    """Closest 1h bar at `at` and at `at + forward_hours`, in percent."""
-    target_end = at + timedelta(hours=forward_hours)
-    t0 = _nearest_bar_close(ticker, at)
-    t1 = _nearest_bar_close(ticker, target_end)
-    if t0 is None or t1 is None or t0 == 0:
-        return None
-    return (t1 - t0) / t0 * 100.0
-
-
-def _nearest_bar_close(ticker: str, at: datetime) -> float | None:
-    bar = (
-        OHLCBar.objects.filter(ticker=ticker, ts__lte=at + timedelta(hours=1))
-        .only("close")
-        .order_by("-ts")
-        .first()
-    )
-    if bar is None:
-        return None
-    return float(bar.close)
