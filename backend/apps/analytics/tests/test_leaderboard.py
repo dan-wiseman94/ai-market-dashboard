@@ -125,7 +125,9 @@ def test_leaderboard_groups_by_provider_model(db, profile) -> None:
 
 
 def test_leaderboard_computes_forward_return_pct(db, profile) -> None:
-    now = datetime(2026, 4, 10, 14, 30)
+    # Wed 2026-04-15 20:00 UTC = NYSE close; +1 trading session = Thu 2026-04-16 close.
+    # Bars must sit at the actual session closes so the 12h tolerance window finds them.
+    now = datetime(2026, 4, 15, 20, 0, tzinfo=UTC)
     _mk_run(
         provider="claude",
         model="claude-opus-4-7",
@@ -136,11 +138,11 @@ def test_leaderboard_computes_forward_return_pct(db, profile) -> None:
         profile=profile,
     )
     _mk_bar("AAPL", now, 100.0)
-    _mk_bar("AAPL", now + timedelta(hours=24), 110.0)
+    _mk_bar("AAPL", datetime(2026, 4, 16, 20, 0, tzinfo=UTC), 110.0)
 
     rows = provider_leaderboard(
-        start=_aware(now - timedelta(days=1)),
-        end=_aware(now + timedelta(days=1)),
+        start=now - timedelta(days=1),
+        end=now + timedelta(days=1),
         forward_hours=24,
     )
     r = next(r for r in rows if r["provider"] == "claude")
