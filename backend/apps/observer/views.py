@@ -24,13 +24,19 @@ class ObserverScheduleViewSet(viewsets.ModelViewSet):
     serializer_class = ObserverScheduleSerializer
 
     def perform_create(self, serializer):
-        cron = serializer.validated_data.pop("cron")
+        cron = serializer.validated_data.pop("cron", None)
         instance = serializer.save()
-        sync_periodic_task(instance, cron=cron)
+        if instance.fire_mode == "cron" and cron:
+            sync_periodic_task(instance, cron=cron)
 
     def perform_update(self, serializer):
         cron = serializer.validated_data.pop("cron", None)
         instance = serializer.save()
+        if instance.fire_mode != "cron":
+            # switched to / staying relative: drop any PeriodicTask
+            if instance.periodic_task:
+                delete_periodic_task(instance)
+            return
         if cron is not None or "enabled" in serializer.validated_data:
             existing_cron = cron
             if existing_cron is None and instance.periodic_task and instance.periodic_task.crontab:

@@ -5,7 +5,10 @@ from __future__ import annotations
 import json
 from collections.abc import Iterable
 
+from django.utils import timezone
+
 from apps.core.realtime import group_broadcast
+from apps.market.calendar import any_market_open, calendar_for, market_state
 from apps.market.services.chain import fetch_chain
 from apps.market.services.context import fetch_market_context
 from apps.market.services.news import fetch_news
@@ -42,6 +45,30 @@ def stamp_payload_tokens(
 
 def _pick_ticker(ohlc_ticker: str | None, watchlist_tickers: list[str]) -> str:
     return ohlc_ticker or (watchlist_tickers[0] if watchlist_tickers else "SPY")
+
+
+def _representative_tickers(
+    snap: Snapshot, watchlist_tickers: list[str], ohlc_ticker: str | None
+) -> list[str]:
+    quotes = snap.sections.filter(kind="quotes", status="done").first()
+    if quotes and isinstance(quotes.payload, dict) and quotes.payload:
+        return [str(k) for k in quotes.payload]
+    if watchlist_tickers:
+        return list(watchlist_tickers)
+    if ohlc_ticker:
+        return [ohlc_ticker]
+    return []
+
+
+def _build_market_state(tickers: list[str]) -> dict:
+    markets = {calendar_for(t) for t in tickers} or {"us_equity"}
+    states = {m: market_state(market=m).to_json() for m in sorted(markets)}
+    return {
+        "captured_at": timezone.now().isoformat(),
+        "any_open": any_market_open(tickers),
+        "markets": states,
+        "representative_tickers": list(tickers),
+    }
 
 
 def _fetch_ohlc_section(
@@ -139,6 +166,8 @@ def capture_for_existing(
             section.save()
             _broadcast(snap.id, {"event": "section_failed", "kind": kind, "error": section.error})
 
+    reps = _representative_tickers(snap, list(watchlist_tickers), ohlc_ticker)
+    snap.market_state = _build_market_state(reps)
     snap.status = "ready" if ok_count > 0 else "failed"
     snap.save()
     _broadcast(snap.id, {"event": snap.status, "snapshot_id": snap.id})

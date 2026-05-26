@@ -25,7 +25,7 @@ class NotificationSerializer(serializers.ModelSerializer):
 
 
 class ObserverScheduleSerializer(serializers.ModelSerializer):
-    cron = serializers.CharField(write_only=True)
+    cron = serializers.CharField(write_only=True, required=False)
     cron_display = serializers.SerializerMethodField()
 
     class Meta:
@@ -48,6 +48,8 @@ class ObserverScheduleSerializer(serializers.ModelSerializer):
             "last_fired_at",
             "created_at",
             "updated_at",
+            "fire_mode",
+            "close_offset_minutes",
             "cron",
             "cron_display",
         ]
@@ -73,3 +75,10 @@ class ObserverScheduleSerializer(serializers.ModelSerializer):
         except (ValueError, KeyError) as e:
             raise serializers.ValidationError(f"invalid cron expression: {e}") from e
         return value
+
+    def validate(self, attrs):
+        fire_mode = attrs.get("fire_mode") or (self.instance.fire_mode if self.instance else "cron")
+        has_existing_pt = bool(self.instance and self.instance.periodic_task)
+        if fire_mode == "cron" and not attrs.get("cron") and not has_existing_pt:
+            raise serializers.ValidationError({"cron": "cron is required for cron fire_mode"})
+        return attrs
