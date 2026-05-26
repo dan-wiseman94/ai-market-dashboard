@@ -61,6 +61,26 @@ def test_timeline_ignores_non_observer_threads(db) -> None:
     assert all(r["success"] == 0 for r in out)
 
 
+def test_capability_warning_not_counted_as_skip(db, observer_thread) -> None:
+    day = datetime(2026, 4, 10, 14, 0, tzinfo=UTC)
+    # A real cost-cap skip (no kind) -> counts as skipped.
+    cap_skip = Message.objects.create(
+        thread=observer_thread, role="system", content={"text": "cost cap"}, status="done"
+    )
+    Message.objects.filter(id=cap_skip.id).update(created_at=day)
+    # A capability warning (kind set) -> must NOT count as skipped.
+    warning = Message.objects.create(
+        thread=observer_thread,
+        role="system",
+        content={"text": "Heads up...", "kind": "capability_warning"},
+        status="done",
+    )
+    Message.objects.filter(id=warning.id).update(created_at=day)
+    out = observer_timeline(start=day - timedelta(days=1), end=day + timedelta(days=1))
+    total_skipped = sum(r["skipped"] for r in out)
+    assert total_skipped == 1
+
+
 def test_timeline_is_zero_filled_across_window(db) -> None:
     now = datetime(2026, 4, 10, tzinfo=UTC)
     out = observer_timeline(
