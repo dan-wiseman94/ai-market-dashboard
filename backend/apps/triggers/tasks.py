@@ -184,7 +184,11 @@ def _do_fire(*, trigger_id: int, matched_values: dict) -> None:
     user_msg = Message.objects.create(
         thread=thread,
         role="user",
-        content={"text": serialize_for_ai(snap, provider=provider_name)},
+        content={
+            "text": serialize_for_ai(
+                snap, provider=provider_name, model=trigger.profile.default_model
+            )
+        },
         snapshot_ref=snap,
         status="done",
     )

@@ -31,6 +31,9 @@ export const fetchThread = (id: number) => apiGet<Thread>(`/api/threads/${id}/`)
 
 export const createThread = (body: {
   kind: "consult" | "chat"; profile_id?: number; pinned_snapshot_id?: number; title?: string;
+  // When true alongside a pinned snapshot, the backend immediately streams an AI
+  // reply to the snapshot (the "ask" half of "Capture + ask").
+  auto_reply?: boolean;
 }) => apiPost<Thread>("/api/threads/", body);
 
 export const sendMessage = (

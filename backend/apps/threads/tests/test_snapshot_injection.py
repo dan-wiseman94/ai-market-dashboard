@@ -108,6 +108,55 @@ def test_thread_create_without_pinned_snapshot_has_no_synthetic_message(
 
 
 @pytest.mark.django_db
+def test_thread_create_budgets_payload_for_profile_model(profile) -> None:
+    """The synthetic snapshot message must be budgeted for the profile's model,
+    not the 40k fallback. A snapshot that fits Claude's 150k budget but exceeds
+    40k must reach the model whole — regression guard for serialize_for_ai being
+    called without provider/model (which silently pruned large snapshots).
+    """
+    from apps.snapshots.serializer import serialize_for_ai
+
+    # ~2500 tickers renders to >40k tokens but well under Claude's 150k budget.
+    big_quotes = {
+        f"TKR{i:04d}": {
+            "last": 521.30,
+            "pct_change": 0.42,
+            "bid": 521.28,
+            "ask": 521.31,
+            "volume": 1_234_567,
+            "high": 522.0,
+            "low": 520.1,
+        }
+        for i in range(2500)
+    }
+    snap = Snapshot.objects.create(
+        profile=profile,
+        objective="Wide scan",
+        status="ready",
+        includes=["quotes"],
+        source="manual",
+    )
+    SnapshotSection.objects.create(snapshot=snap, kind="quotes", status="done", payload=big_quotes)
+
+    # Teeth: the old default-arg call (40k budget) prunes the quotes section.
+    assert "_(pruned for token budget" in serialize_for_ai(snap)
+
+    client = APIClient()
+    resp = client.post(
+        "/api/threads/",
+        data={"kind": "consult", "profile_id": profile.id, "pinned_snapshot_id": snap.id},
+        format="json",
+    )
+    assert resp.status_code == 201, resp.content
+    thread = Thread.objects.get(id=resp.json()["id"])
+    first = Message.objects.filter(thread=thread, role="user").get()
+    text = first.content["text"]
+    # profile defaults to Claude (150k) → nothing pruned, every ticker present.
+    assert "_(pruned for token budget" not in text
+    assert "TKR0000" in text and "TKR2499" in text
+
+
+@pytest.mark.django_db
 def test_thread_create_with_unknown_snapshot_id_no_crash(profile) -> None:
     client = APIClient()
     resp = client.post(
