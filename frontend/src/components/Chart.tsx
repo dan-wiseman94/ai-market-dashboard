@@ -1,11 +1,14 @@
 import { useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { createChart, IChartApi, ISeriesApi } from "lightweight-charts";
+import { useTheme, type ResolvedTheme } from "@/hooks/useTheme";
+import { lightweightLayout } from "@/lib/chartTheme";
 
 export interface ChartProps {
   ticker: string;
   timeframe: string;
   bars: number;
+  theme?: ResolvedTheme;
   onReady?: () => void;
 }
 
@@ -24,10 +27,13 @@ interface OHLCResponse {
   bars: OHLCBar[];
 }
 
-export default function Chart({ ticker, timeframe, bars, onReady }: ChartProps) {
+export default function Chart({ ticker, timeframe, bars, theme, onReady }: ChartProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
+
+  const { resolved } = useTheme();
+  const activeTheme = theme ?? resolved;
 
   const { data, isError } = useQuery<OHLCResponse>({
     queryKey: ["ohlc", ticker, timeframe, bars],
@@ -45,8 +51,7 @@ export default function Chart({ ticker, timeframe, bars, onReady }: ChartProps) 
     if (!containerRef.current || chartRef.current) return;
     chartRef.current = createChart(containerRef.current, {
       autoSize: true,
-      layout: { background: { color: "#0a0a0a" }, textColor: "#d0d0d0" },
-      grid: { vertLines: { color: "#1a1a1a" }, horzLines: { color: "#1a1a1a" } },
+      ...lightweightLayout(activeTheme),
     });
     seriesRef.current = chartRef.current.addCandlestickSeries();
     return () => {
@@ -54,7 +59,12 @@ export default function Chart({ ticker, timeframe, bars, onReady }: ChartProps) 
       chartRef.current = null;
       seriesRef.current = null;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    chartRef.current?.applyOptions(lightweightLayout(activeTheme));
+  }, [activeTheme]);
 
   useEffect(() => {
     if (data?.bars?.length && seriesRef.current) {

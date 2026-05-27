@@ -38,19 +38,19 @@ export default function FiringsTable({ triggerId }: { triggerId: number }) {
             <td className="py-2">{describeValues(f.matched_values)}</td>
             <td className="py-2">
               {f.snapshot_id
-                ? <Link to={`/snapshots/${f.snapshot_id}`} className="text-indigo-400">#{f.snapshot_id}</Link>
+                ? <Link to={`/snapshots/${f.snapshot_id}`} className="text-indigo-700 dark:text-indigo-400">#{f.snapshot_id}</Link>
                 : <span className="text-neutral-600">—</span>}
             </td>
             <td className="py-2">
               {f.thread_id
-                ? <Link to={`/threads/${f.thread_id}`} className="text-indigo-400">#{f.thread_id}</Link>
+                ? <Link to={`/threads/${f.thread_id}`} className="text-indigo-700 dark:text-indigo-400">#{f.thread_id}</Link>
                 : <span className="text-neutral-600">—</span>}
             </td>
             <td className="py-2">
               {f.cost_capped
-                ? <span className="text-amber-400 text-xs">cost-capped</span>
-                : f.thread_id ? <span className="text-emerald-400 text-xs">fired</span>
-                : <span className="text-rose-400 text-xs">error</span>}
+                ? <span className="text-amber-700 dark:text-amber-400 text-xs">cost-capped</span>
+                : f.thread_id ? <span className="text-emerald-700 dark:text-emerald-400 text-xs">fired</span>
+                : <span className="text-rose-700 dark:text-rose-400 text-xs">error</span>}
             </td>
           </tr>
         ))}

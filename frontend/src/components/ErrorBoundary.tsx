@@ -19,7 +19,7 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, State> {
     if (this.state.error) {
       return (
         <div className="p-8 text-center">
-          <h2 className="text-lg font-medium text-rose-300">Something went wrong.</h2>
+          <h2 className="text-lg font-medium text-rose-700 dark:text-rose-300">Something went wrong.</h2>
           <p className="mt-2 text-sm text-slate-400">{this.state.error.message}</p>
           <button
             className="mt-4 px-3 py-1 bg-slate-700 rounded text-slate-100"

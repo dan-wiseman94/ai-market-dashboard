@@ -40,7 +40,7 @@ export default function WatchlistTable({ symbols, onRemove }: Props) {
               <td className="py-2 tabular-nums text-slate-400">{q?.volume?.toLocaleString() ?? "—"}</td>
               <td className="py-2">
                 {onRemove && (
-                  <button onClick={() => onRemove(s.id)} className="text-rose-400 hover:underline text-xs">
+                  <button onClick={() => onRemove(s.id)} className="text-rose-700 dark:text-rose-400 hover:underline text-xs">
                     Remove
                   </button>
                 )}

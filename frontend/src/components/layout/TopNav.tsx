@@ -2,6 +2,7 @@ import { NavLink } from "react-router-dom";
 import NotificationBell from "@/components/NotificationBell";
 import MarketStatusBadge from "@/components/MarketStatusBadge";
 import ConnectionStatusDot from "./ConnectionStatusDot";
+import ThemeToggle from "@/components/ThemeToggle";
 
 const LINKS: Array<[string, string, string]> = [
   ["/", "Dashboard", "g d"],
@@ -106,6 +107,7 @@ export default function TopNav() {
           <span className="hidden md:inline-flex items-center gap-1.5">
             <ConnectionStatusDot />
           </span>
+          <ThemeToggle />
           <NotificationBell />
         </div>
       </div>
