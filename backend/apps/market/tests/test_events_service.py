@@ -118,3 +118,47 @@ def test_fetch_macro_falls_back_to_seed_when_endpoint_empty():
     assert len(out) == 1
     assert out[0].kind == "fomc"
     assert out[0].source == "seed"
+
+
+@pytest.mark.django_db
+def test_upcoming_events_reads_store_and_computes_days_until():
+    from django.utils import timezone
+
+    MarketEvent.objects.create(
+        source="finnhub",
+        external_id="EARN:NVDA:x",
+        kind="earnings",
+        ticker="NVDA",
+        title="NVDA earnings",
+        event_time=timezone.now() + timedelta(days=3),
+        when_hint="amc",
+        impact="high",
+        detail={"eps_est": 0.84},
+    )
+    MarketEvent.objects.create(
+        source="finnhub",
+        external_id="CPI:y",
+        kind="cpi",
+        title="CPI",
+        event_time=timezone.now() + timedelta(days=6),
+        impact="high",
+    )
+    out = events.upcoming_events(["NVDA"], within_days=14)
+    assert [e["ticker"] for e in out["earnings"]] == ["NVDA"]
+    assert out["earnings"][0]["days_until"] == 3
+    assert [m["kind"] for m in out["macro"]] == ["cpi"]
+
+
+@pytest.mark.django_db
+def test_upcoming_events_excludes_macro_when_disabled():
+    from django.utils import timezone
+
+    MarketEvent.objects.create(
+        source="s",
+        external_id="CPI:z",
+        kind="cpi",
+        title="CPI",
+        event_time=timezone.now() + timedelta(days=2),
+    )
+    out = events.upcoming_events([], include_macro=False)
+    assert out["macro"] == []
