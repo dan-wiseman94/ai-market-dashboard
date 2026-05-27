@@ -1,48 +1,128 @@
-"""Threads — list + create plain + pinned + stop edge."""
+"""Threads — the *actual* chat flow: list → open → send → stream → render.
+
+These tests drive the real composer end-to-end against the ``MOCK_EXTERNAL``
+overlay. On the **default** scenario the AI provider streams ``"Mocked "`` +
+``"response"`` from the worker, so a working send paints ``"Mocked response"``
+into the assistant bubble. The two regression tests below would have caught the
+bugs the old assertion-free smoke tests let through:
+
+  * **"Send did nothing"** — the typed user turn never reaches the transcript.
+  * **"Response never rendered"** — the assistant stream never paints.
+
+Each send-flow test creates its **own** fresh thread so accumulated history in
+the shared (non-rolled-back) e2e DB can't produce strict-mode locator clashes
+on ``"Mocked response"``.
+
+NOTE on scenario-dependent streaming (stop / thinking / tool-use): the scenario
+header sets a ContextVar in the *web* process, but streaming runs in the
+*worker* process, which never sees it (apps/core/mocks/__init__.py uses a plain
+ContextVar; nothing repopulates it in the worker). Until that propagation gap is
+closed, the worker always streams the default response, so a slow-stream "stop
+mid-stream" UI assertion can't be made non-flaky — see the skipped test below.
+"""
 
 from __future__ import annotations
 
 import pytest
 from playwright.sync_api import expect
 
+from e2e.pages.thread_detail import ThreadDetailPage
 from e2e.pages.threads import ThreadsListPage
 
 
-@pytest.mark.integration
-@pytest.mark.ui
-def test_threads_list_pagination_and_filter(page, frontend_base_url, threads) -> None:
-    p = ThreadsListPage(page, frontend_base_url)
-    p.go()
-    expect(page.locator("body")).to_be_visible()
-
-
-@pytest.mark.integration
-@pytest.mark.ui
-def test_thread_create_plain_and_send(page, frontend_base_url, minimal) -> None:
-    p = ThreadsListPage(page, frontend_base_url)
-    p.go()
-    expect(page.locator("body")).to_be_visible()
-
-
-@pytest.mark.integration
-@pytest.mark.ui
-def test_thread_create_pinned_to_snapshot(page, frontend_base_url, snapshots) -> None:
-    from apps.snapshots.models import Snapshot
-
-    snap = Snapshot.objects.filter(status="ready").first()
-    if snap is None:
-        pytest.skip("no ready snapshot in seed")
-    page.goto(f"{frontend_base_url}/threads/new?pinned_snapshot={snap.id}")
-    expect(page.locator("body")).to_be_visible()
-
-
-@pytest.mark.integration
-@pytest.mark.ui
-def test_thread_stop_midstream(page, frontend_base_url, threads, scenario) -> None:
-    """Use the slow ``thinking-heavy`` scenario to ensure there's a window for ``stop``."""
-    scenario.use("thinking-heavy")
+def _fresh_chat_thread(title: str) -> int:
+    """Create an isolated chat thread for one test; return its id."""
+    from apps.profiles.models import TradingProfile
     from apps.threads.models import Thread
 
-    t = Thread.objects.filter(title="E2E plain thread").first()
-    page.goto(f"{frontend_base_url}/threads/{t.id}")
-    expect(page.locator("body")).to_be_visible()
+    profile = TradingProfile.objects.filter(name="E2E Default").first()
+    t = Thread.objects.create(title=title, profile=profile, kind="chat")
+    return t.id
+
+
+@pytest.mark.integration
+@pytest.mark.ui
+def test_threads_list_shows_seeded_rows(page, frontend_base_url, threads) -> None:
+    """The list renders actual seeded threads — not merely a non-empty <body>."""
+    p = ThreadsListPage(page, frontend_base_url)
+    p.go()
+    expect(page.get_by_text("E2E plain thread")).to_be_visible(timeout=10_000)
+
+
+@pytest.mark.integration
+@pytest.mark.ui
+def test_thread_send_renders_user_turn_and_streamed_reply(
+    page, frontend_base_url, threads
+) -> None:
+    """Regression: typing + Send must (1) post the turn and (2) render the reply.
+
+    Guards "Send did nothing" and "Response never rendered" together. The
+    user turn is seeded into the transcript by the post-``message_done``
+    refetch, so we wait for the assistant reply (the done signal) first, then
+    assert the user's text is present.
+    """
+    tid = _fresh_chat_thread("E2E send-flow happy path")
+    detail = ThreadDetailPage(page, frontend_base_url)
+    detail.go(tid)
+
+    # Page mounted past "Loading thread…" and the composer is interactive.
+    expect(detail.compose).to_be_visible(timeout=10_000)
+
+    detail.send("What do you see in this tape?")
+
+    # (2) Assistant stream reached the UI and painted to completion.
+    detail.wait_for_done(timeout=20_000)
+    # (1) The user's turn is in the transcript (proves POST /send/ fired + refetch).
+    expect(page.get_by_text("What do you see in this tape?")).to_be_visible(timeout=10_000)
+
+
+@pytest.mark.integration
+@pytest.mark.ui
+def test_thread_send_via_enter_key_streams_reply(page, frontend_base_url, threads) -> None:
+    """The composer is a <form>; pressing Enter must submit it (not just the button)."""
+    tid = _fresh_chat_thread("E2E send-flow enter key")
+    detail = ThreadDetailPage(page, frontend_base_url)
+    detail.go(tid)
+
+    expect(detail.compose).to_be_visible(timeout=10_000)
+    detail.compose.fill("ping")
+    detail.compose.press("Enter")
+
+    detail.wait_for_done(timeout=20_000)
+
+
+@pytest.mark.integration
+@pytest.mark.ui
+def test_thread_pinned_snapshot_context_renders(page, frontend_base_url, threads) -> None:
+    """A snapshot-pinned thread renders its synthetic first turn, not a blank/Loading page."""
+    from apps.threads.models import Thread
+
+    pinned = Thread.objects.filter(title="E2E pinned thread").first()
+    first_msg = pinned.messages.order_by("id").first() if pinned else None
+    if first_msg is None:
+        pytest.skip("pinned thread has no synthetic message (seed has no ready snapshot)")
+
+    detail = ThreadDetailPage(page, frontend_base_url)
+    detail.go(pinned.id)
+
+    # The synthetic snapshot turn must be in the DOM (not stuck on "Loading thread…").
+    expect(detail.message(first_msg.id)).to_be_visible(timeout=10_000)
+    expect(page.get_by_text("Loading thread")).to_have_count(0)
+
+
+@pytest.mark.integration
+@pytest.mark.ui
+@pytest.mark.skip(
+    reason="Blocked by scenario→worker propagation gap: slow-stream scenarios "
+    "(thinking-heavy) don't reach the worker, so there is no reliable mid-stream "
+    "window to exercise Stop. Re-enable once the worker honors X-E2E-Scenario."
+)
+def test_thread_stop_midstream_halts(page, frontend_base_url, threads, scenario) -> None:
+    scenario.use("thinking-heavy")
+    tid = _fresh_chat_thread("E2E stop midstream")
+    detail = ThreadDetailPage(page, frontend_base_url)
+    detail.go(tid)
+    detail.send("think hard about this")
+    expect(detail.stop_btn).to_be_visible(timeout=15_000)
+    detail.stop()
+    expect(detail.stop_btn).to_be_hidden(timeout=15_000)
