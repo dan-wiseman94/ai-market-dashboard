@@ -7,7 +7,7 @@ help: ## Show this help
 	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-18s\033[0m %s\n", $$1, $$2}'
 
 .PHONY: dev
-dev: ## Start dev stack with hot reload
+dev: ## Start dev stack with hot reload (and storybook)
 	$(COMPOSE) --profile dev up --watch
 
 .PHONY: up
@@ -50,8 +50,8 @@ test-cov: ## Run frontend tests with v8 coverage
 	$(COMPOSE) exec frontend pnpm run test:cov
 
 .PHONY: storybook
-storybook: ## Serve Storybook from the frontend container on :6006
-	$(COMPOSE) exec frontend pnpm run storybook
+storybook: ## Start just the Storybook service on :6006 (make dev already starts it)
+	$(COMPOSE) --profile dev up storybook
 
 .PHONY: test-storybook
 test-storybook: ## Run Storybook stories as browser tests (needs chromium in the frontend image)
