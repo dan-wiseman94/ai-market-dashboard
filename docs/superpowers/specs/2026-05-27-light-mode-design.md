@@ -37,7 +37,11 @@ Enumerating the codebase during planning revealed the component-theming surface 
 
 - **~201 raw `slate-*` / `neutral-*` color-class usages** (analytics cards, `CommandPalette`, `ShortcutHelpDialog`, `EmptyState`, `ErrorBoundary`, `Skeleton`, `ThesisBadges`, …) bypass the token system and would stay dark. **Fix centrally:** alias the `slate` and `neutral` Tailwind color scales to `var(--ink-*)` in `tailwind.config.ts` — exactly how `ink`/`copper`/`gain`/`loss` are already defined. Zero component edits; dark mode also becomes more token-consistent. Opacity modifiers on these var-based colors already work in this repo (`TopNav` uses `bg-copper-500/0 group-hover:bg-copper-500/20`), so `bg-slate-700/50` etc. alias cleanly.
 - **Inline `style={{…}}` hex** in `NewsFeed`, `OptionChainTable`, `MarketTickerPage` (container) can't be reached by config aliasing → manual token conversion. (`RenderChart` stays dark per §6.)
-- **Chromatic state colors** (`emerald`/`rose`/`amber`/`indigo`/`violet`): the dark-tinted alert/badge banners (`bg-{amber,red,emerald,violet}-950/40 text-*-200`) on `SnapshotComposerPage` and `ThreadDetailPage` would look broken on paper. Because the new `dark`/`light` class drives Tailwind's existing `darkMode: "class"`, these are fixed with **light-base + `dark:` overrides**. Plain chromatic buttons/links (`bg-emerald-600`, `text-rose-400` on secondary Trigger/Watchlist pages) remain legible on both themes and are an **accepted limitation / follow-up** to keep this pass bounded.
+- **Chromatic state colors** (`emerald`/`rose`/`amber`/`indigo`/`violet`): handled in full (decision 2026-05-27). The new `dark`/`light` class drives Tailwind's existing `darkMode: "class"`, so each is fixed with a **light base + `dark:` override** that preserves the current dark appearance exactly:
+  - Dark-tinted alert/badge banners (`bg-{amber,red,emerald,violet}-950/40 text-*-200`) on `SnapshotComposerPage` / `ThreadDetailPage` → light tint + `dark:` original.
+  - Low-contrast chromatic **text** (`text-{c}-300/400` on Triggers / Watchlists / Thesis / Cost pages) → darker light base (`text-{c}-700`) + `dark:` original.
+  - `text-white` foregrounds on light surfaces (active tabs in `TriggerEditorPage`) → `text-ink-900 dark:text-white`.
+  - Colored **fill buttons** (`bg-emerald-600`, `bg-indigo-600`) are intentionally retained — they read correctly on both themes, and recoloring them to copper would be a brand change beyond light-mode scope.
 
 ## Approach (and rejected alternatives)
 
