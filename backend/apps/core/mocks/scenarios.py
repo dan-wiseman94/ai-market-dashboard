@@ -107,6 +107,14 @@ SCENARIOS: dict[str, dict[str, str]] = {
         "finnhub": "ok",
         "files": "ok",
     },
+    "slow-stream": {
+        "claude": "stream_slow",
+        "openai": "stream_slow",
+        "local": "stream_slow",
+        "schwab": "ok",
+        "finnhub": "ok",
+        "files": "ok",
+    },
     "structured-observation": {
         "claude": "structured_observation_report",
         "openai": "stream_mocked_response",

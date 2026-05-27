@@ -86,6 +86,25 @@ class WsClient:
             if _event_name(e) == type_:
                 return e
 
+    async def wait_for_count(self, type_: str, n: int, timeout: float = 20.0) -> list[dict]:
+        """Wait until at least ``n`` events of ``type_`` have arrived; return all matches.
+
+        ``wait_for_event`` always returns the *first* cached match, so it can't
+        collect distinct events (e.g. the two ``cost`` events of a Compare run);
+        poll the accumulating buffer instead.
+        """
+        deadline = asyncio.get_event_loop().time() + timeout
+        while True:
+            matches = self.events_of(type_)
+            if len(matches) >= n:
+                return matches
+            if deadline - asyncio.get_event_loop().time() <= 0:
+                raise TimeoutError(
+                    f"received {len(matches)}/{n} event(s) of type {type_!r} within "
+                    f"{timeout}s; received types={[_event_name(e) for e in self._events]}"
+                )
+            await asyncio.sleep(0.2)
+
     def events_of(self, type_: str) -> list[dict]:
         return [e for e in self._events if _event_name(e) == type_]
 
@@ -99,7 +118,7 @@ class WsClient:
             else:
                 raise AssertionError(
                     f"expected type {t!r} not found after previous matches; "
-                    f"got {[e.get('type') for e in self._events]}"
+                    f"got {[_event_name(e) for e in self._events]}"
                 )
 
     async def send_json(self, payload: dict) -> None:
