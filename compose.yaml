@@ -148,6 +148,34 @@ services:
       - frontend_node_modules:/app/node_modules
     ports:
       - "127.0.0.1:5173:5173"
+    develop:
+      watch:
+        - action: sync
+          path: ./frontend
+          target: /app
+          ignore:
+            - node_modules/
+
+  # Storybook dev server for the component primitives, started alongside the rest
+  # of the stack by `make dev` (which passes `--profile dev`). Reuses the frontend
+  # image/volumes — sharing the `frontend_node_modules` volume so it sees the same
+  # installed deps — but runs the `storybook` script instead of Vite, and owns host
+  # 127.0.0.1:6006. Gated behind the `dev` profile (like `tls-proxy`) so it never
+  # runs in the prod or e2e overlays.
+  storybook:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    user: "node"
+    profiles: ["dev"]
+    env_file: .env
+    environment:
+      CI: "true"
+    command: ["pnpm", "run", "storybook"]
+    volumes:
+      - ./frontend:/app
+      - frontend_node_modules:/app/node_modules
+    ports:
       - "127.0.0.1:6006:6006"
     develop:
       watch:
