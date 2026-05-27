@@ -1,4 +1,5 @@
 import MarketContextStrip from "@/components/MarketContextStrip";
+import UpcomingEvents from "@/components/UpcomingEvents";
 import PositionsTable from "@/components/PositionsTable";
 import CostChip from "@/components/CostChip";
 import RecentTriggersCard from "@/components/RecentTriggersCard";
@@ -94,9 +95,12 @@ export default function Dashboard() {
       <section className="mb-10 ledger-reveal" style={{ animationDelay: "220ms" }}>
         <div className="flex items-baseline justify-between mb-3">
           <h2 className="ledger-eyebrow">Market context</h2>
-          <Link to="/market/$SPX" className="font-mono text-[10px] text-ink-500 hover:text-copper-300 transition-colors uppercase tracking-wider">
-            Tickers →
-          </Link>
+          <div className="flex items-center gap-4">
+            <UpcomingEvents />
+            <Link to="/market/$SPX" className="font-mono text-[10px] text-ink-500 hover:text-copper-300 transition-colors uppercase tracking-wider">
+              Tickers →
+            </Link>
+          </div>
         </div>
         <MarketContextStrip />
       </section>
