@@ -216,3 +216,52 @@ def fetch_macro(*, ahead_days: int = 45) -> list[MarketEvent]:
     if not upserted:
         upserted = _upsert_macro(SEED_MACRO_EVENTS, source="seed")
     return upserted
+
+
+MACRO_KINDS = ["fomc", "cpi", "nfp", "pce", "gdp"]
+
+
+def _serialize_event(e: MarketEvent, today) -> dict:
+    return {
+        "kind": e.kind,
+        "ticker": e.ticker,
+        "title": e.title,
+        "event_time": e.event_time.isoformat(),
+        "days_until": (e.event_time.date() - today).days,
+        "when_hint": e.when_hint,
+        "impact": e.impact,
+        "detail": e.detail,
+    }
+
+
+def upcoming_events(
+    tickers: list[str], *, within_days: int = 14, include_macro: bool = True
+) -> dict:
+    """Read upcoming events from the store. Best-effort on-demand earnings fill for cold tickers."""
+    from django.utils import timezone
+
+    now = timezone.now()
+    today = now.date()
+    horizon = now + timedelta(days=within_days)
+    tickers = [t.upper() for t in tickers if t]
+
+    for t in tickers:
+        if not MarketEvent.objects.filter(kind="earnings", ticker=t, event_time__gte=now).exists():
+            try:
+                fetch_earnings([t])
+            except Exception as exc:
+                log.warning("market.events.ondemand_fill_failed %s: %s", t, exc)
+
+    earnings_qs = MarketEvent.objects.filter(
+        kind="earnings", ticker__in=tickers, event_time__gte=now, event_time__lte=horizon
+    ).order_by("event_time")
+    earnings = [_serialize_event(e, today) for e in earnings_qs]
+
+    macro = []
+    if include_macro:
+        macro_qs = MarketEvent.objects.filter(
+            kind__in=MACRO_KINDS, event_time__gte=now, event_time__lte=horizon
+        ).order_by("event_time")
+        macro = [_serialize_event(e, today) for e in macro_qs]
+
+    return {"earnings": earnings, "macro": macro}
