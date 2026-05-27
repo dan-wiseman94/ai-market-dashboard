@@ -20,6 +20,18 @@ vi.mock("@/hooks/useAgentPresets", () => ({
   useDeletePreset: vi.fn(),
 }));
 
+const AI_MODELS = {
+  models: [
+    { id: "claude-sonnet-4-6", name: "Claude Sonnet 4.6", provider: "claude",
+      input_per_mtok: 3, output_per_mtok: 15, cached_per_mtok: 0.3, context_window: 200000, supports_vision: true },
+    { id: "claude-opus-4-7", name: "Claude Opus 4.7", provider: "claude",
+      input_per_mtok: 15, output_per_mtok: 75, cached_per_mtok: 1.5, context_window: 200000, supports_vision: true },
+    { id: "gpt-5", name: "GPT-5", provider: "openai",
+      input_per_mtok: 5, output_per_mtok: 20, cached_per_mtok: 0.5, context_window: 300000, supports_vision: true },
+  ],
+};
+vi.mock("@/hooks/useAiModels", () => ({ useAiModels: () => ({ data: AI_MODELS }) }));
+
 import {
   useProfiles,
   useCreateProfile,
@@ -255,6 +267,47 @@ describe("ProfilesPage", () => {
 
     await user.click(screen.getByRole("button", { name: /delete/i }));
     expect(delMutate).toHaveBeenCalledWith(PROFILE_A.id);
+  });
+
+  it("model selection is a dropdown of catalog models, not a text input", async () => {
+    const user = userEvent.setup();
+    const createMutate = vi.fn();
+    mockUseCreateProfile.mockReturnValue({ mutate: createMutate, isPending: false } as never);
+
+    renderWithProviders(<ProfilesPage />);
+
+    // Catalog models render as <option>s in a combobox (dropdown)
+    expect(screen.getByRole("option", { name: "Claude Sonnet 4.6" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Claude Opus 4.7" })).toBeInTheDocument();
+
+    // Selecting a different model feeds through to the submitted body
+    const modelSelect = screen.getByDisplayValue("Claude Sonnet 4.6");
+    await user.selectOptions(modelSelect, "claude-opus-4-7");
+    await user.type(screen.getByPlaceholderText("Profile name"), "Deep Diver");
+    fireEvent.click(screen.getByRole("button", { name: /create/i }));
+
+    const [body] = createMutate.mock.calls[0];
+    expect(body).toMatchObject({ default_model: "claude-opus-4-7" });
+  });
+
+  it("switching provider resets the model to that provider's first catalog model", async () => {
+    const user = userEvent.setup();
+    const createMutate = vi.fn();
+    mockUseCreateProfile.mockReturnValue({ mutate: createMutate, isPending: false } as never);
+
+    renderWithProviders(<ProfilesPage />);
+
+    // Default is claude/claude-sonnet-4-6; switch provider to OpenAI
+    await user.selectOptions(screen.getByLabelText("Default provider"), "openai");
+
+    // Model dropdown now reflects the OpenAI catalog, not the stale claude model
+    expect(screen.getByDisplayValue("GPT-5")).toBeInTheDocument();
+
+    await user.type(screen.getByPlaceholderText("Profile name"), "Generalist");
+    fireEvent.click(screen.getByRole("button", { name: /create/i }));
+
+    const [body] = createMutate.mock.calls[0];
+    expect(body).toMatchObject({ default_provider: "openai", default_model: "gpt-5" });
   });
 
   it("renders existing profiles in a list", () => {

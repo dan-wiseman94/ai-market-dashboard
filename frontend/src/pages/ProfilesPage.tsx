@@ -7,6 +7,8 @@ import type { AgentPreset } from "@/api/presets";
 import {
   useAgentPresets, useCreatePreset, useDeletePreset, useUpdatePreset,
 } from "@/hooks/useAgentPresets";
+import ModelSelect from "@/components/settings/ModelSelect";
+import { useAiModels } from "@/hooks/useAiModels";
 
 const SECTION_OPTIONS = ["quotes", "ohlc", "positions", "breadth", "notes"] as const;
 const PRESET_SECTION_OPTIONS = ["quotes", "positions", "breadth", "ohlc", "news", "chain", "image"] as const;
@@ -47,6 +49,7 @@ export default function ProfilesPage() {
   const create = useCreateProfile();
   const update = useUpdateProfile();
   const del = useDeleteProfile();
+  const { data: aiModels } = useAiModels();
   const [editing, setEditing] = useState<TradingProfile | null>(null);
   const [draft, setDraft] = useState<Draft>(BLANK_DRAFT);
 
@@ -128,22 +131,29 @@ export default function ProfilesPage() {
             ))}
           </div>
         </div>
-        <div className="flex gap-2">
-          <input
-            value={draft.default_model}
-            onChange={(e) => setDraft({ ...draft, default_model: e.target.value })}
-            placeholder="claude-sonnet-4-6"
-            className="flex-1 px-3 py-1.5 rounded bg-slate-900 border border-slate-700"
-          />
+        <div className="flex gap-2 items-start">
           <select
+            aria-label="Default provider"
             value={draft.default_provider}
-            onChange={(e) => setDraft({ ...draft, default_provider: e.target.value })}
+            onChange={(e) => {
+              const provider = e.target.value;
+              const firstModel =
+                aiModels?.models?.find((m) => m.provider === provider)?.id ?? "";
+              setDraft({ ...draft, default_provider: provider, default_model: firstModel });
+            }}
             className="px-3 py-1.5 rounded bg-slate-900 border border-slate-700"
           >
             <option value="claude">Claude</option>
             <option value="openai">OpenAI</option>
             <option value="local">Local</option>
           </select>
+          <div className="flex-1">
+            <ModelSelect
+              provider={draft.default_provider}
+              value={draft.default_model}
+              onChange={(model) => setDraft({ ...draft, default_model: model })}
+            />
+          </div>
         </div>
         <div className="flex gap-2">
           <button className="px-3 py-1.5 rounded bg-emerald-600 hover:bg-emerald-500">
