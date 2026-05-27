@@ -1,5 +1,10 @@
-import { describe, expect, it } from "vitest";
-import { createSnapshot, fetchSnapshot, fetchSnapshotDiff } from "@/api/snapshots";
+import { describe, expect, it, vi } from "vitest";
+import {
+  createSnapshot,
+  fetchSnapshot,
+  fetchSnapshotDiff,
+  waitForSnapshotReady,
+} from "@/api/snapshots";
 import { ApiError } from "@/api/client";
 import { mockApi, mockApiError } from "../testUtils";
 
@@ -126,6 +131,43 @@ describe("api/snapshots", () => {
       const promise = fetchSnapshotDiff(42);
       await expect(promise).rejects.toBeInstanceOf(ApiError);
       await expect(promise).rejects.toMatchObject({ status: 500, code: "server_error" });
+    });
+  });
+
+  describe("waitForSnapshotReady", () => {
+    // Capture runs asynchronously in a Celery worker, so createSnapshot returns
+    // status="pending". This helper polls until the snapshot reaches a terminal
+    // status before callers pin it to a thread (which 400s on a non-ready snap).
+    it("polls until status flips to ready and resolves with the ready snapshot", async () => {
+      const fetch = vi
+        .fn()
+        .mockResolvedValueOnce({ ...snapshotFixture, status: "pending" })
+        .mockResolvedValueOnce({ ...snapshotFixture, status: "pending" })
+        .mockResolvedValueOnce({ ...snapshotFixture, status: "ready" });
+      const res = await waitForSnapshotReady(42, { intervalMs: 0, fetch });
+      expect(res.status).toBe("ready");
+      expect(fetch).toHaveBeenCalledTimes(3);
+      expect(fetch).toHaveBeenCalledWith(42);
+    });
+
+    it("resolves with a single fetch when already ready", async () => {
+      const fetch = vi.fn().mockResolvedValue({ ...snapshotFixture, status: "ready" });
+      const res = await waitForSnapshotReady(42, { intervalMs: 0, fetch });
+      expect(res.status).toBe("ready");
+      expect(fetch).toHaveBeenCalledTimes(1);
+    });
+
+    it("throws ApiError when capture fails", async () => {
+      const fetch = vi.fn().mockResolvedValue({ ...snapshotFixture, status: "failed" });
+      const promise = waitForSnapshotReady(42, { intervalMs: 0, fetch });
+      await expect(promise).rejects.toBeInstanceOf(ApiError);
+      await expect(promise).rejects.toMatchObject({ code: "snapshot_failed" });
+    });
+
+    it("throws ApiError when capture does not finish before the timeout", async () => {
+      const fetch = vi.fn().mockResolvedValue({ ...snapshotFixture, status: "pending" });
+      const promise = waitForSnapshotReady(42, { intervalMs: 0, timeoutMs: 0, fetch });
+      await expect(promise).rejects.toMatchObject({ code: "snapshot_timeout" });
     });
   });
 });

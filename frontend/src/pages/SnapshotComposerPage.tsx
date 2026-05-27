@@ -1,5 +1,7 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { ApiError } from "@/api/client";
+import { waitForSnapshotReady } from "@/api/snapshots";
 import SnapshotSectionPicker from "@/components/SnapshotSectionPicker";
 import { useProfiles } from "@/hooks/useProfiles";
 import { useAgentPresets } from "@/hooks/useAgentPresets";
@@ -21,6 +23,8 @@ export default function SnapshotComposerPage() {
   const [includes, setIncludes] = useState<string[]>(["quotes", "positions", "breadth"]);
   const [objective, setObjective] = useState("");
   const [notes, setNotes] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
   const [stagedIds, setStagedIds] = useState<number[]>(() => {
     try { return JSON.parse(localStorage.getItem("staged_image_ids") || "[]"); }
     catch { return []; }
@@ -56,22 +60,36 @@ export default function SnapshotComposerPage() {
   const onCapture = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!profileId) return;
-    const snap = await createSnap.mutateAsync({
-      profile_id: profileId,
-      objective, notes, includes,
-      watchlist_tickers: tickers,
-      ohlc_ticker: tickers[0],
-      ohlc_timeframe: "1m",
-      ohlc_bars: 60,
-      image_ids: stagedIds,
-    });
-    const thread = await createThread.mutateAsync({
-      profile_id: profileId, pinned_snapshot_id: snap.id,
-      title: objective.slice(0, 80) || `Consult ${new Date().toLocaleString()}`,
-    });
-    localStorage.removeItem("staged_image_ids");
-    setStagedIds([]);
-    navigate(`/threads/${thread.id}?snapshot=${snap.id}`);
+    setError(null);
+    setSubmitting(true);
+    try {
+      const created = await createSnap.mutateAsync({
+        profile_id: profileId,
+        objective, notes, includes,
+        watchlist_tickers: tickers,
+        ohlc_ticker: tickers[0],
+        ohlc_timeframe: "1m",
+        ohlc_bars: 60,
+        image_ids: stagedIds,
+      });
+      // Capture runs asynchronously in a Celery worker, so the snapshot comes
+      // back as "pending". Wait for it to finish before pinning it to a thread —
+      // the thread-create endpoint 400s on a non-ready snapshot.
+      const snap =
+        created.status === "ready" ? created : await waitForSnapshotReady(created.id);
+      const thread = await createThread.mutateAsync({
+        profile_id: profileId, pinned_snapshot_id: snap.id,
+        title: objective.slice(0, 80) || `Consult ${new Date().toLocaleString()}`,
+      });
+      localStorage.removeItem("staged_image_ids");
+      setStagedIds([]);
+      navigate(`/threads/${thread.id}?snapshot=${snap.id}`);
+    } catch (err) {
+      setError(
+        err instanceof ApiError ? err.message : "Failed to capture snapshot — please try again.",
+      );
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -82,6 +100,12 @@ export default function SnapshotComposerPage() {
         <div role="status" className="rounded border border-amber-700/50 bg-amber-950/40 px-3 py-2 text-sm text-amber-200">
           Market closed ({closedMarkets.join(", ")}) — this snapshot will be captured and labeled
           as-of the last session close.
+        </div>
+      )}
+
+      {error && (
+        <div role="alert" className="rounded border border-red-700/50 bg-red-950/40 px-3 py-2 text-sm text-red-200">
+          {error}
         </div>
       )}
 
@@ -182,10 +206,10 @@ export default function SnapshotComposerPage() {
 
         <button
           data-testid="capture-btn"
-          disabled={!profileId || createSnap.isPending || createThread.isPending}
+          disabled={!profileId || submitting}
           className="px-4 py-2 rounded bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40"
         >
-          {createSnap.isPending ? "Capturing…" : "Capture + ask"}
+          {submitting ? "Capturing…" : "Capture + ask"}
         </button>
       </form>
     </main>
