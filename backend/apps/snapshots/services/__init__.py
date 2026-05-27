@@ -11,6 +11,7 @@ from apps.core.realtime import group_broadcast
 from apps.market.calendar import any_market_open, calendar_for, market_state
 from apps.market.services.chain import fetch_chain
 from apps.market.services.context import fetch_market_context
+from apps.market.services.events import upcoming_events
 from apps.market.services.news import fetch_news
 from apps.market.services.ohlc import fetch_ohlc
 from apps.market.services.positions import fetch_positions
@@ -105,6 +106,9 @@ _FETCHERS = {
                 ).id,
             ]
         },
+    },
+    "events": lambda *, watchlist_tickers, **_: {
+        "data": upcoming_events(list(watchlist_tickers), within_days=14, include_macro=True),
     },
     "news": lambda *, watchlist_tickers, **_: {
         "data": {"items": fetch_news(list(watchlist_tickers))},
