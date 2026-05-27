@@ -31,6 +31,14 @@ flash-of-wrong-theme via an inline bootstrap script.
 - Adding light-mode E2E visual baselines in this pass (see §9).
 - A semantic-token refactor (`--bg`/`--surface`/`--text`). Explicitly rejected — see "Approach".
 
+## Plan-time refinement (2026-05-27)
+
+Enumerating the codebase during planning revealed the component-theming surface is larger than §7 first assumed, and surfaced a cleaner mechanism. This refines — not replaces — the chosen approach.
+
+- **~201 raw `slate-*` / `neutral-*` color-class usages** (analytics cards, `CommandPalette`, `ShortcutHelpDialog`, `EmptyState`, `ErrorBoundary`, `Skeleton`, `ThesisBadges`, …) bypass the token system and would stay dark. **Fix centrally:** alias the `slate` and `neutral` Tailwind color scales to `var(--ink-*)` in `tailwind.config.ts` — exactly how `ink`/`copper`/`gain`/`loss` are already defined. Zero component edits; dark mode also becomes more token-consistent. Opacity modifiers on these var-based colors already work in this repo (`TopNav` uses `bg-copper-500/0 group-hover:bg-copper-500/20`), so `bg-slate-700/50` etc. alias cleanly.
+- **Inline `style={{…}}` hex** in `NewsFeed`, `OptionChainTable`, `MarketTickerPage` (container) can't be reached by config aliasing → manual token conversion. (`RenderChart` stays dark per §6.)
+- **Chromatic state colors** (`emerald`/`rose`/`amber`/`indigo`/`violet`): the dark-tinted alert/badge banners (`bg-{amber,red,emerald,violet}-950/40 text-*-200`) on `SnapshotComposerPage` and `ThreadDetailPage` would look broken on paper. Because the new `dark`/`light` class drives Tailwind's existing `darkMode: "class"`, these are fixed with **light-base + `dark:` overrides**. Plain chromatic buttons/links (`bg-emerald-600`, `text-rose-400` on secondary Trigger/Watchlist pages) remain legible on both themes and are an **accepted limitation / follow-up** to keep this pass bounded.
+
 ## Approach (and rejected alternatives)
 
 **Chosen — variable-swap under `html.light`.** Keep the current `:root { … }` dark
