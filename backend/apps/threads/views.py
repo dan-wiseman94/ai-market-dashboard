@@ -13,6 +13,18 @@ from apps.threads.stop import request_stop
 from apps.threads.tasks import _broadcast, run_ai_on_message
 
 
+def _e2e_scenario() -> str | None:
+    """The active E2E mock scenario to forward to the worker, or None in prod.
+
+    The scenario lives in a web-process ContextVar (set from X-E2E-Scenario by
+    middleware); it must be passed explicitly into the Celery task because the
+    worker runs in a separate process. No-op outside MOCK_EXTERNAL.
+    """
+    from apps.core.mocks import current_scenario, is_mock_mode
+
+    return current_scenario() if is_mock_mode() else None
+
+
 def _error(code: str, message: str, status: int) -> Response:
     return Response({"code": code, "message": message}, status=status)
 
@@ -85,6 +97,7 @@ class ThreadViewSet(
             thread_id=thread.id,
             user_message_id=user_msg.id,
             override=override,
+            scenario=_e2e_scenario(),
         )
         return Response(MessageSerializer(user_msg).data, status=202)
 
@@ -111,6 +124,7 @@ class ThreadViewSet(
                 user_message_id=user_msg.id,
                 override={"provider": b["provider"], "model": b["model"]},
                 parent_message_id=user_msg.id,
+                scenario=_e2e_scenario(),
             )
             branch_ids.append(
                 {

@@ -110,17 +110,19 @@ def test_thread_pinned_snapshot_context_renders(page, frontend_base_url, threads
 
 @pytest.mark.integration
 @pytest.mark.ui
-@pytest.mark.skip(
-    reason="Blocked by scenario→worker propagation gap: slow-stream scenarios "
-    "(thinking-heavy) don't reach the worker, so there is no reliable mid-stream "
-    "window to exercise Stop. Re-enable once the worker honors X-E2E-Scenario."
-)
 def test_thread_stop_midstream_halts(page, frontend_base_url, threads, scenario) -> None:
-    scenario.use("thinking-heavy")
+    """Stop during a live stream flips the message off 'streaming' (Stop button goes away).
+
+    Uses the ``slow-stream`` scenario (12 chunks x 0.4s) so there's a real
+    mid-stream window — the X-E2E-Scenario header now reaches the worker, so the
+    stream is genuinely slow. The /stop/ endpoint requires the message to still
+    be streaming, then broadcasts error/cancelled, which clears the Stop button.
+    """
+    scenario.use("slow-stream")
     tid = _fresh_chat_thread("E2E stop midstream")
     detail = ThreadDetailPage(page, frontend_base_url)
     detail.go(tid)
-    detail.send("think hard about this")
+    detail.send("stream slowly please")
     expect(detail.stop_btn).to_be_visible(timeout=15_000)
     detail.stop()
     expect(detail.stop_btn).to_be_hidden(timeout=15_000)
