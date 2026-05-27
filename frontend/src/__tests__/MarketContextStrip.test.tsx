@@ -10,7 +10,7 @@ vi.mock("@/hooks/useMarketContext", () => ({
 const mockUseMarketContext = vi.mocked(useMarketContext);
 
 const baseData = {
-  spy_last: 520.15,
+  spx_last: 520.15,
   qqq_last: 445.32,
   vix_last: 14.75,
   sectors: {},
@@ -27,7 +27,7 @@ describe("MarketContextStrip", () => {
     expect(screen.getByText("Awaiting tape…")).toBeInTheDocument();
   });
 
-  it("renders SPY, QQQ, VIX values with 2 decimals when data is present", () => {
+  it("renders SPX, QQQ, VIX values with 2 decimals when data is present", () => {
     mockUseMarketContext.mockReturnValue({ data: baseData } as unknown as ReturnType<typeof useMarketContext>);
     render(<MarketContextStrip />);
     expect(screen.getByText("520.15")).toBeInTheDocument();
@@ -61,14 +61,14 @@ describe("MarketContextStrip", () => {
     render(<MarketContextStrip />);
     expect(screen.queryByText("Sectors")).not.toBeInTheDocument();
     // All 3 headlines are still shown
-    expect(screen.getByText("SPY")).toBeInTheDocument();
+    expect(screen.getByText("SPX")).toBeInTheDocument();
     expect(screen.getByText("QQQ")).toBeInTheDocument();
     expect(screen.getByText("VIX")).toBeInTheDocument();
   });
 
   it("renders em-dash for null numeric values", () => {
     const data = {
-      spy_last: null,
+      spx_last: null,
       qqq_last: null,
       vix_last: null,
       sectors: {},

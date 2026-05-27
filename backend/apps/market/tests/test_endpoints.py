@@ -86,7 +86,7 @@ def test_positions_endpoint_happy(api):
 
 @pytest.mark.django_db
 def test_context_endpoint_happy(api):
-    ctx = {"spy_last": 550, "qqq_last": 480, "vix_last": 14, "sectors": {}, "breadth": {}}
+    ctx = {"spx_last": 6000, "qqq_last": 480, "vix_last": 14, "sectors": {}, "breadth": {}}
     with patch("apps.market.views.fetch_market_context", return_value=ctx):
         r = api.get("/api/market/context/")
         assert r.status_code == 200

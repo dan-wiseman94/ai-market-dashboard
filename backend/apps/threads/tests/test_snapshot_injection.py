@@ -52,7 +52,7 @@ def ready_snapshot(db, profile) -> Snapshot:
         kind="breadth",
         status="done",
         payload={
-            "spy_last": 521.30,
+            "spx_last": 521.30,
             "qqq_last": 445.10,
             "vix_last": 14.2,
             "sectors": {"XLK": 215.4},

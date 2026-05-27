@@ -94,7 +94,7 @@ export default function Dashboard() {
       <section className="mb-10 ledger-reveal" style={{ animationDelay: "220ms" }}>
         <div className="flex items-baseline justify-between mb-3">
           <h2 className="ledger-eyebrow">Market context</h2>
-          <Link to="/market/SPY" className="font-mono text-[10px] text-ink-500 hover:text-copper-300 transition-colors uppercase tracking-wider">
+          <Link to="/market/$SPX" className="font-mono text-[10px] text-ink-500 hover:text-copper-300 transition-colors uppercase tracking-wider">
             Tickers →
           </Link>
         </div>

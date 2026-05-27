@@ -15,7 +15,7 @@ const quoteFixture = { last: 200.5, bid: 200.0, ask: 200.5, volume: 100000, high
 const ohlcBarFixture = { ts: "2026-04-18T10:00:00Z", open: 200, high: 201, low: 199, close: 200.5, volume: 100000 };
 const positionFixture = { ticker: "AAPL", qty: 10, avg_cost: 180, mkt_value: 2005, unrealized_pl: 205, day_pl: 5 };
 const contextFixture = {
-  spy_last: 500, qqq_last: 450, vix_last: 15,
+  spx_last: 500, qqq_last: 450, vix_last: 15,
   sectors: { tech: 0.5, finance: -0.2 },
   breadth: { advancers: 1500, decliners: 800 },
 };
@@ -110,7 +110,7 @@ describe("api/market", () => {
     it("GETs market context with spy/qqq/vix and sectors/breadth maps", async () => {
       const api = mockApi({ "GET /api/market/context/": contextFixture });
       const res = await fetchMarketContext();
-      expect(res.spy_last).toBe(500);
+      expect(res.spx_last).toBe(500);
       expect(res.qqq_last).toBe(450);
       expect(res.vix_last).toBe(15);
       expect(res.sectors).toEqual({ tech: 0.5, finance: -0.2 });
@@ -128,10 +128,10 @@ describe("api/market", () => {
     });
 
     it("preserves null values in numeric fields", async () => {
-      const nullContext = { spy_last: null, qqq_last: null, vix_last: null, sectors: {}, breadth: {} };
+      const nullContext = { spx_last: null, qqq_last: null, vix_last: null, sectors: {}, breadth: {} };
       mockApi({ "GET /api/market/context/": nullContext });
       const res = await fetchMarketContext();
-      expect(res.spy_last).toBeNull();
+      expect(res.spx_last).toBeNull();
       expect(res.qqq_last).toBeNull();
       expect(res.vix_last).toBeNull();
     });
