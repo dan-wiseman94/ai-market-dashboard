@@ -24,6 +24,7 @@ _TTL: dict[str, int] = {
     "news": 300,
     "positions": 10,
     "context": 30,
+    "events": 3600,
 }
 
 
