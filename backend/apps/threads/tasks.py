@@ -362,6 +362,36 @@ def run_ai_on_message(
     user_message_id: int,
     override: dict | None = None,
     parent_message_id: int | None = None,
+    scenario: str | None = None,
+) -> dict:
+    # E2E only: the mock scenario is captured from the request's X-E2E-Scenario
+    # header into a web-process ContextVar, which does NOT cross into this worker
+    # process. Re-apply it here so MOCK_EXTERNAL streaming honors the scenario
+    # (thinking-heavy, tool-use-loop, 5xx-midstream, …). No-op in production,
+    # where current_scenario() is always "default" and nothing passes a scenario.
+    from apps.core.mocks import is_mock_mode, reset_scenario, set_scenario
+
+    applied = bool(scenario) and is_mock_mode()
+    if applied:
+        set_scenario(scenario)  # type: ignore[arg-type]
+    try:
+        return _run_ai_on_message(
+            thread_id=thread_id,
+            user_message_id=user_message_id,
+            override=override,
+            parent_message_id=parent_message_id,
+        )
+    finally:
+        if applied:
+            reset_scenario()
+
+
+def _run_ai_on_message(
+    *,
+    thread_id: int,
+    user_message_id: int,
+    override: dict | None = None,
+    parent_message_id: int | None = None,
 ) -> dict:
     thread = Thread.objects.select_related("profile").get(id=thread_id)
     user_msg = Message.objects.get(id=user_message_id)

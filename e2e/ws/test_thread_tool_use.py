@@ -1,11 +1,9 @@
 """Tool-use loop: tool_call → tool_result → text_delta → message_done.
 
-SKIPPED: requires the ``tool-use-loop`` scenario to reach the *worker*, but the
-scenario lives in a web-process ContextVar the worker never sees
-(apps/core/mocks/__init__.py), so the worker streams the plain default response
-and no ``tool_call`` is emitted. The body below is otherwise correct (real
-``/send/`` endpoint, HTTP id lookup) — drop the skip once the worker honors
-X-E2E-Scenario.
+Uses the ``tool-use-loop`` scenario, which now reaches the worker because
+``run_ai_on_message`` re-applies the request's scenario in the worker process
+(threads/tasks.py + views.py forward ``scenario=``). Real ``/send/`` endpoint,
+HTTP id lookup (no sync-ORM-in-async on web).
 """
 
 from __future__ import annotations
@@ -28,7 +26,6 @@ def _plain_thread_id(api_base_url: str) -> int:
 @pytest.mark.asyncio
 @pytest.mark.integration
 @pytest.mark.ws
-@pytest.mark.skip(reason="scenario→worker propagation gap: worker never sees tool-use-loop")
 async def test_tool_use_loop_emits_tool_call_and_tool_result(
     ws_base_url, api_base_url, threads
 ) -> None:

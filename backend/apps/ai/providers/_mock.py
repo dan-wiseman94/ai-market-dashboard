@@ -10,6 +10,7 @@ is behavior-preserving for every provider.
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import AsyncIterator
 
 from apps.ai.types import (
@@ -36,6 +37,8 @@ async def mock_run(service: str) -> AsyncIterator[RunEvent]:
         yield ErrorEvent(message=str(exc))
         return
     for ev in events:
+        if getattr(ev, "delay", 0):
+            await asyncio.sleep(ev.delay)
         if ev.type == "text_delta":
             yield TextDelta(text=ev.text)
         elif ev.type == "thinking_delta":

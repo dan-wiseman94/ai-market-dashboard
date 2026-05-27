@@ -1,11 +1,9 @@
 """Extended thinking: thinking_delta* precedes text_delta*.
 
-SKIPPED: requires the ``thinking-heavy`` scenario to reach the *worker*, but the
-scenario lives in a web-process ContextVar that the worker never sees
-(apps/core/mocks/__init__.py). The worker always streams the default response,
-so no ``thinking_delta`` is ever emitted here. The body below is otherwise
-correct (real ``/send/`` endpoint, HTTP id lookup) — drop the skip once the
-worker honors X-E2E-Scenario.
+Uses the ``thinking-heavy`` scenario, which now reaches the worker because
+``run_ai_on_message`` re-applies the request's scenario in the worker process
+(threads/tasks.py + views.py forward ``scenario=``). Real ``/send/`` endpoint,
+HTTP id lookup (no sync-ORM-in-async on web).
 """
 
 from __future__ import annotations
@@ -28,7 +26,6 @@ def _plain_thread_id(api_base_url: str) -> int:
 @pytest.mark.asyncio
 @pytest.mark.integration
 @pytest.mark.ws
-@pytest.mark.skip(reason="scenario→worker propagation gap: worker never sees thinking-heavy")
 async def test_thinking_deltas_precede_text(ws_base_url, api_base_url, threads) -> None:
     tid = _plain_thread_id(api_base_url)
     wc = await WsClient.connect(f"{ws_base_url}/ws/threads/{tid}/")
