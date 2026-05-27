@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Iterable
 
 from apps.market import cache
-from apps.market.schwab_client import get_schwab_client
+from apps.market.schwab_client import get_schwab_client, schwab_json
 
 
 def fetch_quotes(tickers: Iterable[str]) -> dict[str, dict]:
@@ -25,7 +25,7 @@ def fetch_quotes(tickers: Iterable[str]) -> dict[str, dict]:
 
 def _fetch_from_schwab(tickers: list[str]) -> dict[str, dict]:
     client = get_schwab_client()
-    raw = client.get_quotes(tickers).json()
+    raw = schwab_json(client.get_quotes(tickers))
     out: dict[str, dict] = {}
     for t, blob in raw.items():
         q = blob.get("quote", {}) if isinstance(blob, dict) else {}
