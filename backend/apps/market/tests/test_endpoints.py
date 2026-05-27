@@ -3,6 +3,27 @@ from unittest.mock import patch
 import pytest
 from rest_framework.test import APIClient
 
+from apps.market import cache as cache_module
+
+
+@pytest.fixture(autouse=True)
+def fake_redis(monkeypatch):
+    """Isolate the market cache per test.
+
+    `apps.market.cache` talks to real Redis via `settings.REDIS_URL` (not
+    Django's cache framework), so cache entries persist across tests, across
+    runs, and are shared with the running dev stack. Without isolation a
+    leftover `market:positions` key makes `fetch_positions` return a cache hit
+    and skip `_fetch_from_schwab` entirely — which silently broke
+    `test_not_connected_returns_503` whenever that key was warm. Swap `_redis`
+    for an empty fakeredis, matching the `test_services_*` convention.
+    """
+    import fakeredis
+
+    r = fakeredis.FakeRedis()
+    monkeypatch.setattr(cache_module, "_redis", lambda: r)
+    return r
+
 
 @pytest.fixture
 def api():
