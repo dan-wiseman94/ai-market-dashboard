@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { ApiError } from "@/api/client";
 import { waitForSnapshotReady } from "@/api/snapshots";
 import SnapshotSectionPicker from "@/components/SnapshotSectionPicker";
+import TickerChipsInput from "@/components/TickerChipsInput";
 import { useProfiles } from "@/hooks/useProfiles";
 import { useAgentPresets } from "@/hooks/useAgentPresets";
 import { useCreateSnapshot } from "@/hooks/useCreateSnapshot";
@@ -20,6 +21,7 @@ export default function SnapshotComposerPage() {
 
   const [profileId, setProfileId] = useState<number | null>(null);
   const [watchlistId, setWatchlistId] = useState<number | null>(null);
+  const [customTickers, setCustomTickers] = useState<string[]>([]);
   const [includes, setIncludes] = useState<string[]>(["quotes", "positions", "breadth"]);
   const [objective, setObjective] = useState("");
   const [notes, setNotes] = useState("");
@@ -47,9 +49,17 @@ export default function SnapshotComposerPage() {
     setWatchlistId(watchlists[0].id);
   }
 
-  const tickers = useMemo(
+  const watchlistTickers = useMemo(
     () => watchlists?.find((w) => w.id === watchlistId)?.symbols.map((s) => s.ticker) ?? [],
     [watchlists, watchlistId],
+  );
+
+  // Effective ticker set = the selected watchlist's symbols plus any ad-hoc
+  // tickers the user typed, de-duplicated with watchlist symbols kept first.
+  // This feeds quotes/OHLC, the market-hours check, and ohlc_ticker downstream.
+  const tickers = useMemo(
+    () => Array.from(new Set([...watchlistTickers, ...customTickers])),
+    [watchlistTickers, customTickers],
   );
 
   const { data: marketStatus } = useMarketStatus(tickers);
@@ -134,7 +144,17 @@ export default function SnapshotComposerPage() {
             <option value="" disabled>Select watchlist…</option>
             {(watchlists ?? []).map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
           </select>
-          <div className="text-xs text-slate-500 mt-1">{tickers.join(", ") || "(no symbols)"}</div>
+          <div className="text-xs text-slate-500 mt-1">
+            {watchlistTickers.join(", ") || "(no symbols)"}
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-xs text-slate-500 mb-1">Add tickers (optional)</label>
+          <TickerChipsInput value={customTickers} onChange={setCustomTickers} />
+          <div className="text-xs text-slate-500 mt-1">
+            Using: {tickers.join(", ") || "(none — notes/market context only)"}
+          </div>
         </div>
 
         <div>
