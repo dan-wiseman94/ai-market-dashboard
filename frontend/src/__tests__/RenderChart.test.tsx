@@ -4,6 +4,9 @@ import RenderChart from "../pages/RenderChart";
 import { mockFetch, renderWithProviders } from "./testUtils";
 
 beforeEach(() => {
+  // data-render-ready lives on document.body and persists across jsdom tests;
+  // clear it so each test only sees its own render flip the flag.
+  document.body.removeAttribute("data-render-ready");
   mockFetch(() => ({
     ok: true,
     json: () =>
@@ -22,5 +25,31 @@ describe("RenderChart", () => {
       routePath: "/render/chart",
     });
     await waitFor(() => expect(document.body.dataset.renderReady).toBe("true"));
+  });
+
+  it("flips data-render-ready even when OHLC returns no bars", async () => {
+    // A successful-but-empty response (e.g. an index with no candles) must still
+    // signal ready, otherwise the headless capture hangs until the 15s timeout.
+    mockFetch(() => ({
+      ok: true,
+      json: () => Promise.resolve({ ticker: "SPY", timeframe: "5m", bars: [] }),
+    }));
+    renderWithProviders(<RenderChart />, {
+      initialEntries: ["/render/chart?ticker=SPY&timeframe=5m&bars=10"],
+      routePath: "/render/chart",
+    });
+    await waitFor(() => expect(document.body.dataset.renderReady).toBe("true"));
+  });
+
+  it("shows a no-data message when OHLC returns no bars", async () => {
+    mockFetch(() => ({
+      ok: true,
+      json: () => Promise.resolve({ ticker: "SPY", timeframe: "5m", bars: [] }),
+    }));
+    const { findByText } = renderWithProviders(<RenderChart />, {
+      initialEntries: ["/render/chart?ticker=SPY&timeframe=5m&bars=10"],
+      routePath: "/render/chart",
+    });
+    expect(await findByText(/no .*data/i)).toBeTruthy();
   });
 });
