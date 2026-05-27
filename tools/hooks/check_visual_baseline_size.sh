@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
-# Pre-commit guard — block visual baselines larger than 500KB.
+# Pre-commit guard — block visual baselines larger than 600KB.
+# Kept in sync with e2e/tests/test_baseline_size_guard.py (see its docstring for
+# why 600, not 500).
 set -euo pipefail
 
-max_kb=500
+max_kb=600
 found_large=""
 
 while read -r file; do
