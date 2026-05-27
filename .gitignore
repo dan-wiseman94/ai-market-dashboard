@@ -50,6 +50,7 @@ Thumbs.db
 
 # Git worktrees
 .worktrees/
+.clone/
 
 *storybook.log
 storybook-static
