@@ -21,19 +21,15 @@ interface ThemeContextValue {
   cycle: () => void;
 }
 
-function systemResolved(): ResolvedTheme {
-  if (typeof window === "undefined" || !window.matchMedia) return "dark";
-  return window.matchMedia(MEDIA).matches ? "dark" : "light";
+function systemPrefersDark(): boolean {
+  if (typeof window === "undefined" || !window.matchMedia) return true;
+  return window.matchMedia(MEDIA).matches;
 }
 
 function readPreference(): ThemePreference {
   if (typeof window === "undefined") return "system";
   const v = window.localStorage.getItem(STORAGE_KEY);
   return v === "light" || v === "dark" || v === "system" ? v : "system";
-}
-
-function resolve(pref: ThemePreference): ResolvedTheme {
-  return pref === "system" ? systemResolved() : pref;
 }
 
 function applyTheme(resolved: ResolvedTheme): void {
@@ -60,14 +56,20 @@ const ThemeContext = createContext<ThemeContextValue>({
 });
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [preference, setPreference] = useState<ThemePreference>(() => readPreference());
-  const [resolved, setResolved] = useState<ResolvedTheme>(() => resolve(readPreference()));
+  const [preference, setPreference] = useState<ThemePreference>(readPreference);
+  const [systemDark, setSystemDark] = useState<boolean>(systemPrefersDark);
 
-  // Apply + persist whenever the preference changes.
+  // resolved is DERIVED during render — no setState-in-effect.
+  const resolved: ResolvedTheme =
+    preference === "system" ? (systemDark ? "dark" : "light") : preference;
+
+  // Apply the resolved theme to the DOM (side effect only — no setState).
   useEffect(() => {
-    const r = resolve(preference);
-    setResolved(r);
-    applyTheme(r);
+    applyTheme(resolved);
+  }, [resolved]);
+
+  // Persist the preference (side effect only — no setState).
+  useEffect(() => {
     try {
       window.localStorage.setItem(STORAGE_KEY, preference);
     } catch {
@@ -75,15 +77,12 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     }
   }, [preference]);
 
-  // Follow the OS while in "system".
+  // Follow the OS while in "system". The listener updates systemDark from an
+  // event handler (allowed), never synchronously inside the effect body.
   useEffect(() => {
     if (preference !== "system" || typeof window === "undefined" || !window.matchMedia) return;
     const mq = window.matchMedia(MEDIA);
-    const onChange = () => {
-      const r = systemResolved();
-      setResolved(r);
-      applyTheme(r);
-    };
+    const onChange = () => setSystemDark(mq.matches);
     mq.addEventListener("change", onChange);
     return () => mq.removeEventListener("change", onChange);
   }, [preference]);
