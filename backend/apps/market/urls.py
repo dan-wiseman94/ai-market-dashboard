@@ -15,6 +15,7 @@ urlpatterns = [
     path("context/", views.context, name="context"),
     path("chain/", views.chain, name="chain"),
     path("news/", views.news, name="news"),
+    path("events/", views.events, name="events"),
     path("calendar-status/", views.calendar_status, name="calendar-status"),
     *router.urls,
 ]
