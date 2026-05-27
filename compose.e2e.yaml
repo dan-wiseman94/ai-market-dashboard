@@ -30,6 +30,9 @@ services:
       TRIGGER_TEST_COOLDOWN_SECONDS: "1"
       TRIGGER_EVAL_INTERVAL_SECONDS: "1"
       PYTHONPATH: "/app/backend:/app"
+      # The ws lane execs pytest in `web`; its async tests touch the sync ORM
+      # directly, so permit sync ORM access from an async context (same as worker).
+      DJANGO_ALLOW_ASYNC_UNSAFE: "true"
       POSTGRES_HOST: db-e2e
     depends_on:
       db-e2e:
