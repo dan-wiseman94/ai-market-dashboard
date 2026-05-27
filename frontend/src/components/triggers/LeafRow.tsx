@@ -99,7 +99,7 @@ export default function LeafRow({ leaf, onChange, onRemove }: LeafRowProps) {
           type="button"
           aria-label="remove condition"
           onClick={onRemove}
-          className="text-neutral-500 hover:text-rose-400 ml-auto"
+          className="text-neutral-500 hover:text-rose-700 dark:hover:text-rose-400 ml-auto"
         >
           ✕
         </button>

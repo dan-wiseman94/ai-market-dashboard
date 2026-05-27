@@ -63,7 +63,7 @@ export default function RuleBuilder({ value, onChange }: RuleBuilderProps) {
       <button
         type="button"
         onClick={() => emit([...leaves, { ...EMPTY_LEAF }])}
-        className="text-sm text-indigo-400 hover:text-indigo-300"
+        className="text-sm text-indigo-700 hover:text-indigo-600 dark:text-indigo-400 dark:hover:text-indigo-300"
       >
         + Add condition
       </button>
