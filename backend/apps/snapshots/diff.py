@@ -108,7 +108,7 @@ def _diff_news(prev: list, curr: list) -> str:
 
 def _diff_breadth(prev: dict, curr: dict) -> str:
     rows: list[str] = []
-    for key in ("spy_last", "qqq_last", "vix_last"):
+    for key in ("spx_last", "qqq_last", "vix_last"):
         p_val = prev.get(key)
         c_val = curr.get(key)
         if p_val is not None and c_val is not None and p_val != c_val:

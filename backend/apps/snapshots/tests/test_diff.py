@@ -48,10 +48,10 @@ def test_missing_current_section_logs_removed() -> None:
 
 
 def test_breadth_shift_reported() -> None:
-    prev = {"breadth": {"spy_last": 520, "qqq_last": 440, "vix_last": 14}}
-    curr = {"breadth": {"spy_last": 525, "qqq_last": 440, "vix_last": 17}}
+    prev = {"breadth": {"spx_last": 520, "qqq_last": 440, "vix_last": 14}}
+    curr = {"breadth": {"spx_last": 525, "qqq_last": 440, "vix_last": 17}}
     out = diff_sections(prev, curr)
-    assert "spy_last" in out
+    assert "spx_last" in out
     assert "vix_last" in out
     assert "qqq_last" not in out  # unchanged
 

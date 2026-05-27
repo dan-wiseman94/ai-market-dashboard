@@ -56,7 +56,7 @@ export default function MarketContextStrip() {
     <div className="ledger-surface overflow-hidden">
       {/* Headline indices */}
       <div className="flex divide-x divide-rule">
-        <Headline label="SPY" value={data.spy_last} hint="index" />
+        <Headline label="SPX" value={data.spx_last} hint="index" />
         <Headline label="QQQ" value={data.qqq_last} hint="tech" />
         <Headline label="VIX" value={data.vix_last} hint="vol" tone="warn" />
       </div>

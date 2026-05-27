@@ -15,7 +15,7 @@ def fake_redis(monkeypatch):
 
 
 def test_context_symbols_includes_core_and_sectors():
-    assert "SPY" in CONTEXT_SYMBOLS
+    assert "$SPX" in CONTEXT_SYMBOLS
     assert "QQQ" in CONTEXT_SYMBOLS
     assert "$VIX" in CONTEXT_SYMBOLS
     for etf in SECTOR_ETFS:
@@ -27,7 +27,7 @@ def test_fetch_market_context_shape():
     quotes = {s: {"last": 100.0 + i} for i, s in enumerate(CONTEXT_SYMBOLS)}
     with patch("apps.market.services.context.fetch_quotes", return_value=quotes):
         ctx = fetch_market_context()
-    assert ctx["spy_last"] == quotes["SPY"]["last"]
+    assert ctx["spx_last"] == quotes["$SPX"]["last"]
     assert ctx["qqq_last"] == quotes["QQQ"]["last"]
     assert ctx["vix_last"] == quotes["$VIX"]["last"]
     for etf in SECTOR_ETFS:
