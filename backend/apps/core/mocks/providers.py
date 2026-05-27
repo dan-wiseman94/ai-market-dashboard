@@ -26,6 +26,9 @@ def is_mock_mode() -> bool:
 class MockAIEvent:
     type: str
     text: str = ""
+    # Seconds to pause *before* emitting this event. Lets a scenario stream
+    # slowly enough that a mid-stream Stop has a real window to land.
+    delay: float = 0.0
 
 
 def canned_ai_stream() -> list[MockAIEvent]:
@@ -74,6 +77,15 @@ def stream_tool_use_loop() -> list[MockAIEvent]:
         MockAIEvent("tool_call", "quotes_now"),
         MockAIEvent("tool_result", "175.0"),
         MockAIEvent("text_delta", "Result: 175"),
+        MockAIEvent("usage"),
+        MockAIEvent("done"),
+    ]
+
+
+def stream_slow() -> list[MockAIEvent]:
+    """Many small chunks with real gaps — gives a mid-stream Stop a window to land."""
+    return [
+        *[MockAIEvent("text_delta", "tick ", delay=0.4) for _ in range(12)],
         MockAIEvent("usage"),
         MockAIEvent("done"),
     ]
@@ -141,6 +153,7 @@ AI_HANDLERS: dict[str, Callable[[], list[MockAIEvent]]] = {
     "stream_then_500": stream_then_500,
     "error_429_retry_after": error_429_retry_after,
     "hang_60s": hang_60s,
+    "stream_slow": stream_slow,
     "stream_tool_use_loop": stream_tool_use_loop,
     "stream_thinking_heavy": stream_thinking_heavy,
     "structured_observation_report": structured_observation_report,
