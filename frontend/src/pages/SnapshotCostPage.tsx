@@ -70,7 +70,7 @@ export default function SnapshotCostPage() {
           <>
             {diffQ.isLoading && <div className="text-xs text-slate-500">Computing diff…</div>}
             {diffQ.isError && (
-              <div className="text-xs text-rose-400">
+              <div className="text-xs text-rose-700 dark:text-rose-400">
                 {(diffQ.error as Error)?.message ?? "No prior snapshot to diff against"}
               </div>
             )}

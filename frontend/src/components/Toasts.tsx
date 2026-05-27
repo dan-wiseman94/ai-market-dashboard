@@ -2,8 +2,8 @@ import { useToast, type ToastKind } from "../hooks/useToast";
 
 const TONE: Record<ToastKind, string> = {
   info: "bg-slate-800 text-slate-100 border-slate-600",
-  success: "bg-emerald-900 text-emerald-100 border-emerald-700",
-  error: "bg-rose-900 text-rose-100 border-rose-700",
+  success: "bg-emerald-500/10 text-emerald-800 border-emerald-500/40 dark:bg-emerald-900 dark:text-emerald-100 dark:border-emerald-700",
+  error: "bg-rose-500/10 text-rose-800 border-rose-500/40 dark:bg-rose-900 dark:text-rose-100 dark:border-rose-700",
 };
 
 export function Toasts() {

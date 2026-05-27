@@ -179,7 +179,7 @@ export default function ProfilesPage() {
                   name: p.name, style: p.style, default_includes: p.default_includes,
                   default_provider: p.default_provider, default_model: p.default_model,
                 }); }} className="text-slate-300 hover:underline">Edit</button>
-                <button onClick={() => del.mutate(p.id)} className="text-rose-400 hover:underline">Delete</button>
+                <button onClick={() => del.mutate(p.id)} className="text-rose-700 dark:text-rose-400 hover:underline">Delete</button>
               </div>
             </div>
             <div className="text-xs text-slate-500 mt-2 whitespace-pre-line">{p.style}</div>
@@ -303,7 +303,7 @@ export default function ProfilesPage() {
                 >Edit</button>
                 <button
                   onClick={() => deletePreset.mutate(p.id)}
-                  className="text-rose-400 hover:underline"
+                  className="text-rose-700 dark:text-rose-400 hover:underline"
                 >Delete</button>
               </div>
             </div>

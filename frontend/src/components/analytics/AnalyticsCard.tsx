@@ -17,7 +17,7 @@ export function AnalyticsCard<T>({ testid, title, wide, query, children }: Analy
     <section data-testid={testid} className={`ledger-surface p-5${wide ? " md:col-span-2" : ""}`}>
       <header className="ledger-eyebrow mb-3">{title}</header>
       {query.isLoading && <p className="text-sm text-slate-400">Loading…</p>}
-      {query.error && <p className="text-sm text-rose-400">{String(query.error)}</p>}
+      {query.error && <p className="text-sm text-rose-700 dark:text-rose-400">{String(query.error)}</p>}
       {query.data && children(query.data)}
     </section>
   );

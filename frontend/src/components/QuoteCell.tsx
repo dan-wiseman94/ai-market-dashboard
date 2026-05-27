@@ -7,7 +7,7 @@ export default function QuoteCell({ q }: { q: Quote | undefined }) {
   return (
     <span className="tabular-nums">
       <span>{q.last.toFixed(2)}</span>
-      <span className={`ml-2 text-xs ${up ? "text-emerald-400" : "text-rose-400"}`}>{pct}</span>
+      <span className={`ml-2 text-xs ${up ? "text-emerald-700 dark:text-emerald-400" : "text-rose-700 dark:text-rose-400"}`}>{pct}</span>
     </span>
   );
 }

@@ -17,7 +17,7 @@ export function UnusualOptionsCard() {
         <p className="text-sm text-slate-400">Enter a ticker to scan.</p>
       )}
       {isLoading && <p className="text-sm text-slate-400">Loading…</p>}
-      {error && <p className="text-sm text-rose-400">{String(error)}</p>}
+      {error && <p className="text-sm text-rose-700 dark:text-rose-400">{String(error)}</p>}
       {data && (data.rows ?? []).length === 0 && (
         <p className="text-sm text-slate-500">
           No unusual lines in the latest chain.

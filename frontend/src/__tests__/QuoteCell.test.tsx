@@ -37,7 +37,8 @@ describe("QuoteCell", () => {
       <QuoteCell q={makeQuote({ last: 100, pct_change: 1.23 })} />,
     );
     expect(screen.getByText("+1.23%")).toBeInTheDocument();
-    const pctSpan = container.querySelector(".text-emerald-400");
+    // light-mode base is emerald-700, with dark:text-emerald-400 for dark theme
+    const pctSpan = container.querySelector(".text-emerald-700");
     expect(pctSpan).not.toBeNull();
   });
 
@@ -46,7 +47,8 @@ describe("QuoteCell", () => {
       <QuoteCell q={makeQuote({ last: 100, pct_change: -2.34 })} />,
     );
     expect(screen.getByText("-2.34%")).toBeInTheDocument();
-    const pctSpan = container.querySelector(".text-rose-400");
+    // light-mode base is rose-700, with dark:text-rose-400 for dark theme
+    const pctSpan = container.querySelector(".text-rose-700");
     expect(pctSpan).not.toBeNull();
   });
 
