@@ -21,10 +21,10 @@ export type ObservationReport = {
 };
 
 const BIAS_COLOR: Record<Bias, string> = {
-  bullish: "text-emerald-400 border-emerald-500/40",
-  bearish: "text-rose-400 border-rose-500/40",
+  bullish: "text-emerald-700 dark:text-emerald-400 border-emerald-500/40",
+  bearish: "text-rose-700 dark:text-rose-400 border-rose-500/40",
   neutral: "text-slate-300 border-slate-500/40",
-  mixed: "text-amber-400 border-amber-500/40",
+  mixed: "text-amber-700 dark:text-amber-400 border-amber-500/40",
 };
 
 export default function ObservationReportCard({ report }: { report: ObservationReport }) {

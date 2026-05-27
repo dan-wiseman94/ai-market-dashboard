@@ -31,7 +31,9 @@ function compact(obj: unknown): string {
 
 function Row({ c }: { c: ToolCallRecord }) {
   const [open, setOpen] = useState(false);
-  const tone = c.ok ? "text-sky-300 border-sky-800" : "text-rose-300 border-rose-800";
+  const tone = c.ok
+    ? "text-sky-700 border-sky-300/60 dark:text-sky-300 dark:border-sky-800"
+    : "text-rose-700 border-rose-300/60 dark:text-rose-300 dark:border-rose-800";
   return (
     <div className={`border rounded px-2 py-1 bg-slate-900/40 ${tone}`}>
       <button
@@ -41,7 +43,7 @@ function Row({ c }: { c: ToolCallRecord }) {
         <span className="font-semibold">{c.name}</span>
         <span className="text-slate-400 truncate">{compact(c.input)}</span>
         <span className="ml-auto text-slate-500">{c.latencyMs} ms</span>
-        {!c.ok && <span className="text-rose-400">✗ {c.error}</span>}
+        {!c.ok && <span className="text-rose-700 dark:text-rose-400">✗ {c.error}</span>}
       </button>
       {open && (
         <pre className="mt-1 text-[11px] text-slate-300 whitespace-pre-wrap">
