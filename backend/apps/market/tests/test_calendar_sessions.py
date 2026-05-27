@@ -42,6 +42,35 @@ def test_half_day_open_before_early_close():
     assert st.is_early_close is True
 
 
+@freeze_time("2026-05-27 12:00:00")  # Wed 08:00 ET — before the 09:30 open, after 04:00 pre
+def test_premarket_phase():
+    st = market_state(market="us_equity")
+    assert st.is_open is False
+    assert st.phase == "premarket"
+    assert st.next_open is not None  # the 09:30 regular open is still ahead
+
+
+@freeze_time("2026-05-27 22:00:00")  # Wed 18:00 ET — after the 16:00 close, before 20:00 post
+def test_postmarket_phase():
+    st = market_state(market="us_equity")
+    assert st.is_open is False
+    assert st.phase == "postmarket"
+
+
+@freeze_time("2026-05-27 03:00:00")  # Wed 23:00 ET (prev day) — past 20:00 post, before 04:00 pre
+def test_overnight_outside_extended_is_closed():
+    st = market_state(market="us_equity")
+    assert st.is_open is False
+    assert st.phase == "closed"
+
+
+@freeze_time("2026-05-27 12:00:00")  # NYSE premarket time; crypto has no pre/post → stays open
+def test_extended_hours_only_for_markets_that_define_them():
+    crypto = market_state(market="crypto")
+    assert crypto.is_open is True
+    assert crypto.phase == "open"
+
+
 @freeze_time("2026-04-18 14:00:00")  # Saturday — crypto still open
 def test_crypto_always_open():
     assert is_open(symbol="BTC-USD") is True
