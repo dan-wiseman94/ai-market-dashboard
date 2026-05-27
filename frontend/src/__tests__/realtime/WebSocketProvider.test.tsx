@@ -135,7 +135,7 @@ describe("WebSocketProvider", () => {
     expect(handler).not.toHaveBeenCalled();
   });
 
-  it("closes the socket when the last subscriber unsubscribes (provider unmounts)", () => {
+  it("closes an open socket when the last subscriber unsubscribes (provider unmounts)", () => {
     const handler = vi.fn();
     const { unmount } = render(
       <WebSocketProvider>
@@ -144,11 +144,85 @@ describe("WebSocketProvider", () => {
     );
     const sock = fake.find("/ws/threads/1/");
     expect(sock).toBeDefined();
+    act(() => sock!.emitOpen());
     const closeSpy = vi.spyOn(sock!, "close");
     act(() => {
       unmount();
     });
     expect(closeSpy).toHaveBeenCalled();
+  });
+
+  it("defers closing a still-connecting socket until it opens (no mid-handshake abort)", () => {
+    const handler = vi.fn();
+    const { unmount } = render(
+      <WebSocketProvider>
+        <TestConsumer channel="thread.9" onMsg={handler} />
+      </WebSocketProvider>,
+    );
+    const sock = fake.find("/ws/threads/9/");
+    expect(sock).toBeDefined();
+    expect(sock!.readyState).toBe(0); // CONNECTING — never opened
+    const closeSpy = vi.spyOn(sock!, "close");
+
+    act(() => unmount()); // teardown while the handshake is still in flight
+
+    // Must NOT close mid-handshake (that is what logs the browser warning)...
+    expect(closeSpy).not.toHaveBeenCalled();
+    // ...but once it finishes connecting, the deferred close fires cleanly.
+    act(() => sock!.emitOpen());
+    expect(closeSpy).toHaveBeenCalled();
+  });
+
+  it("reconnects after an unexpected close while subscribers remain", () => {
+    vi.useFakeTimers();
+    try {
+      const handler = vi.fn();
+      render(
+        <WebSocketProvider>
+          <TestConsumer channel="thread.1" onMsg={handler} />
+        </WebSocketProvider>,
+      );
+      const first = fake.find("/ws/threads/1/");
+      expect(first).toBeDefined();
+      act(() => first!.emitOpen());
+
+      // Simulate an unexpected drop (e.g. the `web` container restarting in dev).
+      act(() => first!.emitClose(1006));
+      // Backoff timer fires -> a fresh socket for the same channel is opened.
+      act(() => void vi.runOnlyPendingTimers());
+
+      const all = fake.sockets.filter((s) => s.url.endsWith("/ws/threads/1/"));
+      expect(all.length).toBe(2);
+
+      // The replacement socket delivers to the still-registered handler.
+      const second = all[all.length - 1];
+      act(() => {
+        second.emitOpen();
+        second.emitMessage({ type: "tok", text: "after-reconnect" });
+      });
+      expect(handler).toHaveBeenCalledWith({ type: "tok", text: "after-reconnect" });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("does NOT reconnect after an intentional close (last subscriber leaves)", () => {
+    vi.useFakeTimers();
+    try {
+      const handler = vi.fn();
+      const { unmount } = render(
+        <WebSocketProvider>
+          <TestConsumer channel="thread.5" onMsg={handler} />
+        </WebSocketProvider>,
+      );
+      expect(fake.sockets.filter((s) => s.url.endsWith("/ws/threads/5/")).length).toBe(1);
+      act(() => unmount());
+      act(() => void vi.runAllTimers());
+      // No replacement socket: a deliberate teardown must not trigger a reconnect.
+      expect(fake.sockets.filter((s) => s.url.endsWith("/ws/threads/5/")).length).toBe(1);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("useWebSocket() throws outside provider", () => {
