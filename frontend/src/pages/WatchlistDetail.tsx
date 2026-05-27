@@ -37,7 +37,7 @@ export default function WatchlistDetail() {
         <button className="px-3 py-1.5 rounded bg-emerald-600 hover:bg-emerald-500">Add</button>
       </form>
       {add.isError && (
-        <p className="text-rose-400 text-sm">{(add.error as Error).message}</p>
+        <p className="text-rose-700 dark:text-rose-400 text-sm">{(add.error as Error).message}</p>
       )}
 
       <WatchlistTable symbols={wl.symbols} onRemove={(sid) => remove.mutate(sid)} />
