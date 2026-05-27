@@ -3,12 +3,22 @@ import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderWithProviders, LocationProbe } from "./testUtils";
 import SnapshotComposerPage from "@/pages/SnapshotComposerPage";
+import { ApiError } from "@/api/client";
 import type { AgentPreset } from "@/api/presets";
 
 // ---- Module-level mocks ----
 
 const mockCreateSnap = vi.fn();
 const mockCreateThread = vi.fn();
+const mockWaitForReady = vi.fn();
+
+// Capture is async (Celery), so createSnapshot returns status="pending". The
+// composer must wait for the snapshot to become ready before pinning it to a
+// thread; stub the polling helper so tests control when "ready" arrives.
+vi.mock("@/api/snapshots", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/api/snapshots")>()),
+  waitForSnapshotReady: (...args: unknown[]) => mockWaitForReady(...args),
+}));
 
 vi.mock("@/hooks/useCreateSnapshot", () => ({
   useCreateSnapshot: () => ({
@@ -181,7 +191,7 @@ describe("SnapshotComposerPage", () => {
     const user = userEvent.setup();
     mockCreateSnap.mockResolvedValue({
       id: 100,
-      status: "pending",
+      status: "ready",
       includes: ["quotes", "ohlc"],
     });
     mockCreateThread.mockResolvedValue({ id: 200, title: "Consult" });
@@ -231,6 +241,61 @@ describe("SnapshotComposerPage", () => {
     });
   });
 
+  it("waits for the snapshot to be ready before creating the thread", async () => {
+    const user = userEvent.setup();
+    mockCreateSnap.mockResolvedValue({ id: 100, status: "pending", includes: [] });
+    let resolveReady!: (s: { id: number; status: string }) => void;
+    mockWaitForReady.mockReturnValue(
+      new Promise((resolve) => {
+        resolveReady = resolve;
+      }),
+    );
+    mockCreateThread.mockResolvedValue({ id: 200, title: "Consult" });
+
+    const nav = { captured: "" };
+    renderComposer(nav);
+    await waitFor(() => {
+      const [profileSelect] = screen.getAllByRole("combobox");
+      expect((profileSelect as HTMLSelectElement).value).toBe("1");
+    });
+
+    await user.click(screen.getByTestId("capture-btn"));
+
+    // The composer must wait on capture; no thread is created while pending.
+    await waitFor(() => expect(mockWaitForReady).toHaveBeenCalledWith(100));
+    expect(mockCreateThread).not.toHaveBeenCalled();
+
+    // Once capture finishes, the thread is pinned to the now-ready snapshot.
+    resolveReady({ id: 100, status: "ready" });
+    await waitFor(() =>
+      expect(mockCreateThread).toHaveBeenCalledWith(
+        expect.objectContaining({ pinned_snapshot_id: 100 }),
+      ),
+    );
+    await waitFor(() => expect(nav.captured).toBe("/threads/200?snapshot=100"));
+  });
+
+  it("surfaces an error and creates no thread when capture fails", async () => {
+    const user = userEvent.setup();
+    mockCreateSnap.mockResolvedValue({ id: 101, status: "pending", includes: [] });
+    mockWaitForReady.mockRejectedValue(
+      new ApiError(400, "snapshot_failed", "Snapshot capture failed"),
+    );
+
+    const nav = { captured: "" };
+    renderComposer(nav);
+    await waitFor(() => {
+      const [profileSelect] = screen.getAllByRole("combobox");
+      expect((profileSelect as HTMLSelectElement).value).toBe("1");
+    });
+
+    await user.click(screen.getByTestId("capture-btn"));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(/capture failed/i);
+    expect(mockCreateThread).not.toHaveBeenCalled();
+    expect(nav.captured).toBe("");
+  });
+
   it("shows staged images from localStorage and allows dropping one", async () => {
     const user = userEvent.setup();
     localStorage.setItem("staged_image_ids", JSON.stringify([7, 8]));
@@ -256,7 +321,7 @@ describe("SnapshotComposerPage", () => {
     const user = userEvent.setup();
     localStorage.setItem("staged_image_ids", JSON.stringify([7]));
 
-    mockCreateSnap.mockResolvedValue({ id: 100, status: "pending", includes: [] });
+    mockCreateSnap.mockResolvedValue({ id: 100, status: "ready", includes: [] });
     mockCreateThread.mockResolvedValue({ id: 200, title: "Consult" });
 
     const nav = { captured: "" };
