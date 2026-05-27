@@ -1,4 +1,14 @@
-"""UI error paths — scenario-driven."""
+"""UI error / edge paths — assert the real failure surface, not just a rendered <body>.
+
+The previous version of every test here set up a condition then asserted only
+``expect(page.locator("body")).to_be_visible()`` — true for any HTML, including a
+crashed page. These drive the real failure and assert what the user actually sees.
+
+Note on surfaces: a stream/provider failure shows up *inline* as a "failed"
+assistant message (StreamingMessage's loss-tone pill + error text), not a toast
+or a compose banner — the old test names were aspirational. Two states have no
+honest UI surface to assert and are skipped with the reason documented below.
+"""
 
 from __future__ import annotations
 
@@ -6,47 +16,87 @@ import pytest
 from playwright.sync_api import expect
 
 from e2e.pages.dashboard import DashboardPage
-from e2e.pages.snapshot import SnapshotPage
+from e2e.pages.thread_detail import ThreadDetailPage
 from e2e.pages.trigger_editor import TriggerEditorPage
 
 
+def _fresh_chat_thread(title: str) -> int:
+    from apps.profiles.models import TradingProfile
+    from apps.threads.models import Thread
+
+    profile = TradingProfile.objects.filter(name="E2E Default").first()
+    return Thread.objects.create(title=title, profile=profile, kind="chat").id
+
+
 @pytest.mark.integration
 @pytest.mark.ui
-def test_claude_5xx_during_stream_shows_error_toast(
-    page, frontend_base_url, minimal, scenario
+def test_claude_5xx_midstream_shows_failed_message(
+    page, frontend_base_url, threads, scenario
 ) -> None:
+    """A mid-stream provider 5xx leaves a visible 'failed' assistant message.
+
+    ``claude-5xx-midstream`` streams partial text then errors; the scenario now
+    reaches the worker, so the assistant message flips to failed and the error
+    string renders inline (StreamingMessage). No toast — it's inline.
+    """
     scenario.use("claude-5xx-midstream")
-    s = SnapshotPage(page, frontend_base_url)
-    s.go()
-    expect(page.locator("body")).to_be_visible()
+    tid = _fresh_chat_thread("E2E 5xx midstream")
+    detail = ThreadDetailPage(page, frontend_base_url)
+    detail.go(tid)
+    expect(detail.compose).to_be_visible(timeout=10_000)
+    detail.send("please fail mid-stream")
+
+    # The mock error message (apps/core/mocks: stream_then_500) surfaces verbatim.
+    # Generous timeout: a cold worker / queued beat task can delay the first run.
+    expect(page.get_by_text("provider_500")).to_be_visible(timeout=30_000)
 
 
 @pytest.mark.integration
 @pytest.mark.ui
-def test_provider_disabled_blocks_send_ai(page, frontend_base_url, minimal) -> None:
+@pytest.mark.skip(
+    reason="No enabled-gate in the AI run path: resolve_provider_and_model returns the profile's "
+    "provider+model WITHOUT checking ProviderConfig.enabled (apps/ai/router.py:32-36), and the "
+    "task never gates on it — so disabling a provider has no observable effect for a profile that "
+    "sets provider+model (the default case). There is nothing to assert. Real gap: the Settings "
+    "'disable provider' toggle is a no-op for such threads; needs an enabled-gate before this can test."
+)
+def test_provider_disabled_blocks_send(page, frontend_base_url, threads) -> None:
     from apps.secrets.models import ProviderConfig
 
     ProviderConfig.objects.filter(provider="claude").update(enabled=False)
     try:
-        s = SnapshotPage(page, frontend_base_url)
-        s.go()
-        expect(page.locator("body")).to_be_visible()
+        tid = _fresh_chat_thread("E2E provider disabled")
+        detail = ThreadDetailPage(page, frontend_base_url)
+        detail.go(tid)
+        detail.send("should be blocked")
+        expect(page.get_by_text("failed")).to_be_visible(timeout=20_000)
     finally:
         ProviderConfig.objects.filter(provider="claude").update(enabled=True)
 
 
 @pytest.mark.integration
 @pytest.mark.ui
-def test_cap_exceeded_banner_on_compose(page, frontend_base_url, minimal) -> None:
+@pytest.mark.skip(
+    reason="Cap-exceeded uses _fail(), which creates a failed Message but broadcasts no "
+    "message_started and the UI doesn't refetch on error (apps/threads/tasks.py:_fail + "
+    "ThreadDetailPage onWs). The failed bubble therefore renders without an id/role → a React "
+    "'unique key' warning (console.error) trips the autouse console guard. Real gap: cost-capped / "
+    "no-provider failures don't render cleanly; fix _fail to emit message_started (or refetch on "
+    "error) before asserting this in the UI."
+)
+def test_cap_exceeded_shows_failed_message(page, frontend_base_url, threads) -> None:
     from decimal import Decimal
 
     from apps.secrets.models import ProviderConfig
 
-    ProviderConfig.objects.filter(provider="claude").update(daily_cost_cap_usd=Decimal("0.00"))
+    # Negative cap so `spent + 0 > cap` trips deterministically (cap=0 only trips with prior spend).
+    ProviderConfig.objects.filter(provider="claude").update(daily_cost_cap_usd=Decimal("-1"))
     try:
-        s = SnapshotPage(page, frontend_base_url)
-        s.go()
-        expect(page.locator("body")).to_be_visible()
+        tid = _fresh_chat_thread("E2E cap exceeded")
+        detail = ThreadDetailPage(page, frontend_base_url)
+        detail.go(tid)
+        detail.send("should hit the cap")
+        expect(page.get_by_text("would be exceeded")).to_be_visible(timeout=20_000)
     finally:
         ProviderConfig.objects.filter(provider="claude").update(
             daily_cost_cap_usd=Decimal("100.00")
@@ -55,15 +105,35 @@ def test_cap_exceeded_banner_on_compose(page, frontend_base_url, minimal) -> Non
 
 @pytest.mark.integration
 @pytest.mark.ui
-def test_network_offline_connection_dot_red(page, frontend_base_url, minimal) -> None:
+def test_health_failure_turns_connection_dot_offline(page, frontend_base_url, minimal) -> None:
+    """When the health poll fails, the connection dot latches 'Offline'.
+
+    We fail the poll by aborting /api/health rather than going browser-offline:
+    react-query's default ``networkMode: 'online'`` *pauses* queries when the
+    browser is offline (so they never error and the dot stays Live). Aborting
+    while online makes the query actually fail → useHealth returns "down".
+    """
     d = DashboardPage(page, frontend_base_url)
     d.go()
-    expect(page.locator("body")).to_be_visible()
+    dot = page.get_by_test_id("connection-status-dot")
+    # Healthy on arrival …
+    expect(dot).to_have_attribute("aria-label", "Connection: Live", timeout=15_000)
+    # … then every health poll fails (browser stays online; abort → ERR_FAILED).
+    page.route("**/api/health/**", lambda route: route.abort())
+    expect(dot).to_have_attribute("aria-label", "Connection: Offline", timeout=20_000)
 
 
 @pytest.mark.integration
 @pytest.mark.ui
-def test_validation_errors_on_trigger_editor_show_inline(page, frontend_base_url, minimal) -> None:
+def test_trigger_editor_blocks_save_until_named(page, frontend_base_url, minimal) -> None:
+    """The trigger editor's Save is disabled while the form is invalid (empty name).
+
+    That disabled state is the editor's validation gate (TriggerEditorPage:
+    ``disabled={... || !form.name || !profileId}``) — submitting an invalid
+    trigger is simply not possible, which is what we assert.
+    """
     e = TriggerEditorPage(page, frontend_base_url)
     e.go_new()
-    expect(page.locator("body")).to_be_visible()
+    save_btn = page.get_by_role("button", name="Save")
+    expect(save_btn).to_be_visible(timeout=10_000)
+    expect(save_btn).to_be_disabled()
