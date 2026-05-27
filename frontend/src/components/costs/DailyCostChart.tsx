@@ -1,10 +1,13 @@
 import {
   Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from "recharts";
+import { useTheme } from "@/hooks/useTheme";
+import { rechartsColors } from "@/lib/chartTheme";
 
 type Row = { date: string; cost_usd: string; runs: number };
 
 export default function DailyCostChart({ data }: { data: Row[] }) {
+  const c = rechartsColors(useTheme().resolved);
   if (data.length === 0) {
     return (
       <div className="ledger-surface px-5 py-12 text-center">
@@ -62,7 +65,7 @@ export default function DailyCostChart({ data }: { data: Row[] }) {
               stroke="#6b7081"
               tick={{ fontSize: 10, fontFamily: "JetBrains Mono, monospace" }}
               tickLine={false}
-              axisLine={{ stroke: "rgba(200,150,88,0.15)" }}
+              axisLine={{ stroke: c.axis }}
               tickFormatter={(v: string) => v.slice(5)}
             />
             <YAxis
@@ -74,7 +77,7 @@ export default function DailyCostChart({ data }: { data: Row[] }) {
               width={56}
             />
             <Tooltip
-              cursor={{ stroke: "rgba(200,150,88,0.4)", strokeDasharray: "2 2" }}
+              cursor={{ stroke: c.cursor, strokeDasharray: "2 2" }}
               formatter={(value) => [`$${Number(value).toFixed(4)}`, "cost"]}
               labelFormatter={(label) => String(label)}
               contentStyle={{
@@ -94,7 +97,7 @@ export default function DailyCostChart({ data }: { data: Row[] }) {
               stroke="#c89658"
               strokeWidth={1.5}
               fill="url(#copperGradient)"
-              activeDot={{ r: 3, fill: "#e6ad5e", stroke: "#0b0d12", strokeWidth: 2 }}
+              activeDot={{ r: 3, fill: "#e6ad5e", stroke: c.dotStroke, strokeWidth: 2 }}
             />
           </AreaChart>
         </ResponsiveContainer>

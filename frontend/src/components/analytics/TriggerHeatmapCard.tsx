@@ -1,10 +1,13 @@
 import { useTriggerHeatmap } from "@/hooks/useAnalytics";
 import { AnalyticsCard } from "./AnalyticsCard";
+import { useTheme } from "@/hooks/useTheme";
+import { rechartsColors } from "@/lib/chartTheme";
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 export function TriggerHeatmapCard() {
   const q = useTriggerHeatmap();
+  const colors = rechartsColors(useTheme().resolved);
   return (
     <AnalyticsCard testid="analytics-card-heatmap" title="Trigger fires (30d) · day × hour" query={q} wide>
       {(data) => {
@@ -26,7 +29,7 @@ export function TriggerHeatmapCard() {
                     style={{
                       background:
                         c.count === 0
-                          ? "rgba(255,255,255,0.04)"
+                          ? colors.heatmapEmpty
                           : `rgba(200,150,88,${0.15 + 0.85 * intensity})`,
                     }}
                   />
