@@ -14,11 +14,11 @@
 
 ## Environment
 
-All tests/lint run in the worktree's frontend container. Bring the worktree's stack up once (isolated from the main stack — set `COMPOSE_PROJECT_NAME=lightmode` and a `ports: !reset []` override per the repo's isolated-worktree pattern, or simply `make dev` if no other stack is running), then:
+Light mode is a frontend-only change; its tests are jsdom vitest needing no backend. Run them on the host from the worktree's `frontend/` directory (deps already installed there via `pnpm install --frozen-lockfile`). All commands below run from `<worktree>/frontend`:
 
-- **One unit test file:** `docker compose exec frontend pnpm exec vitest run --project unit src/__tests__/<file>`
-- **All unit tests:** `docker compose exec frontend pnpm exec vitest run --project unit`
-- **Types + lint:** `docker compose exec frontend pnpm exec tsc --noEmit && docker compose exec frontend pnpm run lint`
+- **One unit test file:** `pnpm exec vitest run --project unit src/__tests__/<file>`
+- **All unit tests:** `pnpm exec vitest run --project unit`
+- **Types + lint:** `pnpm exec tsc --noEmit && pnpm run lint`
 
 Every commit message ends with the standard trailer:
 ```
@@ -121,7 +121,7 @@ In `frontend/tailwind.config.ts`, inside `theme.extend.colors`, add two new keys
 
 - [ ] **Step 4: Verify the build compiles and dark mode is visually unchanged.**
 
-Run: `docker compose exec frontend pnpm exec tsc --noEmit`
+Run: `pnpm exec tsc --noEmit`
 Expected: PASS (no type errors).
 Then load the app (still dark by default) and confirm nothing regressed — the `slate→ink` remap slightly warms previously slate-blue components (analytics cards, command palette) toward graphite; that's the intended consistency gain.
 
@@ -305,7 +305,7 @@ describe("useTheme", () => {
 
 - [ ] **Step 3: Run it to confirm it fails.**
 
-Run: `docker compose exec frontend pnpm exec vitest run --project unit src/__tests__/useTheme.test.tsx`
+Run: `pnpm exec vitest run --project unit src/__tests__/useTheme.test.tsx`
 Expected: FAIL — cannot resolve `@/hooks/useTheme`.
 
 - [ ] **Step 4: Implement the hook + provider.**
@@ -422,7 +422,7 @@ export function useTheme(): ThemeContextValue {
 
 - [ ] **Step 5: Run the tests to confirm they pass.**
 
-Run: `docker compose exec frontend pnpm exec vitest run --project unit src/__tests__/useTheme.test.tsx`
+Run: `pnpm exec vitest run --project unit src/__tests__/useTheme.test.tsx`
 Expected: PASS (7 tests).
 
 - [ ] **Step 6: Commit.**
@@ -463,7 +463,7 @@ createRoot(document.getElementById("root")!).render(
 
 - [ ] **Step 2: Verify the app still boots and the full unit suite is green.**
 
-Run: `docker compose exec frontend pnpm exec vitest run --project unit`
+Run: `pnpm exec vitest run --project unit`
 Expected: PASS (no regressions). Load the app — still dark by default.
 
 - [ ] **Step 3: Commit.**
@@ -511,7 +511,7 @@ describe("chartTheme", () => {
 
 - [ ] **Step 2: Run it to confirm it fails.**
 
-Run: `docker compose exec frontend pnpm exec vitest run --project unit src/__tests__/chartTheme.test.ts`
+Run: `pnpm exec vitest run --project unit src/__tests__/chartTheme.test.ts`
 Expected: FAIL — cannot resolve `@/lib/chartTheme`.
 
 - [ ] **Step 3: Implement the helper.**
@@ -562,7 +562,7 @@ export function rechartsColors(theme: ResolvedTheme): RechartsColors {
 
 - [ ] **Step 4: Run the test to confirm it passes.**
 
-Run: `docker compose exec frontend pnpm exec vitest run --project unit src/__tests__/chartTheme.test.ts`
+Run: `pnpm exec vitest run --project unit src/__tests__/chartTheme.test.ts`
 Expected: PASS (3 tests).
 
 - [ ] **Step 5: Commit.**
@@ -637,7 +637,7 @@ describe("ThemeToggle", () => {
 
 - [ ] **Step 2: Run it to confirm it fails.**
 
-Run: `docker compose exec frontend pnpm exec vitest run --project unit src/__tests__/ThemeToggle.test.tsx`
+Run: `pnpm exec vitest run --project unit src/__tests__/ThemeToggle.test.tsx`
 Expected: FAIL — cannot resolve `@/components/ThemeToggle`.
 
 - [ ] **Step 3: Implement the component.**
@@ -701,7 +701,7 @@ export default function ThemeToggle() {
 
 - [ ] **Step 4: Run the test to confirm it passes.**
 
-Run: `docker compose exec frontend pnpm exec vitest run --project unit src/__tests__/ThemeToggle.test.tsx`
+Run: `pnpm exec vitest run --project unit src/__tests__/ThemeToggle.test.tsx`
 Expected: PASS (2 tests).
 
 - [ ] **Step 5: Add the Storybook story.**
@@ -789,7 +789,7 @@ function useDefaultCommands(): Command[] {
 
 - [ ] **Step 3: Verify the full unit suite + the working toggle.**
 
-Run: `docker compose exec frontend pnpm exec vitest run --project unit`
+Run: `pnpm exec vitest run --project unit`
 Expected: PASS.
 Load the app: the toggle appears in the top bar. Click it through System → Light → Dark and confirm the whole UI re-themes (page, surfaces, nav, analytics/command-palette via the slate alias). Open Cmd-K, run "Toggle theme". Reload — the choice persists.
 
@@ -921,7 +921,7 @@ export default function RenderChart() {
 
 - [ ] **Step 3: Verify.**
 
-Run: `docker compose exec frontend pnpm exec vitest run --project unit`
+Run: `pnpm exec vitest run --project unit`
 Expected: PASS (Chart tests use the mocked `createChart`, unaffected).
 In the app, toggle to light and view a chart page (e.g. Market Ticker) — the chart background/grid follow the theme. Confirm `/render/chart?ticker=SPY` stays dark.
 
@@ -973,7 +973,7 @@ In `frontend/src/pages/MarketTickerPage.tsx`, change the chart container backgro
 
 - [ ] **Step 4: Verify.**
 
-Run: `docker compose exec frontend pnpm exec vitest run --project unit`
+Run: `pnpm exec vitest run --project unit`
 Expected: PASS.
 In light mode, open Costs (DailyCostChart), Analytics (TriggerHeatmap), and Market Ticker — axes/grid/cells/container read correctly on paper.
 
@@ -1016,7 +1016,7 @@ These use inline `style={{ … }}` hex that config aliasing can't reach. Replace
 
 - [ ] **Step 4: Verify.**
 
-Run: `docker compose exec frontend pnpm exec vitest run --project unit`
+Run: `pnpm exec vitest run --project unit`
 Expected: PASS.
 In light mode, open a snapshot/thread view showing news + option chain + a chart capture button — all legible on paper, dark unchanged.
 
@@ -1050,7 +1050,7 @@ Now that the `dark`/`light` class drives `darkMode: "class"`, the `bg-{color}-95
 
 - [ ] **Step 3: Verify.**
 
-Run: `docker compose exec frontend pnpm exec vitest run --project unit`
+Run: `pnpm exec vitest run --project unit`
 Expected: PASS.
 In light mode, trigger a snapshot warning/error banner and view a thread with role badges — tinted (not dark-blob) on paper; dark mode unchanged.
 
@@ -1103,7 +1103,7 @@ Colored *fill buttons* (`bg-emerald-600`, `bg-indigo-600`) render fine on paper 
 
 - [ ] **Step 6: Verify.**
 
-Run: `docker compose exec frontend pnpm exec vitest run --project unit`
+Run: `pnpm exec vitest run --project unit`
 Expected: PASS.
 In light mode, open Triggers list, the Trigger editor (click each tab — active label is visible), a Thesis detail with a post-mortem, Snapshot cost, and Watchlists — all chromatic text is legible; dark mode unchanged.
 
@@ -1122,7 +1122,7 @@ git commit -m "feat(frontend): light-aware chromatic text & active-tab foregroun
 
 - [ ] **Step 1: Full check.**
 
-Run: `docker compose exec frontend pnpm exec tsc --noEmit && docker compose exec frontend pnpm run lint && docker compose exec frontend pnpm exec vitest run --project unit`
+Run: `pnpm exec tsc --noEmit && pnpm run lint && pnpm exec vitest run --project unit`
 Expected: all PASS.
 
 - [ ] **Step 2: Light-mode walkthrough.** Visit each top-level route (Dashboard, Snapshot, Threads, a Thread detail, Triggers, Trigger editor, Schedules, Costs, Analytics, Theses, Settings, Watchlists) in light mode. Note any low-contrast text or off-looking surface and adjust the `html.light` token values in Task 1. Re-check with browser DevTools contrast (target WCAG AA for body text and the copper text steps). Verify the toggle, persistence across reload, and OS-following in System mode.
