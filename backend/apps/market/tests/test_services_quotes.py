@@ -64,3 +64,38 @@ def test_fetch_quotes_uses_schwab_and_caches():
 def test_fetch_quotes_empty_list():
     result = fetch_quotes([])
     assert result == {}
+
+
+@pytest.mark.django_db
+def test_fetch_quotes_normalizes_index_aliases():
+    # A bare "SPX" must reach Schwab as the "$SPX" index symbol, otherwise
+    # Schwab returns nothing and the section comes back silently empty.
+    schwab_resp = MagicMock()
+    schwab_resp.json.return_value = {"$SPX": {"quote": {"lastPrice": 6000.0}}}
+    client = MagicMock()
+    client.get_quotes.return_value = schwab_resp
+
+    with patch("apps.market.services.quotes.get_schwab_client", return_value=client):
+        result = fetch_quotes(["SPX"])
+
+    client.get_quotes.assert_called_once_with(["$SPX"])
+    assert result["$SPX"]["last"] == 6000.0
+
+
+@pytest.mark.django_db
+def test_fetch_quotes_skips_error_envelope():
+    # Schwab returns a top-level {"errors": {...}} envelope for unknown symbols;
+    # it must not be rendered as a phantom "errors" ticker row.
+    schwab_resp = MagicMock()
+    schwab_resp.json.return_value = {
+        "AAPL": {"quote": {"lastPrice": 200.0}},
+        "errors": {"invalidSymbols": ["BOGUS"]},
+    }
+    client = MagicMock()
+    client.get_quotes.return_value = schwab_resp
+
+    with patch("apps.market.services.quotes.get_schwab_client", return_value=client):
+        result = fetch_quotes(["AAPL", "BOGUS"])
+
+    assert "errors" not in result
+    assert result["AAPL"]["last"] == 200.0

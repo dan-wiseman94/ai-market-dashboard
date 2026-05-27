@@ -9,6 +9,7 @@ from decimal import Decimal, InvalidOperation
 from apps.market import cache
 from apps.market.models import OHLCBar
 from apps.market.schwab_client import get_schwab_client, schwab_json
+from apps.market.symbols import normalize_symbol
 
 log = logging.getLogger(__name__)
 
@@ -25,7 +26,7 @@ _METHOD_BY_TIMEFRAME = {
 def fetch_ohlc(ticker: str, *, timeframe: str, bars: int = 60) -> list[dict]:
     if timeframe not in _METHOD_BY_TIMEFRAME:
         raise ValueError(f"Unsupported timeframe: {timeframe}")
-    ticker = ticker.upper()
+    ticker = normalize_symbol(ticker)
     return cache.get_or_fetch(
         f"market:ohlc:{ticker}:{timeframe}:{bars}",
         ttl_seconds=cache.ttl_for_kind(f"ohlc_{timeframe}"),
