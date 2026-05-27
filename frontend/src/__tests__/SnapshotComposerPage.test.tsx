@@ -132,8 +132,10 @@ describe("SnapshotComposerPage", () => {
 
   it("shows tickers for selected watchlist", async () => {
     renderComposer();
+    // The watchlist symbols appear in both the watchlist line and the "Using:"
+    // effective-set summary, so match all and assert at least one is present.
     await waitFor(() => {
-      expect(screen.getByText(/AAPL.*GOOGL|GOOGL.*AAPL/)).toBeInTheDocument();
+      expect(screen.getAllByText(/AAPL.*GOOGL|GOOGL.*AAPL/).length).toBeGreaterThanOrEqual(1);
     });
   });
 
@@ -238,6 +240,35 @@ describe("SnapshotComposerPage", () => {
 
     await waitFor(() => {
       expect(nav.captured).toBe("/threads/200?snapshot=100");
+    });
+  });
+
+  it("unions ad-hoc typed tickers with the selected watchlist on submit", async () => {
+    const user = userEvent.setup();
+    mockCreateSnap.mockResolvedValue({ id: 100, status: "ready", includes: [] });
+    mockCreateThread.mockResolvedValue({ id: 200, title: "Consult" });
+
+    const nav = { captured: "" };
+    renderComposer(nav);
+
+    // Wait for the watchlist (Tech → AAPL, GOOGL) to auto-select.
+    await waitFor(() => {
+      const selects = screen.getAllByRole("combobox");
+      expect((selects[1] as HTMLSelectElement).value).toBe("10");
+    });
+
+    // Add an ad-hoc ticker that isn't in the watchlist.
+    await user.type(screen.getByLabelText("Add tickers"), "tsla{Enter}");
+
+    await user.click(screen.getByTestId("capture-btn"));
+
+    await waitFor(() => {
+      expect(mockCreateSnap).toHaveBeenCalledWith(
+        expect.objectContaining({
+          watchlist_tickers: ["AAPL", "GOOGL", "TSLA"],
+          ohlc_ticker: "AAPL",
+        }),
+      );
     });
   });
 
