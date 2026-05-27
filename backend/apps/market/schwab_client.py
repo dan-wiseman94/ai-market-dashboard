@@ -29,6 +29,30 @@ class SchwabAuthError(SchwabNotConnectedError):
     """
 
 
+def _auth_error_message(resp: Any) -> str:
+    """Pick the most actionable message for a Schwab 401/403.
+
+    Schwab returns 401 ``"Client not authorized"`` when the *app* lacks
+    entitlement for an API product (e.g. Accounts & Trading) — a token refresh
+    or reconnect can't fix that, so steering the user to /settings would be
+    wrong. That case is distinct from a genuinely stale/rejected credential.
+    """
+    try:
+        body = resp.text or ""
+    except Exception:  # pragma: no cover - defensive; .text shouldn't raise
+        body = ""
+    if "client not authorized" in body.lower():
+        return (
+            "This Schwab app isn't authorized for this API (HTTP 401 "
+            "'Client not authorized'). Enable the required API product — usually "
+            "'Accounts and Trading Production' — for your app at developer.schwab.com. "
+            "Reconnecting won't help; Market Data works independently of it."
+        )
+    return (
+        f"Schwab rejected the saved credential (HTTP {resp.status_code}). Reconnect at /settings."
+    )
+
+
 def schwab_json(resp: Any) -> Any:
     """Parse a schwab-py response, raising on auth rejection before parsing.
 
@@ -36,17 +60,14 @@ def schwab_json(resp: Any) -> Any:
     *error object*, not the caller's expected payload — parsing it as the
     happy-path shape silently yields empty/garbage data (or, for a top-level
     list, crashes when dict keys are treated as items). Check status first and
-    translate 401/403 into ``SchwabAuthError`` so the UI gets its reconnect
-    signal; let other HTTP errors propagate as genuine 500s.
+    translate 401/403 into ``SchwabAuthError`` (with an actionable message); let
+    other HTTP errors propagate as genuine 500s.
     """
     try:
         resp.raise_for_status()
     except httpx.HTTPStatusError as e:
         if e.response.status_code in (401, 403):
-            raise SchwabAuthError(
-                f"Schwab rejected the saved credential (HTTP {e.response.status_code}). "
-                "Reconnect at /settings."
-            ) from e
+            raise SchwabAuthError(_auth_error_message(e.response)) from e
         raise
     return resp.json()
 
