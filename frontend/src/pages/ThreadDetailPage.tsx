@@ -235,10 +235,21 @@ export default function ThreadDetailPage() {
       }));
       refetch();
     } else if (msg.event === "error" || msg.event === "cost_capped") {
-      setLive((prev) => ({
-        ...prev,
-        [msg.message_id]: { ...prev[msg.message_id], status: "failed", error: msg.error },
-      }));
+      // _fail() (cost-cap / no-provider / disabled) broadcasts only this event —
+      // no prior message_started — so seed a complete message object when absent,
+      // otherwise the bubble renders without an id/role (React key warning).
+      setLive((prev) => {
+        const cur = prev[msg.message_id] ?? {
+          id: msg.message_id, role: "assistant" as const, text: "",
+        };
+        return {
+          ...prev,
+          [msg.message_id]: {
+            ...cur, id: msg.message_id, role: cur.role ?? "assistant",
+            status: "failed", error: msg.error,
+          },
+        };
+      });
     } else if (msg.event === "tool_call") {
       setToolCalls((prev) => {
         const bucket = { ...(prev[msg.message_id] ?? {}) };

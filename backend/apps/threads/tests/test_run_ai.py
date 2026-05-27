@@ -62,6 +62,27 @@ def test_run_ai_marks_failed_on_error():
 
 
 @pytest.mark.django_db
+@override_settings(CELERY_TASK_ALWAYS_EAGER=True, CELERY_TASK_EAGER_PROPAGATES=True)
+def test_run_ai_blocked_when_provider_disabled():
+    # Profile pins provider+model, which resolve_provider_and_model returns without
+    # consulting `enabled`; the task must still refuse a disabled provider.
+    ProviderConfig.objects.create(provider="claude", api_key="sk-ant-test", enabled=False)  # type: ignore[misc]
+    p = TradingProfile.objects.create(
+        name="P", style="x", default_provider="claude", default_model="claude-sonnet-4-6"
+    )
+    t = Thread.objects.create(kind="consult", profile=p, title="x")
+    u = Message.objects.create(thread=t, role="user", content={"text": "hi"})
+
+    with patch("apps.threads.tasks._broadcast"):
+        result = run_ai_on_message.delay(thread_id=t.id, user_message_id=u.id).get(timeout=5)
+
+    assert result == {"ok": False, "error": "provider_disabled"}
+    assert not Message.objects.filter(thread=t, role="assistant", status="done").exists()
+    failed = Message.objects.filter(thread=t, role="assistant").latest("created_at")
+    assert "disabled" in failed.error
+
+
+@pytest.mark.django_db
 def test_emit_capability_warning_writes_system_message():
     from apps.threads.models import Message, Thread
     from apps.threads.tasks import _emit_capability_warning
