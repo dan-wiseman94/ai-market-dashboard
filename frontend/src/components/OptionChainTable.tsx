@@ -21,7 +21,7 @@ export default function OptionChainTable({ payload }: { payload: ChainPayload | 
   const [selected, setSelected] = useState(expiryDates[0] || "");
 
   if (!payload || expiryDates.length === 0) {
-    return <div style={{ padding: 12, color: "#888" }}>No chain data.</div>;
+    return <div style={{ padding: 12, color: "var(--ink-400)" }}>No chain data.</div>;
   }
   const exp = payload.expiries[selected] ?? payload.expiries[expiryDates[0]];
   const callsByStrike = new Map(exp.calls.map((c) => [c.strike, c]));
@@ -42,9 +42,9 @@ export default function OptionChainTable({ payload }: { payload: ChainPayload | 
             type="button"
             onClick={() => setSelected(d)}
             style={{
-              background: d === selected ? "#2a2a2a" : "#111",
-              color: "#fff",
-              border: "1px solid #333",
+              background: d === selected ? "var(--ink-700)" : "var(--ink-900)",
+              color: "var(--ink-100)",
+              border: "1px solid var(--rule)",
               padding: "4px 8px",
               borderRadius: 4,
               cursor: "pointer",
@@ -54,7 +54,7 @@ export default function OptionChainTable({ payload }: { payload: ChainPayload | 
       </div>
       <table style={{ width: "100%", fontSize: 12, borderCollapse: "collapse" }}>
         <thead>
-          <tr style={{ borderBottom: "1px solid #333" }}>
+          <tr style={{ borderBottom: "1px solid var(--rule)" }}>
             <th style={{ textAlign: "right" }}>call bid</th>
             <th style={{ textAlign: "right" }}>call ask</th>
             <th style={{ textAlign: "right" }}>call Δ</th>
@@ -72,7 +72,7 @@ export default function OptionChainTable({ payload }: { payload: ChainPayload | 
             const p = putsByStrike.get(strike);
             const isAtm = atm !== null && Math.abs(parseFloat(strike) - atm) < 0.5;
             return (
-              <tr key={strike} style={{ background: isAtm ? "#1a2a3a" : "transparent" }}>
+              <tr key={strike} style={{ background: isAtm ? "color-mix(in srgb, var(--copper-500) 14%, transparent)" : "transparent" }}>
                 <td style={{ textAlign: "right" }}>{c?.bid ?? "—"}</td>
                 <td style={{ textAlign: "right" }}>{c?.ask ?? "—"}</td>
                 <td style={{ textAlign: "right" }}>{c?.delta ?? "—"}</td>

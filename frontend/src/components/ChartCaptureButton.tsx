@@ -50,9 +50,9 @@ export default function ChartCaptureButton({ targetRef, caption = "" }: ChartCap
         onClick={capture}
         disabled={busy}
         style={{
-          background: "rgba(20,20,20,0.7)",
-          color: "#fff",
-          border: "1px solid #333",
+          background: "color-mix(in srgb, var(--ink-900) 82%, transparent)",
+          color: "var(--ink-100)",
+          border: "1px solid var(--rule)",
           padding: "4px 10px",
           borderRadius: 4,
           cursor: busy ? "wait" : "pointer",

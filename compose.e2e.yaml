@@ -8,6 +8,17 @@
 # so `db-e2e` is provisioned automatically; CI tears it down with `down -v`.
 
 services:
+  # Drop host port bindings inherited from compose.yaml so the e2e stack can run
+  # under its own compose project (see Makefile E2E_PROJECT) ALONGSIDE the dev
+  # `ai-dashboard` stack without 5432/6379/5173 conflicts. Nothing in e2e needs
+  # host ports — lanes run via `docker compose exec` and services talk over the
+  # compose network (Playwright in `worker` reaches http://frontend:5173 / web:8000).
+  # `!reset` requires Docker Compose v2.24.4+.
+  db:
+    ports: !reset []
+  redis:
+    ports: !reset []
+
   # Dedicated, isolated e2e database — separate server + volume from dev `db`.
   db-e2e:
     image: postgres:17-alpine
@@ -81,6 +92,7 @@ services:
         condition: service_healthy
 
   frontend:
+    ports: !reset []
     environment:
       # In e2e mode the browser runs inside the worker container, so the host's
       # localhost:8000 isn't reachable. Empty base URL means same-origin — the

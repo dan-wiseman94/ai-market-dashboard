@@ -97,16 +97,25 @@ restore: ## Restore DB from /data/backups/<file>. Usage: make restore file=2026-
 # E2E lanes — UI / visual / a11y / perf run in `worker` (carries chromium playwright).
 # API / WS run in `web` (no browser needed). Both use --workdir /app so pytest sees the
 # repo-root layout, not /app/backend.
-E2E_RUN = $(COMPOSE) exec -T --workdir /app
+# E2E runs use a DEDICATED compose project (derived from the checkout dir name)
+# so an e2e stack — especially one launched from a git worktree — never recreates
+# the main dev stack's shared `web`/`worker`/`beat` containers (which would flip
+# them into MOCK_EXTERNAL=true and serve "Mocked response" in the dev UI).
+# compose.e2e.yaml drops host port bindings (`ports: !reset []`) so this project
+# can run alongside `make dev` without 5432/6379/5173 conflicts; tests reach
+# services over the compose network via exec. Override: `make e2e E2E_PROJECT=foo`.
+E2E_PROJECT ?= $(notdir $(CURDIR))-e2e
+E2E_COMPOSE = $(COMPOSE) -p $(E2E_PROJECT) -f compose.yaml -f compose.e2e.yaml
+E2E_RUN = $(E2E_COMPOSE) exec -T --workdir /app
 E2E_UI_LANES = e2e/ui/ e2e/visual/ e2e/a11y/
 E2E_TXT_LANES = e2e/api/ e2e/ws/
 
 .PHONY: e2e
 e2e: ## Run all E2E lanes sequentially
-	$(COMPOSE) -f compose.yaml -f compose.e2e.yaml up -d
+	$(E2E_COMPOSE) up -d
 	$(E2E_RUN) web uv run pytest $(E2E_TXT_LANES) -n 2 -m integration -v
 	$(E2E_RUN) worker uv run pytest $(E2E_UI_LANES) -n 2 --dist=loadscope -m integration -v
-	$(COMPOSE) -f compose.yaml -f compose.e2e.yaml down
+	$(E2E_COMPOSE) down
 
 .PHONY: e2e-one
 e2e-one: ## Run a single test by path. Usage: make e2e-one t=ui/test_dashboard.py
@@ -118,35 +127,35 @@ e2e-one: ## Run a single test by path. Usage: make e2e-one t=ui/test_dashboard.p
 
 .PHONY: e2e-up
 e2e-up: ## Bring e2e stack up with overlay, leave running
-	$(COMPOSE) -f compose.yaml -f compose.e2e.yaml up -d
+	$(E2E_COMPOSE) up -d
 
 .PHONY: e2e-down
 e2e-down: ## Tear down e2e stack
-	$(COMPOSE) -f compose.yaml -f compose.e2e.yaml down
+	$(E2E_COMPOSE) down
 
 .PHONY: e2e-ui
 e2e-ui: ## E2E UI lane (Playwright journeys)
-	$(COMPOSE) -f compose.yaml -f compose.e2e.yaml up -d
+	$(E2E_COMPOSE) up -d
 	$(E2E_RUN) worker uv run pytest e2e/ui/ -n 2 --dist=loadscope -m integration -v
 
 .PHONY: e2e-api
 e2e-api: ## E2E API lane (httpx contract)
-	$(COMPOSE) -f compose.yaml -f compose.e2e.yaml up -d
+	$(E2E_COMPOSE) up -d
 	$(E2E_RUN) web uv run pytest e2e/api/ -n 2 -m integration -v
 
 .PHONY: e2e-ws
 e2e-ws: ## E2E WebSocket lane
-	$(COMPOSE) -f compose.yaml -f compose.e2e.yaml up -d
+	$(E2E_COMPOSE) up -d
 	$(E2E_RUN) web uv run pytest e2e/ws/ -n 2 -m integration -v
 
 .PHONY: e2e-visual
 e2e-visual: ## E2E visual regression lane
-	$(COMPOSE) -f compose.yaml -f compose.e2e.yaml up -d
+	$(E2E_COMPOSE) up -d
 	$(E2E_RUN) worker uv run pytest e2e/visual/ -n 2 -m integration -v
 
 .PHONY: e2e-visual-update
 e2e-visual-update: ## Regenerate visual baselines
-	$(COMPOSE) -f compose.yaml -f compose.e2e.yaml up -d
+	$(E2E_COMPOSE) up -d
 	# helpers/visual.capture_or_compare creates a baseline if the file is missing.
 	# Wipe via the container — baselines are owned by root inside the worker.
 	$(E2E_RUN) worker rm -rf /app/e2e/visual/__screenshots__
@@ -155,10 +164,13 @@ e2e-visual-update: ## Regenerate visual baselines
 
 .PHONY: e2e-a11y
 e2e-a11y: ## E2E accessibility lane
-	$(COMPOSE) -f compose.yaml -f compose.e2e.yaml up -d
+	$(E2E_COMPOSE) up -d
 	$(E2E_RUN) worker uv run pytest e2e/a11y/ -n 4 -m integration -v
 
 .PHONY: e2e-perf
 e2e-perf: ## E2E performance lane (runs prod overlay)
+	# Perf runs the prod overlay (web on host:8000) on the DEFAULT project — prod
+	# needs its host port, so it can't take the e2e ports-reset isolation. Don't run
+	# this alongside `make dev`/`make prod` (it recreates the shared web container).
 	$(COMPOSE) -f compose.yaml -f compose.prod.yaml up -d
-	$(E2E_RUN) worker uv run pytest e2e/perf/ -m integration -v
+	$(COMPOSE) -f compose.yaml -f compose.prod.yaml exec -T --workdir /app worker uv run pytest e2e/perf/ -m integration -v

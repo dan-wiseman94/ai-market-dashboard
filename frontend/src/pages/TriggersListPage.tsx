@@ -93,7 +93,7 @@ export default function TriggersListPage() {
           {triggers.map((t) => (
             <tr key={t.id} data-testid={`trigger-row-${t.id}`} className="border-t border-neutral-800">
               <td className="py-2 font-medium">
-                <Link to={`/triggers/${t.id}`} className="hover:text-indigo-400">{t.name}</Link>
+                <Link to={`/triggers/${t.id}`} className="hover:text-indigo-700 dark:hover:text-indigo-400">{t.name}</Link>
               </td>
               <td className="py-2 text-neutral-400 max-w-md truncate">
                 {describeCondition(t.condition)}
@@ -112,7 +112,7 @@ export default function TriggersListPage() {
               </td>
               <td className="py-2 space-x-2">
                 <button
-                  className="text-amber-400 hover:text-amber-300"
+                  className="text-amber-700 hover:text-amber-600 dark:text-amber-400 dark:hover:text-amber-300"
                   onClick={() => {
                     if (window.confirm(`Fire "${t.name}" now? This will capture a snapshot and run the AI.`)) {
                       fire.mutate(t.id);
@@ -121,9 +121,9 @@ export default function TriggersListPage() {
                 >
                   Fire now
                 </button>
-                <Link to={`/triggers/${t.id}`} className="text-indigo-400 hover:text-indigo-300">Edit</Link>
+                <Link to={`/triggers/${t.id}`} className="text-indigo-700 hover:text-indigo-600 dark:text-indigo-400 dark:hover:text-indigo-300">Edit</Link>
                 <button
-                  className="text-rose-400 hover:text-rose-300"
+                  className="text-rose-700 hover:text-rose-600 dark:text-rose-400 dark:hover:text-rose-300"
                   onClick={() => {
                     if (window.confirm(`Delete "${t.name}"? Firings history will be removed.`)) {
                       remove.mutate(t.id);

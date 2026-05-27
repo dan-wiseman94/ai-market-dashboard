@@ -20,12 +20,12 @@ export default function ShortcutHelpDialog({ open, onClose }: Props) {
           <tbody>
             {Object.entries(SHORTCUTS).map(([key, { label }]) => (
               <tr key={key} className="border-t border-slate-800">
-                <td className="py-1 font-mono text-emerald-300">g {key}</td>
+                <td className="py-1 font-mono text-emerald-700 dark:text-emerald-300">g {key}</td>
                 <td className="py-1 text-slate-300">{label}</td>
               </tr>
             ))}
             <tr className="border-t border-slate-800">
-              <td className="py-1 font-mono text-emerald-300">?</td>
+              <td className="py-1 font-mono text-emerald-700 dark:text-emerald-300">?</td>
               <td className="py-1 text-slate-300">Show this dialog</td>
             </tr>
           </tbody>

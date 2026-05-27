@@ -27,7 +27,7 @@ export default function MarketTickerPage() {
     <div style={{ display: "flex", flexDirection: "column", gap: 16, padding: 16 }}>
       <h1 style={{ margin: 0 }}>{ticker.toUpperCase()}</h1>
 
-      <div ref={chartContainer} style={{ position: "relative", height: 400, background: "#0a0a0a" }}>
+      <div ref={chartContainer} style={{ position: "relative", height: 400, background: "var(--ink-950)" }}>
         <Chart ticker={ticker} timeframe={timeframe} bars={bars} />
         <ChartCaptureButton targetRef={chartContainer} caption={`${ticker} ${timeframe}, ${bars} bars`} />
       </div>

@@ -110,14 +110,14 @@ export default function SnapshotComposerPage() {
       <h1 className="text-2xl font-semibold">New snapshot</h1>
 
       {closedMarkets.length > 0 && (
-        <div role="status" className="rounded border border-amber-700/50 bg-amber-950/40 px-3 py-2 text-sm text-amber-200">
+        <div role="status" className="rounded border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-800 dark:border-amber-700/50 dark:bg-amber-950/40 dark:text-amber-200">
           Market closed ({closedMarkets.join(", ")}) — this snapshot will be captured and labeled
           as-of the last session close.
         </div>
       )}
 
       {error && (
-        <div role="alert" className="rounded border border-red-700/50 bg-red-950/40 px-3 py-2 text-sm text-red-200">
+        <div role="alert" className="rounded border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-800 dark:border-red-700/50 dark:bg-red-950/40 dark:text-red-200">
           {error}
         </div>
       )}
