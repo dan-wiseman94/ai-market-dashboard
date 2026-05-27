@@ -21,6 +21,14 @@ describe("MarketStatusBadge", () => {
     expect(screen.getByTestId("market-status")).toHaveTextContent("Closed");
   });
 
+  it("shows Extended Hours when the single market is in pre/post-market", () => {
+    mockUse.mockReturnValue({
+      data: { markets: { us_equity: { is_open: false, phase: "postmarket" } } },
+    });
+    render(<MarketStatusBadge />);
+    expect(screen.getByTestId("market-status")).toHaveTextContent("Extended Hours");
+  });
+
   it("summarizes N/M when multiple markets present", () => {
     mockUse.mockReturnValue({
       data: { markets: { us_equity: { is_open: false }, crypto: { is_open: true } } },

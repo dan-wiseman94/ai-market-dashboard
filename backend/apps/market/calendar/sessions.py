@@ -62,18 +62,27 @@ def market_state(
     market_key = _resolve_market(symbol, market)
     cal = get_market_calendar(market_key)
 
-    # Plain schedule (no pre/post) over a window around `now`: robust across all
-    # calendars incl. 24/7 crypto, and the window means the UTC date never
-    # selects the wrong session.
+    # Some calendars (NYSE) define pre/post extended-hours sessions; pull those
+    # columns when present so we can report premarket/postmarket. Calendars
+    # without them (crypto, SIFMA, …) fall back to the plain regular schedule.
+    has_ext = "pre" in cal.market_times and "post" in cal.market_times
+
+    # Schedule over a window around `now`: robust across all calendars incl. 24/7
+    # crypto, and the window means the UTC date never selects the wrong session.
     start = (now - timedelta(days=4)).date()
     end = (now + timedelta(days=_LOOKAHEAD_DAYS)).date()
     try:
-        sched = cal.schedule(start_date=start, end_date=end)
+        sched = (
+            cal.schedule(start_date=start, end_date=end, start="pre", end="post")
+            if has_ext
+            else cal.schedule(start_date=start, end_date=end)
+        )
     except Exception as exc:  # mcal can raise on odd ranges; treat as closed
         log.warning("market_state schedule failed for %s: %s", market_key, exc)
         return MarketState(market_key, "closed", False, None, None, False, None, None, None)
 
     today_open = today_close = None
+    today_pre = today_post = None
     is_open_now = False
     is_early = False
     as_of = None
@@ -86,6 +95,9 @@ def market_state(
             today_open, today_close = o, c
             # A regular NYSE session is 6.5h; anything shorter is an early close.
             is_early = (c - o) < timedelta(hours=6, minutes=30)
+            if has_ext:
+                today_pre = row["pre"].to_pydatetime()
+                today_post = row["post"].to_pydatetime()
         if o <= now <= c:
             is_open_now = True
         if c <= now and (as_of is None or c > as_of):
@@ -98,7 +110,14 @@ def market_state(
     if is_open_now:
         phase = "open"
     elif today_open is not None:
-        phase = "half_day" if is_early else "closed"  # session exists today, now outside it
+        # Regular session exists today but we're outside it: classify the
+        # extended-hours windows when the calendar defines them, else closed.
+        if today_pre is not None and today_pre <= now < today_open:
+            phase = "premarket"
+        elif today_post is not None and today_close < now <= today_post:
+            phase = "postmarket"
+        else:
+            phase = "half_day" if is_early else "closed"
     else:
         phase = "weekend" if now.weekday() >= 5 else "holiday"
 
