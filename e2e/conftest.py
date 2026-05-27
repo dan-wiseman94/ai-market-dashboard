@@ -6,6 +6,7 @@ Requires MOCK_EXTERNAL=true + apps/core/mocks.py for deterministic fixtures.
 
 from __future__ import annotations
 
+import contextlib
 import os
 import time
 import warnings
@@ -83,7 +84,8 @@ def seed_minimal_fixture() -> None:
     """Idempotent minimal seed for tests that need DB objects. Use as an explicit param."""
     from e2e.fixtures.seed_minimal import seed_minimal
 
-    seed_minimal()
+    with _seed_lock():
+        seed_minimal()
 
 
 @pytest.fixture(autouse=True)
@@ -138,63 +140,94 @@ def frontend_base_url() -> str:
 # ---------------------------------------------------------------------------
 # Seed ladder — 7 rungs, each depends on the previous. Tests declare only the
 # highest rung they need; everything below runs automatically.
+#
+# The seed functions are idempotent *serially*, but their get_or_create() calls
+# key on non-unique titles, so two xdist workers seeding the shared Postgres at
+# once both miss the get() and both create() → duplicate rows → later
+# MultipleObjectsReturned. A session-level advisory lock serializes the whole
+# ladder across workers so only one seeds at a time (the others see committed
+# rows and no-op). Keyed off the live DB connection — works across xdist
+# processes since they share one Postgres.
 # ---------------------------------------------------------------------------
+
+_SEED_LOCK_KEY = 730426  # arbitrary, stable constant for e2e seed serialization
+
+
+@contextlib.contextmanager
+def _seed_lock():
+    from django.db import connection
+
+    with connection.cursor() as cur:
+        cur.execute("SELECT pg_advisory_lock(%s)", [_SEED_LOCK_KEY])
+    try:
+        yield
+    finally:
+        with connection.cursor() as cur:
+            cur.execute("SELECT pg_advisory_unlock(%s)", [_SEED_LOCK_KEY])
 
 
 @pytest.fixture
 def minimal() -> None:
     from e2e.fixtures.seed_minimal import seed_minimal
 
-    seed_minimal()
+    with _seed_lock():
+        seed_minimal()
 
 
 @pytest.fixture
 def market(minimal) -> None:
     from e2e.fixtures.seed_market import seed_market
 
-    seed_market()
+    with _seed_lock():
+        seed_market()
 
 
 @pytest.fixture
 def snapshots(market) -> None:
     from e2e.fixtures.seed_snapshots import seed_snapshots
 
-    seed_snapshots()
+    with _seed_lock():
+        seed_snapshots()
 
 
 @pytest.fixture
 def threads(snapshots) -> None:
     from e2e.fixtures.seed_threads import seed_threads
 
-    seed_threads()
+    with _seed_lock():
+        seed_threads()
 
 
 @pytest.fixture
 def observer(threads) -> None:
     from e2e.fixtures.seed_observer import seed_observer
 
-    seed_observer()
+    with _seed_lock():
+        seed_observer()
 
 
 @pytest.fixture
 def triggers(observer) -> None:
     from e2e.fixtures.seed_triggers import seed_triggers
 
-    seed_triggers()
+    with _seed_lock():
+        seed_triggers()
 
 
 @pytest.fixture
 def analytics(triggers) -> None:
     from e2e.fixtures.seed_analytics import seed_analytics
 
-    seed_analytics()
+    with _seed_lock():
+        seed_analytics()
 
 
 @pytest.fixture
 def thesis(threads) -> None:
     from e2e.fixtures.seed_thesis import seed_thesis
 
-    seed_thesis()
+    with _seed_lock():
+        seed_thesis()
 
 
 # ---------------------------------------------------------------------------
