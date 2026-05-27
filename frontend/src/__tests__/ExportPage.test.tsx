@@ -5,6 +5,7 @@ import { MemoryRouter } from "react-router-dom";
 import { vi, test, expect, beforeEach } from "vitest";
 import ExportPage from "@/pages/ExportPage";
 import { ToastProvider } from "@/hooks/useToast";
+import { Toasts } from "@/components/Toasts";
 
 beforeEach(() => {
   vi.spyOn(globalThis, "fetch").mockImplementation(async (url, init) => {
@@ -44,6 +45,124 @@ test("clicking Start export POSTs scope", async () => {
     ([u, init]) => String(u).endsWith("/api/export/") && (init as RequestInit | undefined)?.method === "POST",
   );
   expect(called).toBe(true);
+});
+
+function wrapWithToasts(ui: React.ReactNode) {
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return (
+    <MemoryRouter>
+      <QueryClientProvider client={qc}>
+        <ToastProvider>
+          <Toasts />
+          {ui}
+        </ToastProvider>
+      </QueryClientProvider>
+    </MemoryRouter>
+  );
+}
+
+test("unchecking every scope sends the minimal scope", async () => {
+  const spy = vi.spyOn(globalThis, "fetch");
+  render(wrap(<ExportPage />));
+  for (const name of [/threads/i, /snapshots/i, /observations/i, /triggers/i, /profiles/i]) {
+    await userEvent.click(screen.getByRole("checkbox", { name }));
+  }
+  await userEvent.click(screen.getByRole("button", { name: /start export/i }));
+
+  const posts = spy.mock.calls.filter(
+    ([u, init]) => String(u).endsWith("/api/export/") && (init as RequestInit | undefined)?.method === "POST",
+  );
+  const { scope } = JSON.parse((posts.at(-1)![1] as RequestInit).body as string);
+  expect(scope).toMatchObject({ observations: false, triggers: false, profiles: false, watchlists: false });
+  // "all" scopes become undefined and drop out of the JSON entirely.
+  expect(scope.threads).toBeUndefined();
+  expect(scope.snapshots).toBeUndefined();
+});
+
+test("toasts an error when starting an export fails", async () => {
+  vi.spyOn(globalThis, "fetch").mockImplementation(async (url, init) => {
+    const u = String(url);
+    if (u.includes("/api/export/") && (init?.method ?? "GET").toUpperCase() === "POST") {
+      return new Response(JSON.stringify({ code: "boom", message: "disk full" }), { status: 500 });
+    }
+    if (u.includes("/api/export/")) return new Response(JSON.stringify({ results: [] }));
+    return new Response("{}");
+  });
+  render(wrapWithToasts(<ExportPage />));
+  await userEvent.click(screen.getByRole("button", { name: /start export/i }));
+  expect(await screen.findByText(/disk full/i)).toBeInTheDocument();
+});
+
+test("Delete on a finished job sends DELETE for that job", async () => {
+  const spy = vi.spyOn(globalThis, "fetch");
+  render(wrap(<ExportPage />));
+  await screen.findByText(/x\.zip/);
+  await userEvent.click(screen.getByRole("button", { name: /delete/i }));
+  const deleted = spy.mock.calls.some(
+    ([u, init]) => String(u).endsWith("/api/export/1/") && (init as RequestInit | undefined)?.method === "DELETE",
+  );
+  expect(deleted).toBe(true);
+});
+
+test("toggling a scope checkbox changes what gets POSTed", async () => {
+  const spy = vi.spyOn(globalThis, "fetch");
+  render(wrap(<ExportPage />));
+  // Observations defaults to checked; turn it off before starting the export.
+  await userEvent.click(screen.getByRole("checkbox", { name: /observations/i }));
+  await userEvent.click(screen.getByRole("button", { name: /start export/i }));
+
+  // mock.calls accumulates across tests in this file; take the POST we just made.
+  const posts = spy.mock.calls.filter(
+    ([u, init]) => String(u).endsWith("/api/export/") && (init as RequestInit | undefined)?.method === "POST",
+  );
+  const body = JSON.parse((posts.at(-1)![1] as RequestInit).body as string);
+  expect(body.scope.observations).toBe(false);
+  // Untouched scopes are still present.
+  expect(body.scope.triggers).toBe(true);
+});
+
+test("Retry on a failed job re-POSTs that job's scope", async () => {
+  vi.spyOn(globalThis, "fetch").mockImplementation(async (url, init) => {
+    const u = String(url);
+    if (u.includes("/api/export/") && (init?.method ?? "GET").toUpperCase() === "POST") {
+      return new Response(JSON.stringify({ id: 11, status: "pending" }), { status: 202 });
+    }
+    if (u.includes("/api/export/")) {
+      return new Response(JSON.stringify({
+        results: [
+          { id: 2, status: "failed", filename: "", size_bytes: null, error: "boom",
+            created_at: "2026-04-18T00:00:00Z", scope: { threads: "all", triggers: false } },
+        ],
+      }));
+    }
+    return new Response("{}");
+  });
+  const spy = vi.spyOn(globalThis, "fetch");
+  render(wrap(<ExportPage />));
+  await userEvent.click(await screen.findByRole("button", { name: /retry/i }));
+
+  const posts = spy.mock.calls.filter(
+    ([u, init]) => String(u).endsWith("/api/export/") && (init as RequestInit | undefined)?.method === "POST",
+  );
+  const body = JSON.parse((posts.at(-1)![1] as RequestInit).body as string);
+  expect(body.scope).toEqual({ threads: "all", triggers: false });
+});
+
+test("Start export is disabled while a job is still running", async () => {
+  vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => {
+    if (String(url).includes("/api/export/")) {
+      return new Response(JSON.stringify({
+        results: [
+          { id: 3, status: "running", filename: "", size_bytes: null, error: "",
+            created_at: "2026-04-18T00:00:00Z" },
+        ],
+      }));
+    }
+    return new Response("{}");
+  });
+  render(wrap(<ExportPage />));
+  await screen.findByText(/running…/i);
+  expect(screen.getByRole("button", { name: /start export/i })).toBeDisabled();
 });
 
 test("shows 1 GB warning banner when total exceeds threshold", async () => {
