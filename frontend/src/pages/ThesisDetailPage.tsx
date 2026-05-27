@@ -58,7 +58,7 @@ function PostMortemCard({ pm }: { pm: PostMortem }) {
         {!isScheduled && pm.forward_return_pct !== null && (
           <span
             className={`font-mono text-[13px] font-medium ${
-              pm.forward_return_pct >= 0 ? "text-emerald-300" : "text-rose-300"
+              pm.forward_return_pct >= 0 ? "text-emerald-700 dark:text-emerald-300" : "text-rose-700 dark:text-rose-300"
             }`}
             data-testid={`pm-return-${pm.horizon_days}`}
           >
@@ -106,7 +106,7 @@ function PostMortemCard({ pm }: { pm: PostMortem }) {
                 <div className="ledger-eyebrow mb-1">What worked</div>
                 <ul className="list-disc list-inside space-y-0.5">
                   {report.what_worked.map((item, i) => (
-                    <li key={i} className="text-emerald-400 text-[12px]">
+                    <li key={i} className="text-emerald-700 dark:text-emerald-400 text-[12px]">
                       {item}
                     </li>
                   ))}
@@ -118,7 +118,7 @@ function PostMortemCard({ pm }: { pm: PostMortem }) {
                 <div className="ledger-eyebrow mb-1">What missed</div>
                 <ul className="list-disc list-inside space-y-0.5">
                   {report.what_missed.map((item, i) => (
-                    <li key={i} className="text-rose-400 text-[12px]">
+                    <li key={i} className="text-rose-700 dark:text-rose-400 text-[12px]">
                       {item}
                     </li>
                   ))}
