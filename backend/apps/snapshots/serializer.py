@@ -144,7 +144,7 @@ def _render_positions(payload: list) -> str:
 
 def _render_breadth(payload: dict) -> str:
     lines = ["## Market breadth"]
-    lines.append(f"- SPY: {_fmt(payload.get('spy_last'))}")
+    lines.append(f"- SPX: {_fmt(payload.get('spx_last'))}")
     lines.append(f"- QQQ: {_fmt(payload.get('qqq_last'))}")
     lines.append(f"- VIX: {_fmt(payload.get('vix_last'))}")
     if payload.get("sectors"):

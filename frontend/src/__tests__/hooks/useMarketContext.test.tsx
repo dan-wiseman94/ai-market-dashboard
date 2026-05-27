@@ -4,7 +4,7 @@ import { useMarketContext } from "@/hooks/useMarketContext";
 import { hookWrapper, mockApi, mockApiError, newQueryClient } from "../testUtils";
 
 const marketContextFixture = {
-  spy_last: 520.5,
+  spx_last: 520.5,
   qqq_last: 440.2,
   vix_last: 14.3,
   sectors: { XLK: 1.2, XLF: -0.5 },
@@ -17,7 +17,7 @@ describe("useMarketContext", () => {
     const { result } = renderHook(() => useMarketContext(), { wrapper: hookWrapper() });
     expect(result.current.isLoading).toBe(true);
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(result.current.data?.spy_last).toBe(520.5);
+    expect(result.current.data?.spx_last).toBe(520.5);
     expect(result.current.data?.vix_last).toBe(14.3);
   });
 

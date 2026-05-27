@@ -20,7 +20,7 @@ export type Position = {
 };
 
 export type MarketContext = {
-  spy_last: number | null; qqq_last: number | null; vix_last: number | null;
+  spx_last: number | null; qqq_last: number | null; vix_last: number | null;
   sectors: Record<string, number | null>;
   breadth: Record<string, number | null>;
 };
