@@ -90,6 +90,9 @@ export default function SnapshotComposerPage() {
       const thread = await createThread.mutateAsync({
         profile_id: profileId, pinned_snapshot_id: snap.id,
         title: objective.slice(0, 80) || `Consult ${new Date().toLocaleString()}`,
+        // "Capture + ask": stream the AI's reply to the snapshot immediately so the
+        // thread page isn't silent on arrival.
+        auto_reply: true,
       });
       localStorage.removeItem("staged_image_ids");
       setStagedIds([]);
