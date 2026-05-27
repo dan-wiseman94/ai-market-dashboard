@@ -11,14 +11,15 @@ const LABELS = [
   "My notes",
   "Option chain",
   "News",
+  "Upcoming events",
   "Charts (server-render)",
 ];
 
 describe("SnapshotSectionPicker", () => {
-  it("renders 8 labeled checkboxes", () => {
+  it("renders 9 labeled checkboxes", () => {
     render(<SnapshotSectionPicker value={[]} onChange={() => {}} />);
     const checkboxes = screen.getAllByRole("checkbox");
-    expect(checkboxes).toHaveLength(8);
+    expect(checkboxes).toHaveLength(9);
     for (const label of LABELS) {
       expect(screen.getByLabelText(label)).toBeInTheDocument();
     }
