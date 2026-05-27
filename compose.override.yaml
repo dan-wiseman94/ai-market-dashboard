@@ -1,0 +1,14 @@
+# Dev-only overrides. Compose auto-loads this file for a bare `docker compose up`
+# (i.e. `make dev` / `make up`). The prod and e2e stacks pass explicit `-f` lists
+# (`-f compose.yaml -f compose.prod.yaml` / `-f compose.e2e.yaml`) that do NOT
+# include this file, so nothing here leaks into those stacks.
+
+services:
+  web:
+    # The base image CMD launches uvicorn without --reload, so backend Python
+    # edits don't reach the running server until `docker compose restart web`
+    # (the ./backend bind mount makes files appear instantly, but uvicorn holds
+    # the code it imported at boot). Enable --reload in dev so edits hot-reload.
+    # uvicorn watches its cwd (/app/backend, the WORKDIR) for *.py changes.
+    command:
+      ["uvicorn", "config.asgi:application", "--host", "0.0.0.0", "--port", "8000", "--reload"]
