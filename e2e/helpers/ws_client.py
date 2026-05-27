@@ -78,7 +78,7 @@ class WsClient:
                 )
             try:
                 e = await asyncio.wait_for(self._event_queue.get(), timeout=remaining)
-            except (TimeoutError, asyncio.TimeoutError) as exc:
+            except TimeoutError as exc:
                 raise TimeoutError(
                     f"did not receive event of type {type_!r} within {timeout}s; "
                     f"received types={[_event_name(e) for e in self._events]}"

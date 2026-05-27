@@ -47,8 +47,9 @@ def test_claude_5xx_midstream_shows_failed_message(
     detail.send("please fail mid-stream")
 
     # The mock error message (apps/core/mocks: stream_then_500) surfaces verbatim.
-    # Generous timeout: a cold worker / queued beat task can delay the first run.
-    expect(page.get_by_text("provider_500")).to_be_visible(timeout=30_000)
+    # Generous timeout: a warm worker renders in ~1s, but a cold worker or a busy
+    # task queue (beat firings in a long-lived e2e DB) can delay the failed write.
+    expect(page.get_by_text("provider_500")).to_be_visible(timeout=45_000)
 
 
 @pytest.mark.integration
