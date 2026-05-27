@@ -69,3 +69,24 @@ export const getCalendarStatus = (symbols: string[] = []) => {
     `/api/market/calendar-status/${qs ? `?${qs}` : ""}`,
   );
 };
+
+export type MarketEvent = {
+  kind: string;
+  ticker: string;
+  title: string;
+  event_time: string;
+  days_until: number;
+  when_hint: string;
+  impact: string;
+  detail: Record<string, unknown>;
+};
+
+export type UpcomingEvents = { earnings: MarketEvent[]; macro: MarketEvent[] };
+
+export const fetchUpcomingEvents = (tickers: string[] = [], withinDays = 14, includeMacro = true) => {
+  const params = new URLSearchParams();
+  if (tickers.length) params.set("tickers", tickers.join(","));
+  params.set("within_days", String(withinDays));
+  params.set("include_macro", String(includeMacro));
+  return apiGet<UpcomingEvents>(`/api/market/events/?${params.toString()}`);
+};
