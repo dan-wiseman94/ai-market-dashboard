@@ -52,10 +52,11 @@ git commit -m "chore(e2e/visual): update baselines for <what changed>"
 A PR that changes baselines **must** include a visual-diff summary in the PR
 description. Reviewers should open a handful of before/after PNGs.
 
-Baselines are capped at 500KB each — `tools/hooks/check_visual_baseline_size.sh`
-blocks oversized ones at pre-commit. If you hit the cap, the problem is usually
-a mask leak; check that noisy dynamic regions (timestamps, chart tooltips,
-notification counts) are masked in `helpers/visual.py`.
+Baselines are capped at 600KB each — `tools/hooks/check_visual_baseline_size.sh`
+blocks oversized ones at pre-commit (and `e2e/tests/test_baseline_size_guard.py`
+in CI). If you hit the cap, the problem is usually a mask leak; check that noisy
+dynamic regions (timestamps, chart tooltips, notification counts) are masked in
+`helpers/visual.py`.
 
 ## Known limitations
 
