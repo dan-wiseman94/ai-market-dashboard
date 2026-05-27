@@ -1063,7 +1063,60 @@ git commit -m "feat(frontend): light-aware chromatic alert banners and badges"
 
 ---
 
-## Task 12: Final verification + live palette tuning
+## Task 12: Chromatic text & foreground contrast (light-base + dark:)
+
+Colored *fill buttons* (`bg-emerald-600`, `bg-indigo-600`) render fine on paper and stay. But chromatic *text* (`text-{c}-300/400`) is low-contrast on cream, and `text-white` used as a foreground on a light surface (active tabs) is invisible. Fix each with a darker light base + a `dark:` override that preserves the current dark look.
+
+**Convention:** `text-{c}-400` → `text-{c}-700 dark:text-{c}-400`; `text-{c}-300` → `text-{c}-700 dark:text-{c}-300`; hover variants get a matching `dark:hover:`. Read each file and apply precisely, keeping surrounding JSX/conditionals intact.
+
+**Files:**
+- Modify: `frontend/src/pages/TriggersListPage.tsx`
+- Modify: `frontend/src/pages/TriggerEditorPage.tsx`
+- Modify: `frontend/src/pages/ThesisDetailPage.tsx`
+- Modify: `frontend/src/pages/SnapshotCostPage.tsx`
+- Modify: `frontend/src/pages/WatchlistsList.tsx`
+- Modify: `frontend/src/pages/WatchlistDetail.tsx`
+
+- [ ] **Step 1: `TriggersListPage.tsx`.**
+  - `hover:text-indigo-400` → `hover:text-indigo-700 dark:hover:text-indigo-400`
+  - `text-indigo-400 hover:text-indigo-300` → `text-indigo-700 hover:text-indigo-600 dark:text-indigo-400 dark:hover:text-indigo-300`
+  - `text-rose-400 hover:text-rose-300` → `text-rose-700 hover:text-rose-600 dark:text-rose-400 dark:hover:text-rose-300`
+  - `text-amber-400 hover:text-amber-300` → `text-amber-700 hover:text-amber-600 dark:text-amber-400 dark:hover:text-amber-300`
+
+- [ ] **Step 2: `TriggerEditorPage.tsx`.**
+  - Active tab labels (3 occurrences — condition / firings / backtest): `text-white border-b-2 border-indigo-500` → `text-ink-900 border-b-2 border-indigo-500 dark:text-white`
+  - `text-emerald-400` (matched) → `text-emerald-700 dark:text-emerald-400`
+  - `text-rose-400` (invalid condition + error message, 2 spots) → `text-rose-700 dark:text-rose-400`
+  - The inactive-tab `text-neutral-400` already themes via the `neutral→ink` alias — leave it.
+  - The `bg-indigo-600 … text-white` submit buttons are fill buttons — leave them.
+
+- [ ] **Step 3: `ThesisDetailPage.tsx`.**
+  - `pm.forward_return_pct >= 0 ? "text-emerald-300" : "text-rose-300"` → `pm.forward_return_pct >= 0 ? "text-emerald-700 dark:text-emerald-300" : "text-rose-700 dark:text-rose-300"`
+  - `text-emerald-400` (positive list item) → `text-emerald-700 dark:text-emerald-400`
+  - `text-rose-400` (negative list item) → `text-rose-700 dark:text-rose-400`
+
+- [ ] **Step 4: `SnapshotCostPage.tsx`.**
+  - `text-rose-400` → `text-rose-700 dark:text-rose-400`
+
+- [ ] **Step 5: `WatchlistsList.tsx` and `WatchlistDetail.tsx`.**
+  - `text-rose-400` → `text-rose-700 dark:text-rose-400` (preserve the other classes on the same element, e.g. `text-sm hover:underline`).
+
+- [ ] **Step 6: Verify.**
+
+Run: `docker compose exec frontend pnpm exec vitest run --project unit`
+Expected: PASS.
+In light mode, open Triggers list, the Trigger editor (click each tab — active label is visible), a Thesis detail with a post-mortem, Snapshot cost, and Watchlists — all chromatic text is legible; dark mode unchanged.
+
+- [ ] **Step 7: Commit.**
+
+```bash
+git add frontend/src/pages/TriggersListPage.tsx frontend/src/pages/TriggerEditorPage.tsx frontend/src/pages/ThesisDetailPage.tsx frontend/src/pages/SnapshotCostPage.tsx frontend/src/pages/WatchlistsList.tsx frontend/src/pages/WatchlistDetail.tsx
+git commit -m "feat(frontend): light-aware chromatic text & active-tab foregrounds"
+```
+
+---
+
+## Task 13: Final verification + live palette tuning
 
 **Files:** none (verification), plus possible tuning of `frontend/src/styles/globals.css` Task-1 values.
 
@@ -1074,7 +1127,7 @@ Expected: all PASS.
 
 - [ ] **Step 2: Light-mode walkthrough.** Visit each top-level route (Dashboard, Snapshot, Threads, a Thread detail, Triggers, Trigger editor, Schedules, Costs, Analytics, Theses, Settings, Watchlists) in light mode. Note any low-contrast text or off-looking surface and adjust the `html.light` token values in Task 1. Re-check with browser DevTools contrast (target WCAG AA for body text and the copper text steps). Verify the toggle, persistence across reload, and OS-following in System mode.
 
-- [ ] **Step 3: Confirm accepted limitations.** Plain chromatic buttons/links on secondary pages (`bg-emerald-600`, `bg-indigo-600`, `text-rose-400`, `text-indigo-400` on Triggers/Watchlists/Thesis pages) remain Tailwind defaults — legible on both themes; full semantic-color theming is a documented follow-up, not part of this pass.
+- [ ] **Step 3: Confirm chromatic coverage.** Chromatic text and active-tab foregrounds are themed (Task 12); the dark-tinted banners/badges are themed (Task 11). Only colored *fill buttons* (`bg-emerald-600`, `bg-indigo-600`) are intentionally retained — legible on both themes; recoloring them to copper would be a brand change beyond this scope.
 
 - [ ] **Step 4: Commit any tuning.**
 
@@ -1092,10 +1145,10 @@ git commit -m "fix(frontend): tune light palette for contrast"
 | §1 Theme model (class, color-scheme, meta) | 1, 3 |
 | §2 No-flash bootstrap | 2 |
 | §3 ThemeProvider + useTheme (provider-safe) | 3, 4 |
-| §4 Light palette + overloaded-token seams + atmosphere | 1 (+ tuning in 12) |
+| §4 Light palette + overloaded-token seams + atmosphere | 1 (+ tuning in 13) |
 | §5 Charts (chartTheme, applyOptions) | 5, 8, 9 |
 | §6 /render/chart stays dark | 8 |
-| §7 + Plan-time refinement: slate/neutral aliasing, inline-hex, chromatic banners | 1, 10, 11 |
+| §7 + Plan-time refinement: slate/neutral aliasing, inline-hex, chromatic banners & text | 1, 10, 11, 12 |
 | §8 Toggle UI (TopNav + Cmd-K) | 6, 7 |
 | Testing (useTheme, ThemeToggle, chartTheme, matchMedia mock) | 3, 5, 6 |
-| Out of scope (E2E baselines, server persistence, plain chromatic) | acknowledged in 12 |
+| Out of scope (E2E baselines, server persistence) | acknowledged in 13 |
