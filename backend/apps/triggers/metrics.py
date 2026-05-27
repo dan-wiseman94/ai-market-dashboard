@@ -132,8 +132,9 @@ def build_snapshot(triggers: Iterable[EventTrigger]) -> MetricsSnapshot:
 
 def _earnings_days_map(leaves: list[dict]) -> dict[str, int]:
     """Soonest upcoming-earnings countdown (in days) per ticker, batched into one query."""
-    from apps.market.models import MarketEvent
     from django.utils import timezone
+
+    from apps.market.models import MarketEvent
 
     tickers = {
         leaf["ticker"].upper()
