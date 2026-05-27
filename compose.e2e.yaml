@@ -1,6 +1,19 @@
 # compose.e2e.yaml — overlay for end-to-end tests
 # Usage: docker compose -f compose.yaml -f compose.e2e.yaml up -d
 #
+# Stack isolation: this overlay overrides the base `name: ai-dashboard` (compose.yaml)
+# with a DEDICATED project name. Compose project-name precedence is: `-p` flag >
+# COMPOSE_PROJECT_NAME > the top-level `name:` of the LAST `-f` file > directory basename.
+# Because this overlay is always layered last, ANY invocation that includes it — CI, the
+# `make e2e*` targets, or a raw `docker compose -f compose.yaml -f compose.e2e.yaml ...` run
+# by hand — lands in the `ai-dashboard-e2e` project: a separate set of containers, network,
+# and volumes from the `make dev` stack (`ai-dashboard`). This is what stops an e2e run from
+# recreating the dev `web`/`worker`/`beat` containers as MOCK_EXTERNAL=true (the "Mocked
+# response" footgun) or from sharing the dev redis (broker / Channels layer / cache). The
+# `make e2e*` targets additionally pass `-p <checkout>-e2e`, which (flag > file `name:`)
+# further isolates each git worktree so two checkouts can run e2e at once without colliding.
+name: ai-dashboard-e2e
+
 # Database isolation: e2e runs against a DEDICATED throwaway Postgres (`db-e2e`),
 # never the dev `db`. The seed ladder (e2e/fixtures/seed_*.py) and scenario
 # engine reset/seed aggressively, so pointing web/worker/beat at a separate
@@ -8,8 +21,8 @@
 # so `db-e2e` is provisioned automatically; CI tears it down with `down -v`.
 
 services:
-  # Drop host port bindings inherited from compose.yaml so the e2e stack can run
-  # under its own compose project (see Makefile E2E_PROJECT) ALONGSIDE the dev
+  # Drop host port bindings inherited from compose.yaml so the e2e stack (its own
+  # `ai-dashboard-e2e` project — see the `name:` above) can run ALONGSIDE the dev
   # `ai-dashboard` stack without 5432/6379/5173 conflicts. Nothing in e2e needs
   # host ports — lanes run via `docker compose exec` and services talk over the
   # compose network (Playwright in `worker` reaches http://frontend:5173 / web:8000).
