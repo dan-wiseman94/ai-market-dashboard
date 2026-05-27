@@ -43,11 +43,17 @@ _STOP_POLL_SECONDS = 0.25  # how often the streaming loop checks the stop flag
 
 
 def _broadcast(thread_id: int, payload: dict) -> None:
-    group_broadcast(f"thread.{thread_id}", "thread_event", payload)
+    from apps.threads.event_log import record
+
+    group_broadcast(f"thread.{thread_id}", "thread_event", record(thread_id, payload))
 
 
 async def _broadcast_async(thread_id: int, payload: dict) -> None:
-    await group_broadcast_async(f"thread.{thread_id}", "thread_event", payload)
+    from apps.threads.event_log import record
+
+    # record() is a quick synchronous Redis round-trip; the buffer must stay
+    # ordered with the live broadcast, so stamp the seq here too.
+    await group_broadcast_async(f"thread.{thread_id}", "thread_event", record(thread_id, payload))
 
 
 def _extract_text(m: Message) -> str:
@@ -415,6 +421,17 @@ def _run_ai_on_message(
             error=f"No ProviderConfig row for '{provider_name}'. Visit /settings.",
         )
         return {"ok": False, "error": "no_key"}
+
+    if not cfg.enabled:
+        # A profile can pin a provider+model that resolve_provider_and_model returns
+        # without consulting `enabled` (it only filters enabled in fallback). Gate here
+        # so the Settings "disable provider" toggle actually blocks runs for that provider.
+        _fail(
+            thread_id=thread_id,
+            parent_message_id=parent_message_id,
+            error=f"Provider '{provider_name}' is disabled. Enable it in /settings.",
+        )
+        return {"ok": False, "error": "provider_disabled"}
 
     try:
         check_daily_cap(provider_name, cap_usd=cfg.daily_cost_cap_usd)
