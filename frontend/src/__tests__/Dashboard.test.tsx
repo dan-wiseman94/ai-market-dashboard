@@ -21,8 +21,17 @@ vi.mock("@/api/triggers", () => ({
   fetchRecentFirings: vi.fn(() => Promise.resolve([])),
 }));
 
+// The hero's session status + headline derive from the authoritative backend.
+const mockMarketStatus = vi.fn();
+vi.mock("@/hooks/useMarketStatus", () => ({
+  useMarketStatus: () => mockMarketStatus(),
+}));
+
 beforeEach(() => {
   vi.clearAllMocks();
+  mockMarketStatus.mockReturnValue({
+    data: { markets: { us_equity: { is_open: true, phase: "open" } } },
+  });
 });
 
 describe("Dashboard", () => {
@@ -36,6 +45,33 @@ describe("Dashboard", () => {
     renderWithProviders(<Dashboard />);
     const heading = screen.getByRole("heading", { level: 1 });
     expect(heading.textContent).toMatch(/good morning|good afternoon|good evening|late watch/i);
+  });
+
+  it("hero headline says the tape is open during the regular session", () => {
+    mockMarketStatus.mockReturnValue({
+      data: { markets: { us_equity: { is_open: true, phase: "open" } } },
+    });
+    renderWithProviders(<Dashboard />);
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toMatch(/the tape is open/i);
+  });
+
+  it("hero reflects extended hours (headline + status) instead of 'open'", () => {
+    mockMarketStatus.mockReturnValue({
+      data: { markets: { us_equity: { is_open: false, phase: "postmarket" } } },
+    });
+    renderWithProviders(<Dashboard />);
+    const heading = screen.getByRole("heading", { level: 1 });
+    expect(heading.textContent).toMatch(/the tape is in extended hours/i);
+    expect(heading.textContent).not.toMatch(/the tape is open/i);
+    expect(screen.getByText("Extended Hours")).toBeInTheDocument();
+  });
+
+  it("hero says the tape is closed when the market is closed", () => {
+    mockMarketStatus.mockReturnValue({
+      data: { markets: { us_equity: { is_open: false, phase: "weekend" } } },
+    });
+    renderWithProviders(<Dashboard />);
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toMatch(/the tape is closed/i);
   });
 
   it("includes the 'Market context' section label", () => {
