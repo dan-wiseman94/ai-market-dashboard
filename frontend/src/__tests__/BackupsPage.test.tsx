@@ -1,10 +1,11 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router-dom";
 import { vi, test, expect, beforeEach } from "vitest";
 import BackupsPage from "@/pages/BackupsPage";
 import { ToastProvider } from "@/hooks/useToast";
+import { Toasts } from "@/components/Toasts";
 
 beforeEach(() => {
   vi.spyOn(globalThis, "fetch").mockImplementation(async (url, init) => {
@@ -43,4 +44,60 @@ test("clicking Back up now POSTs to run endpoint", async () => {
     ([u, init]) => String(u).includes("/api/backups/run") && (init as RequestInit | undefined)?.method === "POST",
   );
   expect(called).toBe(true);
+});
+
+function wrapWithToasts(ui: React.ReactNode) {
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return (
+    <MemoryRouter>
+      <QueryClientProvider client={qc}>
+        <ToastProvider>
+          <Toasts />
+          {ui}
+        </ToastProvider>
+      </QueryClientProvider>
+    </MemoryRouter>
+  );
+}
+
+test("Delete opens a confirmation dialog that Cancel dismisses without deleting", async () => {
+  const spy = vi.spyOn(globalThis, "fetch");
+  render(wrap(<BackupsPage />));
+  await userEvent.click(await screen.findByRole("button", { name: /^delete$/i }));
+
+  const dialog = screen.getByRole("dialog", { name: /confirm delete backup/i });
+  expect(dialog).toBeInTheDocument();
+
+  await userEvent.click(within(dialog).getByRole("button", { name: /cancel/i }));
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+
+  const deleted = spy.mock.calls.some(
+    ([u, init]) => (init as RequestInit | undefined)?.method === "DELETE" && String(u).includes("/api/backups/1/"),
+  );
+  expect(deleted).toBe(false);
+});
+
+test("confirming the dialog sends DELETE and toasts success", async () => {
+  const spy = vi.spyOn(globalThis, "fetch");
+  render(wrapWithToasts(<BackupsPage />));
+  await userEvent.click(await screen.findByRole("button", { name: /^delete$/i }));
+
+  const dialog = screen.getByRole("dialog", { name: /confirm delete backup/i });
+  await userEvent.click(within(dialog).getByRole("button", { name: /^delete$/i }));
+
+  const deleted = spy.mock.calls.some(
+    ([u, init]) => (init as RequestInit | undefined)?.method === "DELETE" && String(u).includes("/api/backups/1/"),
+  );
+  expect(deleted).toBe(true);
+  expect(await screen.findByText(/backup deleted/i)).toBeInTheDocument();
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+});
+
+test("clicking the backdrop dismisses the dialog", async () => {
+  render(wrap(<BackupsPage />));
+  await userEvent.click(await screen.findByRole("button", { name: /^delete$/i }));
+  const dialog = screen.getByRole("dialog", { name: /confirm delete backup/i });
+  // The backdrop is the dialog element itself; the inner panel stops propagation.
+  await userEvent.click(dialog);
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 });
