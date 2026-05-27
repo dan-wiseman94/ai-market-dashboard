@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 from typing import Any
+from urllib.parse import parse_qs
 
+from asgiref.sync import sync_to_async
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
 
 
@@ -13,6 +15,23 @@ class ThreadConsumer(AsyncJsonWebsocketConsumer):
         self.group_name = f"thread.{self.thread_id}"
         await self.channel_layer.group_add(self.group_name, self.channel_name)
         await self.accept()
+        # Reconnect replay: a client that dropped can pass ?since=<seq> to receive
+        # the buffered events it missed before live streaming resumes. Joining the
+        # group before replaying means a concurrent live event is at worst a
+        # duplicate (same seq), never a gap — the client dedupes on seq.
+        since = self._since()
+        if since is not None:
+            from apps.threads.event_log import replay_since
+
+            for ev in await sync_to_async(replay_since)(self.thread_id, since):
+                await self.send_json(ev)
+
+    def _since(self) -> int | None:
+        raw = parse_qs(self.scope.get("query_string", b"").decode()).get("since", [None])[0]
+        try:
+            return int(raw) if raw is not None else None
+        except (TypeError, ValueError):
+            return None
 
     async def disconnect(self, code: int) -> None:
         await self.channel_layer.group_discard(self.group_name, self.channel_name)
