@@ -84,6 +84,7 @@ def _title(kind: str) -> str:
         "news": "News",
         "notes": "Notes",
         "image": "Chart image",
+        "events": "Upcoming events",
     }.get(kind, kind.title())
 
 
@@ -269,6 +270,22 @@ def build_image_blocks(image_ids: list[int], *, provider_name: str) -> list[dict
     return blocks
 
 
+def _render_events(payload) -> str:
+    earnings = payload.get("earnings", []) if isinstance(payload, dict) else []
+    macro = payload.get("macro", []) if isinstance(payload, dict) else []
+    if not earnings and not macro:
+        return "## Upcoming events\n_(none in the next 14 days)_"
+    lines = ["## Upcoming events"]
+    for e in earnings:
+        hint = f", {e['when_hint'].upper()}" if e.get("when_hint") else ""
+        est = (e.get("detail") or {}).get("eps_est")
+        est_s = f", est EPS {est}" if est is not None else ""
+        lines.append(f"- {e['ticker']} earnings in {e['days_until']}d{hint}{est_s}")
+    for m in macro:
+        lines.append(f"- {m['title']} in {m['days_until']}d")
+    return "\n".join(lines)
+
+
 def _render_image(payload: dict) -> str:
     ids = payload.get("image_ids") or []
     if not ids:
@@ -291,5 +308,6 @@ _RENDERERS = {
     "breadth": _render_breadth,
     "news": _render_news,
     "image": _render_image,
+    "events": _render_events,
     "notes": lambda _p: "",
 }
