@@ -97,12 +97,16 @@ restore: ## Restore DB from /data/backups/<file>. Usage: make restore file=2026-
 # E2E lanes — UI / visual / a11y / perf run in `worker` (carries chromium playwright).
 # API / WS run in `web` (no browser needed). Both use --workdir /app so pytest sees the
 # repo-root layout, not /app/backend.
-# E2E runs use a DEDICATED compose project (derived from the checkout dir name)
-# so an e2e stack — especially one launched from a git worktree — never recreates
-# the main dev stack's shared `web`/`worker`/`beat` containers (which would flip
-# them into MOCK_EXTERNAL=true and serve "Mocked response" in the dev UI).
-# compose.e2e.yaml drops host port bindings (`ports: !reset []`) so this project
-# can run alongside `make dev` without 5432/6379/5173 conflicts; tests reach
+# E2E runs use a DEDICATED compose project so an e2e stack never recreates the dev
+# stack's shared `web`/`worker`/`beat` containers (which would flip them into
+# MOCK_EXTERNAL=true and serve "Mocked response" in the dev UI) or share its redis.
+# Two layers of isolation, both pointing away from the dev `ai-dashboard` project:
+#   1. compose.e2e.yaml sets `name: ai-dashboard-e2e`, so even a raw
+#      `docker compose -f compose.yaml -f compose.e2e.yaml ...` (or CI) is isolated.
+#   2. The `-p <checkout>-e2e` below (flag beats file `name:`) gives each git
+#      worktree its own project, so two checkouts can run e2e simultaneously.
+# compose.e2e.yaml also drops host port bindings (`ports: !reset []`) so the e2e
+# stack can run alongside `make dev` without 5432/6379/5173 conflicts; tests reach
 # services over the compose network via exec. Override: `make e2e E2E_PROJECT=foo`.
 E2E_PROJECT ?= $(notdir $(CURDIR))-e2e
 E2E_COMPOSE = $(COMPOSE) -p $(E2E_PROJECT) -f compose.yaml -f compose.e2e.yaml
