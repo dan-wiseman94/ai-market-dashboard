@@ -12,10 +12,10 @@ from apps.market.schwab_client import SchwabNotConnectedError
 from apps.market.serializers import CalendarOverrideSerializer
 from apps.market.services.chain import fetch_chain
 from apps.market.services.context import fetch_market_context
+from apps.market.services.events import upcoming_events
 from apps.market.services.news import fetch_news
 from apps.market.services.ohlc import fetch_ohlc
 from apps.market.services.positions import fetch_positions
-from apps.market.services.events import upcoming_events
 from apps.market.services.quotes import fetch_quotes
 
 
