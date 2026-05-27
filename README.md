@@ -1,15 +1,28 @@
-# AI Trading Dashboard
+# Ledger
 
-Single-user desktop dashboard that captures stock-market snapshots (quotes, OHLC, option chains, positions, market breadth, news, rendered charts) and routes them to an AI — **Claude**, **OpenAI**, or a **local OpenAI-compatible endpoint** — for observations framed by a named trading style and a per-snapshot objective.
+A single-user desktop dashboard that captures point-in-time **stock-market snapshots** (quotes, OHLC, option chains, positions, market breadth, news, rendered charts) and routes them to an AI — **Claude**, **OpenAI**, or a **local OpenAI-compatible endpoint** — for observations framed by a named trading style and a per-snapshot objective. It then closes the loop: record the decision you made, and let a scheduled post-mortem grade it against the tape.
 
-**Observational only.** No broker write path. Runs entirely in Docker Compose and binds to `127.0.0.1`.
+**Observational only.** No broker write path — Ledger reads the market and reasons about it; it never places or modifies an order. Runs entirely in Docker Compose and binds to `127.0.0.1`.
 
-> Full design: [`docs/superpowers/specs/2026-04-16-ai-dashboard-design.md`](docs/superpowers/specs/2026-04-16-ai-dashboard-design.md)
-> Contributor guide: [`CLAUDE.md`](CLAUDE.md)
+> Full design: [`docs/superpowers/specs/2026-04-16-ai-dashboard-design.md`](docs/superpowers/specs/2026-04-16-ai-dashboard-design.md) · Contributor guide: [`CLAUDE.md`](CLAUDE.md)
+
+## Screenshots
+
+**Dashboard** — the daily overview ("the tape").
+
+![Ledger dashboard](ledger-dashboard-final.png)
+
+**Threads** — pick a provider and model, or fan the same prompt across several at once with Compare.
+
+![Ledger thread](ledger-thread-clean.png)
+
+**Costs** — every token, every model, every thread, with daily/monthly caps and CSV export.
+
+![Ledger costs](ledger-costs.png)
 
 ## Status
 
-**Feature-complete — all milestones shipped (M1 → M10, plus M12 analytics; there is no M11).**
+**Feature-complete — all milestones shipped (M1 → M12).**
 
 | Milestone | Scope | Tag |
 |---|---|---|
@@ -23,7 +36,10 @@ Single-user desktop dashboard that captures stock-market snapshots (quotes, OHLC
 | M8 | Polish (layout, cost caps, backups, export) | `m8-polish` |
 | M9 | AI platform v2 (tool use, extended thinking, memory) | `m9-ai-platform-v2` |
 | M10 | AI platform v2.5 (files, citations, structured, batch) | `m10-ai-platform-v25` |
+| M11 | Second brain (theses, post-mortems, decision journal) | — |
 | M12 | Analytics (leaderboard, heatmap, unusual options) | `m12-analytics` |
+
+> M11 merged via PR #51 without a release tag. Since then, **provider tool parity** (tool use on all three providers, with visible capability warnings) has also shipped.
 
 ## Features
 
@@ -40,7 +56,7 @@ Single-user desktop dashboard that captures stock-market snapshots (quotes, OHLC
 - **Three backends** — Claude (Anthropic SDK), OpenAI, and any local OpenAI-compatible endpoint. A normalized event stream (`text_delta | image_ref | usage | done | error`) keeps the rest of the app provider-agnostic.
 - **Router with precedence** — provider/model selection flows through a single router + factory; providers are never instantiated ad-hoc from views or tasks.
 - **Model catalog** — per-model pricing and max payload budgets drive both cost calculation and payload trimming.
-- **Trading-style profiles** — reusable personas (system framing) that also toggle the advanced Claude capabilities below.
+- **Trading-style profiles** — reusable personas (system framing) that also toggle the advanced capabilities below.
 
 ### Threads & streaming
 
@@ -49,17 +65,27 @@ Single-user desktop dashboard that captures stock-market snapshots (quotes, OHLC
 - **Stop** — aborts the upstream generation *and* billing (closes the provider stream), not just the final write.
 - **Pinned snapshots** — a captured snapshot is injected as the thread's first turn, so the model (and you) can see exactly what it was given.
 
-### Advanced Claude capabilities (opt-in per profile)
+### Advanced AI capabilities (opt-in per profile)
 
-- **Tool use** — an agentic tool loop backed by a pluggable tool registry; every call is recorded and streamed (`tool_call` / `tool_result`).
-- **Extended thinking** — budgeted reasoning with `thinking_delta` events (billed as output tokens).
-- **Memory** — the `memory_20250818` tool, scoped to a per-profile directory under `/data/memory/<profile_id>/`.
-- **Files** — upload documents through the Anthropic Files API and attach them to a thread.
-- **Citations** — news items are sent as Anthropic `search_result` blocks; the UI resolves citations back to their source.
-- **Prompt caching** — multi-turn Claude runs cache the prior message for ~0.1× input cost on a hit.
-- **Structured observations** — observer runs can return a typed `ObservationReport` for structured UI cards.
+- **Tool use** — an agentic tool loop backed by a pluggable tool registry; every call is recorded and streamed (`tool_call` / `tool_result`). **Works on all three providers** — Claude always, and OpenAI/local when the credential opts in (`ProviderConfig.supports_tools`, on by default; turn it off for local endpoints without function-calling).
+- **Extended thinking** *(Claude)* — budgeted reasoning with `thinking_delta` events (billed as output tokens).
+- **Memory** *(Claude)* — the `memory_20250818` tool, scoped to a per-profile directory under `/data/memory/<profile_id>/`.
+- **Files** *(Claude)* — upload documents through the Anthropic Files API and attach them to a thread.
+- **Citations** *(Claude)* — news items are sent as Anthropic `search_result` blocks; the UI resolves citations back to their source.
+- **Prompt caching** *(Claude)* — multi-turn runs cache the prior message for ~0.1× input cost on a hit.
+- **Structured observations** *(Claude)* — observer runs can return a typed `ObservationReport` for structured UI cards.
 
-> OpenAI / Local providers ignore the advanced toggles — enabling them on a non-Claude profile is a silent no-op (parity is a future milestone).
+> **Capability warnings, not silent no-ops.** Extended thinking and memory are Claude-only; tool use needs a credential that supports it. Enabling one of these on a provider that can't honor it no longer fails quietly — `run_ai_on_message` posts a visible `capability_warning` system message and a `warning` WebSocket event, then continues the run with whatever the provider *can* do.
+
+### Second brain — theses, post-mortems & decision journal
+
+The "decide → review" half of the loop: Ledger records what the market looked like and what the AI thought, then captures **what you decided** and grades whether the call was right.
+
+- **Theses** (`/api/theses/`) — record a named directional call on a ticker: direction (bullish / bearish / neutral), rationale, conviction (1–5), optional entry / target / invalidation prices, and a horizon. Optional links back to the originating thread and snapshot.
+- **Deterministic post-mortems** — at each configured horizon (`THESIS_POSTMORTEM_HORIZONS` = 7 / 30 / 90 days) a beat task computes the actual forward return from stored `OHLCBar` data and assigns an **objective verdict** — correct / incorrect / mixed / inconclusive — with **no AI required**. The scheduled→running claim is idempotent, so the Run-now button and the beat task can't double-bill.
+- **Best-effort AI narrative** — if a Claude key and cost caps allow, a structured report (what worked, what was missed, lessons, would-you-repeat) is posted into a per-thesis review thread. It degrades silently to an empty report on any non-Claude provider, missing key, cap hit, or error — the objective verdict always persists.
+- **Decision journal** (`/api/journal/?thread=<id>`) — log what you actually did on a thread (acted / passed / watching / hedged) and why, optionally linked to a thesis.
+- **Agent presets** — four seeded built-ins (`earnings-prep`, `devils-advocate`, `pre-trade-bias-check`, `triage-pass`) that pre-fill the snapshot composer's objective and section includes.
 
 ### Observer — scheduled AI runs
 
@@ -95,11 +121,24 @@ Single-user desktop dashboard that captures stock-market snapshots (quotes, OHLC
 - **Command palette** (`Cmd`/`Ctrl`-K) and `g <x>` keyboard shortcuts to every top-level route.
 - **Encrypted secrets** — Schwab OAuth tokens and provider API keys are stored encrypted at rest.
 
+## Tech stack
+
+| Layer | Technology |
+|---|---|
+| Backend | Python 3.13 · Django 6 + Django REST Framework · Channels 4 over Daphne (ASGI/WebSockets) |
+| Async | Celery 5 worker + beat (`DatabaseScheduler`), Redis broker |
+| Data | Postgres 16 (psycopg 3) · Redis (broker, Channels layer, cache) |
+| AI | `anthropic` + `openai` SDKs · `tiktoken` for token counting |
+| Market | `schwab-py` · `pandas` · `pandas-market-calendars` · Playwright / headless Chromium for chart PNGs |
+| Secrets | `django-cryptography` (key derived from `DJANGO_SECRET_KEY` + `/data/secret.salt`) |
+| Frontend | React 19 + TypeScript · Vite · React Router 7 · TanStack Query 5 · lightweight-charts + Recharts · react-markdown |
+| Tooling | `uv` (Python) · `pnpm` (JS) · `ruff` + `ty` · ESLint + `tsc` · `pytest` · `vitest` · Storybook · MSW |
+
 ## Prerequisites
 
 - Docker + Docker Compose v2.29+
 - For the Schwab market-data integration: a developer app at <https://developer.schwab.com> with callback `https://127.0.0.1:8000/api/schwab/callback`
-- *(Optional, for editor tooling outside Docker)* Python 3.12 + [uv](https://docs.astral.sh/uv/), Node 20+
+- *(Optional, for editor tooling outside Docker)* Python 3.13 + [uv](https://docs.astral.sh/uv/), Node 20+ with `pnpm`
 
 ## Quick start
 
@@ -157,17 +196,28 @@ Refresh tokens last ~7 days; after that, click **Connect Schwab** again — with
 | `make e2e-one t=<mod>` | Run one E2E test file (overlay must be up: `make e2e-up`) |
 | `make restore file=<name>` | Restore Postgres from `/data/backups/<name>` |
 
+## Testing
+
+Four layers, gated by `make check` (`lint` + `test`) — what CI runs.
+
+- **Unit** (`pytest`) — pure logic: condition evaluator, payload serializer, cost calc, market-hours, DSL parser, token estimator. Favors `pytest.mark.parametrize`. Runs by default.
+- **Integration** (`pytest -m integration`) — real Postgres, `fakeredis`, Celery eager; external SDKs mocked at the boundary with `respx` / `vcrpy`. **Excluded by default** (`-m 'not integration'`); opt in explicitly.
+- **End-to-end** (`make e2e`) — six lanes under `e2e/` driving the full compose stack with `MOCK_EXTERNAL=true`: `ui` (Playwright journeys), `api` (httpx contract), `ws` (Channels events), `visual` (screenshot diffs), `a11y` (axe-core), and `perf` (Lighthouse budgets, prod overlay — `make e2e-perf`).
+- **Frontend** (`vitest` + Testing Library). Storybook stories double as a real-browser test lane (`pnpm test-storybook`, needs system Chromium; not part of the default `pnpm test`). Storybook itself runs on `:6006` under the `dev` compose profile.
+
 Run a single backend test:
 
 ```bash
-docker compose exec web pytest backend/apps/<app>/tests/test_<x>.py::<name> -v
+docker compose exec web pytest apps/<app>/tests/test_<x>.py::<name> -v
 ```
 
-Integration tests are excluded by default (`-m 'not integration'`); run them with `pytest -m integration`.
+> The `web` container's working directory is `/app/backend`, so test paths **drop the `backend/` prefix**.
+
+`ty` is **advisory, not a gate** — it emits ~900 false-positive `unresolved-attribute` diagnostics on Django `.objects`/FK descriptors it can't model, so CI runs it `continue-on-error`. A non-zero `ty` (or `make lint` failing only at the `ty` step) is not a build failure.
 
 ## Architecture at a glance
 
-Six services in `compose.yaml`, all bound to `127.0.0.1`:
+Six core services in `compose.yaml`, all bound to `127.0.0.1` (the `dev` profile adds a Caddy `tls-proxy` and a Storybook server):
 
 ```
 web       Django + DRF + Channels (Daphne ASGI)   :8000
@@ -181,16 +231,17 @@ frontend  Vite dev server (React + TS)            :5173
 Backend code lives under `backend/apps/<name>/` (imported as `apps.<name>`):
 
 - `core` · health, base consumer, logging, `MOCK_EXTERNAL` flag
-- `market` · Schwab client, quotes/OHLC/chain/news
+- `market` · Schwab client, quotes/OHLC/chain/news, shared forward-return helpers (`returns.py`)
 - `snapshots` · capture orchestration + token budget
-- `ai` · provider abstraction (Claude / OpenAI / Local), router, catalog, cost calc, tool/thinking/memory/citations support
+- `ai` · provider abstraction (Claude / OpenAI / Local), router, catalog, cost calc, tool/thinking/memory/citations support + capability-gap detection
 - `threads` · messages, streaming consumer, multi-provider compare, stop, file attach
 - `observer` · scheduled AI runs via Celery beat (structured / diff / batch modes)
 - `triggers` · event-trigger evaluator + condition DSL + firings + backtest
-- `profiles` · trading-style profiles
+- `profiles` · trading-style profiles + agent presets
 - `secrets` · encrypted credentials (Schwab OAuth, provider API keys) + cost caps
 - `costs` · per-provider / per-model / per-thread aggregation, caps, CSV export, snapshot drill-down
 - `analytics` · on-demand aggregations (leaderboard, cost-per-insight, trigger heatmap, observer timeline, unusual options)
+- `thesis` · theses + post-mortems + decision journal (M11 "second brain")
 - `files` · Anthropic Files API proxy (upload + attach to threads)
 - `backups` · scheduled `pg_dump` + rotation
 - `export` · async zip bundles (threads, snapshots, observations, triggers, profiles, watchlists)
@@ -222,6 +273,23 @@ make prod
 ```
 
 The SPA is served at <http://localhost:8000>. Prod `/` serves `index.html` via Whitenoise (`WHITENOISE_INDEX_FILE`) plus a Django `TemplateView` catch-all in `config/urls.py` (excluding `api/|static/|render/|ws/|admin/`), so deep links and refreshes work.
+
+## Troubleshooting
+
+- **First build is slow (3–8 min).** Images build from scratch on first run; the `worker` image is ~3–5 min slower than the rest because it downloads Chromium (~150 MB) for chart renders.
+- **A new Celery task or `beat_schedule` entry won't fire.** `compose --watch` hot-reloads only `web` and `frontend`; `worker`/`beat` keep their task registry from boot. After adding or renaming a task module or schedule, `docker compose restart worker beat`.
+- **Provider tests return "Mocked response".** `MOCK_EXTERNAL=true` leaked onto the normal dev stack (it belongs only to the e2e overlay). Recreate the affected containers without the overlay: `docker compose stop web worker beat && docker compose rm -f web worker beat && docker compose up -d`.
+- **Editor shows missing-import / type errors.** Dependencies live inside the containers, not on the host — run linters via `make lint` (which shells into them). A non-zero `ty` is expected and advisory.
+- **Schwab "Potential Security Risk" warning.** Expected once — the dev `tls-proxy` uses a self-signed CA. Accept the exception (see [Connecting Schwab](#connecting-schwab)). If Schwab itself rejects the login, the app's callback was likely edited and is pending re-approval on Schwab's side.
+
+## Contributing
+
+`CLAUDE.md` is the working contributor guide — it documents the non-obvious conventions and silent-failure traps (Celery task registration, snapshot section `done` vs. `ready`, `config/urls.py` include ordering, the synthetic-snapshot-message pattern, and more). Read it before changing backend code.
+
+- **Branch off `origin/main`**, keep commits bite-sized and conventional (`feat(core):`, `fix(frontend):`, `chore:`, `docs:`, `ci:`).
+- **`make check` must pass** (lint + test) before committing or opening a PR.
+- **Designs land first.** Specs go in `docs/superpowers/specs/`, plans in `docs/superpowers/plans/` (`YYYY-MM-DD-<topic>.md`); read the relevant spec section before adding a feature.
+- **Adding a Django app?** Follow the layout in `CLAUDE.md` — `AppConfig` with a short `label`, an `INSTALLED_APPS` entry, and a `config/urls.py` include placed *before* the generic `/api/` include.
 
 ## Security notes
 
