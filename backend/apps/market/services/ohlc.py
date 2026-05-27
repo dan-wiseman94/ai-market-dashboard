@@ -8,7 +8,7 @@ from decimal import Decimal, InvalidOperation
 
 from apps.market import cache
 from apps.market.models import OHLCBar
-from apps.market.schwab_client import get_schwab_client
+from apps.market.schwab_client import get_schwab_client, schwab_json
 
 log = logging.getLogger(__name__)
 
@@ -36,7 +36,7 @@ def fetch_ohlc(ticker: str, *, timeframe: str, bars: int = 60) -> list[dict]:
 def _fetch_from_schwab(ticker: str, timeframe: str, bars: int) -> list[dict]:
     client = get_schwab_client()
     method = getattr(client, _METHOD_BY_TIMEFRAME[timeframe])
-    candles = method(ticker).json().get("candles", [])[-bars:]
+    candles = schwab_json(method(ticker)).get("candles", [])[-bars:]
     rows = [
         {
             "open": c.get("open"),

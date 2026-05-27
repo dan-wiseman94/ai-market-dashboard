@@ -7,7 +7,7 @@ import json
 
 from apps.market import cache
 from apps.market.models import OptionChainSnapshot
-from apps.market.schwab_client import get_schwab_client
+from apps.market.schwab_client import get_schwab_client, schwab_json
 
 
 def _fmt(x) -> str | None:
@@ -88,7 +88,7 @@ def fetch_chain(
             strike_count=strikes_around_atm * 2,
             include_underlying_quote=True,
         )
-        payload = _normalize_chain(resp.json())
+        payload = _normalize_chain(schwab_json(resp))
         payload["ticker"] = ticker
         OptionChainSnapshot.objects.create(
             ticker=ticker,

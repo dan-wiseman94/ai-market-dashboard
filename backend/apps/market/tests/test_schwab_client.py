@@ -1,12 +1,76 @@
 from datetime import timedelta
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
+import httpx
 import pytest
 from django.test import override_settings
 from django.utils import timezone
 
-from apps.market.schwab_client import SchwabNotConnectedError, get_schwab_client
+from apps.market.schwab_client import (
+    SchwabAuthError,
+    SchwabNotConnectedError,
+    _MockSchwabClient,
+    get_schwab_client,
+    schwab_json,
+)
 from apps.secrets.models import ApiCredential
+
+
+def _resp_raising(status: int, *, body: str = ""):
+    """A response whose raise_for_status() raises HTTPStatusError for `status`."""
+    request = httpx.Request("GET", "https://api.schwabapi.com/trader/v1/accounts")
+    resp = MagicMock()
+    resp.raise_for_status.side_effect = httpx.HTTPStatusError(
+        "err",
+        request=request,
+        response=httpx.Response(status, request=request, content=body.encode()),
+    )
+    return resp
+
+
+@pytest.mark.parametrize("status", [401, 403])
+def test_schwab_json_translates_auth_errors(status):
+    with pytest.raises(SchwabAuthError):
+        schwab_json(_resp_raising(status))
+
+
+def test_schwab_json_client_not_authorized_points_to_api_products():
+    # The Trader-API "Client not authorized" 401 is an app-entitlement problem;
+    # the message must not tell the user to reconnect.
+    body = '{ "errors": [ { "status":401, "detail": "Client not authorized" } ] }'
+    with pytest.raises(SchwabAuthError) as exc:
+        schwab_json(_resp_raising(401, body=body))
+    msg = str(exc.value)
+    assert "developer.schwab.com" in msg
+    # Must not steer the user to the (useless-here) reconnect flow.
+    assert "/settings" not in msg
+    assert "won't help" in msg
+
+
+def test_schwab_json_generic_401_tells_user_to_reconnect():
+    with pytest.raises(SchwabAuthError) as exc:
+        schwab_json(_resp_raising(401, body='{"error":"invalid_token"}'))
+    assert "Reconnect at /settings" in str(exc.value)
+
+
+def test_schwab_json_propagates_other_http_errors():
+    # A 500 is a genuine upstream failure, not a reconnect signal — let it surface.
+    with pytest.raises(httpx.HTTPStatusError):
+        schwab_json(_resp_raising(500))
+
+
+def test_schwab_json_returns_body_on_success():
+    resp = MagicMock()
+    resp.raise_for_status.return_value = None
+    resp.json.return_value = {"ok": True}
+    assert schwab_json(resp) == {"ok": True}
+
+
+def test_mock_client_responses_survive_schwab_json():
+    # MOCK_EXTERNAL responses must honor the raise_for_status() contract.
+    client = _MockSchwabClient()
+    assert schwab_json(client.get_accounts()) == []
+    assert schwab_json(client.get_quotes(["SPY"]))["SPY"]["quote"]["lastPrice"] == 100.0
 
 
 @pytest.mark.django_db

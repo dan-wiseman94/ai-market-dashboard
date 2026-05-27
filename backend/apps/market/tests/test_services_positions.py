@@ -1,8 +1,10 @@
 from unittest.mock import MagicMock, patch
 
+import httpx
 import pytest
 
 from apps.market import cache as cache_module
+from apps.market.schwab_client import SchwabAuthError
 from apps.market.services.positions import fetch_positions
 
 
@@ -62,3 +64,25 @@ def test_fetch_positions_extracts_from_account():
     assert nvda["avg_cost"] == 800.0
     assert nvda["unrealized_pl"] == 4950.0
     assert nvda["day_pl"] == 250.0
+
+
+@pytest.mark.django_db
+def test_fetch_positions_raises_clean_error_on_401():
+    """A 401 from Schwab must surface as SchwabAuthError (→ 503 reconnect),
+    not an AttributeError from iterating the JSON error body's keys."""
+    request = httpx.Request("GET", "https://api.schwabapi.com/trader/v1/accounts")
+    # On 401 Schwab returns a JSON *object* (error body); iterating it yields str keys.
+    accounts_resp = MagicMock()
+    accounts_resp.raise_for_status.side_effect = httpx.HTTPStatusError(
+        "Unauthorized", request=request, response=httpx.Response(401, request=request)
+    )
+    accounts_resp.json.return_value = {"errors": [{"id": "x", "title": "Unauthorized"}]}
+
+    client = MagicMock()
+    client.get_accounts.return_value = accounts_resp
+
+    with (
+        patch("apps.market.services.positions.get_schwab_client", return_value=client),
+        pytest.raises(SchwabAuthError),
+    ):
+        fetch_positions()
