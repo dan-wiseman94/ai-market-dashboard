@@ -15,6 +15,29 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ToastProvider } from "@/hooks/useToast";
 import { WebSocketProvider } from "@/realtime/WebSocketProvider";
 
+// Pages and components are imported statically (not via `await import()` inside
+// each test). A dynamic import in the test body runs while the per-test
+// `testTimeout` clock is ticking, so the first-time load of a heavy dependency
+// graph (e.g. ThreadsPage → date-fns) gets charged against the test's deadline.
+// Under the parallel CPU load of a full `pnpm test --run`, that load cost can
+// exceed the timeout and fail an otherwise-correct test (see ThreadsPage flake).
+// Static imports are resolved during file collection, before any test timer
+// starts, so module-load cost never counts toward a test's budget.
+import SchedulesPage from "../../pages/SchedulesPage";
+import TriggersListPage from "../../pages/TriggersListPage";
+import ThreadsPage from "../../pages/ThreadsPage";
+import WatchlistsList from "../../pages/WatchlistsList";
+import ProfilesPage from "../../pages/ProfilesPage";
+import BackupsPage from "../../pages/BackupsPage";
+import ExportPage from "../../pages/ExportPage";
+import AnalyticsPage from "../../pages/AnalyticsPage";
+import SnapshotComposerPage from "../../pages/SnapshotComposerPage";
+import ThreadDetailPage from "../../pages/ThreadDetailPage";
+import BranchTabs from "../../components/BranchTabs";
+import { Citation } from "../../components/Citation";
+import { FileAttachPanel } from "../../components/FileAttachPanel";
+import DailyCostChart from "../../components/costs/DailyCostChart";
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -70,7 +93,6 @@ describe("SchedulesPage", () => {
       return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
     }) as never;
 
-    const { default: SchedulesPage } = await import("../../pages/SchedulesPage");
     wrap(<SchedulesPage />);
     expect(await screen.findByTestId("schedule-row-42")).toBeInTheDocument();
   });
@@ -96,7 +118,6 @@ describe("TriggersListPage", () => {
       }),
     ) as never;
 
-    const { default: TriggersListPage } = await import("../../pages/TriggersListPage");
     wrap(<TriggersListPage />);
     expect(await screen.findByTestId("trigger-row-7")).toBeInTheDocument();
   });
@@ -122,7 +143,6 @@ describe("ThreadsPage", () => {
       }),
     ) as never;
 
-    const { default: ThreadsPage } = await import("../../pages/ThreadsPage");
     wrap(<ThreadsPage />);
     expect(await screen.findByTestId("thread-row-55")).toBeInTheDocument();
   });
@@ -144,7 +164,6 @@ describe("WatchlistsList", () => {
       }),
     ) as never;
 
-    const { default: WatchlistsList } = await import("../../pages/WatchlistsList");
     wrap(<WatchlistsList />);
     expect(await screen.findByTestId("watchlist-row-Tech")).toBeInTheDocument();
   });
@@ -170,7 +189,6 @@ describe("ProfilesPage", () => {
       }),
     ) as never;
 
-    const { default: ProfilesPage } = await import("../../pages/ProfilesPage");
     wrap(<ProfilesPage />);
     expect(await screen.findByTestId("profile-row-Swing")).toBeInTheDocument();
   });
@@ -198,7 +216,6 @@ describe("BackupsPage", () => {
       }),
     ) as never;
 
-    const { default: BackupsPage } = await import("../../pages/BackupsPage");
     wrap(<BackupsPage />);
     expect(await screen.findByTestId("backup-row-11")).toBeInTheDocument();
   });
@@ -226,7 +243,6 @@ describe("ExportPage", () => {
       }),
     ) as never;
 
-    const { default: ExportPage } = await import("../../pages/ExportPage");
     wrap(<ExportPage />);
     expect(await screen.findByTestId("export-row-3")).toBeInTheDocument();
   });
@@ -242,31 +258,26 @@ describe("AnalyticsPage", () => {
       Promise.resolve({ ok: true, json: () => Promise.resolve({}) }),
     ) as never;
 
-    const { default: AnalyticsPage } = await import("../../pages/AnalyticsPage");
     wrap(<AnalyticsPage />);
     expect(screen.getByTestId("analytics-card-leaderboard")).toBeInTheDocument();
   });
 
   it("renders analytics-card-cpi", async () => {
-    const { default: AnalyticsPage } = await import("../../pages/AnalyticsPage");
     wrap(<AnalyticsPage />);
     expect(screen.getByTestId("analytics-card-cpi")).toBeInTheDocument();
   });
 
   it("renders analytics-card-heatmap", async () => {
-    const { default: AnalyticsPage } = await import("../../pages/AnalyticsPage");
     wrap(<AnalyticsPage />);
     expect(screen.getByTestId("analytics-card-heatmap")).toBeInTheDocument();
   });
 
   it("renders analytics-card-timeline", async () => {
-    const { default: AnalyticsPage } = await import("../../pages/AnalyticsPage");
     wrap(<AnalyticsPage />);
     expect(screen.getByTestId("analytics-card-timeline")).toBeInTheDocument();
   });
 
   it("renders analytics-card-unusual-options", async () => {
-    const { default: AnalyticsPage } = await import("../../pages/AnalyticsPage");
     wrap(<AnalyticsPage />);
     expect(screen.getByTestId("analytics-card-unusual-options")).toBeInTheDocument();
   });
@@ -297,7 +308,6 @@ describe("SnapshotComposerPage", () => {
       return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
     }) as never;
 
-    const { default: SnapshotComposerPage } = await import("../../pages/SnapshotComposerPage");
     wrap(<SnapshotComposerPage />);
     expect(await screen.findByTestId("capture-btn")).toBeInTheDocument();
   });
@@ -333,7 +343,6 @@ describe("ThreadDetailPage", () => {
       return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
     }) as never;
 
-    const { default: ThreadDetailPage } = await import("../../pages/ThreadDetailPage");
     // ThreadDetailPage uses useParams + useChannel (WebSocket) — needs full providers
     render(
       <QueryClientProvider client={makeQc()}>
@@ -382,7 +391,6 @@ describe("ThreadDetailPage", () => {
       return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
     }) as never;
 
-    const { default: ThreadDetailPage } = await import("../../pages/ThreadDetailPage");
     render(
       <QueryClientProvider client={makeQc()}>
         <ToastProvider>
@@ -407,7 +415,6 @@ describe("ThreadDetailPage", () => {
 
 describe("BranchTabs", () => {
   it("renders branch-cost-<id> when cost is set", async () => {
-    const { default: BranchTabs } = await import("../../components/BranchTabs");
     render(
       <MemoryRouter>
         <BranchTabs
@@ -427,7 +434,6 @@ describe("BranchTabs", () => {
 
 describe("Citation", () => {
   it("renders citation-<index>", async () => {
-    const { Citation } = await import("../../components/Citation");
     render(
       <MemoryRouter>
         <Citation index={3} source="https://example.com" title="Example" />
@@ -443,7 +449,6 @@ describe("Citation", () => {
 
 describe("FileAttachPanel", () => {
   it("renders file-row-<id>", async () => {
-    const { FileAttachPanel } = await import("../../components/FileAttachPanel");
     render(
       <MemoryRouter>
         <FileAttachPanel
@@ -465,7 +470,6 @@ describe("FileAttachPanel", () => {
 
 describe("DailyCostChart", () => {
   it("renders cost-tile-today wrapper", async () => {
-    const { default: DailyCostChart } = await import("../../components/costs/DailyCostChart");
     render(
       <DailyCostChart
         data={[{ date: "2026-04-17", cost_usd: "1.23", runs: 5 }]}

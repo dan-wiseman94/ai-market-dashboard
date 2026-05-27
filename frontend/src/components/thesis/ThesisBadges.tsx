@@ -11,11 +11,11 @@ export const STATUS_BADGE: Record<
   closed_win: {
     label: "Win",
     className:
-      "bg-emerald-900/40 text-emerald-300 border border-emerald-700/40",
+      "bg-emerald-500/10 text-emerald-700 border border-emerald-500/40 dark:bg-emerald-900/40 dark:text-emerald-300 dark:border-emerald-700/40",
   },
   closed_loss: {
     label: "Loss",
-    className: "bg-rose-900/40 text-rose-300 border border-rose-700/40",
+    className: "bg-rose-500/10 text-rose-700 border border-rose-500/40 dark:bg-rose-900/40 dark:text-rose-300 dark:border-rose-700/40",
   },
   closed_scratch: {
     label: "Scratch",
@@ -24,7 +24,7 @@ export const STATUS_BADGE: Record<
   },
   invalidated: {
     label: "Invalidated",
-    className: "bg-amber-900/30 text-amber-300 border border-amber-700/40",
+    className: "bg-amber-500/10 text-amber-700 border border-amber-500/40 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-700/40",
   },
 };
 
@@ -35,8 +35,8 @@ export const DIRECTION_LABEL: Record<string, string> = {
 };
 
 export const DIRECTION_CLASS: Record<string, string> = {
-  bullish: "text-emerald-400",
-  bearish: "text-rose-400",
+  bullish: "text-emerald-700 dark:text-emerald-400",
+  bearish: "text-rose-700 dark:text-rose-400",
   neutral: "text-neutral-400",
 };
 
@@ -67,15 +67,15 @@ const VERDICT_BADGE: Record<
   correct: {
     label: "Correct",
     className:
-      "bg-emerald-900/40 text-emerald-300 border border-emerald-700/40",
+      "bg-emerald-500/10 text-emerald-700 border border-emerald-500/40 dark:bg-emerald-900/40 dark:text-emerald-300 dark:border-emerald-700/40",
   },
   incorrect: {
     label: "Incorrect",
-    className: "bg-rose-900/40 text-rose-300 border border-rose-700/40",
+    className: "bg-rose-500/10 text-rose-700 border border-rose-500/40 dark:bg-rose-900/40 dark:text-rose-300 dark:border-rose-700/40",
   },
   mixed: {
     label: "Mixed",
-    className: "bg-amber-900/30 text-amber-300 border border-amber-700/40",
+    className: "bg-amber-500/10 text-amber-700 border border-amber-500/40 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-700/40",
   },
   inconclusive: {
     label: "Inconclusive",

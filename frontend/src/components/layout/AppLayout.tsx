@@ -12,9 +12,11 @@ import { ToastProvider } from "@/hooks/useToast";
 import { Toasts } from "@/components/Toasts";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { CommandPalette, type Command } from "@/components/CommandPalette";
+import { useTheme } from "@/hooks/useTheme";
 
 function useDefaultCommands(): Command[] {
   const nav = useNavigate();
+  const { cycle } = useTheme();
   return useMemo(
     () => [
       { id: "go-dashboard", label: "Go to Dashboard", keywords: "home", run: () => nav("/") },
@@ -31,8 +33,10 @@ function useDefaultCommands(): Command[] {
         run: () => nav("/analytics") },
       { id: "go-theses", label: "Go to Theses", keywords: "thesis decision call",
         run: () => nav("/theses") },
+      { id: "toggle-theme", label: "Toggle theme", keywords: "light dark system appearance mode",
+        run: cycle },
     ],
-    [nav],
+    [nav, cycle],
   );
 }
 

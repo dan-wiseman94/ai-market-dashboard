@@ -40,7 +40,7 @@ export default function WatchlistsList() {
               </Link>
               <button
                 onClick={() => del.mutate(w.id)}
-                className="text-rose-400 text-sm hover:underline"
+                className="text-rose-700 dark:text-rose-400 text-sm hover:underline"
               >
                 Delete
               </button>

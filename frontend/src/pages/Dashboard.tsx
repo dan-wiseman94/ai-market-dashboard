@@ -3,29 +3,34 @@ import PositionsTable from "@/components/PositionsTable";
 import CostChip from "@/components/CostChip";
 import RecentTriggersCard from "@/components/RecentTriggersCard";
 import { Link } from "react-router-dom";
+import { useMarketStatus } from "@/hooks/useMarketStatus";
+import { sessionKind, type SessionKind } from "@/lib/marketSession";
 
-const ET_HOUR_FMT = new Intl.DateTimeFormat("en-US", {
-  timeZone: "America/New_York",
-  hour: "numeric", minute: "2-digit", hour12: false,
-});
 const DATE_FMT = new Intl.DateTimeFormat(undefined, {
   weekday: "long", month: "long", day: "numeric", year: "numeric",
 });
 
-function SessionStatus() {
-  const now = new Date();
-  const [h] = ET_HOUR_FMT.format(now).split(":").map(Number);
-  const day = now.getUTCDay();
-  const weekday = day >= 1 && day <= 5;
-  const open = weekday && h >= 9 && h < 16; // rough — backend is authoritative
-  const preOrPost = weekday && ((h >= 4 && h < 9) || (h >= 16 && h < 20));
-  const label = open ? "NYSE Open" : preOrPost ? "Extended Hours" : "Closed";
-  const tone = open ? "text-gain" : preOrPost ? "text-copper-300" : "text-ink-400";
-  const dot = open ? "var(--gain-400)" : preOrPost ? "var(--copper-400)" : "var(--ink-500)";
+// Hero session display, keyed off the authoritative backend phase (same source
+// as the nav MarketStatusBadge — see @/lib/marketSession).
+const SESSION: Record<SessionKind, { label: string; tone: string; dot: string }> = {
+  open: { label: "NYSE Open", tone: "text-gain", dot: "var(--gain-400)" },
+  extended: { label: "Extended Hours", tone: "text-copper-300", dot: "var(--copper-400)" },
+  closed: { label: "Closed", tone: "text-ink-400", dot: "var(--ink-500)" },
+};
+
+// Headline predicate, e.g. "the tape is in extended hours."
+const TAPE_VERB: Record<SessionKind, string> = {
+  open: "open",
+  extended: "in extended hours",
+  closed: "closed",
+};
+
+function SessionStatus({ kind }: { kind: SessionKind }) {
+  const { label, tone, dot } = SESSION[kind];
   return (
     <span className="inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-loose2">
       <span className="relative inline-block h-1.5 w-1.5 rounded-full" style={{ background: dot }}>
-        {open && (
+        {kind === "open" && (
           <span
             aria-hidden
             className="absolute inset-0 rounded-full ledger-pulse"
@@ -39,6 +44,10 @@ function SessionStatus() {
 }
 
 export default function Dashboard() {
+  const { data: marketData } = useMarketStatus();
+  const equity = marketData?.markets?.us_equity;
+  const kind: SessionKind = equity ? sessionKind(equity) : "closed";
+
   const now = new Date();
   const date = DATE_FMT.format(now);
   const hour = now.getHours();
@@ -53,7 +62,7 @@ export default function Dashboard() {
       {/* Editorial hero */}
       <header className="mb-10 ledger-stagger">
         <div className="flex items-center gap-4 mb-4">
-          <SessionStatus />
+          <SessionStatus kind={kind} />
           <span className="h-px flex-1 bg-rule-soft" />
           <span className="font-mono text-[11px] text-ink-400 uppercase tracking-loose2">
             {date}
@@ -64,7 +73,7 @@ export default function Dashboard() {
           <div>
             <div className="ledger-eyebrow mb-3">Desk · today</div>
             <h1 className="ledger-display">
-              {greeting}, <em>the tape</em> is open.
+              {greeting}, <em>the tape</em> is {TAPE_VERB[kind]}.
             </h1>
             <p className="mt-3 max-w-xl text-ink-300 text-[14px] leading-relaxed">
               The market, your book, and what the machines have noticed since you last looked.

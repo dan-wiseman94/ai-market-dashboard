@@ -11,7 +11,7 @@ export function Citation({ index, source, title, snippet }: CitationProps) {
   const inner = (
     <sup
       data-testid={`citation-${index}`}
-      className="ml-0.5 text-sky-400 cursor-help"
+      className="ml-0.5 text-sky-700 dark:text-sky-400 cursor-help"
       aria-label={label}
       title={label}
     >

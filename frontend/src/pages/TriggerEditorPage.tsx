@@ -112,17 +112,17 @@ export default function TriggerEditorPage() {
         <div className="flex gap-4 border-b border-neutral-800 mb-4">
           <button
             type="button"
-            className={`py-2 ${tab === "condition" ? "text-white border-b-2 border-indigo-500" : "text-neutral-400"}`}
+            className={`py-2 ${tab === "condition" ? "text-ink-900 border-b-2 border-indigo-500 dark:text-white" : "text-neutral-400"}`}
             onClick={() => setTab("condition")}
           >Condition</button>
           <button
             type="button"
-            className={`py-2 ${tab === "firings" ? "text-white border-b-2 border-indigo-500" : "text-neutral-400"}`}
+            className={`py-2 ${tab === "firings" ? "text-ink-900 border-b-2 border-indigo-500 dark:text-white" : "text-neutral-400"}`}
             onClick={() => setTab("firings")}
           >Firings ({existing?.firings_count ?? 0})</button>
           <button
             type="button"
-            className={`py-2 ${tab === "backtest" ? "text-white border-b-2 border-indigo-500" : "text-neutral-400"}`}
+            className={`py-2 ${tab === "backtest" ? "text-ink-900 border-b-2 border-indigo-500 dark:text-white" : "text-neutral-400"}`}
             onClick={() => setTab("backtest")}
           >Backtest</button>
         </div>
@@ -155,7 +155,7 @@ export default function TriggerEditorPage() {
             >{backtest.isPending ? "Running…" : "Run backtest"}</button>
           </div>
           {backtest.isError && (
-            <div className="text-rose-400 text-sm">
+            <div className="text-rose-700 dark:text-rose-400 text-sm">
               {(backtest.error as Error)?.message ?? "Backtest failed"}
             </div>
           )}
@@ -231,10 +231,10 @@ export default function TriggerEditorPage() {
       <div className="border-t border-neutral-800 pt-4 text-sm">
         <div className="text-neutral-400 mb-1">Preview — would currently fire?</div>
         {previewQ.isLoading && <div>Evaluating…</div>}
-        {previewQ.isError && <div className="text-rose-400">Invalid condition</div>}
+        {previewQ.isError && <div className="text-rose-700 dark:text-rose-400">Invalid condition</div>}
         {previewQ.data && (
           <div>
-            <span className={previewQ.data.matched ? "text-emerald-400" : "text-neutral-400"}>
+            <span className={previewQ.data.matched ? "text-emerald-700 dark:text-emerald-400" : "text-neutral-400"}>
               {previewQ.data.matched ? "YES" : "NO"}
             </span>
             <span className="ml-2 text-neutral-500">
