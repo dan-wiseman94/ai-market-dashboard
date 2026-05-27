@@ -187,7 +187,10 @@ class ThreadViewSet(
         except Message.DoesNotExist:
             return _error("not_found", "Message not found", 404)
         if msg.status != "streaming":
-            return _error("not_streaming", "Message is not streaming", 400)
+            # The run already reached a terminal state (natural finish, or a prior
+            # stop). Stopping it is a benign no-op — a 400 here just turns a UI race
+            # (or a stale "streaming" button left by a dropped WS) into console noise.
+            return Response({"ok": True, "already_terminal": True}, status=200)
         # Signal the worker to abort the live stream, then record the cancellation.
         request_stop(msg.id)
         msg.status = "failed"
