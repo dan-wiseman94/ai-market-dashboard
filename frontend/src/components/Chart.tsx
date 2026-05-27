@@ -76,10 +76,41 @@ export default function Chart({ ticker, timeframe, bars, theme, onReady }: Chart
       );
       chartRef.current?.timeScale().fitContent();
       onReady?.();
-    } else if (isError) {
+    } else if (data || isError) {
+      // Settled with no bars (empty success) or an error: still signal ready so
+      // the headless capture doesn't hang waiting for data that never arrives.
       onReady?.();
     }
   }, [data, isError, onReady]);
 
-  return <div id="chart-root" ref={containerRef} style={{ width: "100%", height: "100%", minHeight: 360 }} />;
+  const noData = isError || (!!data && !data.bars?.length);
+
+  // #chart-root is a React-controlled wrapper; the chart mounts into an inner
+  // div so lightweight-charts' imperative canvas never fights React over the
+  // no-data overlay. The headless capture screenshots #chart-root, so the
+  // overlay is included.
+  return (
+    <div
+      id="chart-root"
+      style={{ position: "relative", width: "100%", height: "100%", minHeight: 360 }}
+    >
+      <div ref={containerRef} style={{ width: "100%", height: "100%" }} />
+      {noData && (
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            color: "#888",
+            fontSize: 14,
+            pointerEvents: "none",
+          }}
+        >
+          No price data
+        </div>
+      )}
+    </div>
+  );
 }

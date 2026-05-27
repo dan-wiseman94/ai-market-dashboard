@@ -86,6 +86,16 @@ class CalendarOverride(models.Model):
     def save(self, *args, **kwargs) -> None:
         self.symbol = (self.symbol or "").strip().upper()
         super().save(*args, **kwargs)
+        from apps.market.calendar.resolve import clear_resolution_cache
+
+        clear_resolution_cache()
+
+    def delete(self, *args, **kwargs):
+        from apps.market.calendar.resolve import clear_resolution_cache
+
+        result = super().delete(*args, **kwargs)
+        clear_resolution_cache()
+        return result
 
 
 class MarketEvent(models.Model):
