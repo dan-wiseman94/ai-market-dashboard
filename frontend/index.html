@@ -5,6 +5,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="color-scheme" content="dark" />
     <meta name="theme-color" content="#0b0d12" />
+    <script>
+      // Apply the resolved theme before first paint to avoid a flash.
+      (function () {
+        try {
+          var pref = localStorage.getItem("ai-dashboard.theme") || "system";
+          var dark = pref === "dark" ||
+            (pref === "system" && matchMedia("(prefers-color-scheme: dark)").matches);
+          var root = document.documentElement;
+          root.classList.toggle("dark", dark);
+          root.classList.toggle("light", !dark);
+          root.style.colorScheme = dark ? "dark" : "light";
+        } catch (e) { /* leave the static class="dark" fallback */ }
+      })();
+    </script>
     <title>Ledger — AI Trading Dashboard</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
