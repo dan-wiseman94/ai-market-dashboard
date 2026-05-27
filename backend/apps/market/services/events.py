@@ -9,6 +9,7 @@ import requests  # type: ignore[import-untyped]
 
 from apps.market import cache
 from apps.market.models import MarketEvent
+from apps.market.services.events_seed import SEED_MACRO_EVENTS
 from apps.secrets.models import ApiCredential
 
 log = logging.getLogger(__name__)
@@ -113,3 +114,105 @@ def fetch_earnings(tickers: list[str], *, ahead_days: int = 30) -> list[MarketEv
         )
         out.extend(_upsert_earnings(body.get("earningsCalendar", [])))
     return out
+
+
+_MACRO_MAP = [
+    ("fomc", "fomc"),
+    ("federal funds", "fomc"),
+    ("interest rate decision", "fomc"),
+    ("cpi", "cpi"),
+    ("consumer price", "cpi"),
+    ("non-farm", "nfp"),
+    ("nonfarm", "nfp"),
+    ("payroll", "nfp"),
+    ("pce", "pce"),
+    ("personal consumption", "pce"),
+    ("gdp", "gdp"),
+]
+
+
+def _macro_kind(event_name: str) -> str | None:
+    name = (event_name or "").lower()
+    for needle, kind in _MACRO_MAP:
+        if needle in name:
+            return kind
+    return None
+
+
+def _is_high_impact(impact) -> bool:
+    return str(impact).lower() in ("high", "3")
+
+
+def _is_us(country) -> bool:
+    return str(country or "").upper() in ("US", "USA", "UNITED STATES")
+
+
+def _parse_macro_time(t: str) -> datetime | None:
+    t = (t or "").strip()
+    if not t:
+        return None
+    try:
+        dt = datetime.fromisoformat(t)
+    except ValueError:
+        return None
+    return dt.replace(tzinfo=UTC) if dt.tzinfo is None else dt
+
+
+def _upsert_macro(rows: list[dict], *, source: str) -> list[MarketEvent]:
+    out: list[MarketEvent] = []
+    for r in rows:
+        kind = _macro_kind(r.get("event", ""))
+        if kind is None or not _is_high_impact(r.get("impact")) or not _is_us(r.get("country")):
+            continue
+        dt = _parse_macro_time(r.get("time", ""))
+        if dt is None:
+            continue
+        obj, _ = MarketEvent.objects.update_or_create(
+            source=source,
+            external_id=f"{kind.upper()}:{dt.date().isoformat()}",
+            defaults={
+                "kind": kind,
+                "ticker": "",
+                "title": r.get("event") or kind.upper(),
+                "event_time": dt,
+                "when_hint": "",
+                "impact": "high",
+                "detail": {
+                    "forecast": r.get("estimate"),
+                    "prior": r.get("prev"),
+                    "actual": r.get("actual"),
+                },
+            },
+        )
+        out.append(obj)
+    return out
+
+
+def fetch_macro(*, ahead_days: int = 45) -> list[MarketEvent]:
+    """Fetch + upsert curated US high-impact macro. Falls back to SEED_MACRO_EVENTS if empty."""
+    from apps.core.mocks import is_mock_mode
+
+    if is_mock_mode():
+        return _upsert_macro(SEED_MACRO_EVENTS, source="finnhub")
+
+    api_key = _finnhub_api_key()
+    today = datetime.now(UTC).date()
+    end = today + timedelta(days=ahead_days)
+    rows: list[dict] = []
+    if api_key:
+        try:
+            body = cache.get_or_fetch(
+                f"market:macro:{ahead_days}",
+                ttl_seconds=cache.ttl_for_kind("events"),
+                fetcher=lambda: _finnhub_get(
+                    "/calendar/economic", {"from": str(today), "to": str(end)}, api_key
+                ),
+            )
+            rows = body.get("economicCalendar", [])
+        except Exception as exc:
+            log.warning("market.events.macro_fetch_failed: %s", exc)
+
+    upserted = _upsert_macro(rows, source="finnhub")
+    if not upserted:
+        upserted = _upsert_macro(SEED_MACRO_EVENTS, source="seed")
+    return upserted
