@@ -49,6 +49,7 @@ class ThreadViewSet(
             snap = Snapshot.objects.filter(id=sid).first()
             if snap is not None and snap.status != "ready":
                 return _error("snapshot_not_ready", "Snapshot is not ready", 400)
+        synthetic_msg = None
         with transaction.atomic():
             t = Thread.objects.create(
                 kind=data.get("kind", "consult"),
@@ -57,13 +58,34 @@ class ThreadViewSet(
                 pinned_snapshot=snap,
             )
             if snap is not None:
-                Message.objects.create(
+                # Budget the payload for the model that will actually consume it
+                # (the profile default), not the 40k fallback — serialization is
+                # frozen into content["text"] here, so this is the only chance to
+                # size it correctly. No profile → keep the conservative default.
+                serialize_kwargs = (
+                    {"provider": profile.default_provider, "model": profile.default_model}
+                    if profile is not None
+                    else {}
+                )
+                synthetic_msg = Message.objects.create(
                     thread=t,
                     role="user",
-                    content={"text": serialize_for_ai(snap)},
+                    content={"text": serialize_for_ai(snap, **serialize_kwargs)},
                     snapshot_ref=snap,
                     status="done",
                 )
+        # "Capture + ask" opts in via auto_reply: stream an AI reply to the pinned
+        # snapshot immediately rather than leaving the thread silent. Dispatched
+        # on_commit so the worker sees the committed thread + synthetic message.
+        # No override → profile default provider/model; cost caps + capability
+        # warnings are enforced inside run_ai_on_message.
+        if synthetic_msg is not None and data.get("auto_reply"):
+            transaction.on_commit(
+                lambda: run_ai_on_message.delay(
+                    thread_id=t.id,
+                    user_message_id=synthetic_msg.id,
+                )
+            )
         return Response(ThreadSerializer(t).data, status=201)
 
     @action(detail=True, methods=["post"])

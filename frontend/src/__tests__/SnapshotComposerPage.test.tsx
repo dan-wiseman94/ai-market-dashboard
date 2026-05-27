@@ -234,6 +234,8 @@ describe("SnapshotComposerPage", () => {
         expect.objectContaining({
           profile_id: 1,
           pinned_snapshot_id: 100,
+          // "Capture + ask" opts into an immediate AI reply.
+          auto_reply: true,
         }),
       );
     });
