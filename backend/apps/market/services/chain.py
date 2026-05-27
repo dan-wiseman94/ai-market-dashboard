@@ -8,6 +8,7 @@ import json
 from apps.market import cache
 from apps.market.models import OptionChainSnapshot
 from apps.market.schwab_client import get_schwab_client, schwab_json
+from apps.market.symbols import normalize_symbol
 
 
 def _fmt(x) -> str | None:
@@ -74,7 +75,7 @@ def fetch_chain(
     On cache miss: call Schwab, normalize, persist OptionChainSnapshot, return payload.
     On cache hit: return cached payload (no DB write).
     """
-    ticker = ticker.upper()
+    ticker = normalize_symbol(ticker)
     params_hash = hashlib.sha1(
         json.dumps({"k": strikes_around_atm}, sort_keys=True).encode(),
     ).hexdigest()[:8]
