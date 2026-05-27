@@ -7,6 +7,9 @@ from datetime import timedelta
 from celery import shared_task
 from django.utils import timezone
 
+from apps.market.models import MarketEvent
+from apps.market.services import events as events_service
+from apps.profiles.models import WatchlistSymbol
 from apps.secrets.models import ApiCredential
 from apps.secrets.schwab_oauth import persist_token, refresh_token
 
@@ -32,3 +35,14 @@ def refresh_schwab_token() -> dict:
     new_token = refresh_token(refresh_value)
     persist_token(new_token)
     return {"ok": True}
+
+
+@shared_task(name="market.refresh_events")
+def refresh_events() -> dict:
+    """Daily refresh of the MarketEvent store for all watchlist tickers + curated macro."""
+    tickers = list(WatchlistSymbol.objects.values_list("ticker", flat=True).distinct())
+    n_earn = len(events_service.fetch_earnings(tickers))
+    n_macro = len(events_service.fetch_macro())
+    cutoff = timezone.now() - timedelta(days=30)
+    pruned, _ = MarketEvent.objects.filter(event_time__lt=cutoff).delete()
+    return {"earnings": n_earn, "macro": n_macro, "pruned": pruned}
