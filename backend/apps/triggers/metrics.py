@@ -37,6 +37,7 @@ def build_snapshot(triggers: Iterable[EventTrigger]) -> MetricsSnapshot:
     tickers = _ticker_union(leaves)
     needs_positions = any(leaf["metric"].startswith("position_") for leaf in leaves)
     has_vix = any(leaf["metric"] == "vix" for leaf in leaves)
+    earnings_days = _earnings_days_map(leaves)
 
     quote_tickers = set(tickers)
     if has_vix:
@@ -117,12 +118,40 @@ def build_snapshot(triggers: Iterable[EventTrigger]) -> MetricsSnapshot:
             else:
                 snapshot[key] = None
 
+        elif metric == "days_to_earnings":
+            assert ticker is not None
+            snapshot[key] = earnings_days.get(ticker.upper())
+
     try:
         r.setex("trigger:last_tick_at", 120, str(int(time.time())))
     except Exception as exc:
         log.warning("trigger.metrics.last_tick_at_failed: %s", exc)
 
     return snapshot
+
+
+def _earnings_days_map(leaves: list[dict]) -> dict[str, int]:
+    """Soonest upcoming-earnings countdown (in days) per ticker, batched into one query."""
+    from apps.market.models import MarketEvent
+    from django.utils import timezone
+
+    tickers = {
+        leaf["ticker"].upper()
+        for leaf in leaves
+        if leaf["metric"] == "days_to_earnings" and leaf.get("ticker")
+    }
+    if not tickers:
+        return {}
+    now = timezone.now()
+    today = now.date()
+    rows = MarketEvent.objects.filter(
+        kind="earnings", ticker__in=tickers, event_time__gte=now
+    ).order_by("ticker", "event_time")
+    out: dict[str, int] = {}
+    for r in rows:
+        if r.ticker not in out:  # first row per ticker is the soonest
+            out[r.ticker] = (r.event_time.date() - today).days
+    return out
 
 
 def _ticker_union(leaves: list[dict]) -> set[str]:
