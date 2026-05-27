@@ -9,6 +9,12 @@ Pattern:
     await wc.close()
 
 ``assert_sequence`` is subset-style: extra events between expected types are OK.
+
+Event-name key: consumers are not consistent about the discriminator key. The
+notification consumer forwards ``{"type": "notification.event", ...}`` while the
+thread/snapshot consumers forward the raw broadcast payload keyed under
+``"event"`` (e.g. ``{"event": "message_done", ...}``). ``_event_name`` matches on
+*either* key so a single helper covers every lane.
 """
 
 from __future__ import annotations
@@ -17,6 +23,11 @@ import asyncio
 import contextlib
 import json
 from typing import Any
+
+
+def _event_name(e: dict) -> str | None:
+    """The event discriminator, regardless of which key the consumer used."""
+    return e.get("type") or e.get("event")
 
 
 class WsClient:
@@ -56,25 +67,31 @@ class WsClient:
     async def wait_for_event(self, type_: str, timeout: float = 10.0) -> dict:
         deadline = asyncio.get_event_loop().time() + timeout
         for e in self._events:
-            if e.get("type") == type_:
+            if _event_name(e) == type_:
                 return e
         while True:
             remaining = deadline - asyncio.get_event_loop().time()
             if remaining <= 0:
                 raise TimeoutError(
                     f"did not receive event of type {type_!r} within {timeout}s; "
-                    f"received types={[e.get('type') for e in self._events]}"
+                    f"received types={[_event_name(e) for e in self._events]}"
                 )
-            e = await asyncio.wait_for(self._event_queue.get(), timeout=remaining)
-            if e.get("type") == type_:
+            try:
+                e = await asyncio.wait_for(self._event_queue.get(), timeout=remaining)
+            except (TimeoutError, asyncio.TimeoutError) as exc:
+                raise TimeoutError(
+                    f"did not receive event of type {type_!r} within {timeout}s; "
+                    f"received types={[_event_name(e) for e in self._events]}"
+                ) from exc
+            if _event_name(e) == type_:
                 return e
 
     def events_of(self, type_: str) -> list[dict]:
-        return [e for e in self._events if e.get("type") == type_]
+        return [e for e in self._events if _event_name(e) == type_]
 
     def assert_sequence(self, expected_types: list[str]) -> None:
         """Subset-style sequence check: extra events between expected types are OK."""
-        seen = iter(e.get("type") for e in self._events)
+        seen = iter(_event_name(e) for e in self._events)
         for t in expected_types:
             for actual in seen:
                 if actual == t:

@@ -42,6 +42,7 @@ def run_observer(schedule_id: int) -> int | None:
 
     thread = get_or_create_observer_thread(sched.profile)
     provider_name = sched.override_provider or sched.profile.default_provider
+    model_name = sched.override_model or sched.profile.default_model
 
     # Resolve caps — Infinity daily / None monthly when no ProviderConfig row exists.
     cfg = ProviderConfig.objects.filter(provider=provider_name).first()
@@ -113,9 +114,9 @@ def run_observer(schedule_id: int) -> int | None:
                 f"Delta since snapshot #{prev_snap.id}:\n{delta_text}"
             )
         else:
-            payload_text = serialize_for_ai(snap, provider=provider_name)
+            payload_text = serialize_for_ai(snap, provider=provider_name, model=model_name)
     else:
-        payload_text = serialize_for_ai(snap, provider=provider_name)
+        payload_text = serialize_for_ai(snap, provider=provider_name, model=model_name)
 
     msg = Message.objects.create(
         thread=thread,
