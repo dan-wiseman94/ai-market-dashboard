@@ -47,6 +47,18 @@ export default {
           400: "var(--loss-400)",
           500: "var(--loss-500)",
         },
+        slate: {
+          50: "var(--ink-50)", 100: "var(--ink-100)", 200: "var(--ink-200)",
+          300: "var(--ink-300)", 400: "var(--ink-400)", 500: "var(--ink-500)",
+          600: "var(--ink-600)", 700: "var(--ink-700)", 800: "var(--ink-800)",
+          900: "var(--ink-900)", 950: "var(--ink-950)",
+        },
+        neutral: {
+          50: "var(--ink-50)", 100: "var(--ink-100)", 200: "var(--ink-200)",
+          300: "var(--ink-300)", 400: "var(--ink-400)", 500: "var(--ink-500)",
+          600: "var(--ink-600)", 700: "var(--ink-700)", 800: "var(--ink-800)",
+          900: "var(--ink-900)", 950: "var(--ink-950)",
+        },
       },
       letterSpacing: {
         tight2: "-0.02em",
