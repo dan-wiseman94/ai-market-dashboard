@@ -31,6 +31,14 @@ class OpenAIProvider:
     name = "openai"
 
     def __init__(self, api_key: str, base_url: str = "") -> None:
+        from apps.core.mocks import is_mock_mode
+
+        # Under MOCK_EXTERNAL, run() short-circuits to canned events and never calls
+        # the SDK — but AsyncOpenAI() still demands a key at construction. E2E seeds
+        # no key, so supply a placeholder to let the provider construct (and thus be
+        # exercisable) in mock mode. Never used for a real request.
+        if not api_key and is_mock_mode():
+            api_key = "mock-no-key"
         if base_url:
             self._client = AsyncOpenAI(api_key=api_key, base_url=base_url)
         else:
