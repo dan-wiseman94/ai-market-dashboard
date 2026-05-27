@@ -475,3 +475,4 @@ Each milestone is independently shippable and usable.
 
 **Future (not yet in flight):**
 - **M10.5 — Provider parity**: Bring tool-use / thinking / citations / files to OpenAI (GPT-5 responses API) and Local. Today these are silent no-ops for non-Claude providers.
+- **Market events**: `MarketEvent` store (earnings + curated US macro) → `days_to_earnings` trigger leaf, opt-in `"events"` snapshot section, `/events` page + dashboard badge. First of a four-feature roadmap (events → Morning Briefing → AI calibration scorecard → semantic recall). Spec: `docs/superpowers/specs/2026-05-27-market-events-design.md`; plan: `docs/superpowers/plans/2026-05-27-market-events.md`.
