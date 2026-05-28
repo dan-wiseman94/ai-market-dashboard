@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import ClassVar
+
 from rest_framework import generics
 from rest_framework import status as drf_status
 from rest_framework.response import Response
@@ -12,7 +14,7 @@ from apps.briefing.services.run import run_briefing
 
 class BriefingConfigView(generics.RetrieveUpdateAPIView):
     serializer_class = BriefingConfigSerializer
-    http_method_names = ["get", "patch", "head", "options"]
+    http_method_names: ClassVar = ["get", "patch", "head", "options"]
 
     def get_object(self) -> BriefingConfig:
         return BriefingConfig.load()

@@ -1,3 +1,5 @@
+from typing import ClassVar
+
 from rest_framework import serializers
 
 from apps.briefing.models import BriefingConfig, BriefingRun
@@ -6,7 +8,7 @@ from apps.briefing.models import BriefingConfig, BriefingRun
 class BriefingConfigSerializer(serializers.ModelSerializer):
     class Meta:
         model = BriefingConfig
-        fields = [
+        fields: ClassVar = [
             "enabled",
             "send_at_local",
             "profile",
@@ -14,7 +16,7 @@ class BriefingConfigSerializer(serializers.ModelSerializer):
             "events_within_days",
             "updated_at",
         ]
-        read_only_fields = ["updated_at"]
+        read_only_fields: ClassVar = ["updated_at"]
 
 
 class BriefingRunSerializer(serializers.ModelSerializer):
@@ -23,7 +25,7 @@ class BriefingRunSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = BriefingRun
-        fields = [
+        fields: ClassVar = [
             "id",
             "created_at",
             "status",

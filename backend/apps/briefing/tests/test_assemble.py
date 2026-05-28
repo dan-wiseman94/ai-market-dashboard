@@ -61,7 +61,7 @@ def test_assemble_combines_sections_and_captures_snapshot():
             return_value=(None, {"vix_last": 18.2}),
         ),
     ):
-        data, snap = A.assemble(cfg)
+        data, _snap = A.assemble(cfg)
     assert data["theses"] == [{"ticker": "NVDA"}]
     assert data["events"]["macro"][0]["kind"] == "cpi"
     assert data["market"]["vix_last"] == 18.2
@@ -83,7 +83,7 @@ def test_assemble_never_raises_when_a_section_fails():
         ),
         patch("apps.briefing.services.assemble._news_section", side_effect=RuntimeError("boom")),
     ):
-        data, snap = A.assemble(cfg)  # must not raise
+        data, _snap = A.assemble(cfg)  # must not raise
     assert data["theses"] == [] and data["events"] == {"earnings": [], "macro": []}
     assert data["triggers"] == [] and data["news"] == []
     assert "since" in data

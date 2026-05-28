@@ -24,13 +24,13 @@ class BriefingConfig(models.Model):
     events_within_days = models.PositiveIntegerField(default=7)
     updated_at = models.DateTimeField(auto_now=True)
 
-    @classmethod
-    def load(cls) -> "BriefingConfig":
-        obj, _ = cls.objects.get_or_create(pk=1)
-        return obj
-
     def __str__(self) -> str:
         return f"BriefingConfig(enabled={self.enabled}, send_at={self.send_at_local})"
+
+    @classmethod
+    def load(cls) -> BriefingConfig:
+        obj, _ = cls.objects.get_or_create(pk=1)
+        return obj
 
 
 class BriefingRun(models.Model):
