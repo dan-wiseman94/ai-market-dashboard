@@ -40,9 +40,9 @@ def test_snapshot_drill_down(page, frontend_base_url, snapshots) -> None:
 def test_snapshot_diff_endpoint_surfaced(page, frontend_base_url, api_client, snapshots) -> None:
     from apps.snapshots.models import Snapshot
 
+    # The snapshots seed creates four ready snapshots, so two always exist.
     ready = list(Snapshot.objects.filter(status="ready").order_by("id")[:2])
-    if len(ready) < 2:
-        pytest.skip("need ≥2 ready snapshots for the diff endpoint")
+    assert len(ready) >= 2, "snapshots seed must provide ≥2 ready snapshots"
     prev, curr = ready[0], ready[1]
     # Assert the diff endpoint's real contract: {delta, prev_id, curr_id}.
     r = api_client.get(f"/api/snapshots/{curr.id}/diff/", params={"against": prev.id})

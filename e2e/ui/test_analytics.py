@@ -67,8 +67,9 @@ def test_trigger_heatmap_renders_cells(page, frontend_base_url, analytics) -> No
 def test_unusual_options_card_shows_triggers(page, frontend_base_url, analytics) -> None:
     a = AnalyticsPage(page, frontend_base_url)
     a.go()
-    try:
-        a.set_ticker("AAPL")
-    except Exception:
-        pytest.skip("Ticker input not present on /analytics")
-    expect(page.locator("body")).to_be_visible()
+    a.expect_error_boundary_absent()
+    # Before a ticker is entered the card prompts to scan.
+    expect(a.card_unusual()).to_contain_text("Enter a ticker", timeout=10_000)
+    # Entering a ticker fires the scan — the prompt is replaced by results/loading/empty.
+    a.set_ticker("AAPL")
+    expect(a.card_unusual()).not_to_contain_text("Enter a ticker to scan", timeout=10_000)

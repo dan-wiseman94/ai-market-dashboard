@@ -77,3 +77,25 @@ def seed_observer() -> None:
             status="done",
             content={"text": "skipped: cost cap exceeded"},
         )
+
+    # The observer timeline page (/threads/observer/<pid>) resolves the canonical
+    # per-profile thread via get_or_create_observer_thread (schedule__isnull=True,
+    # title "Observer: <name>") — NOT the schedule-linked thread above. Seed a
+    # cost-cap skip message there so the timeline actually surfaces one. The "⏸"
+    # prefix matches ObserverTimelinePage's isSkipped styling so it renders in the
+    # collapsed headline rather than only on expand.
+    canonical, _ = Thread.objects.get_or_create(
+        profile=profile,
+        kind="observer",
+        schedule__isnull=True,
+        defaults={"title": f"Observer: {profile.name}"},
+    )
+    if not canonical.messages.filter(
+        role="system", content__text__icontains="cost cap"
+    ).exists():
+        Message.objects.create(
+            thread=canonical,
+            role="system",
+            status="done",
+            content={"text": "⏸ Observer fire skipped: cost cap exceeded"},
+        )

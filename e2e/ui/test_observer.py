@@ -80,12 +80,19 @@ def test_observer_diff_mode_sends_only_delta(page, frontend_base_url, observer) 
 @pytest.mark.integration
 @pytest.mark.ui
 def test_observer_cost_cap_skip_emits_system_message(page, frontend_base_url, observer) -> None:
+    """A cost-cap skip message is surfaced on the canonical observer timeline.
+
+    The timeline resolves the per-profile thread ('Observer: <name>',
+    schedule__isnull=True) — so the seed writes the cost-cap message there (not into
+    the schedule-linked thread). The '⏸' prefix triggers the timeline's skipped
+    styling, so 'cost cap' shows in the collapsed headline.
+    """
     from apps.profiles.models import TradingProfile
 
-    pid = TradingProfile.objects.get(name="E2E Default").id
-    page.goto(f"{frontend_base_url}/threads/observer/{pid}")
-    # The observer thread seed already includes a system/done cost-cap message.
-    # The text may render lazily or behind a tab; smoke-check the page first.
-    expect(page.locator("body")).to_be_visible()
-    if page.get_by_text("cost cap", exact=False).count() == 0:
-        pytest.skip("cost-cap system message not surfaced on /threads/observer/<id>")
+    profile = TradingProfile.objects.get(name="E2E Default")
+    page.goto(f"{frontend_base_url}/threads/observer/{profile.id}")
+    page.wait_for_load_state("networkidle")
+    expect(page.get_by_role("heading", name=f"Observer: {profile.name}")).to_be_visible(
+        timeout=10_000
+    )
+    expect(page.get_by_text("cost cap", exact=False).first).to_be_visible(timeout=10_000)
