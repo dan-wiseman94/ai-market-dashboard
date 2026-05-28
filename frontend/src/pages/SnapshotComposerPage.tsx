@@ -25,6 +25,8 @@ export default function SnapshotComposerPage() {
   const [includes, setIncludes] = useState<string[]>(["quotes", "positions", "breadth"]);
   const [objective, setObjective] = useState("");
   const [notes, setNotes] = useState("");
+  const [manualPositions, setManualPositions] = useState("");
+  const [title, setTitle] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [stagedIds, setStagedIds] = useState<number[]>(() => {
@@ -76,6 +78,7 @@ export default function SnapshotComposerPage() {
       const created = await createSnap.mutateAsync({
         profile_id: profileId,
         objective, notes, includes,
+        manual_positions: manualPositions,
         watchlist_tickers: tickers,
         ohlc_ticker: tickers[0],
         ohlc_timeframe: "1m",
@@ -89,7 +92,11 @@ export default function SnapshotComposerPage() {
         created.status === "ready" ? created : await waitForSnapshotReady(created.id);
       const thread = await createThread.mutateAsync({
         profile_id: profileId, pinned_snapshot_id: snap.id,
-        title: objective.slice(0, 80) || `Consult ${new Date().toLocaleString()}`,
+        // Explicit title wins; otherwise fall back to the objective / a timestamp.
+        title:
+          title.trim() ||
+          objective.slice(0, 80) ||
+          `Consult ${new Date().toLocaleString()}`,
         // "Capture + ask": stream the AI's reply to the snapshot immediately so the
         // thread page isn't silent on arrival.
         auto_reply: true,
@@ -191,6 +198,16 @@ export default function SnapshotComposerPage() {
         )}
 
         <div>
+          <label className="block text-xs text-slate-500 mb-1">Thread title (optional)</label>
+          <input
+            type="text" value={title} onChange={(e) => setTitle(e.target.value)}
+            maxLength={200}
+            placeholder="Defaults to the objective if left blank"
+            className="w-full px-2 py-1.5 rounded bg-slate-900 border border-slate-700"
+          />
+        </div>
+
+        <div>
           <label className="block text-xs text-slate-500 mb-1">Objective</label>
           <textarea
             rows={3} value={objective} onChange={(e) => setObjective(e.target.value)}
@@ -205,6 +222,18 @@ export default function SnapshotComposerPage() {
             rows={2} value={notes} onChange={(e) => setNotes(e.target.value)}
             className="w-full px-2 py-1.5 rounded bg-slate-900 border border-slate-700"
           />
+        </div>
+
+        <div>
+          <label className="block text-xs text-slate-500 mb-1">Positions (optional, free text)</label>
+          <textarea
+            rows={3} value={manualPositions} onChange={(e) => setManualPositions(e.target.value)}
+            placeholder="Type or paste positions — the AI parses them, e.g. &#10;100 SPY @ 450&#10;2x AAPL 180c exp 6/20"
+            className="w-full px-2 py-1.5 rounded bg-slate-900 border border-slate-700 font-mono text-sm"
+          />
+          <div className="text-xs text-slate-500 mt-1">
+            Parsed by the AI — no broker connection needed.
+          </div>
         </div>
 
         {stagedIds.length > 0 && (
