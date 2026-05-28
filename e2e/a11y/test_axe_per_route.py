@@ -28,6 +28,8 @@ ROUTES: list[tuple[str, str, str]] = [
     ("/theses/<thesis>", "thesis", "thesis_detail"),
     ("/settings/backups", "minimal", "backups"),
     ("/settings/export", "threads", "export"),
+    ("/briefing", "minimal", "briefing"),
+    ("/events", "minimal", "events"),
 ]
 
 
