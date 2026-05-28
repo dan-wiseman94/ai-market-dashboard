@@ -38,13 +38,6 @@ class TokenUsage:
 
 
 @dataclass
-class CostEstimate:
-    low: float
-    high: float
-    model: str
-
-
-@dataclass
 class TextDelta:
     type: Literal["text_delta"] = "text_delta"
     text: str = ""
