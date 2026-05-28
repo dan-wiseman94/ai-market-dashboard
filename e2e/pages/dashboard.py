@@ -14,16 +14,34 @@ class DashboardPage(BasePage):
         self.goto(self.PATH)
 
     @property
+    def hero_heading(self) -> Locator:
+        return self.page.locator("h1").first
+
+    @property
+    def market_context_section(self) -> Locator:
+        return self.page.get_by_role("heading", name="Market context")
+
+    @property
+    def book_section(self) -> Locator:
+        return self.page.get_by_role("heading", name="The book")
+
+    @property
+    def cost_chip(self) -> Locator:
+        """The CostChip link in the header — always rendered, shows today's spend."""
+        return self.page.get_by_role("link", name="Today")
+
+    # Legacy aliases kept for backwards compat with any existing references.
+    @property
     def card_snapshots(self) -> Locator:
-        return self.page.get_by_test_id("dashboard-card-snapshots")
+        return self.market_context_section
 
     @property
     def card_threads(self) -> Locator:
-        return self.page.get_by_test_id("dashboard-card-threads")
+        return self.book_section
 
     @property
     def card_cost(self) -> Locator:
-        return self.page.get_by_test_id("cost-tile-today")
+        return self.cost_chip
 
     def open_notification_drawer(self) -> None:
         self.notification_bell.click()
