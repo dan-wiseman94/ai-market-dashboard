@@ -68,6 +68,22 @@ dynamic regions (timestamps, chart tooltips, notification counts) are masked in
   where seeded AIRun amounts are random and bleed into multiple cells.
   `/costs` is intentionally excluded from the parametrized list; bring it
   back once we wire a pixel-tolerance diff library (pixelmatch-py or PIL).
+  `/briefing` and `/events` are captured in their **empty** states (the
+  `minimal` rung has no `BriefingRun` / `MarketEvent` rows) to stay byte-stable.
+- **Multi-provider compare under `MOCK_EXTERNAL`.** All three providers
+  short-circuit to a canned stream, so claude + openai branches both run. But
+  the compare dialog's provider `<select>` only offers providers that have
+  **catalog models**, and the e2e seed registers only claude + openai (no
+  `local` models) — so the compare tests fan out across those two, not a literal
+  three-provider spread.
+- **`tools/flake_audit.py` doesn't pass `-p`.** It runs `docker compose exec`
+  against the **default** project, so locally it targets the dev `ai-dashboard`
+  stack, not your e2e stack. Run it with `-p <checkout>-e2e` (or rely on the
+  nightly CI run, which has a single stack). See the Phase-2 gap report.
+- **Some failures render racily.** A no-stream `_fail(event="error")` (e.g.
+  provider-disabled) returns in ~20 ms and can lose the UI render race (the error
+  path doesn't refetch); `test_provider_disabled_blocks_send` asserts the gate at
+  the DB layer instead. The `cost_capped` path renders reliably.
 
 ## Known test interactions
 
