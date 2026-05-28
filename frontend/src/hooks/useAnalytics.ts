@@ -102,3 +102,56 @@ export function useUnusualOptions(ticker: string) {
     enabled: !!ticker,
   });
 }
+
+export interface CalibrationBucket {
+  conviction: number;
+  n: number;
+  correct: number;
+  incorrect: number;
+  mixed: number;
+  inconclusive: number;
+  hit_rate: number | null;
+}
+
+export interface CalibrationOverall {
+  scored: number;
+  hit_rate: number | null;
+  correct: number;
+  incorrect: number;
+  mixed: number;
+  inconclusive: number;
+  avg_forward_return_pct: number | null;
+}
+
+export interface ProviderCalibrationRow {
+  provider: string;
+  model: string;
+  n: number;
+  correct: number;
+  incorrect: number;
+  hit_rate: number | null;
+}
+
+export interface Calibration {
+  horizon: number;
+  scored: number;
+  attributable: number;
+  thesis: {
+    buckets: CalibrationBucket[];
+    brier: number | null;
+    prob_map: Record<string, number>;
+    overall: CalibrationOverall;
+    by_direction: Record<string, { n: number; hit_rate: number | null }>;
+  };
+  provider: ProviderCalibrationRow[];
+}
+
+export function useCalibration(days = 90, horizon = 30) {
+  return useQuery({
+    queryKey: ["analytics/calibration", days, horizon],
+    queryFn: () =>
+      apiGet<Calibration>(
+        `/api/analytics/calibration/?horizon=${horizon}&start=${startISO(days)}`,
+      ),
+  });
+}

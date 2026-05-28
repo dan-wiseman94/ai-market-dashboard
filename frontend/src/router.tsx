@@ -21,6 +21,7 @@ import SnapshotCostPage from "./pages/SnapshotCostPage";
 import BackupsPage from "./pages/BackupsPage";
 import ExportPage from "./pages/ExportPage";
 import AnalyticsPage from "./pages/AnalyticsPage";
+import ScorecardPage from "./pages/ScorecardPage";
 import ThesesPage from "./pages/ThesesPage";
 import ThesisDetailPage from "./pages/ThesisDetailPage";
 import EventsPage from "./pages/EventsPage";
@@ -69,6 +70,7 @@ export const router = createBrowserRouter([
       { path: "events", element: <EventsPage />, handle: { crumb: "Events" } },
       { path: "briefing", element: <BriefingPage />, handle: { crumb: "Briefing" } },
       { path: "analytics", element: <AnalyticsPage />, handle: { crumb: "Analytics" } },
+      { path: "scorecard", element: <ScorecardPage />, handle: { crumb: "Scorecard" } },
       { path: "theses", element: <ThesesPage />, handle: { crumb: "Theses" } },
       {
         path: "theses/:id",

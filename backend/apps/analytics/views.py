@@ -93,3 +93,21 @@ class UnusualOptionsView(APIView):
         # Frontend (useUnusualOptions) expects ``{rows: [...]}``.
         rows = unusual_options(ticker=ticker, at=end, top_n=top_n)
         return Response({"ticker": ticker, "at": end.isoformat(), "rows": rows})
+
+
+class CalibrationView(APIView):
+    def get(self, request: Request) -> Response:
+        from apps.analytics.services.calibration import calibration
+
+        start, end = _parse_range(request, default_days=90)
+        try:
+            horizon = int(request.query_params.get("horizon", "30"))
+        except ValueError:
+            horizon = 30
+        return Response(
+            {
+                "start": start.isoformat(),
+                "end": end.isoformat(),
+                **calibration(start=start, end=end, horizon=horizon),
+            }
+        )

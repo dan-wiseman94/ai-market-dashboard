@@ -1,6 +1,7 @@
 from django.urls import path
 
 from apps.analytics.views import (
+    CalibrationView,
     CostPerInsightView,
     LeaderboardView,
     ObserverTimelineView,
@@ -9,6 +10,7 @@ from apps.analytics.views import (
 )
 
 urlpatterns = [
+    path("calibration/", CalibrationView.as_view(), name="analytics-calibration"),
     path("leaderboard/", LeaderboardView.as_view(), name="analytics-leaderboard"),
     path("cost-per-insight/", CostPerInsightView.as_view(), name="analytics-cpi"),
     path("trigger-heatmap/", TriggerHeatmapView.as_view(), name="analytics-heatmap"),
