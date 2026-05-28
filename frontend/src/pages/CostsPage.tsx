@@ -38,12 +38,9 @@ export default function CostsPage() {
 
   const csvHref = `/api/costs/export.csv?from=${encodeURIComponent(range.from)}&to=${encodeURIComponent(range.to)}`;
 
-  const totalInRange = summary.data
-    ? Number(summary.data.total)
-    : 0;
-  const runsInRange = summary.data
-    ? summary.data.by_provider.reduce((s: number, p: { runs: number }) => s + p.runs, 0)
-    : 0;
+  const totalInRange = Number(summary.data?.total ?? 0);
+  const runsInRange =
+    summary.data?.by_provider.reduce((s, p) => s + p.runs, 0) ?? 0;
   const daysInRange = summary.data?.daily.length ?? 0;
   const todayTotal = Number(today.data?.total_usd ?? "0");
 

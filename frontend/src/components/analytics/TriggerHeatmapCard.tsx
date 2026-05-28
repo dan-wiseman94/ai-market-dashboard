@@ -11,14 +11,16 @@ export function TriggerHeatmapCard() {
   return (
     <AnalyticsCard testid="analytics-card-heatmap" title="Trigger fires (30d) · day × hour" query={q} wide>
       {(data) => {
-        const max = Math.max(1, ...(data.cells ?? []).map((c) => c.count));
+        const cells = data.cells ?? [];
+        const max = Math.max(1, ...cells.map((c) => c.count));
+        const hottest = Math.max(0, ...cells.map((c) => c.count));
         return (
           <>
             <div
               className="grid gap-0.5"
               style={{ gridTemplateColumns: "repeat(24, minmax(0, 1fr))" }}
             >
-              {(data.cells ?? []).map((c) => {
+              {cells.map((c) => {
                 const intensity = c.count / max;
                 return (
                   <div
@@ -37,7 +39,7 @@ export function TriggerHeatmapCard() {
               })}
             </div>
             <p className="mt-3 text-xs text-slate-500 font-mono">
-              Hottest cell: {Math.max(0, ...(data.cells ?? []).map((c) => c.count))} fires
+              Hottest cell: {hottest} fires
             </p>
           </>
         );
