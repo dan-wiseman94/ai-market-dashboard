@@ -132,45 +132,34 @@ class OpenAIProvider:
                     try:
                         parsed = json.loads(s["args"] or "{}")
                     except json.JSONDecodeError as exc:
+                        # Malformed args: skip the toolset call, surface an error
+                        # result, and let the loop advance to the next round.
                         parsed = {}
                         outcome = {
                             "ok": False,
                             "error": f"Invalid tool arguments JSON: {exc} (raw: {s['args']!r})",
                         }
+                        latency_ms = 0
                     else:
-                        yield ToolCallEvent(tool_use_id=s["id"], name=s["name"], input=parsed)
                         t0 = time.perf_counter()
                         outcome = toolset.run(s["name"], parsed)
                         latency_ms = int((time.perf_counter() - t0) * 1000)
-                        yield ToolResultEvent(
-                            tool_use_id=s["id"],
-                            ok=bool(outcome.get("ok")),
-                            result=outcome.get("result"),
-                            error=str(outcome.get("error", "")),
-                            latency_ms=latency_ms,
-                        )
-                        raw.append(
-                            {
-                                "role": "tool",
-                                "tool_call_id": s["id"],
-                                "content": str(
-                                    outcome.get("result")
-                                    if outcome.get("ok")
-                                    else outcome.get("error")
-                                ),
-                            }
-                        )
-                        continue
-                    # malformed-args branch: emit call (empty input) + error result
+
                     yield ToolCallEvent(tool_use_id=s["id"], name=s["name"], input=parsed)
                     yield ToolResultEvent(
-                        tool_use_id=s["id"], ok=False, error=str(outcome.get("error", ""))
+                        tool_use_id=s["id"],
+                        ok=bool(outcome.get("ok")),
+                        result=outcome.get("result"),
+                        error=str(outcome.get("error", "")),
+                        latency_ms=latency_ms,
                     )
                     raw.append(
                         {
                             "role": "tool",
                             "tool_call_id": s["id"],
-                            "content": str(outcome.get("error")),
+                            "content": str(
+                                outcome.get("result") if outcome.get("ok") else outcome.get("error")
+                            ),
                         }
                     )
 
