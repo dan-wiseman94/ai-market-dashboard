@@ -89,9 +89,10 @@ def _canned_earnings() -> list[dict]:
 
 def fetch_earnings(tickers: list[str], *, ahead_days: int = 30) -> list[MarketEvent]:
     """Fetch + upsert upcoming earnings for `tickers`. Returns the upserted rows."""
-    from apps.core.mocks import is_mock_mode
+    from apps.core.mocks import is_mock_mode, run_service_scenario
 
     if is_mock_mode():
+        run_service_scenario("finnhub")
         return _upsert_earnings(_canned_earnings())
 
     api_key = _finnhub_api_key()
@@ -190,9 +191,10 @@ def _upsert_macro(rows: list[dict], *, source: str) -> list[MarketEvent]:
 
 def fetch_macro(*, ahead_days: int = 45) -> list[MarketEvent]:
     """Fetch + upsert curated US high-impact macro. Falls back to SEED_MACRO_EVENTS if empty."""
-    from apps.core.mocks import is_mock_mode
+    from apps.core.mocks import is_mock_mode, run_service_scenario
 
     if is_mock_mode():
+        run_service_scenario("finnhub")
         return _upsert_macro(SEED_MACRO_EVENTS, source="finnhub")
 
     api_key = _finnhub_api_key()
