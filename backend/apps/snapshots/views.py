@@ -22,6 +22,8 @@ from apps.snapshots.services.screenshot import (
     attach_client_image,
 )
 from apps.snapshots.tasks import capture_task
+from apps.threads.models import Message, Thread
+from apps.threads.tasks import run_ai_on_message
 
 
 class _SnapshotPagination(LimitOffsetPagination):
@@ -122,6 +124,44 @@ class SnapshotViewSet(
             if cur is not None:
                 prev = cur
         return Response({"results": rows})
+
+    @action(detail=True, methods=["post"], url_path="explain-diff")
+    def explain_diff(self, request, pk=None):
+        from apps.snapshots.primary import previous_snapshot_for
+
+        curr = get_object_or_404(Snapshot.objects.prefetch_related("sections"), id=pk)
+        against_id = request.data.get("against")
+        if against_id:
+            prev = get_object_or_404(Snapshot.objects.prefetch_related("sections"), id=against_id)
+        else:
+            prev = previous_snapshot_for(curr)
+            if prev is None:
+                return Response({"code": "no_prior"}, status=400)
+        delta = diff_sections(
+            {s.kind: s.payload for s in prev.sections.all()},
+            {s.kind: s.payload for s in curr.sections.all()},
+        )
+        thread = Thread.objects.create(
+            kind="diff",
+            profile=curr.profile,
+            pinned_snapshot=curr,
+            title=f"What changed: {curr.primary_ticker or 'snapshot'} #{prev.id}→#{curr.id}"[:200],
+        )
+        framing = (
+            f"Below is a deterministic diff between two market snapshots of "
+            f"{curr.primary_ticker or 'the same set'} captured {prev.captured_at:%Y-%m-%d %H:%M} → "
+            f"{curr.captured_at:%Y-%m-%d %H:%M}. Explain what materially changed and why it might "
+            f"matter for the objective: '{curr.objective}'. Be concise; lead with the most significant change."
+        )
+        msg = Message.objects.create(
+            thread=thread,
+            role="user",
+            status="done",
+            snapshot_ref=curr,
+            content={"text": f"{framing}\n\n{delta}"},
+        )
+        run_ai_on_message.delay(thread_id=thread.id, user_message_id=msg.id)
+        return Response({"thread_id": thread.id, "message_id": msg.id, "delta": delta}, status=201)
 
     @action(detail=True, methods=["get"])
     def diff(self, request, pk=None):
