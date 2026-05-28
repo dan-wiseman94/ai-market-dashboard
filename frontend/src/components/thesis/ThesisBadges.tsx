@@ -52,14 +52,6 @@ export function StatusBadge({ status }: { status: ThesisStatus }) {
   );
 }
 
-export function DirectionLabel({ direction }: { direction: string }) {
-  return (
-    <span className={`font-mono text-[13px] ${DIRECTION_CLASS[direction] ?? "text-ink-300"}`}>
-      {DIRECTION_LABEL[direction] ?? direction}
-    </span>
-  );
-}
-
 const VERDICT_BADGE: Record<
   PostMortemVerdict,
   { label: string; className: string }
