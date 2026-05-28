@@ -168,15 +168,7 @@ def test_profiles_costs_snapshotcost_pages() -> None:
     from e2e.pages.profiles import ProfilesPage
     from e2e.pages.snapshot_cost import SnapshotCostPage
 
-    for m in (
-        "go",
-        "row",
-        "tools_toggle",
-        "thinking_budget",
-        "memory_toggle",
-        "create",
-        "toggle_active",
-    ):
+    for m in ("go", "row", "name_input", "style_input", "create_btn", "create"):
         assert m in _names(ProfilesPage)
     for m in (
         "go",

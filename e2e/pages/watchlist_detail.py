@@ -16,7 +16,7 @@ class WatchlistDetailPage(BasePage):
 
     @property
     def add_input(self) -> Locator:
-        return self.page.get_by_label("Add ticker")
+        return self.page.get_by_placeholder("Add ticker (e.g. SPY)")
 
     def remove_btn(self, ticker: str) -> Locator:
         return self.ticker_row(ticker).get_by_role("button", name="Remove")
