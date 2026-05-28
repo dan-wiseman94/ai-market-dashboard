@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import csv
 import io
+from pathlib import Path
 
 import pytest
 from playwright.sync_api import expect
@@ -37,7 +38,7 @@ def test_costs_csv_export_downloads_and_parses(page, frontend_base_url, analytic
         csv_link.click()
     data = info.value.path()
     assert data is not None, "Download path should not be None"
-    content = open(data, "rb").read()
+    content = Path(data).read_bytes()
     rows = list(csv.reader(io.StringIO(content.decode("utf-8"))))
     assert len(rows) >= 1, "CSV must have at least a header row"
     header = ",".join(rows[0]).lower()
