@@ -15,6 +15,7 @@ class Thread(models.Model):
         ("consult", "One-shot consult"),
         ("chat", "Ongoing chat"),
         ("observer", "Observer timeline"),
+        ("briefing", "Morning briefing"),
     ]
 
     kind = models.CharField(max_length=16, choices=KIND_CHOICES, default="consult")

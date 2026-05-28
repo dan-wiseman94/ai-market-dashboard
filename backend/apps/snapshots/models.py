@@ -19,6 +19,7 @@ class Snapshot(models.Model):
         ("manual", "Manual"),
         ("observer", "Observer"),
         ("trigger", "Trigger"),
+        ("briefing", "Briefing"),
     ]
 
     profile = models.ForeignKey(TradingProfile, on_delete=models.PROTECT, related_name="snapshots")

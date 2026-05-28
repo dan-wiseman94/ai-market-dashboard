@@ -34,6 +34,7 @@ function useDefaultCommands(): Command[] {
       { id: "go-theses", label: "Go to Theses", keywords: "thesis decision call",
         run: () => nav("/theses") },
       { id: "go-events", label: "Go to Events", keywords: "earnings calendar fomc cpi macro", run: () => nav("/events") },
+      { id: "go-briefing", label: "Go to Briefing", keywords: "morning digest summary daily", run: () => nav("/briefing") },
       { id: "toggle-theme", label: "Toggle theme", keywords: "light dark system appearance mode",
         run: cycle },
     ],
