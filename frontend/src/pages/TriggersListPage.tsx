@@ -9,6 +9,15 @@ import { SkeletonRows } from "@/components/Skeleton";
 import { EmptyState } from "@/components/EmptyState";
 import { useToast } from "@/hooks/useToast";
 
+function ListHeader() {
+  return (
+    <div className="flex justify-between items-center mb-4">
+      <h1 className="text-xl font-semibold">Triggers</h1>
+      <Link to="/triggers/new" className="bg-indigo-600 px-3 py-1.5 rounded text-white">New trigger</Link>
+    </div>
+  );
+}
+
 export default function TriggersListPage() {
   const qc = useQueryClient();
   const { push } = useToast();
@@ -60,10 +69,7 @@ export default function TriggersListPage() {
   if (!triggers?.length) {
     return (
       <div className="max-w-3xl mx-auto p-6">
-        <div className="flex justify-between items-center mb-4">
-          <h1 className="text-xl font-semibold">Triggers</h1>
-          <Link to="/triggers/new" className="bg-indigo-600 px-3 py-1.5 rounded text-white">New trigger</Link>
-        </div>
+        <ListHeader />
         <EmptyState
           title="No triggers yet"
           body="Triggers fire when a condition you define crosses its threshold."
@@ -74,10 +80,7 @@ export default function TriggersListPage() {
 
   return (
     <div className="max-w-5xl mx-auto p-6">
-      <div className="flex justify-between items-center mb-4">
-        <h1 className="text-xl font-semibold">Triggers</h1>
-        <Link to="/triggers/new" className="bg-indigo-600 px-3 py-1.5 rounded text-white">New trigger</Link>
-      </div>
+      <ListHeader />
       <table className="w-full text-sm">
         <thead className="text-neutral-400 text-left">
           <tr>

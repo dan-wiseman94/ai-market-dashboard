@@ -9,6 +9,25 @@ function describeValues(values: Firing["matched_values"]): string {
     .join(", ");
 }
 
+function RefLink({ id, to }: { id: number | null; to: string }) {
+  if (id === null) return <span className="text-neutral-600">—</span>;
+  return (
+    <Link to={`${to}/${id}`} className="text-indigo-700 dark:text-indigo-400">
+      #{id}
+    </Link>
+  );
+}
+
+function StatusBadge({ firing }: { firing: Firing }) {
+  if (firing.cost_capped) {
+    return <span className="text-amber-700 dark:text-amber-400 text-xs">cost-capped</span>;
+  }
+  if (firing.thread_id) {
+    return <span className="text-emerald-700 dark:text-emerald-400 text-xs">fired</span>;
+  }
+  return <span className="text-rose-700 dark:text-rose-400 text-xs">error</span>;
+}
+
 export default function FiringsTable({ triggerId }: { triggerId: number }) {
   const { data, isLoading } = useQuery({
     queryKey: ["firings", triggerId],
@@ -37,20 +56,13 @@ export default function FiringsTable({ triggerId }: { triggerId: number }) {
             </td>
             <td className="py-2">{describeValues(f.matched_values)}</td>
             <td className="py-2">
-              {f.snapshot_id
-                ? <Link to={`/snapshots/${f.snapshot_id}`} className="text-indigo-700 dark:text-indigo-400">#{f.snapshot_id}</Link>
-                : <span className="text-neutral-600">—</span>}
+              <RefLink id={f.snapshot_id} to="/snapshots" />
             </td>
             <td className="py-2">
-              {f.thread_id
-                ? <Link to={`/threads/${f.thread_id}`} className="text-indigo-700 dark:text-indigo-400">#{f.thread_id}</Link>
-                : <span className="text-neutral-600">—</span>}
+              <RefLink id={f.thread_id} to="/threads" />
             </td>
             <td className="py-2">
-              {f.cost_capped
-                ? <span className="text-amber-700 dark:text-amber-400 text-xs">cost-capped</span>
-                : f.thread_id ? <span className="text-emerald-700 dark:text-emerald-400 text-xs">fired</span>
-                : <span className="text-rose-700 dark:text-rose-400 text-xs">error</span>}
+              <StatusBadge firing={f} />
             </td>
           </tr>
         ))}

@@ -3,12 +3,12 @@ import { useCallback } from "react";
 export type Range = { from: string; to: string };
 type Props = { value: Range; onChange: (r: Range) => void };
 
-const PRESETS: Array<[string, string, number]> = [
-  ["today", "Today", 1],
-  ["7d", "Last 7 days", 7],
-  ["30d", "Last 30 days", 30],
-  ["month", "This month", -1],
-  ["last-month", "Last month", -2],
+const PRESETS: Array<[value: string, label: string]> = [
+  ["today", "Today"],
+  ["7d", "Last 7 days"],
+  ["30d", "Last 30 days"],
+  ["month", "This month"],
+  ["last-month", "Last month"],
 ];
 
 function computeRange(preset: string): Range {

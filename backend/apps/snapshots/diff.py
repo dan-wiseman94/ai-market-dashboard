@@ -40,6 +40,11 @@ def diff_sections(prev: dict[str, Any], curr: dict[str, Any]) -> str:
     return "\n".join(lines) if lines else "No meaningful changes."
 
 
+def _as_dict(payload: Any) -> dict:
+    """Coerce an unexpected payload shape to {} so the diff never raises."""
+    return payload if isinstance(payload, dict) else {}
+
+
 def _news_items(payload: Any) -> list:
     """News is stored as {"items": [...]}; tolerate a bare list for back-compat."""
     if isinstance(payload, dict):
@@ -61,15 +66,11 @@ def _summarize_new(kind: str, payload: Any) -> str:
 
 def _diff_one(kind: str, prev: Any, curr: Any) -> str:
     if kind == "quotes":
-        return _diff_quotes(
-            prev if isinstance(prev, dict) else {}, curr if isinstance(curr, dict) else {}
-        )
+        return _diff_quotes(_as_dict(prev), _as_dict(curr))
     if kind == "news":
         return _diff_news(_news_items(prev), _news_items(curr))
     if kind == "breadth":
-        return _diff_breadth(
-            prev if isinstance(prev, dict) else {}, curr if isinstance(curr, dict) else {}
-        )
+        return _diff_breadth(_as_dict(prev), _as_dict(curr))
     return ""
 
 
@@ -80,9 +81,7 @@ def _diff_quotes(prev: dict, curr: dict) -> str:
         # raising — this endpoint must never 500 on an unexpected payload shape.
         if not isinstance(c, dict):
             continue
-        p = prev.get(ticker, {})
-        if not isinstance(p, dict):
-            p = {}
+        p = _as_dict(prev.get(ticker))
         p_last = p.get("last")
         c_last = c.get("last")
         if p_last is None or c_last is None:

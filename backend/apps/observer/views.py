@@ -13,7 +13,7 @@ from rest_framework.response import Response
 from apps.observer.models import Notification, ObserverSchedule
 from apps.observer.serializers import NotificationSerializer, ObserverScheduleSerializer
 from apps.observer.services.market_hours import market_status
-from apps.observer.services.sync import delete_periodic_task, sync_periodic_task
+from apps.observer.services.sync import crontab_to_cron, delete_periodic_task, sync_periodic_task
 from apps.observer.services.threads import get_or_create_observer_thread
 from apps.observer.tasks import run_observer_task
 from apps.profiles.models import TradingProfile
@@ -38,15 +38,7 @@ class ObserverScheduleViewSet(viewsets.ModelViewSet):
                 delete_periodic_task(instance)
             return
         if cron is not None or "enabled" in serializer.validated_data:
-            existing_cron = cron
-            if existing_cron is None and instance.periodic_task and instance.periodic_task.crontab:
-                c = instance.periodic_task.crontab
-                existing_cron = (
-                    f"{c.minute} {c.hour} {c.day_of_month} {c.month_of_year} {c.day_of_week}"
-                )
-            if existing_cron is None:
-                existing_cron = "0 * * * *"
-            sync_periodic_task(instance, cron=existing_cron)
+            sync_periodic_task(instance, cron=cron or _effective_cron(instance))
 
     def perform_destroy(self, instance):
         delete_periodic_task(instance)
@@ -91,6 +83,14 @@ class NotificationViewSet(
         return Response({"ok": True})
 
 
+def _effective_cron(instance: ObserverSchedule) -> str:
+    """The cron to sync when none was supplied: keep the existing one, else hourly."""
+    pt = instance.periodic_task
+    if pt and pt.crontab:
+        return crontab_to_cron(pt.crontab)
+    return "0 * * * *"
+
+
 @require_GET
 def market_status_view(_request: HttpRequest) -> JsonResponse:
     s = market_status()
@@ -107,30 +107,13 @@ def market_status_view(_request: HttpRequest) -> JsonResponse:
 def observer_thread_view(_request: HttpRequest, profile_id: int) -> JsonResponse:
     profile = get_object_or_404(TradingProfile, id=profile_id)
     thread = get_or_create_observer_thread(profile)
-    messages = list(
-        thread.messages.all()
-        .order_by("created_at")
-        .values(
-            "id",
-            "role",
-            "content",
-            "created_at",
-        )
-    )
+    messages = thread.messages.order_by("created_at").values("id", "role", "content", "created_at")
     return JsonResponse(
         {
             "id": thread.id,
             "kind": thread.kind,
             "profile_id": thread.profile_id,
             "title": thread.title,
-            "messages": [
-                {
-                    "id": m["id"],
-                    "role": m["role"],
-                    "content": m["content"],
-                    "created_at": m["created_at"].isoformat(),
-                }
-                for m in messages
-            ],
+            "messages": [{**m, "created_at": m["created_at"].isoformat()} for m in messages],
         }
     )

@@ -1,4 +1,3 @@
-// frontend/src/components/settings/ModelSelect.tsx
 import { useAiModels } from "@/hooks/useAiModels";
 import type { AiModel } from "@/api/ai";
 

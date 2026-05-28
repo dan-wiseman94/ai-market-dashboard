@@ -61,11 +61,12 @@ class ObserverScheduleSerializer(serializers.ModelSerializer):
         ]
 
     def get_cron_display(self, obj) -> str:
+        from apps.observer.services.sync import crontab_to_cron
+
         pt = obj.periodic_task
         if pt is None or pt.crontab is None:
             return ""
-        c = pt.crontab
-        return f"{c.minute} {c.hour} {c.day_of_month} {c.month_of_year} {c.day_of_week}"
+        return crontab_to_cron(pt.crontab)
 
     def validate_cron(self, value: str) -> str:
         if len(value.split()) != 5:

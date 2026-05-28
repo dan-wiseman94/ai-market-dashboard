@@ -50,12 +50,11 @@ def provider_leaderboard(
         .order_by("-total_cost_usd")
     )
 
+    # Per (provider, model): the list of computable forward returns. A key only
+    # gains an entry when a run actually prices out; the row loop below falls back
+    # to an empty list (coverage 0, avg None) for keys that never did.
     returns: dict[tuple[str, str], list[float]] = {}
-    priced: dict[tuple[str, str], int] = {}
     for run in qs.select_related("message__thread__pinned_snapshot").iterator():
-        key = (run.provider, run.model)
-        returns.setdefault(key, [])
-        priced.setdefault(key, 0)
         snap = run.message.thread.pinned_snapshot
         if snap is None:
             continue
@@ -65,15 +64,14 @@ def provider_leaderboard(
         ret = trading_day_forward_return_pct(primary, run.created_at, forward_hours)
         if ret is None:
             continue
-        returns[key].append(ret)
-        priced[key] += 1
+        returns.setdefault((run.provider, run.model), []).append(ret)
 
     rows: list[dict] = []
     for r in agg:
         key = (r["provider"], r["model"])
-        rs = returns.get(key, [])
+        rs = returns.get(key, [])  # one entry per run that priced out
         runs = r["runs"]
-        coverage = (priced.get(key, 0) / runs * 100.0) if runs else 0.0
+        coverage = (len(rs) / runs * 100.0) if runs else 0.0
         avg_ret = (sum(rs) / len(rs)) if rs else None
         rows.append(
             {

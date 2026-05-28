@@ -51,6 +51,23 @@ function ThesisRow({ thesis }: { thesis: Thesis }) {
   );
 }
 
+function ThesisSection({ title, theses }: { title: string; theses: Thesis[] }) {
+  if (theses.length === 0) return null;
+  return (
+    <section>
+      <div className="flex items-center gap-3 mb-3">
+        <h2 className="ledger-eyebrow">{title}</h2>
+        <span className="flex-1 h-px bg-rule" />
+      </div>
+      <ul className="space-y-1.5">
+        {theses.map((t) => (
+          <ThesisRow key={t.id} thesis={t} />
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 export default function ThesesPage() {
   const { data: theses, isLoading } = useTheses();
 
@@ -93,33 +110,8 @@ export default function ThesesPage() {
         </span>
       </div>
 
-      {open.length > 0 && (
-        <section>
-          <div className="flex items-center gap-3 mb-3">
-            <h2 className="ledger-eyebrow">Open</h2>
-            <span className="flex-1 h-px bg-rule" />
-          </div>
-          <ul className="space-y-1.5">
-            {open.map((t) => (
-              <ThesisRow key={t.id} thesis={t} />
-            ))}
-          </ul>
-        </section>
-      )}
-
-      {closed.length > 0 && (
-        <section>
-          <div className="flex items-center gap-3 mb-3">
-            <h2 className="ledger-eyebrow">Closed</h2>
-            <span className="flex-1 h-px bg-rule" />
-          </div>
-          <ul className="space-y-1.5">
-            {closed.map((t) => (
-              <ThesisRow key={t.id} thesis={t} />
-            ))}
-          </ul>
-        </section>
-      )}
+      <ThesisSection title="Open" theses={open} />
+      <ThesisSection title="Closed" theses={closed} />
     </main>
   );
 }
