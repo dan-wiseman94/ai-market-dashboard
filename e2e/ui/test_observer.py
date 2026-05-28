@@ -10,18 +10,41 @@ from e2e.pages.schedules import SchedulesPage
 
 @pytest.mark.integration
 @pytest.mark.ui
-def test_create_schedule_and_run_now(page, frontend_base_url, minimal) -> None:
+def test_create_schedule_and_run_now(page, frontend_base_url, observer) -> None:
+    from apps.observer.models import ObserverSchedule
+
     s = SchedulesPage(page, frontend_base_url)
     s.go()
-    expect(page.locator("body")).to_be_visible()
+    s.expect_error_boundary_absent()
+    sched = ObserverSchedule.objects.filter(name="E2E active schedule").first()
+    assert sched is not None
+    expect(s.schedule_row(sched.id)).to_be_visible(timeout=10_000)
+    expect(s.run_now_btn(sched.id)).to_be_visible()
 
 
 @pytest.mark.integration
 @pytest.mark.ui
+@pytest.mark.xfail(
+    reason=(
+        "GAP: SchedulesPage (frontend/src/pages/SchedulesPage.tsx) has no Pause/Resume button — "
+        "enabled state is toggled via a checkbox, not a button labelled 'Pause'/'Resume'. "
+        "The SchedulesPage POM's pause_btn()/pause() target a non-existent affordance."
+    ),
+    strict=False,
+)
 def test_schedule_pause_resume(page, frontend_base_url, observer) -> None:
+    from apps.observer.models import ObserverSchedule
+
+    sched = ObserverSchedule.objects.get(name="E2E active schedule")
     s = SchedulesPage(page, frontend_base_url)
     s.go()
-    expect(page.locator("body")).to_be_visible()
+    s.expect_error_boundary_absent()
+    expect(s.pause_btn(sched.id)).to_be_visible(timeout=10_000)
+    s.pause(sched.id)
+    # Pausing flips the control to a Resume affordance.
+    expect(s.schedule_row(sched.id).get_by_role("button", name="Resume")).to_be_visible(
+        timeout=10_000
+    )
 
 
 @pytest.mark.integration
@@ -34,7 +57,12 @@ def test_observer_structured_mode_produces_typed_card(
 
     pid = TradingProfile.objects.get(name="E2E Default").id
     page.goto(f"{frontend_base_url}/threads/observer/{pid}")
-    expect(page.locator("body")).to_be_visible()
+    page.wait_for_load_state("networkidle")
+    # The observer thread page renders without crashing and shows the thread surface.
+    expect(page.get_by_text("Something went wrong")).to_have_count(0)
+    expect(page.get_by_text("Loading")).to_have_count(0, timeout=10_000)
+    # The seeded observer thread has messages — the timeline list should render.
+    expect(page.locator("ul").first).to_be_visible(timeout=10_000)
 
 
 @pytest.mark.integration
@@ -44,7 +72,10 @@ def test_observer_diff_mode_sends_only_delta(page, frontend_base_url, observer) 
 
     pid = TradingProfile.objects.get(name="E2E Default").id
     page.goto(f"{frontend_base_url}/threads/observer/{pid}")
-    expect(page.locator("body")).to_be_visible()
+    page.wait_for_load_state("networkidle")
+    expect(page.get_by_text("Something went wrong")).to_have_count(0)
+    # The seeded observer thread renders its title heading.
+    expect(page.get_by_role("heading", level=1)).to_be_visible(timeout=10_000)
 
 
 @pytest.mark.integration
