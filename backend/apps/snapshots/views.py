@@ -89,6 +89,40 @@ class SnapshotViewSet(
         )
         return Response(SnapshotSerializer(snap).data, status=202)
 
+    @action(detail=False, methods=["get"], url_path="timeline")
+    def timeline(self, request):
+        """GET /api/snapshots/timeline/?ticker=NVDA — ready snapshots for one ticker,
+        oldest->newest, each with headline_delta_pct (primary-ticker last % vs the prior node)."""
+        ticker = (request.query_params.get("ticker") or "").upper()
+        if not ticker:
+            return Response({"code": "missing_ticker"}, status=400)
+        snaps = list(
+            Snapshot.objects.filter(primary_ticker=ticker, status="ready")
+            .select_related("profile")
+            .prefetch_related("sections")
+            .order_by("captured_at")
+        )
+
+        def last_price(s):
+            q = next((x for x in s.sections.all() if x.kind == "quotes"), None)
+            if q is None or not s.primary_ticker or not isinstance(q.payload, dict):
+                return None
+            try:
+                return float(q.payload[s.primary_ticker]["last"])
+            except (KeyError, TypeError, ValueError):
+                return None
+
+        rows, prev = [], None
+        for s in snaps:
+            cur = last_price(s)
+            delta = ((cur - prev) / prev * 100.0) if (cur is not None and prev) else None
+            data = SnapshotListSerializer(s).data
+            data["headline_delta_pct"] = delta
+            rows.append(data)
+            if cur is not None:
+                prev = cur
+        return Response({"results": rows})
+
     @action(detail=True, methods=["get"])
     def diff(self, request, pk=None):
         """GET /api/snapshots/<id>/diff/?against=<other_id>
