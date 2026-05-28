@@ -72,20 +72,14 @@ def build_snapshot(triggers: Iterable[EventTrigger]) -> MetricsSnapshot:
 
         if metric == "price":
             assert ticker is not None
-            last = _extract_last(quotes.get(ticker))
-            snapshot[key] = last
-            if op in CROSSING_OPS:
-                snapshot[f"_prior:{key}"] = _read_redis_float(r, f"trigger:last:{ticker}")
-            if last is not None:
-                r.setex(f"trigger:last:{ticker}", 60, str(last))
+            _record_last_metric(
+                r, snapshot, key=key, symbol=ticker, op=op, quote=quotes.get(ticker)
+            )
 
         elif metric == "vix":
-            last = _extract_last(quotes.get("$VIX"))
-            snapshot[key] = last
-            if op in CROSSING_OPS:
-                snapshot[f"_prior:{key}"] = _read_redis_float(r, "trigger:last:$VIX")
-            if last is not None:
-                r.setex("trigger:last:$VIX", 60, str(last))
+            _record_last_metric(
+                r, snapshot, key=key, symbol="$VIX", op=op, quote=quotes.get("$VIX")
+            )
 
         elif metric == "pct_change":
             assert ticker is not None and window is not None
@@ -161,6 +155,25 @@ def _ticker_union(leaves: list[dict]) -> set[str]:
         for leaf in leaves
         if leaf.get("ticker") and leaf["metric"] in ("price", "pct_change", "volume_z")
     }
+
+
+def _record_last_metric(
+    r: redis.Redis,
+    snapshot: dict[str, float | None],
+    *,
+    key: str,
+    symbol: str,
+    op: str,
+    quote: dict | None,
+) -> None:
+    """Record a last-price metric (price/vix): current value, crossing prior, cached last."""
+    last = _extract_last(quote)
+    snapshot[key] = last
+    last_key = f"trigger:last:{symbol}"
+    if op in CROSSING_OPS:
+        snapshot[f"_prior:{key}"] = _read_redis_float(r, last_key)
+    if last is not None:
+        r.setex(last_key, 60, str(last))
 
 
 def _extract_last(quote_blob: dict | None) -> float | None:
