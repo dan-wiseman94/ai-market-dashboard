@@ -18,6 +18,12 @@ from apps.market.services.positions import fetch_positions
 from apps.market.services.quotes import fetch_quotes
 from apps.profiles.models import TradingProfile
 from apps.snapshots.models import Snapshot, SnapshotImage, SnapshotSection
+from apps.snapshots.primary import (
+    primary_ticker as derive_primary_ticker,
+)
+from apps.snapshots.primary import (
+    primary_ticker_from_quotes,
+)
 from apps.snapshots.services.render import render_chart_png
 from apps.snapshots.token_budget import estimate_tokens
 
@@ -175,6 +181,7 @@ def capture_for_existing(
     """Fill in sections for an already-created Snapshot. Broadcasts progress over WS."""
     _broadcast(snap.id, {"event": "pending", "snapshot_id": snap.id, "includes": snap.includes})
     ok_count = 0
+    _primary: str | None = None
 
     for kind in snap.includes:
         fetcher = _FETCHERS.get(kind)
@@ -202,6 +209,8 @@ def capture_for_existing(
             section.status = "done"
             section.save()
             stamp_payload_tokens(section)
+            if kind == "quotes" and _primary is None:
+                _primary = primary_ticker_from_quotes(section.payload)
             ok_count += 1
             _broadcast(snap.id, {"event": "section_done", "kind": kind})
         except Exception as exc:
@@ -216,6 +225,7 @@ def capture_for_existing(
 
     reps = _representative_tickers(snap, list(watchlist_tickers), ohlc_ticker)
     snap.market_state = _build_market_state(reps)
+    snap.primary_ticker = derive_primary_ticker(snap) if _primary is None else _primary
     snap.status = "ready" if (ok_count > 0 or attached_client_images) else "failed"
     snap.save()
     _broadcast(snap.id, {"event": snap.status, "snapshot_id": snap.id})
