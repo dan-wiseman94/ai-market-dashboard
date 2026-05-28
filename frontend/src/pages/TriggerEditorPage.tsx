@@ -2,20 +2,38 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  type Condition, type EventTrigger,
   createTrigger, evaluateTrigger, fetchTriggers, updateTrigger,
   backtestTrigger, type BacktestMatch,
 } from "@/api/triggers";
-import RuleBuilder from "@/components/triggers/RuleBuilder";
 import FiringsTable from "@/components/triggers/FiringsTable";
 import { useProfiles } from "@/hooks/useProfiles";
+import BacktestPanel from "./trigger-editor/BacktestPanel";
+import ConditionForm, { type TriggerForm } from "./trigger-editor/ConditionForm";
 
-const EMPTY: Pick<EventTrigger, "name" | "condition" | "cooldown_seconds" | "enabled"> = {
+const EMPTY: TriggerForm = {
   name: "",
   condition: { all: [{ metric: "price", ticker: "SPY", op: ">", value: 0 }] },
   cooldown_seconds: 1800,
   enabled: true,
 };
+
+type Tab = "condition" | "firings" | "backtest";
+
+function TabButton({
+  active, label, onClick,
+}: {
+  active: boolean;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      className={`py-2 ${active ? "text-ink-900 border-b-2 border-indigo-500 dark:text-white" : "text-neutral-400"}`}
+      onClick={onClick}
+    >{label}</button>
+  );
+}
 
 function useDebounced<T>(value: T, ms: number): T {
   const [deb, setDeb] = useState(value);
@@ -44,7 +62,7 @@ export default function TriggerEditorPage() {
   const existing = triggersQ.data?.find((t) => t.id === id);
   const [form, setForm] = useState(EMPTY);
   const [profileId, setProfileId] = useState<number | null>(null);
-  const [tab, setTab] = useState<"condition" | "firings" | "backtest">("condition");
+  const [tab, setTab] = useState<Tab>("condition");
   // Lazy initializers keep these impure Date reads out of render
   // (react-hooks/purity: "Cannot call impure function during render").
   const [btStart, setBtStart] = useState(() =>
@@ -102,6 +120,36 @@ export default function TriggerEditorPage() {
     },
   });
 
+  function renderBody() {
+    if (!isNew && tab === "firings") {
+      return <FiringsTable triggerId={id!} />;
+    }
+    if (tab === "backtest") {
+      return (
+        <BacktestPanel
+          start={btStart}
+          onStartChange={setBtStart}
+          end={btEnd}
+          onEndChange={setBtEnd}
+          backtest={backtest}
+          result={btResult}
+        />
+      );
+    }
+    return (
+      <ConditionForm
+        form={form}
+        onFormChange={setForm}
+        profiles={profilesQ.data}
+        profileId={profileId}
+        onProfileChange={setProfileId}
+        preview={previewQ}
+        save={save}
+        onCancel={() => navigate("/triggers")}
+      />
+    );
+  }
+
   return (
     <div className="max-w-3xl mx-auto p-6 space-y-6">
       <h1 className="text-xl font-semibold">
@@ -110,160 +158,13 @@ export default function TriggerEditorPage() {
 
       {!isNew && (
         <div className="flex gap-4 border-b border-neutral-800 mb-4">
-          <button
-            type="button"
-            className={`py-2 ${tab === "condition" ? "text-ink-900 border-b-2 border-indigo-500 dark:text-white" : "text-neutral-400"}`}
-            onClick={() => setTab("condition")}
-          >Condition</button>
-          <button
-            type="button"
-            className={`py-2 ${tab === "firings" ? "text-ink-900 border-b-2 border-indigo-500 dark:text-white" : "text-neutral-400"}`}
-            onClick={() => setTab("firings")}
-          >Firings ({existing?.firings_count ?? 0})</button>
-          <button
-            type="button"
-            className={`py-2 ${tab === "backtest" ? "text-ink-900 border-b-2 border-indigo-500 dark:text-white" : "text-neutral-400"}`}
-            onClick={() => setTab("backtest")}
-          >Backtest</button>
+          <TabButton active={tab === "condition"} label="Condition" onClick={() => setTab("condition")} />
+          <TabButton active={tab === "firings"} label={`Firings (${existing?.firings_count ?? 0})`} onClick={() => setTab("firings")} />
+          <TabButton active={tab === "backtest"} label="Backtest" onClick={() => setTab("backtest")} />
         </div>
       )}
 
-      {!isNew && tab === "firings" ? (
-        <FiringsTable triggerId={id!} />
-      ) : tab === "backtest" ? (
-        <div className="space-y-3">
-          <div className="text-sm text-neutral-400">
-            Replay the current condition against stored OHLC bars. Only <code>price</code> and
-            <code>pct_change</code> leaves evaluate; live-only metrics are skipped.
-          </div>
-          <div className="flex gap-3 items-end">
-            <label className="text-sm">
-              <div className="text-neutral-400 mb-1">Start</div>
-              <input type="date" value={btStart} onChange={(e) => setBtStart(e.target.value)}
-                     className="bg-neutral-800 px-3 py-2 rounded" />
-            </label>
-            <label className="text-sm">
-              <div className="text-neutral-400 mb-1">End</div>
-              <input type="date" value={btEnd} onChange={(e) => setBtEnd(e.target.value)}
-                     className="bg-neutral-800 px-3 py-2 rounded" />
-            </label>
-            <button
-              type="button"
-              className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded"
-              onClick={() => backtest.mutate()}
-              disabled={backtest.isPending}
-            >{backtest.isPending ? "Running…" : "Run backtest"}</button>
-          </div>
-          {backtest.isError && (
-            <div className="text-rose-700 dark:text-rose-400 text-sm">
-              {(backtest.error as Error)?.message ?? "Backtest failed"}
-            </div>
-          )}
-          {btResult && (
-            <div className="space-y-1">
-              <div className="text-sm">
-                <span className="font-mono">{btResult.match_count}</span>
-                <span className="text-neutral-400"> matches</span>
-              </div>
-              <ul className="text-xs font-mono text-neutral-300 max-h-60 overflow-auto">
-                {btResult.matches.slice(0, 50).map((m, i) => (
-                  <li key={i}>
-                    {new Date(m.ts).toLocaleDateString()} —
-                    {Object.entries(m.values).filter(([k]) => !k.startsWith("_prior:"))
-                      .map(([k, v]) => ` ${k}=${v ?? "—"}`).join("")}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </div>
-      ) : (
-      <>
-      <div className="space-y-3">
-        <div>
-          <label className="block text-sm text-neutral-400 mb-1" htmlFor="tr-name">Name</label>
-          <input
-            id="tr-name"
-            className="bg-neutral-800 px-3 py-2 rounded w-full"
-            value={form.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
-          />
-        </div>
-
-        <div className="flex gap-4">
-          <div>
-            <label className="block text-sm text-neutral-400 mb-1">Profile</label>
-            <select
-              className="bg-neutral-800 px-3 py-2 rounded"
-              value={profileId ?? ""}
-              onChange={(e) => setProfileId(Number(e.target.value))}
-            >
-              {profilesQ.data?.map((p) => (
-                <option key={p.id} value={p.id}>{p.name}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm text-neutral-400 mb-1">Cooldown (sec)</label>
-            <input
-              type="number"
-              className="bg-neutral-800 px-3 py-2 rounded w-24"
-              value={form.cooldown_seconds}
-              onChange={(e) => setForm({ ...form, cooldown_seconds: Number(e.target.value) })}
-            />
-          </div>
-          <label className="flex items-center gap-2 mt-7">
-            <input
-              type="checkbox"
-              checked={form.enabled}
-              onChange={(e) => setForm({ ...form, enabled: e.target.checked })}
-            />
-            Enabled
-          </label>
-        </div>
-      </div>
-
-      <RuleBuilder
-        value={form.condition}
-        onChange={(c: Condition) => setForm({ ...form, condition: c })}
-      />
-
-      <div className="border-t border-neutral-800 pt-4 text-sm">
-        <div className="text-neutral-400 mb-1">Preview — would currently fire?</div>
-        {previewQ.isLoading && <div>Evaluating…</div>}
-        {previewQ.isError && <div className="text-rose-700 dark:text-rose-400">Invalid condition</div>}
-        {previewQ.data && (
-          <div>
-            <span className={previewQ.data.matched ? "text-emerald-700 dark:text-emerald-400" : "text-neutral-400"}>
-              {previewQ.data.matched ? "YES" : "NO"}
-            </span>
-            <span className="ml-2 text-neutral-500">
-              {Object.entries(previewQ.data.values)
-                .filter(([k]) => !k.startsWith("_prior:"))
-                .map(([k, v]) => `${k}=${v ?? "—"}`)
-                .join(", ")}
-            </span>
-          </div>
-        )}
-      </div>
-
-      <div className="flex gap-2">
-        <button
-          className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded"
-          onClick={() => save.mutate()}
-          disabled={save.isPending || !form.name || !profileId}
-        >
-          {save.isPending ? "Saving…" : "Save"}
-        </button>
-        <button
-          className="bg-neutral-800 px-4 py-2 rounded"
-          onClick={() => navigate("/triggers")}
-        >
-          Cancel
-        </button>
-      </div>
-      </>
-      )}
+      {renderBody()}
     </div>
   );
 }

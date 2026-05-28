@@ -70,13 +70,13 @@ export default function SchedulesPage() {
     );
   }
 
-  const empty = !schedules || !Array.isArray(schedules) || schedules.length === 0;
+  const rows = Array.isArray(schedules) ? schedules : [];
 
   return (
     <main className="p-6 max-w-3xl mx-auto space-y-4">
       <h1 className="text-2xl font-semibold">Observer schedules</h1>
 
-      {empty && (
+      {rows.length === 0 && (
         <EmptyState
           title="No schedules yet"
           body="Create one to have the observer capture + analyze snapshots on a cron."
@@ -84,7 +84,7 @@ export default function SchedulesPage() {
       )}
 
       <ul className="space-y-2">
-        {(Array.isArray(schedules) ? schedules : []).map((s) => (
+        {rows.map((s) => (
           <li key={s.id} data-testid={`schedule-row-${s.id}`} className="p-4 rounded border border-slate-700 bg-slate-900 space-y-2">
             <div className="flex items-center justify-between">
               <div>
