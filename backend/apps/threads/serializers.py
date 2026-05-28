@@ -27,6 +27,9 @@ class AIRunSerializer(serializers.ModelSerializer):
 class MessageSerializer(serializers.ModelSerializer):
     ai_run = AIRunSerializer(read_only=True)
     parent_message_id = serializers.IntegerField(read_only=True, allow_null=True)
+    snapshot_id = serializers.IntegerField(
+        source="snapshot_ref_id", read_only=True, allow_null=True
+    )
 
     class Meta:
         model = Message
@@ -39,6 +42,7 @@ class MessageSerializer(serializers.ModelSerializer):
             "created_at",
             "ai_run",
             "parent_message_id",
+            "snapshot_id",
         ]
 
 
@@ -63,3 +67,6 @@ class ThreadSerializer(serializers.ModelSerializer):
             "created_at",
             "messages",
         ]
+        # `title` is the only field a PATCH may change; creation builds the rest
+        # directly from request.data in the view, so locking these here is safe.
+        read_only_fields: ClassVar = ["kind", "pinned_snapshot_id", "created_at"]

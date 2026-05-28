@@ -35,6 +35,29 @@ def test_serializes_quotes_section_as_table():
 
 
 @pytest.mark.django_db
+def test_manual_positions_rendered_for_ai_to_parse():
+    p = TradingProfile.objects.create(name="P", style="x")
+    s = Snapshot.objects.create(
+        profile=p,
+        includes=[],
+        source="manual",
+        objective="risk check",
+        manual_positions="100 SPY @ 450\n2x AAPL 180c exp 6/20",
+    )
+    out = serialize_for_ai(s)
+    assert "## Positions (manually entered" in out
+    assert "100 SPY @ 450" in out
+    assert "AAPL 180c" in out
+
+
+@pytest.mark.django_db
+def test_blank_manual_positions_omitted():
+    p = TradingProfile.objects.create(name="P", style="x")
+    s = Snapshot.objects.create(profile=p, includes=[], source="manual", objective="o")
+    assert "manually entered" not in serialize_for_ai(s)
+
+
+@pytest.mark.django_db
 def test_missing_section_marked_unavailable():
     p = TradingProfile.objects.create(name="P", style="x")
     s = Snapshot.objects.create(profile=p, includes=["quotes", "news"], source="manual")
