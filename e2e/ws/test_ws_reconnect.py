@@ -1,9 +1,9 @@
 """Reconnect with ``?since=<seq>`` — replays recent events with no gap.
 
-The ThreadConsumer doesn't implement seq-based replay yet, so this test drives
-the real send path and then skips cleanly on the missing feature rather than
-churning green-on-red. (Previously it also failed hard: sync-ORM-in-async on
-``web`` and a POST to the non-existent ``/messages/`` route.)
+ThreadConsumer implements seq-based replay (apps/threads/consumers.py + event_log),
+so reconnecting with ``?since=<last_seq>`` must redeliver the tail (incl.
+``message_done``) with contiguous seqs. The first leg still tolerates a slow
+mock stream (skips if no ``text_delta`` arrives in-window) to stay non-flaky.
 """
 
 from __future__ import annotations
@@ -48,10 +48,8 @@ async def test_ws_reconnect_replays_recent_events(ws_base_url, api_base_url, thr
 
     wc2 = await WsClient.connect(f"{ws_base_url}/ws/threads/{tid}/?since={last_seq}")
     try:
-        try:
-            await wc2.wait_for_event("message_done", timeout=10.0)
-        except TimeoutError:
-            pytest.skip("ThreadConsumer doesn't yet implement ?since=<seq> replay")
+        # Replay must redeliver the tail (incl. message_done) on reconnect.
+        await wc2.wait_for_event("message_done", timeout=10.0)
         seqs = [e["seq"] for e in wc2._events if "seq" in e]
         for a, b in itertools.pairwise(seqs):
             assert b == a + 1

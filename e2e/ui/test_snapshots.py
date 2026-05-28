@@ -15,9 +15,11 @@ from e2e.pages.snapshot_cost import SnapshotCostPage
 def test_capture_all_sections_ok(page, frontend_base_url, minimal) -> None:
     s = SnapshotPage(page, frontend_base_url)
     s.go()
-    # Smoke: the composer page renders.
-    expect(page.locator("body")).to_be_visible()
     s.expect_error_boundary_absent()
+    # The capture button is present (gated on profileId being selected).
+    expect(s.capture_btn).to_be_visible(timeout=10_000)
+    # The Profile label + select renders (label text is visible even without htmlFor).
+    expect(page.get_by_text("Profile", exact=False).first).to_be_visible(timeout=10_000)
 
 
 @pytest.mark.integration
@@ -28,7 +30,9 @@ def test_snapshot_drill_down(page, frontend_base_url, snapshots) -> None:
     snap = Snapshot.objects.filter(status="ready").first()
     d = SnapshotCostPage(page, frontend_base_url)
     d.go(snap.id)
-    expect(page.locator("body")).to_be_visible()
+    d.expect_error_boundary_absent()
+    # The drill-down page renders the snapshot id in the heading.
+    expect(page.get_by_role("heading", level=1)).to_contain_text(str(snap.id), timeout=10_000)
 
 
 @pytest.mark.integration
@@ -36,9 +40,9 @@ def test_snapshot_drill_down(page, frontend_base_url, snapshots) -> None:
 def test_snapshot_diff_endpoint_surfaced(page, frontend_base_url, api_client, snapshots) -> None:
     from apps.snapshots.models import Snapshot
 
+    # The snapshots seed creates four ready snapshots, so two always exist.
     ready = list(Snapshot.objects.filter(status="ready").order_by("id")[:2])
-    if len(ready) < 2:
-        pytest.skip("need ≥2 ready snapshots for the diff endpoint")
+    assert len(ready) >= 2, "snapshots seed must provide ≥2 ready snapshots"
     prev, curr = ready[0], ready[1]
     # Assert the diff endpoint's real contract: {delta, prev_id, curr_id}.
     r = api_client.get(f"/api/snapshots/{curr.id}/diff/", params={"against": prev.id})
@@ -50,7 +54,9 @@ def test_snapshot_diff_endpoint_surfaced(page, frontend_base_url, api_client, sn
     assert isinstance(body["delta"], str)
     # …and the drill-down route that consumes it renders without crashing.
     page.goto(f"{frontend_base_url}/costs/snapshot/{curr.id}")
-    expect(page.locator("body")).to_be_visible()
+    page.wait_for_load_state("networkidle")
+    expect(page.get_by_text("Something went wrong", exact=False)).to_have_count(0)
+    expect(page.get_by_role("heading", level=1)).to_be_visible(timeout=10_000)
 
 
 @pytest.mark.integration
@@ -116,7 +122,9 @@ def test_capture_oversized_image_returns_413(api_client) -> None:
 @pytest.mark.integration
 @pytest.mark.ui
 def test_costs_page_loads_from_snapshot(page, frontend_base_url, analytics) -> None:
-    """Smoke: the costs page loads after snapshots seed has produced AIRun rows."""
+    """Costs page loads and shows a dollar figure after analytics seed produces AIRun rows."""
     costs = CostsPage(page, frontend_base_url)
     costs.go()
-    expect(page.locator("body")).to_be_visible()
+    costs.expect_error_boundary_absent()
+    expect(costs.today_tile).to_be_visible(timeout=10_000)
+    expect(costs.today_tile).to_contain_text("$")

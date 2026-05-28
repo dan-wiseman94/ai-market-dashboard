@@ -94,9 +94,10 @@ def test_thread_pinned_snapshot_context_renders(page, frontend_base_url, threads
     from apps.threads.models import Thread
 
     pinned = Thread.objects.filter(title="E2E pinned thread").first()
-    first_msg = pinned.messages.order_by("id").first() if pinned else None
-    if first_msg is None:
-        pytest.skip("pinned thread has no synthetic message (seed has no ready snapshot)")
+    assert pinned is not None, "threads seed must create the pinned thread"
+    # seed_threads synthesizes a 'done' user message from the ready snapshot.
+    first_msg = pinned.messages.order_by("id").first()
+    assert first_msg is not None, "pinned thread must have its synthetic snapshot turn"
 
     detail = ThreadDetailPage(page, frontend_base_url)
     detail.go(pinned.id)

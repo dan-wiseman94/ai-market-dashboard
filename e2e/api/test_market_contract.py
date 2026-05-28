@@ -58,3 +58,13 @@ def test_news_returns_list(api_client, market) -> None:
     body = r.json()
     items = body if isinstance(body, list) else body.get("items") or body.get("results", [])
     assert isinstance(items, list)
+
+
+@pytest.mark.integration
+def test_events_returns_calendar(api_client, market) -> None:
+    """``/api/market/events/`` returns the forward calendar (earnings + macro)."""
+    r = api_client.get("/api/market/events/?tickers=AAPL")
+    assert r.status_code == 200, r.text
+    body = r.json()
+    # upcoming_events returns a dict keyed by event category (earnings/macro/…).
+    assert isinstance(body, dict), body

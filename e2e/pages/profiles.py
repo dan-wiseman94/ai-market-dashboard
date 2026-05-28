@@ -1,4 +1,10 @@
-"""Profiles page — /profiles."""
+"""Profiles page — /profiles.
+
+The /profiles create form exposes only name, trading style, and default
+provider. The per-profile capability flags (enable_tools / enable_memory /
+thinking_budget) exist on the model but are NOT editable here — see the xfail
+test in test_profiles.py and the Phase-2 gap report.
+"""
 
 from __future__ import annotations
 
@@ -17,34 +23,19 @@ class ProfilesPage(BasePage):
         return self.page.get_by_test_id(f"profile-row-{name}")
 
     @property
-    def tools_toggle(self) -> Locator:
-        return self.page.get_by_label("Enable tools")
+    def name_input(self) -> Locator:
+        return self.page.get_by_placeholder("Profile name")
 
     @property
-    def thinking_budget(self) -> Locator:
-        return self.page.get_by_label("Thinking budget")
+    def style_input(self) -> Locator:
+        return self.page.get_by_placeholder("Trading style (used as system prompt)")
 
     @property
-    def memory_toggle(self) -> Locator:
-        return self.page.get_by_label("Enable memory")
+    def create_btn(self) -> Locator:
+        return self.page.get_by_role("button", name="Create")
 
-    def create(
-        self,
-        *,
-        name: str,
-        enable_tools: bool = False,
-        thinking_budget: int | None = None,
-        enable_memory: bool = False,
-    ) -> None:
-        self.page.get_by_role("button", name="New profile").click()
-        self.page.get_by_label("Name").fill(name)
-        if enable_tools:
-            self.tools_toggle.check()
-        if thinking_budget is not None:
-            self.thinking_budget.fill(str(thinking_budget))
-        if enable_memory:
-            self.memory_toggle.check()
-        self.page.get_by_role("button", name="Save").click()
-
-    def toggle_active(self, name: str) -> None:
-        self.row(name).get_by_role("button", name="Activate").click()
+    def create(self, name: str, style: str = "E2E test style") -> None:
+        # Style is required by the API even though the textarea looks optional.
+        self.name_input.fill(name)
+        self.style_input.fill(style)
+        self.create_btn.click()

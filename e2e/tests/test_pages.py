@@ -39,7 +39,14 @@ def test_base_page_has_expected_methods() -> None:
 def test_dashboard_page_surface() -> None:
     from e2e.pages.dashboard import DashboardPage
 
-    for m in ("go", "card_snapshots", "card_threads", "card_cost", "open_notification_drawer"):
+    for m in (
+        "go",
+        "hero_heading",
+        "market_context_section",
+        "book_section",
+        "cost_chip",
+        "open_notification_drawer",
+    ):
         assert m in _names(DashboardPage), f"DashboardPage missing {m}"
 
 
@@ -93,10 +100,10 @@ def test_observer_pages() -> None:
         "mode_select",
         "structured_toggle",
         "run_now_btn",
-        "pause_btn",
+        "enabled_checkbox",
         "create",
         "run_now",
-        "pause",
+        "set_enabled",
     ):
         assert m in _names(SchedulesPage)
 
@@ -161,15 +168,7 @@ def test_profiles_costs_snapshotcost_pages() -> None:
     from e2e.pages.profiles import ProfilesPage
     from e2e.pages.snapshot_cost import SnapshotCostPage
 
-    for m in (
-        "go",
-        "row",
-        "tools_toggle",
-        "thinking_budget",
-        "memory_toggle",
-        "create",
-        "toggle_active",
-    ):
+    for m in ("go", "row", "name_input", "style_input", "create_btn", "create"):
         assert m in _names(ProfilesPage)
     for m in (
         "go",

@@ -36,7 +36,8 @@ class AnalyticsPage(BasePage):
         return self.card("unusual-options")
 
     def set_ticker(self, sym: str) -> None:
-        self.page.get_by_label("Ticker").fill(sym)
+        # The unusual-options card input uses a placeholder, not a label.
+        self.page.get_by_placeholder("Ticker").fill(sym)
 
     def set_forward_hours(self, n: int) -> None:
         self.page.get_by_label("Forward hours").fill(str(n))

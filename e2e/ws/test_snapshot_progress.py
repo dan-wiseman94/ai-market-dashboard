@@ -30,8 +30,7 @@ def _profile_id(api_base_url: str, name: str) -> int | None:
 @pytest.mark.ws
 async def test_snapshot_progress_per_section(ws_base_url, api_base_url, minimal) -> None:
     pid = _profile_id(api_base_url, "E2E Default")
-    if pid is None:
-        pytest.skip("seeded profile 'E2E Default' not found")
+    assert pid is not None, "minimal seed must create the 'E2E Default' profile"
 
     r = httpx.post(
         f"{api_base_url}/api/snapshots/",

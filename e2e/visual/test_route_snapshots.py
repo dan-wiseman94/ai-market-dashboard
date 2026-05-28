@@ -36,6 +36,10 @@ ROUTES: list[tuple[str, str, str]] = [
     ("/analytics", "analytics", "analytics"),
     # Thesis list rows carry no timestamps, so the byte-diff stays stable.
     ("/theses", "thesis", "theses_list"),
+    # Briefing on the minimal rung shows the static empty state (no BriefingRun).
+    ("/briefing", "minimal", "briefing_empty"),
+    # Events with no seeded MarketEvent rows shows the static empty sections.
+    ("/events", "minimal", "events_empty"),
 ]
 
 

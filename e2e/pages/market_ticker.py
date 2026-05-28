@@ -13,7 +13,16 @@ class MarketTickerPage(BasePage):
 
     @property
     def ohlc_chart(self) -> Locator:
-        return self.page.locator("[data-chart='ohlc']")
+        # Chart.tsx renders <div id="chart-root"> (also the headless-capture target).
+        return self.page.locator("#chart-root")
+
+    @property
+    def chain_heading(self) -> Locator:
+        return self.page.get_by_role("heading", name="Option chain")
+
+    @property
+    def news_heading(self) -> Locator:
+        return self.page.get_by_role("heading", name="News")
 
     @property
     def news_list(self) -> Locator:

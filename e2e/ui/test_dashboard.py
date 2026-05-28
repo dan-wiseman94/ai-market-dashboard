@@ -13,19 +13,24 @@ from e2e.pages.dashboard import DashboardPage
 def test_dashboard_renders_all_cards(page, frontend_base_url, minimal) -> None:
     d = DashboardPage(page, frontend_base_url)
     d.go()
-    # Cards may use testids or class names; soft assertion — verify the page rendered something.
-    expect(page.locator("body")).to_be_visible()
     d.expect_error_boundary_absent()
+    # Hero heading is always rendered.
+    expect(d.hero_heading).to_be_visible(timeout=10_000)
+    # Market context and book sections are always present.
+    expect(d.market_context_section).to_be_visible()
+    expect(d.book_section).to_be_visible()
 
 
 @pytest.mark.integration
 @pytest.mark.ui
 def test_dashboard_empty_state(page, frontend_base_url, minimal) -> None:
-    """Fresh DB — every card shows EmptyState rather than skeleton or error."""
+    """Fresh-ish DB — dashboard renders without an error boundary or stuck skeleton."""
     d = DashboardPage(page, frontend_base_url)
     d.go()
-    # The dashboard renders without a JS error boundary trip on first load.
     d.expect_error_boundary_absent()
+    expect(d.hero_heading).to_be_visible(timeout=10_000)
+    # No skeleton left mounted after load.
+    expect(page.locator("[data-testid^='skeleton-']")).to_have_count(0)
 
 
 @pytest.mark.integration
@@ -33,6 +38,8 @@ def test_dashboard_empty_state(page, frontend_base_url, minimal) -> None:
 def test_dashboard_cost_tile_reflects_airuns(page, frontend_base_url, analytics) -> None:
     d = DashboardPage(page, frontend_base_url)
     d.go()
-    # Cost tile text contains a $ amount.
-    body_text = page.locator("body").inner_text()
-    assert "$" in body_text or "cost" in body_text.lower()
+    d.expect_error_boundary_absent()
+    # CostChip is always rendered in the header and shows a $ amount.
+    cost_chip = page.get_by_title("Today's AI spend — click to see costs")
+    expect(cost_chip).to_be_visible(timeout=10_000)
+    expect(cost_chip).to_contain_text("$")

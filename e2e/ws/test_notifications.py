@@ -44,7 +44,8 @@ async def test_notifications_trigger_fire_delivered(ws_base_url, api_base_url, t
             pytest.skip("trigger fire endpoint not exposed in this build")
         assert r.status_code in (200, 201, 202), f"fire failed: {r.status_code} {r.text}"
 
-        ev = await wc.wait_for_event("notification.event", timeout=30.0)
+        # Generous wait: the fire runs on the worker, which can lag under load.
+        ev = await wc.wait_for_event("notification.event", timeout=90.0)
         assert ev.get("payload", {}).get("kind"), ev
     finally:
         await wc.close()
@@ -64,7 +65,10 @@ async def test_notifications_observer_done_delivered(ws_base_url, api_base_url, 
             pytest.skip("observer run-now endpoint not exposed in this build")
         assert r.status_code in (200, 201, 202), f"run-now failed: {r.status_code} {r.text}"
 
-        await wc.wait_for_event("notification.event", timeout=30.0)
+        # Generous wait: the observer fire runs on the worker, which can lag under
+        # load (a tighter 30s wait flaked when other lanes saturated the worker).
+        ev = await wc.wait_for_event("notification.event", timeout=90.0)
+        assert ev.get("payload"), ev
     finally:
         await wc.close()
 
@@ -78,6 +82,7 @@ async def test_notifications_backup_done_delivered(ws_base_url, api_base_url, mi
         r = httpx.post(f"{api_base_url}/api/backups/run/", timeout=5)
         if r.status_code not in (200, 201, 202):
             pytest.skip(f"backup run returned {r.status_code}")
-        await wc.wait_for_event("notification.event", timeout=60.0)
+        ev = await wc.wait_for_event("notification.event", timeout=90.0)
+        assert ev.get("payload"), ev
     finally:
         await wc.close()
