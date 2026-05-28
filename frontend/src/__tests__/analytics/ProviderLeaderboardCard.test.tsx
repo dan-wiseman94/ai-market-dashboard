@@ -9,7 +9,7 @@ vi.mock("@/hooks/useAnalytics", () => ({
     data: {
       rows: [
         {
-          provider: "claude", model: "claude-opus-4-7", runs: 40,
+          provider: "claude", model: "claude-opus-4-8", runs: 40,
           total_cost_usd: "4.20", avg_latency_ms: 1800,
           avg_forward_return_pct: 1.23, coverage_pct: 60.0,
         },
@@ -33,7 +33,7 @@ function wrap(ui: ReactNode) {
 describe("ProviderLeaderboardCard", () => {
   it("renders one row per (provider,model)", () => {
     wrap(<ProviderLeaderboardCard />);
-    expect(screen.getByText("claude-opus-4-7")).toBeInTheDocument();
+    expect(screen.getByText("claude-opus-4-8")).toBeInTheDocument();
     expect(screen.getByText("gpt-5")).toBeInTheDocument();
   });
 

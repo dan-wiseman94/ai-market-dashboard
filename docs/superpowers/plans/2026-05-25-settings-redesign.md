@@ -20,7 +20,7 @@
 - **Lint:** `docker compose exec -T frontend pnpm run lint`
 - **Commit hook note:** if the lefthook pre-commit fails with container-relative path errors (known issue), re-run the same commit with `LEFTHOOK=0` prefixed. `make check` is the real gate.
 - **Commit trailer:** every commit message ends with
-  `Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>`
+  `Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>`
 - Work happens on branch `feature/settings-redesign` (already created off `origin/main`).
 
 ## File map
@@ -157,7 +157,7 @@ Expected: PASS (4 tests).
 git add frontend/src/components/ui/Toggle.tsx frontend/src/__tests__/Toggle.test.tsx
 git commit -m "feat(frontend): add accessible Toggle switch primitive
 
-Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>"
+Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 ```
 
 ---
@@ -261,7 +261,7 @@ Expected: PASS (3 tests).
 git add frontend/src/components/settings/Field.tsx frontend/src/__tests__/Field.test.tsx
 git commit -m "feat(frontend): add Field labeled-input wrapper for settings
 
-Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>"
+Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 ```
 
 ---
@@ -348,7 +348,7 @@ Expected: PASS (2 tests).
 git add frontend/src/components/settings/SettingsSection.tsx frontend/src/__tests__/SettingsSection.test.tsx
 git commit -m "feat(frontend): add SettingsSection header component
 
-Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>"
+Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 ```
 
 ---
@@ -435,7 +435,7 @@ Expected: PASS (2 tests).
 git add frontend/src/components/settings/CapMeter.tsx frontend/src/__tests__/CapMeter.test.tsx
 git commit -m "feat(frontend): add CapMeter spend-vs-cap bar
 
-Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>"
+Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 ```
 
 ---
@@ -464,7 +464,7 @@ const claudeModels = {
   models: [
     { id: "claude-sonnet-4-6", name: "Claude Sonnet 4.6", provider: "claude",
       input_per_mtok: 3, output_per_mtok: 15, cached_per_mtok: 0.3, context_window: 200000, supports_vision: true },
-    { id: "claude-opus-4-7", name: "Claude Opus 4.7", provider: "claude",
+    { id: "claude-opus-4-8", name: "Claude Opus 4.8", provider: "claude",
       input_per_mtok: 15, output_per_mtok: 75, cached_per_mtok: 1.5, context_window: 200000, supports_vision: true },
   ],
 };
@@ -475,14 +475,14 @@ describe("ModelSelect", () => {
   it("lists catalog models for the provider", () => {
     render(<ModelSelect provider="claude" value="claude-sonnet-4-6" onChange={() => {}} />);
     expect(screen.getByRole("option", { name: "Claude Sonnet 4.6" })).toBeInTheDocument();
-    expect(screen.getByRole("option", { name: "Claude Opus 4.7" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Claude Opus 4.8" })).toBeInTheDocument();
   });
 
   it("selecting a catalog model emits its id", async () => {
     const onChange = vi.fn();
     render(<ModelSelect provider="claude" value="claude-sonnet-4-6" onChange={onChange} />);
-    await userEvent.selectOptions(screen.getByRole("combobox"), "claude-opus-4-7");
-    expect(onChange).toHaveBeenCalledWith("claude-opus-4-7");
+    await userEvent.selectOptions(screen.getByRole("combobox"), "claude-opus-4-8");
+    expect(onChange).toHaveBeenCalledWith("claude-opus-4-8");
   });
 
   it("shows a custom text input when value is not in the catalog", () => {
@@ -559,7 +559,7 @@ Expected: PASS (3 tests).
 git add frontend/src/components/settings/ModelSelect.tsx frontend/src/__tests__/ModelSelect.test.tsx
 git commit -m "feat(frontend): add ModelSelect catalog dropdown with custom fallback
 
-Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>"
+Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 ```
 
 ---
@@ -642,7 +642,7 @@ Expected: PASS.
 git add frontend/src/hooks/useProviderConfigs.ts frontend/src/__tests__/hooks/useUpsertProviderConfig.test.tsx
 git commit -m "feat(frontend): refresh usage + caps after provider config save
 
-Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>"
+Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 ```
 
 ---
@@ -940,7 +940,7 @@ Expected: PASS (6 tests).
 git add frontend/src/components/settings/ProviderCard.tsx frontend/src/__tests__/ProviderCard.test.tsx
 git commit -m "feat(frontend): add ProviderCard with labeled fields and api-key-omit fix
 
-Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>"
+Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 ```
 
 ---
@@ -997,7 +997,7 @@ Expected: PASS (9 tests total). If the toggle or validation test fails, fix `Pro
 git add frontend/src/__tests__/ProviderCard.test.tsx
 git commit -m "test(frontend): cover ProviderCard toggle, cap meters, validation
 
-Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>"
+Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 ```
 
 ---
@@ -1066,7 +1066,7 @@ Expected: PASS.
 git add frontend/src/pages/settings/ProvidersSettings.tsx frontend/src/__tests__/ProvidersSettings.test.tsx
 git commit -m "feat(frontend): add ProvidersSettings section page
 
-Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>"
+Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 ```
 
 ---
@@ -1176,7 +1176,7 @@ Expected: PASS (2 tests).
 git add frontend/src/pages/settings/ConnectionsSettings.tsx frontend/src/__tests__/ConnectionsSettings.test.tsx
 git commit -m "feat(frontend): add ConnectionsSettings (Schwab) section page
 
-Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>"
+Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 ```
 
 ---
@@ -1312,7 +1312,7 @@ Expected: PASS (2 tests).
 git add frontend/src/pages/settings/SettingsLayout.tsx frontend/src/__tests__/SettingsLayout.test.tsx
 git commit -m "feat(frontend): add SettingsLayout hub shell with sub-nav rail
 
-Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>"
+Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 ```
 
 ---
@@ -1405,7 +1405,7 @@ Expected: PASS (no unused imports, no broken references).
 git add frontend/src/router.tsx frontend/src/__tests__/App.test.tsx
 git commit -m "feat(frontend): nest settings routes under SettingsLayout; retire old cards
 
-Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>"
+Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 ```
 
 ---
@@ -1550,7 +1550,7 @@ Expected: PASS (2 tests).
 git add frontend/src/pages/BackupsPage.tsx
 git commit -m "feat(frontend): restyle Backups page to Ledger system
 
-Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>"
+Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 ```
 
 ---
@@ -1716,7 +1716,7 @@ Expected: PASS (3 tests).
 git add frontend/src/pages/ExportPage.tsx
 git commit -m "feat(frontend): restyle Export page to Ledger system
 
-Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>"
+Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 ```
 
 ---
@@ -1775,7 +1775,7 @@ Expected: no output (parses cleanly).
 git add e2e/pages/settings.py
 git commit -m "test(e2e): scope Settings Save button per provider card
 
-Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>"
+Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 ```
 
 ---
@@ -1808,7 +1808,7 @@ Expected: `ui/api/ws/visual/a11y` lanes pass. In particular `e2e/a11y/test_axe_p
 git add e2e/visual/__screenshots__/
 git commit -m "test(e2e): regenerate visual baselines for redesigned settings routes
 
-Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>"
+Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 ```
 
 - [ ] **Step 5: Final confirmation**

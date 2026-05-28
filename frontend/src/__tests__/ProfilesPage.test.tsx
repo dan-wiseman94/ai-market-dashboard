@@ -24,7 +24,7 @@ const AI_MODELS = {
   models: [
     { id: "claude-sonnet-4-6", name: "Claude Sonnet 4.6", provider: "claude",
       input_per_mtok: 3, output_per_mtok: 15, cached_per_mtok: 0.3, context_window: 200000, supports_vision: true },
-    { id: "claude-opus-4-7", name: "Claude Opus 4.7", provider: "claude",
+    { id: "claude-opus-4-8", name: "Claude Opus 4.8", provider: "claude",
       input_per_mtok: 15, output_per_mtok: 75, cached_per_mtok: 1.5, context_window: 200000, supports_vision: true },
     { id: "gpt-5", name: "GPT-5", provider: "openai",
       input_per_mtok: 5, output_per_mtok: 20, cached_per_mtok: 0.5, context_window: 300000, supports_vision: true },
@@ -278,16 +278,16 @@ describe("ProfilesPage", () => {
 
     // Catalog models render as <option>s in a combobox (dropdown)
     expect(screen.getByRole("option", { name: "Claude Sonnet 4.6" })).toBeInTheDocument();
-    expect(screen.getByRole("option", { name: "Claude Opus 4.7" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Claude Opus 4.8" })).toBeInTheDocument();
 
     // Selecting a different model feeds through to the submitted body
     const modelSelect = screen.getByDisplayValue("Claude Sonnet 4.6");
-    await user.selectOptions(modelSelect, "claude-opus-4-7");
+    await user.selectOptions(modelSelect, "claude-opus-4-8");
     await user.type(screen.getByPlaceholderText("Profile name"), "Deep Diver");
     fireEvent.click(screen.getByRole("button", { name: /create/i }));
 
     const [body] = createMutate.mock.calls[0];
-    expect(body).toMatchObject({ default_model: "claude-opus-4-7" });
+    expect(body).toMatchObject({ default_model: "claude-opus-4-8" });
   });
 
   it("switching provider resets the model to that provider's first catalog model", async () => {

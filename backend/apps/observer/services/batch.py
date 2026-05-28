@@ -34,7 +34,7 @@ def submit_watchlist_batch(schedule_id: int) -> str:
 
     provider_name = sched.override_provider or sched.profile.default_provider
     cfg = ProviderConfig.objects.get(provider=provider_name)
-    model = sched.override_model or cfg.default_model or "claude-opus-4-7"
+    model = sched.override_model or cfg.default_model or "claude-opus-4-8"
 
     requests = [
         {

@@ -4,8 +4,8 @@ import { useAiModels } from "@/hooks/useAiModels";
 import { hookWrapper, mockApi, mockApiError, newQueryClient } from "../testUtils";
 
 const modelFixture = {
-  id: "claude-opus-4-7",
-  name: "Claude Opus 4.7",
+  id: "claude-opus-4-8",
+  name: "Claude Opus 4.8",
   provider: "claude",
   input_per_mtok: 15,
   output_per_mtok: 75,
@@ -21,7 +21,7 @@ describe("useAiModels", () => {
     expect(result.current.isLoading).toBe(true);
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(result.current.data?.models).toHaveLength(1);
-    expect(result.current.data?.models[0].id).toBe("claude-opus-4-7");
+    expect(result.current.data?.models[0].id).toBe("claude-opus-4-8");
   });
 
   it("propagates fetch errors as isError", async () => {

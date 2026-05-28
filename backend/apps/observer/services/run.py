@@ -172,7 +172,7 @@ def _run_structured_and_record(
             error="no_key",
         )
         return
-    model_id = sched.override_model or cfg.default_model or "claude-opus-4-7"
+    model_id = sched.override_model or cfg.default_model or "claude-opus-4-8"
     try:
         report = run_structured(
             api_key=cfg.api_key,

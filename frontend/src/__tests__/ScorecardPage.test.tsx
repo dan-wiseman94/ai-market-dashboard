@@ -21,7 +21,7 @@ describe("ScorecardPage", () => {
 
   it("renders buckets + provider rows when populated", () => {
     mock({ horizon: 30, scored: 2, attributable: 1,
-      provider: [{ provider: "claude", model: "claude-opus-4-7", n: 1, correct: 1, incorrect: 0, hit_rate: 1 }],
+      provider: [{ provider: "claude", model: "claude-opus-4-8", n: 1, correct: 1, incorrect: 0, hit_rate: 1 }],
       thesis: { brier: 0.12, prob_map: {},
         overall: { scored: 2, hit_rate: 0.5, correct: 1, incorrect: 1, mixed: 0, inconclusive: 0, avg_forward_return_pct: 3 },
         by_direction: {},

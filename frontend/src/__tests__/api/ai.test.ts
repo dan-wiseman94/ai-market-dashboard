@@ -12,8 +12,8 @@ import { mockApi, mockApiError } from "../testUtils";
 // so each test starts with a fresh fetch.
 
 const claudeModel = {
-  id: "claude-opus-4-7",
-  name: "Claude Opus 4.7",
+  id: "claude-opus-4-8",
+  name: "Claude Opus 4.8",
   provider: "claude",
   input_per_mtok: 15,
   output_per_mtok: 75,
@@ -26,7 +26,7 @@ const claudeModel = {
 const claudeProviderConfig = {
   provider: "claude" as const,
   base_url: "",
-  default_model: "claude-opus-4-7",
+  default_model: "claude-opus-4-8",
   enabled: true,
   supports_vision: true,
   daily_cost_cap_usd: "5",
@@ -50,7 +50,7 @@ describe("api/ai", () => {
       const api = mockApi({ "GET /api/schwab/models/": { models: [claudeModel] } });
       const res = await fetchAiModels();
       expect(res.models).toHaveLength(1);
-      expect(res.models[0].id).toBe("claude-opus-4-7");
+      expect(res.models[0].id).toBe("claude-opus-4-8");
       expect(api.calls).toHaveLength(1);
       expect(api.calls[0].method).toBe("GET");
       expect(api.calls[0].url).toMatch(/\/api\/schwab\/models\/$/);

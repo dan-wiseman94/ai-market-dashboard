@@ -211,11 +211,11 @@ def test_profile_stores_custom_includes():
         name="Swings",
         style="Multi-day swings.",
         default_includes=["quotes", "ohlc", "positions", "notes"],
-        default_model="claude-opus-4-7",
+        default_model="claude-opus-4-8",
     )
     p.refresh_from_db()
     assert p.default_includes == ["quotes", "ohlc", "positions", "notes"]
-    assert p.default_model == "claude-opus-4-7"
+    assert p.default_model == "claude-opus-4-8"
 
 
 @pytest.mark.django_db
@@ -792,7 +792,7 @@ from apps.ai.catalog import list_models, get_model, KNOWN_PROVIDERS
 def test_lists_claude_models():
     models = list_models("claude")
     names = [m.id for m in models]
-    assert "claude-opus-4-7" in names
+    assert "claude-opus-4-8" in names
     assert "claude-sonnet-4-6" in names
     assert "claude-haiku-4-5-20251001" in names
 
@@ -846,7 +846,7 @@ def test_cost_for_unknown_model_uses_provider_ceiling():
     """Unknown hosted models fall back to the highest-priced catalog entry."""
     usage = TokenUsage(input_tokens=1000, output_tokens=1000)
     cost = cost_usd_for("claude", "claude-made-up-model", usage)
-    # Ceiling is Opus 4.7: $15/M in, $75/M out → 0.015 + 0.075 = 0.09
+    # Ceiling is Opus 4.8: $15/M in, $75/M out → 0.015 + 0.075 = 0.09
     assert cost > Decimal("0.08")
 
 
@@ -957,7 +957,7 @@ class ModelInfo:
 _CATALOG: list[ModelInfo] = [
     # Anthropic Claude
     ModelInfo(
-        provider="claude", id="claude-opus-4-7", name="Claude Opus 4.7",
+        provider="claude", id="claude-opus-4-8", name="Claude Opus 4.8",
         input_per_mtok=15.00, output_per_mtok=75.00, cached_per_mtok=1.875,
         context_window=200_000, supports_vision=True, supports_cache=True,
     ),

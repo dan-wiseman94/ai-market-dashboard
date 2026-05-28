@@ -93,13 +93,13 @@ describe("useCompareMessage", () => {
     const { calls } = mockApi({
       "POST /api/threads/42/compare/": {
         user_message_id: 10,
-        branches: [{ provider: "claude", model: "claude-opus-4-7", task_id: "t1" }],
+        branches: [{ provider: "claude", model: "claude-opus-4-8", task_id: "t1" }],
       },
     });
     const { result } = renderHook(() => useCompareMessage(42), {
       wrapper: hookWrapper(client),
     });
-    const branches = [{ provider: "claude", model: "claude-opus-4-7" }];
+    const branches = [{ provider: "claude", model: "claude-opus-4-8" }];
     await act(async () => {
       await result.current.mutateAsync({ text: "compare this", branches });
     });
