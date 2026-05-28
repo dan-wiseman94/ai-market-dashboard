@@ -78,23 +78,45 @@ def test_str():
 # Seed migration tests
 # ---------------------------------------------------------------------------
 
+# Builtin presets seeded by the data migrations. Keep in sync when a new seed
+# migration lands (0005 seeds the first four, 0006 the next eight).
 EXPECTED_BUILTIN_SLUGS = {
+    # 0005_seed_agent_presets
     "earnings-prep",
     "devils-advocate",
     "pre-trade-bias-check",
     "triage-pass",
+    # 0006_seed_more_agent_presets
+    "morning-gameplan",
+    "closing-wrap",
+    "risk-audit",
+    "income-setup",
+    "macro-read",
+    "catalyst-scan",
+    "breakout-scan",
+    "trade-postmortem",
 }
 
 EXPECTED_INCLUDES: dict[str, list[str]] = {
+    # 0005_seed_agent_presets
     "earnings-prep": ["quotes", "ohlc", "news", "chain"],
     "devils-advocate": ["quotes", "positions", "ohlc"],
     "pre-trade-bias-check": ["quotes", "ohlc", "breadth"],
     "triage-pass": ["quotes", "positions", "breadth", "news"],
+    # 0006_seed_more_agent_presets
+    "morning-gameplan": ["quotes", "ohlc", "news", "events", "breadth"],
+    "closing-wrap": ["quotes", "positions", "ohlc", "news"],
+    "risk-audit": ["quotes", "positions", "breadth"],
+    "income-setup": ["quotes", "ohlc", "chain"],
+    "macro-read": ["breadth", "events", "news"],
+    "catalyst-scan": ["news", "events", "quotes"],
+    "breakout-scan": ["quotes", "ohlc", "breadth"],
+    "trade-postmortem": ["quotes", "ohlc", "news"],
 }
 
 
 @pytest.mark.django_db
-def test_seed_migration_creates_four_builtins():
+def test_seed_migration_creates_builtins():
     builtins = AgentPreset.objects.filter(builtin=True)
     slugs = set(builtins.values_list("slug", flat=True))
     assert slugs == EXPECTED_BUILTIN_SLUGS
