@@ -4,7 +4,7 @@ from apps.ai.catalog import KNOWN_PROVIDERS, get_model, list_models
 def test_lists_claude_models():
     models = list_models("claude")
     names = [m.id for m in models]
-    assert "claude-opus-4-7" in names
+    assert "claude-opus-4-8" in names
     assert "claude-sonnet-4-6" in names
     assert "claude-haiku-4-5-20251001" in names
 

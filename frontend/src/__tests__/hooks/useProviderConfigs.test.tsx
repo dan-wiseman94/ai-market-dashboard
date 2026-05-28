@@ -6,7 +6,7 @@ import { hookWrapper, mockApi, mockApiError, newQueryClient } from "../testUtils
 const configFixture = {
   provider: "claude" as const,
   base_url: "",
-  default_model: "claude-opus-4-7",
+  default_model: "claude-opus-4-8",
   enabled: true,
   supports_vision: true,
   daily_cost_cap_usd: "10.00",

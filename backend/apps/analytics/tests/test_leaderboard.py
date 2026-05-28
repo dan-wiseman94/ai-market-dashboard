@@ -84,7 +84,7 @@ def test_leaderboard_groups_by_provider_model(db, profile) -> None:
     now = datetime(2026, 4, 10, 14, 30)
     _mk_run(
         provider="claude",
-        model="claude-opus-4-7",
+        model="claude-opus-4-8",
         cost="0.10",
         latency_ms=1500,
         created_at=now,
@@ -93,7 +93,7 @@ def test_leaderboard_groups_by_provider_model(db, profile) -> None:
     )
     _mk_run(
         provider="claude",
-        model="claude-opus-4-7",
+        model="claude-opus-4-8",
         cost="0.20",
         latency_ms=2500,
         created_at=now,
@@ -116,7 +116,7 @@ def test_leaderboard_groups_by_provider_model(db, profile) -> None:
         forward_hours=24,
     )
     by_key = {(r["provider"], r["model"]): r for r in rows}
-    claude = by_key[("claude", "claude-opus-4-7")]
+    claude = by_key[("claude", "claude-opus-4-8")]
     openai = by_key[("openai", "gpt-5")]
     assert claude["runs"] == 2
     assert claude["total_cost_usd"] == Decimal("0.30")
@@ -130,7 +130,7 @@ def test_leaderboard_computes_forward_return_pct(db, profile) -> None:
     now = datetime(2026, 4, 15, 20, 0, tzinfo=UTC)
     _mk_run(
         provider="claude",
-        model="claude-opus-4-7",
+        model="claude-opus-4-8",
         cost="0.10",
         latency_ms=1000,
         created_at=now,
@@ -154,7 +154,7 @@ def test_leaderboard_coverage_when_no_price_history(db, profile) -> None:
     now = datetime(2026, 4, 10, 14, 30)
     _mk_run(
         provider="claude",
-        model="claude-opus-4-7",
+        model="claude-opus-4-8",
         cost="0.10",
         latency_ms=1000,
         created_at=now,
@@ -176,7 +176,7 @@ def test_leaderboard_filters_by_window(db, profile) -> None:
     now = datetime(2026, 4, 10, 14, 30)
     _mk_run(
         provider="claude",
-        model="claude-opus-4-7",
+        model="claude-opus-4-8",
         cost="0.10",
         latency_ms=1000,
         created_at=now - timedelta(days=60),

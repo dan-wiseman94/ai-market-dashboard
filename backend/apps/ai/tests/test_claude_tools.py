@@ -17,7 +17,7 @@ from apps.ai.types import (
 
 def _req(tools: list[dict], *, budget: int = 0) -> RunRequest:
     return RunRequest(
-        model="claude-opus-4-7",
+        model="claude-opus-4-8",
         system="",
         messages=[ChatMessage(role="user", content="hi")],
         tools=tools,

@@ -8,7 +8,7 @@ vi.mock("@/hooks/useAiModels", () => ({
     data: {
       models: [
         { id: "claude-sonnet-4-6", name: "Claude Sonnet 4.6", provider: "claude", input_per_mtok: 3, output_per_mtok: 15, cached_per_mtok: 0.3, context_window: 200000, supports_vision: true },
-        { id: "claude-opus-4-7", name: "Claude Opus 4.7", provider: "claude", input_per_mtok: 15, output_per_mtok: 75, cached_per_mtok: 1.5, context_window: 200000, supports_vision: true },
+        { id: "claude-opus-4-8", name: "Claude Opus 4.8", provider: "claude", input_per_mtok: 15, output_per_mtok: 75, cached_per_mtok: 1.5, context_window: 200000, supports_vision: true },
         { id: "gpt-5", name: "GPT-5", provider: "openai", input_per_mtok: 10, output_per_mtok: 40, cached_per_mtok: 1, context_window: 128000, supports_vision: true },
         { id: "gpt-5-mini", name: "GPT-5 mini", provider: "openai", input_per_mtok: 0.5, output_per_mtok: 2, cached_per_mtok: 0.05, context_window: 200000, supports_vision: true },
       ],
@@ -36,7 +36,7 @@ describe("ProviderModelPicker", () => {
     const modelSelect = screen.getAllByRole("combobox")[1];
     const options = Array.from(modelSelect.querySelectorAll("option")).map((o) => o.value);
     expect(options).toContain("claude-sonnet-4-6");
-    expect(options).toContain("claude-opus-4-7");
+    expect(options).toContain("claude-opus-4-8");
     // openai models should not appear
     expect(options).not.toContain("gpt-5");
   });
@@ -66,10 +66,10 @@ describe("ProviderModelPicker", () => {
     const onChange = vi.fn();
     render(<ProviderModelPicker value={baseValue} onChange={onChange} />);
     const modelSelect = screen.getAllByRole("combobox")[1];
-    await user.selectOptions(modelSelect, "claude-opus-4-7");
+    await user.selectOptions(modelSelect, "claude-opus-4-8");
     expect(onChange).toHaveBeenCalledTimes(1);
     const [newValue] = onChange.mock.calls[0];
     expect(newValue.provider).toBe("claude");
-    expect(newValue.model).toBe("claude-opus-4-7");
+    expect(newValue.model).toBe("claude-opus-4-8");
   });
 });

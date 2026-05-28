@@ -616,9 +616,9 @@ def test_override_wins_over_profile():
 
     resolved = resolve_provider_and_model(
         thread=t, message=None,
-        override={"provider": "claude", "model": "claude-opus-4-7"},
+        override={"provider": "claude", "model": "claude-opus-4-8"},
     )
-    assert resolved == ("claude", "claude-opus-4-7")
+    assert resolved == ("claude", "claude-opus-4-8")
 
 
 @pytest.mark.django_db
@@ -775,12 +775,12 @@ def test_override_routes_to_claude():
     with patch("apps.ai.providers.claude.ClaudeProvider.run", fake_run):
         result = run_ai_on_message.delay(
             thread_id=t.id, user_message_id=u.id,
-            override={"provider": "claude", "model": "claude-opus-4-7"},
+            override={"provider": "claude", "model": "claude-opus-4-8"},
         ).get(timeout=5)
 
     assert result["ok"] is True
     assert calls["provider_name"] == "claude"
-    assert calls["model"] == "claude-opus-4-7"
+    assert calls["model"] == "claude-opus-4-8"
 ```
 
 - [ ] **Step 7.2: Update `backend/apps/threads/tasks.py`**

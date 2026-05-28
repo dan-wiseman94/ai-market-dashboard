@@ -14,7 +14,7 @@ const profileFixture = {
   style: "swing",
   default_includes: [],
   default_provider: "claude",
-  default_model: "claude-opus-4-7",
+  default_model: "claude-opus-4-8",
   active: true,
 };
 

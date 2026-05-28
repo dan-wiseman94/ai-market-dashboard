@@ -39,7 +39,7 @@ def _make_run(thread: Thread, *, days_ago: int, cost: Decimal, provider: str = "
     run = AIRun.objects.create(
         message=msg,
         provider=provider,
-        model="claude-opus-4-7",
+        model="claude-opus-4-8",
         cost_usd=cost,
         status="done",
     )

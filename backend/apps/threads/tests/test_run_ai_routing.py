@@ -69,12 +69,12 @@ def test_override_routes_to_claude():
         result = run_ai_on_message.delay(
             thread_id=t.id,
             user_message_id=u.id,
-            override={"provider": "claude", "model": "claude-opus-4-7"},
+            override={"provider": "claude", "model": "claude-opus-4-8"},
         ).get(timeout=5)
 
     assert result["ok"] is True
     assert calls["provider_name"] == "claude"
-    assert calls["model"] == "claude-opus-4-7"
+    assert calls["model"] == "claude-opus-4-8"
 
 
 @pytest.fixture

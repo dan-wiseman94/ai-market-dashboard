@@ -51,7 +51,7 @@ from apps.ai.token_counter import estimate_tokens
 
 
 def test_estimate_empty_string_returns_zero():
-    assert estimate_tokens("", provider="claude", model="claude-opus-4-7") == 0
+    assert estimate_tokens("", provider="claude", model="claude-opus-4-8") == 0
     assert estimate_tokens("", provider="openai", model="gpt-5") == 0
 
 
@@ -68,7 +68,7 @@ def test_estimate_local_uses_tiktoken():
 def test_estimate_claude_calls_sdk_count_tokens():
     """Claude path must hit the SDK, not fall through to tiktoken."""
     with patch("apps.ai.token_counter._claude_count_tokens", return_value=42) as m:
-        n = estimate_tokens("any text", provider="claude", model="claude-opus-4-7")
+        n = estimate_tokens("any text", provider="claude", model="claude-opus-4-8")
     assert n == 42
     m.assert_called_once()
 
@@ -76,7 +76,7 @@ def test_estimate_claude_calls_sdk_count_tokens():
 def test_estimate_unicode_no_crash():
     assert estimate_tokens("🔥日本語", provider="openai", model="gpt-5") > 0
     with patch("apps.ai.token_counter._claude_count_tokens", return_value=7):
-        assert estimate_tokens("🔥日本語", provider="claude", model="claude-opus-4-7") == 7
+        assert estimate_tokens("🔥日本語", provider="claude", model="claude-opus-4-8") == 7
 
 
 def test_unknown_provider_falls_back_to_tiktoken():
@@ -287,7 +287,7 @@ def test_serialize_for_ai_uses_model_budget_when_provided(db, ready_snapshot):
     that model's max_payload_tokens in the catalog."""
     from apps.snapshots.serializer import serialize_for_ai
 
-    text = serialize_for_ai(ready_snapshot, provider="claude", model="claude-opus-4-7")
+    text = serialize_for_ai(ready_snapshot, provider="claude", model="claude-opus-4-8")
     assert len(text) > 0
     # Opus budget is 150k → large snapshot should not be pruned
     assert "[pruned:" not in text or "pruned: " not in text
@@ -642,7 +642,7 @@ def _make_run(thread, *, days_ago: int, cost: Decimal, provider: str = "claude")
     msg = Message.objects.create(thread=thread, role="assistant",
                                   content={"text": ""}, status="done")
     run = AIRun.objects.create(
-        message=msg, provider=provider, model="claude-opus-4-7",
+        message=msg, provider=provider, model="claude-opus-4-8",
         cost_usd=cost, status="done",
     )
     # Back-date to test month-window math.
@@ -1007,7 +1007,7 @@ Edit `backend/apps/observer/services/run.py`. Above the existing `run_ai_on_mess
                 status="done",
             )
             return snap.id
-        model_id = sched.override_model or cfg.default_model or "claude-opus-4-7"
+        model_id = sched.override_model or cfg.default_model or "claude-opus-4-8"
         try:
             report = run_structured(
                 api_key=cfg.api_key,
@@ -1603,7 +1603,7 @@ def submit_watchlist_batch(schedule_id: int) -> str:
 
     provider_name = sched.override_provider or sched.profile.default_provider
     cfg = ProviderConfig.objects.get(provider=provider_name)
-    model = sched.override_model or cfg.default_model or "claude-opus-4-7"
+    model = sched.override_model or cfg.default_model or "claude-opus-4-8"
 
     requests = [
         {
