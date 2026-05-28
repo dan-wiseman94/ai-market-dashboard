@@ -1,4 +1,3 @@
-// frontend/src/components/settings/ProviderCard.tsx
 import { useState } from "react";
 import { useProviderConfigs, useUpsertProviderConfig } from "@/hooks/useProviderConfigs";
 import { useAiUsage } from "@/hooks/useAiUsage";

@@ -1,4 +1,3 @@
-// frontend/src/components/settings/SettingsSection.tsx
 import type { ReactNode } from "react";
 
 type Props = {

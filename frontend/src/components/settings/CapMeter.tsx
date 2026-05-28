@@ -1,4 +1,3 @@
-// frontend/src/components/settings/CapMeter.tsx
 function barGradient(pct: number): string {
   if (pct >= 1.0) return "linear-gradient(90deg, var(--loss-500) 0%, var(--loss-400) 100%)";
   if (pct >= 0.8) return "linear-gradient(90deg, var(--copper-500) 0%, var(--copper-300) 100%)";
