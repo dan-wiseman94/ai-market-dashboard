@@ -35,8 +35,9 @@ class SchedulesPage(BasePage):
     def run_now_btn(self, schedule_id: int) -> Locator:
         return self.schedule_row(schedule_id).get_by_role("button", name="Run now")
 
-    def pause_btn(self, schedule_id: int) -> Locator:
-        return self.schedule_row(schedule_id).get_by_role("button", name="Pause")
+    def enabled_checkbox(self, schedule_id: int) -> Locator:
+        # Each row carries a single "enabled" checkbox (pause = uncheck it).
+        return self.schedule_row(schedule_id).get_by_role("checkbox")
 
     def create(self, interval: int, mode: str = "full", structured: bool = False) -> None:
         self.create_btn.click()
@@ -50,5 +51,11 @@ class SchedulesPage(BasePage):
     def run_now(self, schedule_id: int) -> None:
         self.run_now_btn(schedule_id).click()
 
-    def pause(self, schedule_id: int) -> None:
-        self.pause_btn(schedule_id).click()
+    def set_enabled(self, schedule_id: int, enabled: bool) -> None:
+        # The checkbox is controlled by server state via an async mutation, so a click
+        # fires the toggle but the box only re-renders after the refetch — callers must
+        # wait for the eventual state (expect(...).to_be_checked()). We click only when
+        # the current state differs from the target.
+        cb = self.enabled_checkbox(schedule_id)
+        if cb.is_checked() != enabled:
+            cb.click()

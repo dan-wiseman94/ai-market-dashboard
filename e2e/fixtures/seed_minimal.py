@@ -20,16 +20,24 @@ def seed_minimal() -> None:
         ("openai", "gpt-5-mini"),
         ("local", "local-7b"),
     ):
-        ProviderConfig.objects.update_or_create(
+        # Structural fields are refreshed on every (idempotent) seed. Runtime
+        # fields (enabled / caps) are set ONLY on create: re-seeding must not
+        # clobber them, because tests mutate them (disable provider, negative cap)
+        # and the seed ladder runs concurrently on another xdist worker — a reset
+        # mid-test would race the assertion (see e2e/ui/test_error_paths.py).
+        _, created = ProviderConfig.objects.update_or_create(
             provider=provider,
             defaults={
                 "base_url": ("http://localhost:11434/v1" if provider == "local" else ""),
                 "default_model": model,
-                "enabled": True,
-                "daily_cost_cap_usd": Decimal("100.00"),
-                "monthly_cost_cap_usd": Decimal("1000.00"),
             },
         )
+        if created:
+            ProviderConfig.objects.filter(provider=provider).update(
+                enabled=True,
+                daily_cost_cap_usd=Decimal("100.00"),
+                monthly_cost_cap_usd=Decimal("1000.00"),
+            )
 
     TradingProfile.objects.update_or_create(
         name="E2E Default",
