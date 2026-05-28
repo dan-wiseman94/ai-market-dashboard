@@ -18,12 +18,11 @@ class WatchlistsPage(BasePage):
 
     @property
     def create_btn(self) -> Locator:
-        return self.page.get_by_role("button", name="Create watchlist")
+        return self.page.get_by_role("button", name="Create")
 
     def create(self, name: str) -> None:
+        self.page.get_by_placeholder("New watchlist name").fill(name)
         self.create_btn.click()
-        self.page.get_by_label("Name").fill(name)
-        self.page.get_by_role("button", name="Save").click()
 
     def open(self, name: str) -> None:
         self.list_item(name).click()
