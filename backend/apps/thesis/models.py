@@ -69,6 +69,8 @@ class Thesis(models.Model):
         help_text="Thread where post-mortems will be posted (Phase 2).",
     )
 
+    guard_enabled = models.BooleanField(default=False)
+
     opened_at = models.DateTimeField(default=timezone.now)
     closed_at = models.DateTimeField(null=True, blank=True)
     close_note = models.TextField(blank=True, default="")

@@ -19,6 +19,13 @@ class EventTrigger(models.Model):
     condition = models.JSONField()
     cooldown_seconds = models.PositiveIntegerField(default=1800)
     enabled = models.BooleanField(default=True)
+    source_thesis = models.ForeignKey(
+        "thesis.Thesis",
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="guard_triggers",
+    )
     last_fired_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
