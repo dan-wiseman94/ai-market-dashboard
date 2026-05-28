@@ -43,3 +43,10 @@ def test_section_kind_choices():
     for kind in ["quotes", "ohlc", "positions", "breadth", "notes"]:
         SnapshotSection.objects.create(snapshot=s, kind=kind, payload={}, status="done")
     assert s.sections.count() == 5
+
+
+@pytest.mark.django_db
+def test_snapshot_primary_ticker_defaults_null():
+    p = TradingProfile.objects.create(name="P", default_includes=["quotes"])
+    snap = Snapshot.objects.create(profile=p, includes=["quotes"], status="pending")
+    assert snap.primary_ticker is None
