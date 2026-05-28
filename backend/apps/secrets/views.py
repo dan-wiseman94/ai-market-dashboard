@@ -2,13 +2,19 @@
 
 from __future__ import annotations
 
+import openai
+from asgiref.sync import async_to_sync
 from django.conf import settings
 from django.http import HttpRequest, HttpResponseRedirect, JsonResponse
+from django.utils import timezone
 from django.views.decorators.http import require_GET
 from rest_framework import viewsets
+from rest_framework.decorators import action
+from rest_framework.response import Response
 
 from apps.ai.catalog import list_models as _list_catalog
 from apps.ai.cost import daily_spend_usd
+from apps.ai.providers import get_provider
 from apps.secrets.models import ApiCredential, ProviderConfig
 from apps.secrets.schwab_oauth import (
     build_authorize_url,
@@ -65,6 +71,61 @@ class ProviderConfigViewSet(viewsets.ModelViewSet):
     queryset = ProviderConfig.objects.all()
     serializer_class = ProviderConfigSerializer
     lookup_field = "provider"
+
+    @action(detail=True, methods=["post"], url_path="probe")
+    def probe(self, request, provider=None):
+        """List models from the endpoint — also a reachability/compat test.
+
+        Persists any base_url/api_key in the body first, so the stored
+        model list always corresponds to the saved endpoint.
+        """
+        cfg = self.get_object()
+        base_url = request.data.get("base_url")
+        api_key_write = request.data.get("api_key_write")
+        dirty = False
+        if base_url is not None:
+            cfg.base_url = base_url
+            dirty = True
+        if api_key_write:
+            cfg.api_key = api_key_write
+            dirty = True
+        if dirty:
+            cfg.save()
+
+        if not cfg.base_url:
+            return Response({"ok": False, "error": "Base URL is required."}, status=400)
+
+        if cfg.provider not in ("local", "openai"):
+            return Response(
+                {"ok": False, "error": "Model discovery isn't supported for this provider."}
+            )
+
+        provider_obj = get_provider(cfg.provider, api_key=cfg.api_key, base_url=cfg.base_url)
+        try:
+            models = async_to_sync(provider_obj.list_models)(timeout=5.0)
+        except Exception as exc:
+            return Response({"ok": False, "error": _friendly_probe_error(exc, cfg.base_url)})
+
+        cfg.discovered_models = models
+        cfg.models_synced_at = timezone.now()
+        cfg.save(update_fields=["discovered_models", "models_synced_at", "updated_at"])
+        return Response(
+            {"ok": True, "models": models, "synced_at": cfg.models_synced_at.isoformat()}
+        )
+
+
+def _friendly_probe_error(exc: Exception, base_url: str) -> str:
+    # APITimeoutError subclasses APIConnectionError — check it first.
+    if isinstance(exc, openai.APITimeoutError):
+        return f"Timed out reaching {base_url}."
+    if isinstance(exc, (openai.AuthenticationError, openai.PermissionDeniedError)):
+        return "Endpoint requires an API key."
+    if isinstance(exc, openai.APIConnectionError):
+        return (
+            f"Couldn't reach {base_url}. Is the server running? "
+            "On Linux use http://host.docker.internal:<port>/v1."
+        )
+    return "Reached the server, but it doesn't respond like an OpenAI-compatible API."
 
 
 @require_GET

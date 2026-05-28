@@ -37,3 +37,22 @@ describe("ModelSelect", () => {
     expect(screen.getByLabelText("Custom model id")).toHaveValue("llama-3.1");
   });
 });
+
+describe("ModelSelect — explicit models", () => {
+  it("lists the explicit models prop instead of the catalog", () => {
+    render(
+      <ModelSelect provider="local" value="" models={["llama3", "mistral"]} onChange={() => {}} />,
+    );
+    expect(screen.getByRole("option", { name: "llama3" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "mistral" })).toBeInTheDocument();
+    // catalog (claude) models are NOT shown
+    expect(screen.queryByRole("option", { name: "Claude Sonnet 4.6" })).not.toBeInTheDocument();
+  });
+
+  it("falls back to the Custom input when the value isn't in the explicit list", () => {
+    render(
+      <ModelSelect provider="local" value="custom-x" models={["llama3"]} onChange={() => {}} />,
+    );
+    expect(screen.getByLabelText("Custom model id")).toHaveValue("custom-x");
+  });
+});

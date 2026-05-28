@@ -15,6 +15,8 @@ export type ProviderConfig = {
   daily_cost_cap_usd: string;
   monthly_cost_cap_usd: string | null;
   api_key_present: boolean;
+  discovered_models?: string[];
+  models_synced_at?: string | null;
 };
 
 export const fetchAiModels = (provider?: string) => {
@@ -38,5 +40,17 @@ export const upsertProviderConfig = async (
     throw err;
   }
 };
+
+export type ProbeResult = {
+  ok: boolean;
+  models?: string[];
+  synced_at?: string | null;
+  error?: string;
+};
+
+export const probeProvider = (
+  provider: string,
+  body: { base_url?: string; api_key_write?: string },
+) => apiPost<ProbeResult>(`/api/schwab/providers/${provider}/probe/`, body);
 
 export const fetchAiUsage = () => apiGet<{ today: Record<string, string> }>("/api/schwab/usage/");
