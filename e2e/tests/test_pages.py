@@ -39,7 +39,14 @@ def test_base_page_has_expected_methods() -> None:
 def test_dashboard_page_surface() -> None:
     from e2e.pages.dashboard import DashboardPage
 
-    for m in ("go", "card_snapshots", "card_threads", "card_cost", "open_notification_drawer"):
+    for m in (
+        "go",
+        "hero_heading",
+        "market_context_section",
+        "book_section",
+        "cost_chip",
+        "open_notification_drawer",
+    ):
         assert m in _names(DashboardPage), f"DashboardPage missing {m}"
 
 
