@@ -22,7 +22,10 @@ class ProviderConfigSerializer(serializers.ModelSerializer):
             "monthly_cost_cap_usd",
             "api_key_present",
             "api_key_write",
+            "discovered_models",
+            "models_synced_at",
         ]
+        read_only_fields: ClassVar = ["discovered_models", "models_synced_at"]
 
     def get_api_key_present(self, obj) -> bool:
         return bool(obj.api_key)

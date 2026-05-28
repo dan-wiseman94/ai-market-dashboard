@@ -42,3 +42,28 @@ def test_ai_models_endpoint(api):
     assert r.status_code == 200
     ids = [m["id"] for m in r.json()["models"]]
     assert "claude-sonnet-4-6" in ids
+
+
+@pytest.mark.django_db
+def test_provider_config_exposes_discovery_fields(api):
+    ProviderConfig.objects.create(
+        provider="local", base_url="http://x:11434/v1", discovered_models=["llama3"]
+    )
+    r = api.get("/api/schwab/providers/")
+    assert r.status_code == 200
+    row = next(c for c in r.json() if c["provider"] == "local")
+    assert row["discovered_models"] == ["llama3"]
+    assert "models_synced_at" in row
+
+
+@pytest.mark.django_db
+def test_discovery_fields_are_read_only(api):
+    ProviderConfig.objects.create(provider="local", base_url="http://x:11434/v1")
+    r = api.patch(
+        "/api/schwab/providers/local/",
+        {"discovered_models": ["injected"]},
+        format="json",
+    )
+    assert r.status_code == 200
+    pc = ProviderConfig.objects.get(provider="local")
+    assert pc.discovered_models == []  # write ignored

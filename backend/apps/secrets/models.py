@@ -58,6 +58,8 @@ class ProviderConfig(models.Model):
     enabled = models.BooleanField(default=True)
     supports_vision = models.BooleanField(default=True)
     supports_tools = models.BooleanField(default=True)
+    discovered_models = models.JSONField(default=list, blank=True)
+    models_synced_at = models.DateTimeField(null=True, blank=True)
     daily_cost_cap_usd = models.DecimalField(
         max_digits=10, decimal_places=2, default=Decimal("10.00")
     )

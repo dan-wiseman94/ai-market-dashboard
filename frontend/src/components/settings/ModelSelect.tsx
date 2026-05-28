@@ -9,12 +9,17 @@ type Props = {
   onChange: (model: string) => void;
   id?: string;
   describedBy?: string;
+  models?: string[]; // explicit id list (used for local discovery); overrides the catalog
 };
 
-export default function ModelSelect({ provider, value, onChange, id, describedBy }: Props) {
+export default function ModelSelect({ provider, value, onChange, id, describedBy, models: explicit }: Props) {
   const { data } = useAiModels(provider);
-  const models: AiModel[] = (data?.models ?? []).filter((m) => m.provider === provider);
-  const known = models.some((m) => m.id === value);
+  const options: { id: string; name: string }[] = explicit
+    ? explicit.map((m) => ({ id: m, name: m }))
+    : (data?.models ?? [])
+        .filter((m: AiModel) => m.provider === provider)
+        .map((m) => ({ id: m.id, name: m.name }));
+  const known = options.some((o) => o.id === value);
   const showCustom = !known;
 
   return (
@@ -26,8 +31,8 @@ export default function ModelSelect({ provider, value, onChange, id, describedBy
         onChange={(e) => onChange(e.target.value === CUSTOM ? "" : e.target.value)}
         className="ledger-input w-full py-2"
       >
-        {models.map((m) => (
-          <option key={m.id} value={m.id}>{m.name}</option>
+        {options.map((o) => (
+          <option key={o.id} value={o.id}>{o.name}</option>
         ))}
         <option value={CUSTOM}>Custom…</option>
       </select>

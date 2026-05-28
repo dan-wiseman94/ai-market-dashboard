@@ -27,7 +27,7 @@ def test_upload_returns_mock_id_under_default():
     with patch("apps.core.mocks.is_mock_mode", return_value=True):
         reset_scenario()
         file_id, size = upload_to_anthropic(io.BytesIO(b"hello"), "f.txt", "text/plain")
-    assert file_id == "mock-file-id"
+    assert file_id.startswith("mock-file-")
     assert isinstance(size, int)
 
 

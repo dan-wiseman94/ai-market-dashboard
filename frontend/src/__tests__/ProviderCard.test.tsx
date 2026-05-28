@@ -6,6 +6,7 @@ import ProviderCard from "@/components/settings/ProviderCard";
 import type { ProviderConfig } from "@/api/ai";
 
 const mockMutate = vi.fn();
+const mockProbeMutate = vi.fn();
 const mockUseProviderConfigs = vi.fn();
 const mockUseAiUsage = vi.fn();
 const mockUseCostsCaps = vi.fn();
@@ -15,6 +16,7 @@ const mockPush = vi.fn();
 vi.mock("@/hooks/useProviderConfigs", () => ({
   useProviderConfigs: () => mockUseProviderConfigs(),
   useUpsertProviderConfig: () => ({ mutate: mockMutate, isPending: false }),
+  useProbeProvider: () => ({ mutate: mockProbeMutate, isPending: false }),
 }));
 vi.mock("@/hooks/useAiUsage", () => ({ useAiUsage: () => mockUseAiUsage() }));
 vi.mock("@/hooks/useCosts", () => ({ useCostsCaps: () => mockUseCostsCaps() }));
@@ -25,7 +27,8 @@ function cfg(o: Partial<ProviderConfig> = {}): ProviderConfig {
   return {
     provider: "claude", base_url: "", default_model: "claude-sonnet-4-6",
     enabled: true, supports_vision: true, daily_cost_cap_usd: "10.00",
-    monthly_cost_cap_usd: null, api_key_present: true, ...o,
+    monthly_cost_cap_usd: null, api_key_present: true,
+    discovered_models: [], models_synced_at: null, ...o,
   };
 }
 
@@ -113,5 +116,60 @@ describe("ProviderCard — toggle, meters, validation", () => {
     await userEvent.clear(daily);
     await userEvent.type(daily, "-5");
     expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+  });
+});
+
+describe("ProviderCard — local provider", () => {
+  it("hides the cost caps and shows the no-cost note for local", () => {
+    mockUseProviderConfigs.mockReturnValue({
+      data: [cfg({ provider: "local", api_key_present: false, default_model: "llama3",
+                   base_url: "http://x:11434/v1", discovered_models: ["llama3"] })],
+    });
+    render(<ProviderCard provider="local" />);
+    expect(screen.queryByLabelText("Daily cap (USD)")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Monthly cap (USD)")).not.toBeInTheDocument();
+    expect(screen.getByText(/no API cost/i)).toBeInTheDocument();
+  });
+
+  it("auto-probes on mount when base_url is set but no models discovered", () => {
+    mockUseProviderConfigs.mockReturnValue({
+      data: [cfg({ provider: "local", api_key_present: false,
+                   base_url: "http://x:11434/v1", discovered_models: [] })],
+    });
+    render(<ProviderCard provider="local" />);
+    expect(mockProbeMutate).toHaveBeenCalledWith(
+      { provider: "local", body: {} },
+    );
+  });
+
+  it("Test connection sends current base_url and shows the result", async () => {
+    mockUseProviderConfigs.mockReturnValue({
+      data: [cfg({ provider: "local", api_key_present: false, default_model: "llama3",
+                   base_url: "http://x:11434/v1", discovered_models: ["llama3"] })],
+    });
+    mockProbeMutate.mockImplementation((_args, opts) =>
+      opts?.onSuccess?.({ ok: true, models: ["llama3", "mistral"], synced_at: "now" }),
+    );
+    render(<ProviderCard provider="local" />);
+    await userEvent.click(screen.getByRole("button", { name: "Test connection" }));
+    const call = mockProbeMutate.mock.calls.find((c) => c[1] !== undefined);
+    expect(call?.[0]).toEqual({
+      provider: "local",
+      body: { base_url: "http://x:11434/v1", api_key_write: undefined },
+    });
+    expect(screen.getByText(/Connected — 2 models found/i)).toBeInTheDocument();
+  });
+
+  it("shows the friendly error when the probe reports ok:false", async () => {
+    mockUseProviderConfigs.mockReturnValue({
+      data: [cfg({ provider: "local", api_key_present: false, default_model: "llama3",
+                   base_url: "http://x:11434/v1", discovered_models: ["llama3"] })],
+    });
+    mockProbeMutate.mockImplementation((_args, opts) =>
+      opts?.onSuccess?.({ ok: false, error: "Couldn't reach http://x:11434/v1." }),
+    );
+    render(<ProviderCard provider="local" />);
+    await userEvent.click(screen.getByRole("button", { name: "Test connection" }));
+    expect(screen.getByText(/Couldn't reach/i)).toBeInTheDocument();
   });
 });

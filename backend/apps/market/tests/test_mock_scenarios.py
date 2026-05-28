@@ -62,3 +62,27 @@ def test_mock_schwab_client_ohlc_fallthrough_honors_scenario():
             _MockSchwabClient().get_price_history_every_minute("AAPL")
     finally:
         reset_scenario()
+
+
+def test_fetch_earnings_raises_under_news_503():
+    from apps.market.services.events import fetch_earnings
+
+    with patch("apps.core.mocks.is_mock_mode", return_value=True):
+        set_scenario("news-503")
+        try:
+            with pytest.raises(RuntimeError, match="503"):
+                fetch_earnings(["AAPL"])
+        finally:
+            reset_scenario()
+
+
+def test_fetch_macro_raises_under_news_503():
+    from apps.market.services.events import fetch_macro
+
+    with patch("apps.core.mocks.is_mock_mode", return_value=True):
+        set_scenario("news-503")
+        try:
+            with pytest.raises(RuntimeError, match="503"):
+                fetch_macro()
+        finally:
+            reset_scenario()

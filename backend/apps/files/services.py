@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import uuid
+
 from anthropic import Anthropic
 
 from apps.secrets.models import ProviderConfig
@@ -24,7 +26,9 @@ def upload_to_anthropic(fileobj, filename: str, mime: str) -> tuple[str, int]:
 
     if is_mock_mode():
         run_service_scenario("files")  # files-upload-fail → raises before any upload
-        return "mock-file-id", int(getattr(fileobj, "size", 0) or 0)
+        # Unique per upload — UserFile.anthropic_id is unique=True, so a constant
+        # would collide on a second mock upload.
+        return f"mock-file-{uuid.uuid4().hex}", int(getattr(fileobj, "size", 0) or 0)
 
     client = _anthropic_client()
     f = client.beta.files.upload(file=(filename, fileobj, mime))
