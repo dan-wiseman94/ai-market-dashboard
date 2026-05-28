@@ -22,6 +22,13 @@ def _parse_range(request: HttpRequest) -> tuple[datetime, datetime]:
     return start, end
 
 
+def _to_decimal(v) -> Decimal:
+    """Coerce a value to Decimal, defaulting None to 0."""
+    if v is None:
+        return Decimal("0")
+    return v if isinstance(v, Decimal) else Decimal(str(v))
+
+
 def _dec(v) -> str:
     """Serialize a Decimal to a compact fixed-point string.
 
@@ -30,10 +37,7 @@ def _dec(v) -> str:
     SQL-aggregated values like Decimal('0.050000') serialize as '0.05'.
     Always keeps at least 2 decimal places.
     """
-    d = v if v is not None else Decimal("0")
-    if not isinstance(d, Decimal):
-        d = Decimal(str(d))
-    s = format(d, "f")  # plain fixed-point, no scientific notation
+    s = format(_to_decimal(v), "f")  # plain fixed-point, no scientific notation
     if "." in s:
         integer, frac = s.split(".")
         frac = frac.rstrip("0").ljust(2, "0")  # min 2 decimal places
@@ -47,10 +51,12 @@ def _dec4(v) -> str:
     Used for aggregated cost fields where Django's Sum() returns 6-place
     Decimals and the API contract specifies 4-place strings.
     """
-    d = v if v is not None else Decimal("0")
-    if not isinstance(d, Decimal):
-        d = Decimal(str(d))
-    return str(d.quantize(Decimal("0.0001")))
+    return str(_to_decimal(v).quantize(Decimal("0.0001")))
+
+
+def _dec4_rows(rows: list[dict]) -> list[dict]:
+    """Stringify each row's ``cost_usd`` to a 4-place Decimal string."""
+    return [{**r, "cost_usd": _dec4(r["cost_usd"])} for r in rows]
 
 
 @require_GET
@@ -73,10 +79,10 @@ def costs_summary(request: HttpRequest) -> JsonResponse:
     return JsonResponse(
         {
             "total": _dec4(out["total"]),
-            "by_provider": [{**r, "cost_usd": _dec4(r["cost_usd"])} for r in out["by_provider"]],
-            "by_model": [{**r, "cost_usd": _dec4(r["cost_usd"])} for r in out["by_model"]],
-            "by_thread": [{**r, "cost_usd": _dec4(r["cost_usd"])} for r in out["by_thread"]],
-            "daily": [{**r, "cost_usd": _dec4(r["cost_usd"])} for r in out["daily"]],
+            "by_provider": _dec4_rows(out["by_provider"]),
+            "by_model": _dec4_rows(out["by_model"]),
+            "by_thread": _dec4_rows(out["by_thread"]),
+            "daily": _dec4_rows(out["daily"]),
         }
     )
 
