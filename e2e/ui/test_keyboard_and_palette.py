@@ -43,7 +43,6 @@ def test_g_shortcuts_navigate_all_top_level_routes(page, frontend_base_url, mini
 def test_cmd_k_palette_opens(page, frontend_base_url, minimal) -> None:
     d = DashboardPage(page, frontend_base_url)
     d.go()
-    try:
-        d.open_command_palette()
-    except Exception:
-        pytest.skip("command palette not mounted yet")
+    # CommandPalette is mounted in AppLayout; Cmd/Ctrl-K opens it.
+    # open_command_palette() asserts the palette becomes visible.
+    d.open_command_palette()
