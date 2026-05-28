@@ -27,6 +27,7 @@ app.autodiscover_tasks(
         "apps.backups",
         "apps.export",
         "apps.thesis",
+        "apps.briefing",
     ]
 )
 
@@ -50,5 +51,9 @@ app.conf.beat_schedule = {
     "refresh-market-events-daily": {
         "task": "market.refresh_events",
         "schedule": crontab(hour=9, minute=0),
+    },
+    "briefing-run-scheduled": {
+        "task": "briefing.run_scheduled",
+        "schedule": crontab(minute="*/15"),
     },
 }
