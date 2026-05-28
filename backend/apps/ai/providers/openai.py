@@ -174,6 +174,19 @@ class OpenAIProvider:
         except Exception as exc:
             yield ErrorEvent(message=f"{type(exc).__name__}: {exc}")
 
+    async def list_models(self, *, timeout: float = 10.0) -> list[str]:
+        """List model ids the endpoint serves (GET /v1/models).
+
+        Doubles as a reachability + OpenAI-compatibility probe. Honors
+        MOCK_EXTERNAL like run() so e2e/mock runs never touch the network.
+        """
+        from apps.core.mocks import is_mock_mode
+
+        if is_mock_mode():
+            return ["local-7b", "local-13b"]
+        page = await self._client.with_options(timeout=timeout).models.list()
+        return sorted(m.id for m in page.data)
+
 
 def _resolve_toolset():
     """Late import so tests can patch without importing market services."""
