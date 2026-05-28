@@ -47,4 +47,8 @@ app.conf.beat_schedule = {
         "task": "observer.fire_close_relative_schedules",
         "schedule": crontab(minute="*"),
     },
+    "refresh-market-events-daily": {
+        "task": "market.refresh_events",
+        "schedule": crontab(hour=9, minute=0),
+    },
 }

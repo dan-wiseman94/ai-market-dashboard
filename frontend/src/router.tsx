@@ -23,6 +23,7 @@ import ExportPage from "./pages/ExportPage";
 import AnalyticsPage from "./pages/AnalyticsPage";
 import ThesesPage from "./pages/ThesesPage";
 import ThesisDetailPage from "./pages/ThesisDetailPage";
+import EventsPage from "./pages/EventsPage";
 
 export const router = createBrowserRouter([
   // Render route bypasses AppLayout — it's for headless-chromium PNG captures.
@@ -64,6 +65,7 @@ export const router = createBrowserRouter([
       { path: "triggers/new", element: <TriggerEditorPage />, handle: { crumb: "New trigger" } },
       { path: "triggers/:id", element: <TriggerEditorPage />,
         handle: { crumb: ({ params }: { params: { id?: string } }) => `Trigger ${params.id}` } },
+      { path: "events", element: <EventsPage />, handle: { crumb: "Events" } },
       { path: "analytics", element: <AnalyticsPage />, handle: { crumb: "Analytics" } },
       { path: "theses", element: <ThesesPage />, handle: { crumb: "Theses" } },
       {
