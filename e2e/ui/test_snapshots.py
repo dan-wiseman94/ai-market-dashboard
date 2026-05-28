@@ -55,11 +55,46 @@ def test_snapshot_diff_endpoint_surfaced(page, frontend_base_url, api_client, sn
 
 @pytest.mark.integration
 @pytest.mark.ui
-def test_capture_partial_failure_marks_sections(page, frontend_base_url, minimal, scenario) -> None:
+def test_capture_partial_failure_marks_sections(api_client, minimal, scenario) -> None:
+    """Under news-503 the finnhub-backed news section fails while the schwab-backed
+    quotes section still succeeds — a genuine partial failure.
+
+    Exercises the whole path: X-E2E-Scenario header → ScenarioHeaderMiddleware →
+    capture view → capture_task scenario propagation into the worker → per-section
+    failure. (Before this was wired, news-503 was inert and this test asserted only
+    that the page rendered.)
+    """
+    import time
+
+    from apps.profiles.models import TradingProfile
+
     scenario.use("news-503")
-    s = SnapshotPage(page, frontend_base_url)
-    s.go()
-    expect(page.locator("body")).to_be_visible()
+    profile = TradingProfile.objects.first()
+    assert profile is not None
+
+    r = api_client.post(
+        "/api/snapshots/",
+        json={
+            "profile_id": profile.id,
+            "objective": "partial-failure probe",
+            "includes": ["quotes", "news"],
+            "watchlist_tickers": ["SPY"],
+        },
+    )
+    assert r.status_code == 202, r.text
+    snap_id = r.json()["id"]
+
+    # Capture runs in the worker; poll the detail endpoint until it settles.
+    sections: dict[str, str] = {}
+    for _ in range(30):
+        body = api_client.get(f"/api/snapshots/{snap_id}/").json()
+        if body["status"] != "pending":
+            sections = {s["kind"]: s["status"] for s in body["sections"]}
+            break
+        time.sleep(1)
+
+    assert sections.get("news") == "failed", sections
+    assert sections.get("quotes") == "done", sections
 
 
 @pytest.mark.integration

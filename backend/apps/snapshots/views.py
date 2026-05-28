@@ -48,12 +48,15 @@ class SnapshotViewSet(
             SnapshotImage.objects.filter(id__in=image_ids, snapshot__isnull=True).update(
                 snapshot=snap
             )
+        from apps.core.mocks import current_scenario, is_mock_mode
+
         capture_task.delay(
             snapshot_id=snap.id,
             watchlist_tickers=data.get("watchlist_tickers") or [],
             ohlc_ticker=data.get("ohlc_ticker"),
             ohlc_timeframe=data.get("ohlc_timeframe", "1m"),
             ohlc_bars=data.get("ohlc_bars", 60),
+            scenario=current_scenario() if is_mock_mode() else None,
         )
         return Response(SnapshotSerializer(snap).data, status=202)
 
