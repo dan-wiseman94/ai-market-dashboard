@@ -90,9 +90,7 @@ def seed_observer() -> None:
         schedule__isnull=True,
         defaults={"title": f"Observer: {profile.name}"},
     )
-    if not canonical.messages.filter(
-        role="system", content__text__icontains="cost cap"
-    ).exists():
+    if not canonical.messages.filter(role="system", content__text__icontains="cost cap").exists():
         Message.objects.create(
             thread=canonical,
             role="system",

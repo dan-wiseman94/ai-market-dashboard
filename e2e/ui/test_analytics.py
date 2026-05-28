@@ -57,9 +57,7 @@ def test_trigger_heatmap_renders_cells(page, frontend_base_url, analytics) -> No
     a.go()
     a.expect_error_boundary_absent()
     # The heatmap renders a grid of day cells (data-testid="heat-cell").
-    expect(a.card_heatmap.locator("[data-testid='heat-cell']").first).to_be_visible(
-        timeout=10_000
-    )
+    expect(a.card_heatmap.locator("[data-testid='heat-cell']").first).to_be_visible(timeout=10_000)
 
 
 @pytest.mark.integration
