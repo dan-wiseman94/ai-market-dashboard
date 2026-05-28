@@ -71,6 +71,12 @@ def _diff_one(kind: str, prev: Any, curr: Any) -> str:
         return _diff_news(_news_items(prev), _news_items(curr))
     if kind == "breadth":
         return _diff_breadth(_as_dict(prev), _as_dict(curr))
+    if kind == "positions":
+        return _diff_positions(prev, curr)
+    if kind == "ohlc":
+        return _diff_ohlc(_as_dict(prev), _as_dict(curr))
+    if kind == "chain":
+        return _diff_chain(_as_dict(prev), _as_dict(curr))
     return ""
 
 
@@ -113,3 +119,54 @@ def _diff_breadth(prev: dict, curr: dict) -> str:
         if p_val is not None and c_val is not None and p_val != c_val:
             rows.append(f"- {key}: {p_val} → {c_val}")
     return "\n".join(rows) if rows else ""
+
+
+def _diff_positions(prev: Any, curr: Any) -> str:
+    def by_sym(rows: Any) -> dict:
+        return (
+            {r.get("symbol"): r for r in rows if isinstance(r, dict)}
+            if isinstance(rows, list)
+            else {}
+        )
+
+    p, c = by_sym(prev), by_sym(curr)
+    rows = []
+    for sym, cur in c.items():
+        pr = p.get(sym)
+        if pr is None:
+            rows.append(f"- {sym}: opened (P/L {cur.get('unrealized_pl', '?')})")
+        elif pr.get("unrealized_pl") != cur.get("unrealized_pl"):
+            rows.append(f"- {sym}: P/L {pr.get('unrealized_pl')} → {cur.get('unrealized_pl')}")
+    for sym in p.keys() - c.keys():
+        rows.append(f"- {sym}: closed")
+    return "\n".join(rows)
+
+
+def _diff_ohlc(prev: dict, curr: dict) -> str:
+    def last_close(blob: dict) -> Any:
+        inner = blob.get("data", blob)
+        if not isinstance(inner, dict):
+            return None
+        bars = inner.get("bars")
+        if isinstance(bars, list) and bars and isinstance(bars[-1], dict):
+            return bars[-1].get("close")
+        return None
+
+    pc, cc = last_close(prev), last_close(curr)
+    inner = curr.get("data", curr)
+    t = inner.get("ticker", "") if isinstance(inner, dict) else ""
+    if pc is not None and cc is not None and pc != cc:
+        return f"- {t} last: {pc} → {cc}"
+    return ""
+
+
+def _diff_chain(prev: dict, curr: dict) -> str:
+    # Compact: report change in the count of expirations/lines; deep greek diffs deferred.
+    def n(blob: dict) -> Any:
+        exps = blob.get("expirations") or blob.get("data", {}).get("expirations")
+        return len(exps) if isinstance(exps, list) else None
+
+    pn, cn = n(prev), n(curr)
+    if pn is not None and cn is not None and pn != cn:
+        return f"- expirations: {pn} → {cn}"
+    return ""
