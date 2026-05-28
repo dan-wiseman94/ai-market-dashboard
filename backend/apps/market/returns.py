@@ -14,6 +14,13 @@ from django.db.models import Count, Max, Min
 from apps.market.models import OHLCBar
 
 
+def _pct_change(start_close: float | None, end_close: float | None) -> float | None:
+    """Percent change from *start_close* to *end_close*, ``None`` on a missing or zero base."""
+    if start_close is None or end_close is None or start_close == 0:
+        return None
+    return (end_close - start_close) / start_close * 100.0
+
+
 def nearest_bar_close(ticker: str, at: datetime) -> float | None:
     """Return the close of the most-recent bar for *ticker* at or before ``at + 1h``.
 
@@ -37,11 +44,7 @@ def forward_return_pct(ticker: str, start: datetime, end: datetime) -> float | N
     Uses :func:`nearest_bar_close` at each endpoint. Returns ``None`` if
     either endpoint has no bar or if the start close is zero (division guard).
     """
-    t0 = nearest_bar_close(ticker, start)
-    t1 = nearest_bar_close(ticker, end)
-    if t0 is None or t1 is None or t0 == 0:
-        return None
-    return (t1 - t0) / t0 * 100.0
+    return _pct_change(nearest_bar_close(ticker, start), nearest_bar_close(ticker, end))
 
 
 def price_path_summary(ticker: str, start: datetime, end: datetime) -> dict:
@@ -79,15 +82,10 @@ def price_path_summary(ticker: str, start: datetime, end: datetime) -> dict:
     start_close = nearest_bar_close(ticker, start)
     end_close = nearest_bar_close(ticker, end)
 
-    if start_close is None or end_close is None or start_close == 0:
-        return_pct = None
-    else:
-        return_pct = (end_close - start_close) / start_close * 100.0
-
     return {
         "start_close": start_close,
         "end_close": end_close,
-        "return_pct": return_pct,
+        "return_pct": _pct_change(start_close, end_close),
         "max_high": max_high,
         "min_low": min_low,
         "bars": agg["bars"],
@@ -128,6 +126,4 @@ def trading_day_forward_return_pct(ticker: str, at: datetime, forward_hours: int
     target_close = session_close_on(market, target_day.date()) or target_day
     t0 = nearest_bar_close_within(ticker, at, tolerance_hours=12)
     t1 = nearest_bar_close_within(ticker, target_close, tolerance_hours=12)
-    if t0 is None or t1 is None or t0 == 0:
-        return None
-    return (t1 - t0) / t0 * 100.0
+    return _pct_change(t0, t1)
