@@ -85,9 +85,10 @@ def fetch_news(
     limit: int = 15,
 ) -> list[dict]:
     """Fetch + dedup news for `tickers` plus market-wide. Newest-first list capped at `limit`."""
-    from apps.core.mocks import is_mock_mode
+    from apps.core.mocks import is_mock_mode, run_service_scenario
 
     if is_mock_mode():
+        run_service_scenario("finnhub")
         return _canned_news_items()[:limit]
 
     api_key = _finnhub_api_key()

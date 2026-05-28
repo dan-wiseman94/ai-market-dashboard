@@ -20,11 +20,22 @@ def _anthropic_client() -> Anthropic:
 
 def upload_to_anthropic(fileobj, filename: str, mime: str) -> tuple[str, int]:
     """Return (anthropic_file_id, size_bytes)."""
+    from apps.core.mocks import is_mock_mode, run_service_scenario
+
+    if is_mock_mode():
+        run_service_scenario("files")  # files-upload-fail → raises before any upload
+        return "mock-file-id", int(getattr(fileobj, "size", 0) or 0)
+
     client = _anthropic_client()
     f = client.beta.files.upload(file=(filename, fileobj, mime))
     return f.id, int(getattr(f, "size_bytes", 0) or 0)
 
 
 def delete_from_anthropic(anthropic_id: str) -> None:
+    from apps.core.mocks import is_mock_mode
+
+    if is_mock_mode():
+        return
+
     client = _anthropic_client()
     client.beta.files.delete(anthropic_id)

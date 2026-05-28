@@ -134,7 +134,17 @@ class _MockSchwabClient:
         class Fields:
             POSITIONS = "positions"
 
+    def _gate(self) -> None:
+        """Honor the active service scenario before returning canned data.
+
+        ``schwab-401`` raises 401; the default scenario resolves to ``ok`` (no-op).
+        """
+        from apps.core.mocks import run_service_scenario
+
+        run_service_scenario("schwab")
+
     def get_quotes(self, tickers):
+        self._gate()
         return _mock_resp(
             {
                 t: {
@@ -154,6 +164,7 @@ class _MockSchwabClient:
 
     def get_option_chain(self, *_args, **_kwargs):
         """Empty-but-well-shaped chain payload — matches the structure ``_normalize_chain`` expects."""
+        self._gate()
         return _mock_resp(
             {
                 "symbol": "MOCK",
@@ -164,19 +175,23 @@ class _MockSchwabClient:
         )
 
     def get_account_numbers(self):
+        self._gate()
         return _mock_resp([])
 
     def get_accounts(self, *_args, **_kwargs):
         """Mock-mode positions surface — empty list keeps the positions view at zero."""
+        self._gate()
         return _mock_resp([])
 
     def get_movers(self, *_args, **_kwargs):
+        self._gate()
         return _mock_resp({"screeners": []})
 
     def __getattr__(self, name: str):
         """Return a callable that yields an empty candles response for any OHLC method."""
 
         def _mock_ohlc(*_args, **_kwargs):
+            self._gate()
             return _mock_resp({"candles": []})
 
         return _mock_ohlc

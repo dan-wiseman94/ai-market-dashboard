@@ -19,6 +19,16 @@ from django.utils import timezone
 
 
 def build_authorize_url(*, state: str = "") -> str:
+    from apps.core.mocks import is_mock_mode, run_service_scenario
+
+    if is_mock_mode():
+        # schwab-oauth-ok → canned authorize URL pointing at our own callback stub;
+        # any other scenario falls back to the same deterministic stub.
+        flow = run_service_scenario("schwab")
+        if isinstance(flow, dict) and flow.get("authorize_url"):
+            return flow["authorize_url"]
+        return f"{settings.SCHWAB_CALLBACK_URL}?code=MOCK_OAUTH"
+
     params = {
         "client_id": settings.SCHWAB_CLIENT_ID,
         "redirect_uri": settings.SCHWAB_CALLBACK_URL,
@@ -45,6 +55,21 @@ def _post_token(data: dict) -> dict:
 
 def exchange_code_for_token(code: str) -> dict:
     """Exchange an authorization code for an access/refresh token."""
+    from apps.core.mocks import is_mock_mode, run_service_scenario
+
+    if is_mock_mode():
+        # Honor schwab-oauth-ok's canned tokens; map its {access,refresh} shape onto
+        # the schwab-py token shape the persistence layer expects. No real HTTP.
+        flow = run_service_scenario("schwab")
+        raw = flow.get("tokens") if isinstance(flow, dict) else None
+        token = {
+            "access_token": (raw or {}).get("access", "mock-access"),
+            "refresh_token": (raw or {}).get("refresh", "mock-refresh"),
+            "expires_in": 1800,
+        }
+        token["expires_at"] = int(time.time()) + token["expires_in"]
+        return token
+
     return _post_token(
         {
             "grant_type": "authorization_code",
