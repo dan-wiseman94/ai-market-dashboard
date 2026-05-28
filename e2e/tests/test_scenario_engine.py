@@ -29,7 +29,7 @@ def test_set_scenario_round_trip() -> None:
         reset_scenario()
 
 
-def test_registry_has_thirteen_scenarios() -> None:
+def test_registry_has_fourteen_scenarios() -> None:
     from apps.core.mocks.scenarios import SCENARIOS
 
     expected = {
@@ -45,6 +45,7 @@ def test_registry_has_thirteen_scenarios() -> None:
         "files-upload-fail",
         "tool-use-loop",
         "thinking-heavy",
+        "slow-stream",
         "structured-observation",
     }
     assert set(SCENARIOS.keys()) == expected
