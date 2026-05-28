@@ -22,6 +22,18 @@ def exports_dir() -> Path:
     return Path(os.environ.get("EXPORTS_DIR", "/data/exports"))
 
 
+def _dump(value) -> str:
+    """JSON-encode a bundle payload with the format used across the export zip."""
+    return json.dumps(value, default=str, indent=2)
+
+
+def _scoped_queryset(model, selector):
+    """Return all rows when selector == "all", else the rows matching the given ids."""
+    if selector == "all":
+        return model.objects.all()
+    return model.objects.filter(id__in=selector)
+
+
 def build_export_bundle(job_id: int) -> None:
     job = ExportJob.objects.get(pk=job_id)
     job.status = "running"
@@ -43,35 +55,16 @@ def build_export_bundle(job_id: int) -> None:
             if scope.get("threads"):
                 from apps.threads.models import Thread
 
-                qs = (
-                    Thread.objects.all()
-                    if scope["threads"] == "all"
-                    else Thread.objects.filter(id__in=scope["threads"])
-                )
-                for t in qs:
-                    zf.writestr(
-                        f"{root}/threads/{t.id}/meta.json",
-                        json.dumps(S.thread_to_json(t), default=str, indent=2),
-                    )
-                    zf.writestr(
-                        f"{root}/threads/{t.id}/thread.md",
-                        S.thread_to_markdown(t),
-                    )
+                for t in _scoped_queryset(Thread, scope["threads"]):
+                    zf.writestr(f"{root}/threads/{t.id}/meta.json", _dump(S.thread_to_json(t)))
+                    zf.writestr(f"{root}/threads/{t.id}/thread.md", S.thread_to_markdown(t))
                     counts["threads"] += 1
 
             if scope.get("snapshots"):
                 from apps.snapshots.models import Snapshot
 
-                snapshot_qs = (
-                    Snapshot.objects.all()
-                    if scope["snapshots"] == "all"
-                    else Snapshot.objects.filter(id__in=scope["snapshots"])
-                )
-                for s in snapshot_qs:
-                    zf.writestr(
-                        f"{root}/snapshots/{s.id}/meta.json",
-                        json.dumps(S.snapshot_to_json(s), default=str, indent=2),
-                    )
+                for s in _scoped_queryset(Snapshot, scope["snapshots"]):
+                    zf.writestr(f"{root}/snapshots/{s.id}/meta.json", _dump(S.snapshot_to_json(s)))
                     zf.writestr(
                         f"{root}/snapshots/{s.id}/summary.md",
                         S.snapshot_to_markdown(s),
@@ -86,7 +79,7 @@ def build_export_bundle(job_id: int) -> None:
                 for sched in ObserverSchedule.objects.all():
                     zf.writestr(
                         f"{root}/observations/{sched.id}/runs.json",
-                        json.dumps(S.observer_runs_to_json(sched), default=str, indent=2),
+                        _dump(S.observer_runs_to_json(sched)),
                     )
                     zf.writestr(
                         f"{root}/observations/{sched.id}/runs.md",
@@ -100,20 +93,14 @@ def build_export_bundle(job_id: int) -> None:
                 for trig in EventTrigger.objects.all():
                     zf.writestr(
                         f"{root}/triggers/{trig.id}/config.json",
-                        json.dumps(S.trigger_to_json(trig), default=str, indent=2),
+                        _dump(S.trigger_to_json(trig)),
                     )
                     counts["triggers"] += 1
 
             if scope.get("profiles"):
-                zf.writestr(
-                    f"{root}/profiles/profiles.json",
-                    json.dumps(S.profiles_to_json(), default=str, indent=2),
-                )
+                zf.writestr(f"{root}/profiles/profiles.json", _dump(S.profiles_to_json()))
             if scope.get("watchlists"):
-                zf.writestr(
-                    f"{root}/watchlists/watchlists.json",
-                    json.dumps(S.watchlists_to_json(), default=str, indent=2),
-                )
+                zf.writestr(f"{root}/watchlists/watchlists.json", _dump(S.watchlists_to_json()))
 
             manifest = {
                 "version": 1,

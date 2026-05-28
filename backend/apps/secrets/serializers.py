@@ -30,14 +30,16 @@ class ProviderConfigSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         key = validated_data.pop("api_key_write", None)
         instance = super().update(instance, validated_data)
-        if key is not None:
-            instance.api_key = key
-            instance.save()
-        return instance
+        return self._apply_api_key(instance, key)
 
     def create(self, validated_data):
         key = validated_data.pop("api_key_write", None)
         instance = super().create(validated_data)
+        return self._apply_api_key(instance, key)
+
+    @staticmethod
+    def _apply_api_key(instance, key):
+        """Persist the write-only api_key onto the (already-saved) instance."""
         if key is not None:
             instance.api_key = key
             instance.save()
