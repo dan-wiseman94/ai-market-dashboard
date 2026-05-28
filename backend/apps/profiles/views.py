@@ -70,17 +70,16 @@ class AgentPresetViewSet(viewsets.ModelViewSet):
     serializer_class = AgentPresetSerializer
 
     def create(self, request, *args, **kwargs):
-        try:
-            return super().create(request, *args, **kwargs)
-        except IntegrityError:
-            return Response(
-                {"code": "duplicate", "message": "A preset with this slug already exists."},
-                status=400,
-            )
+        return self._handle_slug_collision(super().create, request, *args, **kwargs)
 
     def update(self, request, *args, **kwargs):
+        return self._handle_slug_collision(super().update, request, *args, **kwargs)
+
+    @staticmethod
+    def _handle_slug_collision(handler, request, *args, **kwargs):
+        """Turn a unique-slug IntegrityError into a 400 instead of a 500."""
         try:
-            return super().update(request, *args, **kwargs)
+            return handler(request, *args, **kwargs)
         except IntegrityError:
             return Response(
                 {"code": "duplicate", "message": "A preset with this slug already exists."},
