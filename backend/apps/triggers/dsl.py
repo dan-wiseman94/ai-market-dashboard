@@ -26,6 +26,29 @@ WINDOW_REQUIRED = {"pct_change", "volume_z"}
 NON_CROSSING_METRICS = {"days_to_earnings"}
 LEAF_KEYS = {"metric", "ticker", "op", "value", "window"}
 
+INDICATOR_METRICS = {
+    "rsi",
+    "sma_spread_pct",
+    "atr_pct",
+    "dist_from_sma_pct",
+    "dist_from_52w_high",
+    "dist_from_52w_low",
+    "gap_pct",
+}
+DAILY_ONLY_METRICS = {"dist_from_52w_high", "dist_from_52w_low", "gap_pct"}
+VALID_METRICS |= INDICATOR_METRICS
+LEAF_KEYS |= {"params"}
+TICKER_REQUIRED |= INDICATOR_METRICS
+WINDOW_REQUIRED |= INDICATOR_METRICS - DAILY_ONLY_METRICS
+
+# (type, default, min, max)
+PARAMS_SPEC: dict[str, dict[str, tuple]] = {
+    "rsi": {"period": (int, 14, 2, 100)},
+    "atr_pct": {"period": (int, 14, 2, 100)},
+    "dist_from_sma_pct": {"period": (int, 50, 2, 400)},
+    "sma_spread_pct": {"fast": (int, 50, 2, 400), "slow": (int, 200, 3, 600)},
+}
+
 
 def validate_condition(node: Any, *, path: str = "") -> None:
     """Recurse the tree. Raises ValidationError with path on any invalid shape."""
@@ -81,6 +104,27 @@ def validate_condition(node: Any, *, path: str = "") -> None:
         raise ValidationError(f"{path}.window: not allowed for metric {metric!r}")
     if window is not None and window not in VALID_WINDOWS:
         raise ValidationError(f"{path}.window: {window!r} is not a valid window")
+
+    params = node.get("params")
+    spec = PARAMS_SPEC.get(metric, {})
+    if params is not None and not isinstance(params, dict):
+        raise ValidationError(f"{path}.params: must be an object")
+    params = params or {}
+    extra = set(params) - set(spec)
+    if extra:
+        raise ValidationError(f"{path}.params: unknown keys {sorted(extra)!r}")
+    for pkey, (ptype, _default, pmin, pmax) in spec.items():
+        pval = params.get(pkey)
+        if pval is None:
+            continue  # default applied at compute time
+        if not isinstance(pval, ptype) or isinstance(pval, bool) or not (pmin <= pval <= pmax):
+            raise ValidationError(
+                f"{path}.params.{pkey}: must be {ptype.__name__} in [{pmin},{pmax}]"
+            )
+    if metric == "sma_spread_pct":
+        fast, slow = params.get("fast", 50), params.get("slow", 200)
+        if fast >= slow:
+            raise ValidationError(f"{path}.params: fast ({fast}) must be < slow ({slow})")
 
 
 def tickers_in_condition(node: Any) -> set[str]:
