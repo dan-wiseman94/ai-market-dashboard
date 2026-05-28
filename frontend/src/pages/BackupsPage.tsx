@@ -1,4 +1,3 @@
-// frontend/src/pages/BackupsPage.tsx
 import { useState } from "react";
 import { useBackups, useDeleteBackup, useRunBackupNow } from "@/hooks/useBackups";
 import { SkeletonRows } from "@/components/Skeleton";

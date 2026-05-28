@@ -1,4 +1,3 @@
-// frontend/src/pages/settings/ConnectionsSettings.tsx
 import { useSchwabStatus } from "@/hooks/useSchwabStatus";
 import { fetchSchwabAuthorizeUrl } from "@/api/schwab";
 import { formatDistanceToNow } from "date-fns";

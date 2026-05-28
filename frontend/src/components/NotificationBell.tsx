@@ -15,6 +15,26 @@ function unwrapResults(data: unknown): NotificationDTO[] {
   return [];
 }
 
+function notificationWsUrl(): string {
+  const configured = import.meta.env.VITE_WS_BASE_URL as string | undefined;
+  const proto = window.location.protocol === "https:" ? "wss" : "ws";
+  const base = configured && configured.length > 0 ? configured : `${proto}://${window.location.host}`;
+  return `${base}/ws/notifications/`;
+}
+
+function desktopNotificationsGranted(): boolean {
+  return typeof Notification !== "undefined" && Notification.permission === "granted";
+}
+
+function showDesktopNotification(payload: { kind?: string; title: string; body?: string }): void {
+  if (payload.kind !== "observer_done" && payload.kind !== "trigger") return;
+  try {
+    new Notification(payload.title, { body: payload.body });
+  } catch {
+    /* OS notification unavailable — ignore */
+  }
+}
+
 function BellIcon({ unread }: { unread: boolean }) {
   return (
     <svg
@@ -54,25 +74,16 @@ export default function NotificationBell() {
 
   useEffect(() => {
     if (typeof WebSocket === "undefined") return;
-    const configured = import.meta.env.VITE_WS_BASE_URL as string | undefined;
-    const proto = window.location.protocol === "https:" ? "wss" : "ws";
-    const base = configured && configured.length > 0
-      ? configured
-      : `${proto}://${window.location.host}`;
-    const ws = new WebSocket(`${base}/ws/notifications/`);
+    const ws = new WebSocket(notificationWsUrl());
     ws.onmessage = (ev: MessageEvent) => {
       try {
         const m = JSON.parse(ev.data);
-        if (m.type === "notification.event") {
-          qc.invalidateQueries({ queryKey: ["notifications"] });
-          if (typeof Notification !== "undefined" && Notification.permission === "granted") {
-            const p = m.payload;
-            if (p.kind === "observer_done" || p.kind === "trigger") {
-              try { new Notification(p.title, { body: p.body }); } catch { /* no-op */ }
-            }
-          }
-        }
-      } catch { /* ignore parse errors */ }
+        if (m.type !== "notification.event") return;
+        qc.invalidateQueries({ queryKey: ["notifications"] });
+        if (desktopNotificationsGranted()) showDesktopNotification(m.payload);
+      } catch {
+        /* ignore parse errors */
+      }
     };
     return () => ws.close();
   }, [qc]);

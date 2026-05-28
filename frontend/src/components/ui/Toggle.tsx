@@ -1,4 +1,3 @@
-// frontend/src/components/ui/Toggle.tsx
 type ToggleProps = {
   checked: boolean;
   onChange: (next: boolean) => void;
