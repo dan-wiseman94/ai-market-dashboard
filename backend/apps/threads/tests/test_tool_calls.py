@@ -17,7 +17,7 @@ def thread_and_message(db):
     cfg = ProviderConfig.objects.create(
         provider="claude",
         enabled=True,
-        default_model="claude-opus-4-7",
+        default_model="claude-opus-4-8",
     )
     cfg.api_key = "sk-test"
     cfg.save()
@@ -25,7 +25,7 @@ def thread_and_message(db):
         name="p",
         style="s",
         default_provider="claude",
-        default_model="claude-opus-4-7",
+        default_model="claude-opus-4-8",
         enable_tools=True,
     )
     thread = Thread.objects.create(kind="consult", profile=profile)

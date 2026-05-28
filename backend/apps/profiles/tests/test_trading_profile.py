@@ -22,11 +22,11 @@ def test_profile_stores_custom_includes():
         name="Swings",
         style="Multi-day swings.",
         default_includes=["quotes", "ohlc", "positions", "notes"],
-        default_model="claude-opus-4-7",
+        default_model="claude-opus-4-8",
     )
     p.refresh_from_db()
     assert p.default_includes == ["quotes", "ohlc", "positions", "notes"]
-    assert p.default_model == "claude-opus-4-7"
+    assert p.default_model == "claude-opus-4-8"
 
 
 @pytest.mark.django_db

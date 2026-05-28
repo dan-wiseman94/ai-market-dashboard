@@ -44,7 +44,7 @@ async def test_compare_costs_route_to_right_branch(ws_base_url, api_base_url, th
                 "text": "compare these",
                 "branches": [
                     {"provider": "claude", "model": "claude-sonnet-4-6"},
-                    {"provider": "claude", "model": "claude-opus-4-7"},
+                    {"provider": "claude", "model": "claude-opus-4-8"},
                 ],
             },
             timeout=5,

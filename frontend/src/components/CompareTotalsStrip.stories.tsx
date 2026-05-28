@@ -24,7 +24,7 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 const twoBranches: Record<number, BranchState> = {
-  1: { status: "done", provider: "claude", model: "claude-opus-4-7", cost: 0.0123, durationMs: 4200 },
+  1: { status: "done", provider: "claude", model: "claude-opus-4-8", cost: 0.0123, durationMs: 4200 },
   2: { status: "done", provider: "openai", model: "gpt-5", cost: 0.0218, durationMs: 6100 },
 };
 
@@ -41,7 +41,7 @@ export const WithCosts: Story = {
 export const SingleBranch: Story = {
   args: {
     state: {
-      1: { status: "done", provider: "claude", model: "claude-opus-4-7", cost: 0.0101, durationMs: 0 },
+      1: { status: "done", provider: "claude", model: "claude-opus-4-8", cost: 0.0101, durationMs: 0 },
     },
   },
 };

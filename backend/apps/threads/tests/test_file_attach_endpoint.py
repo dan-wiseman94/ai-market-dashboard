@@ -16,7 +16,7 @@ def thread(db):
         name="p",
         style="s",
         default_provider="claude",
-        default_model="claude-opus-4-7",
+        default_model="claude-opus-4-8",
     )
     return Thread.objects.create(kind="consult", profile=p)
 

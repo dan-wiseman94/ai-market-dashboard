@@ -17,7 +17,7 @@ const profileFixture = {
   style: "swing",
   default_includes: ["quotes", "ohlc", "news"],
   default_provider: "claude",
-  default_model: "claude-opus-4-7",
+  default_model: "claude-opus-4-8",
   active: true,
 };
 
@@ -87,7 +87,7 @@ describe("api/profiles", () => {
         style: "swing",
         default_includes: ["quotes", "ohlc", "news"],
         default_provider: "claude",
-        default_model: "claude-opus-4-7",
+        default_model: "claude-opus-4-8",
         active: true,
       };
       const res = await createProfile(body);

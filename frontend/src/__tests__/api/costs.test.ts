@@ -24,7 +24,7 @@ const costsSummary = {
   by_model: [
     {
       provider: "claude",
-      model: "claude-opus-4-7",
+      model: "claude-opus-4-8",
       cost_usd: "1.0000",
       runs: 5,
       input_tokens: 10000,
