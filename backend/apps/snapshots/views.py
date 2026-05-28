@@ -5,12 +5,17 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from rest_framework import mixins, viewsets
 from rest_framework.decorators import action
+from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.response import Response
 
 from apps.profiles.models import TradingProfile
 from apps.snapshots.diff import diff_sections
 from apps.snapshots.models import Snapshot, SnapshotImage
-from apps.snapshots.serializers import SnapshotImageSerializer, SnapshotSerializer
+from apps.snapshots.serializers import (
+    SnapshotImageSerializer,
+    SnapshotListSerializer,
+    SnapshotSerializer,
+)
 from apps.snapshots.services.screenshot import (
     ImageTooLargeError,
     InvalidPNGError,
@@ -19,14 +24,37 @@ from apps.snapshots.services.screenshot import (
 from apps.snapshots.tasks import capture_task
 
 
+class _SnapshotPagination(LimitOffsetPagination):
+    default_limit = 50
+    max_limit = 200
+
+
 class SnapshotViewSet(
     mixins.ListModelMixin,
     mixins.RetrieveModelMixin,
     mixins.CreateModelMixin,
     viewsets.GenericViewSet,
 ):
-    queryset = Snapshot.objects.prefetch_related("sections")
     serializer_class = SnapshotSerializer
+    pagination_class = _SnapshotPagination
+
+    def get_serializer_class(self):
+        return SnapshotListSerializer if self.action == "list" else SnapshotSerializer
+
+    def get_queryset(self):
+        qs = Snapshot.objects.select_related("profile").prefetch_related("sections")
+        p = self.request.query_params
+        if p.get("profile"):
+            qs = qs.filter(profile_id=p["profile"])
+        if p.get("ticker"):
+            qs = qs.filter(primary_ticker__iexact=p["ticker"])
+        if p.get("source"):
+            qs = qs.filter(source=p["source"])
+        if p.get("since"):
+            qs = qs.filter(captured_at__gte=p["since"])
+        if p.get("until"):
+            qs = qs.filter(captured_at__lte=p["until"])
+        return qs
 
     def create(self, request, *args, **kwargs):
         data = request.data
