@@ -14,10 +14,14 @@ function pctPrecision(value: number): number {
   return Math.abs(value) < 0.01 ? 2 : 0;
 }
 
+// Fraction -> percentage magnitude string, e.g. -0.05 -> "5", 0.001 -> "0.10".
+function pctMagnitude(value: number): string {
+  return Math.abs(value * 100).toFixed(pctPrecision(value));
+}
+
 function pctLabel(value: number, dir: Op): string {
-  const pct = Math.abs(value * 100).toFixed(pctPrecision(value));
   const sign = dir === "==" ? "=" : "≥";
-  return `${sign}${pct}%`;
+  return `${sign}${pctMagnitude(value)}%`;
 }
 
 export function describeLeaf(leaf: Leaf): string {
@@ -33,8 +37,7 @@ export function describeLeaf(leaf: Leaf): string {
 
   if (metric === "position_pl_pct") {
     const verb = value < 0 ? "down" : "up";
-    const pct = Math.abs(value * 100).toFixed(pctPrecision(value));
-    return `portfolio is ${verb} ≥${pct}%`;
+    return `portfolio is ${verb} ≥${pctMagnitude(value)}%`;
   }
 
   if (metric === "position_pl") {
