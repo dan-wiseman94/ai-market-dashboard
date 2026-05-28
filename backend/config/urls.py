@@ -14,6 +14,7 @@ urlpatterns = [
     path("api/backups/", include("apps.backups.urls")),
     path("api/export/", include("apps.export.urls")),
     path("api/files/", include("apps.files.urls")),
+    path("api/briefings/", include("apps.briefing.urls")),
     path("api/", include("apps.profiles.urls")),
     path("api/", include("apps.snapshots.urls")),
     path("api/", include("apps.threads.urls")),
