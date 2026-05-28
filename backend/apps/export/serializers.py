@@ -176,9 +176,14 @@ def observer_runs_to_markdown(schedule) -> str:
 def trigger_to_json(trigger) -> dict:
     from apps.triggers.models import TriggerFiring
 
-    firings = []
-    for f in TriggerFiring.objects.filter(trigger=trigger).order_by("fired_at"):
-        firings.append(
+    firings = TriggerFiring.objects.filter(trigger=trigger).order_by("fired_at")
+    return {
+        "id": trigger.id,
+        "name": trigger.name,
+        "profile_id": getattr(trigger, "profile_id", None),
+        "enabled": trigger.enabled,
+        "condition": trigger.condition,
+        "firings": [
             {
                 "id": f.id,
                 "fired_at": f.fired_at.isoformat(),
@@ -187,14 +192,8 @@ def trigger_to_json(trigger) -> dict:
                 "thread_id": f.thread_id,
                 "cost_capped": f.cost_capped,
             }
-        )
-    return {
-        "id": trigger.id,
-        "name": trigger.name,
-        "profile_id": getattr(trigger, "profile_id", None),
-        "enabled": trigger.enabled,
-        "condition": trigger.condition,
-        "firings": firings,
+            for f in firings
+        ],
     }
 
 
@@ -229,9 +228,8 @@ def profiles_to_json() -> dict:
 def watchlists_to_json() -> dict:
     from apps.profiles.models import Watchlist, WatchlistSymbol
 
-    out = []
-    for w in Watchlist.objects.all():
-        out.append(
+    return {
+        "watchlists": [
             {
                 "id": w.id,
                 "name": w.name,
@@ -241,8 +239,9 @@ def watchlists_to_json() -> dict:
                     .values_list("ticker", flat=True)
                 ),
             }
-        )
-    return {"watchlists": out}
+            for w in Watchlist.objects.all()
+        ]
+    }
 
 
 # ---------------------------------------------------------------------------

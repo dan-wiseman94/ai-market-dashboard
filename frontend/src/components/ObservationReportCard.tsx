@@ -27,6 +27,14 @@ const BIAS_COLOR: Record<Bias, string> = {
   mixed: "text-amber-700 dark:text-amber-400 border-amber-500/40",
 };
 
+function SectionHeading({ children }: { children: string }) {
+  return (
+    <div className="font-mono text-[10px] uppercase tracking-wider text-copper-400 mb-1">
+      {children}
+    </div>
+  );
+}
+
 export default function ObservationReportCard({ report }: { report: ObservationReport }) {
   return (
     <div className="space-y-3">
@@ -40,7 +48,7 @@ export default function ObservationReportCard({ report }: { report: ObservationR
 
       {report.signals.length > 0 && (
         <section>
-          <div className="font-mono text-[10px] uppercase tracking-wider text-copper-400 mb-1">Signals</div>
+          <SectionHeading>Signals</SectionHeading>
           <ul className="space-y-1">
             {report.signals.map((s, i) => (
               <li key={i} className="text-xs text-ink-200">
@@ -57,7 +65,7 @@ export default function ObservationReportCard({ report }: { report: ObservationR
 
       {report.key_levels.length > 0 && (
         <section>
-          <div className="font-mono text-[10px] uppercase tracking-wider text-copper-400 mb-1">Key levels</div>
+          <SectionHeading>Key levels</SectionHeading>
           <ul className="text-xs text-ink-200 grid grid-cols-2 gap-x-4 gap-y-0.5">
             {report.key_levels.map((k, i) => (
               <li key={i}>
@@ -72,7 +80,7 @@ export default function ObservationReportCard({ report }: { report: ObservationR
 
       {report.risks.length > 0 && (
         <section>
-          <div className="font-mono text-[10px] uppercase tracking-wider text-copper-400 mb-1">Risks</div>
+          <SectionHeading>Risks</SectionHeading>
           <ul className="text-xs text-ink-300 list-disc pl-5">
             {report.risks.map((r, i) => <li key={i}>{r}</li>)}
           </ul>

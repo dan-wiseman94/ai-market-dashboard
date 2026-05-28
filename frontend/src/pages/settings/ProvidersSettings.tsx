@@ -1,4 +1,3 @@
-// frontend/src/pages/settings/ProvidersSettings.tsx
 import SettingsSection from "@/components/settings/SettingsSection";
 import ProviderCard from "@/components/settings/ProviderCard";
 

@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import timedelta
 
 from django.conf import settings
-from django.db import transaction
+from django.db import models, transaction
 from django.utils import timezone
 from rest_framework import mixins, viewsets
 from rest_framework.decorators import action
@@ -24,6 +24,13 @@ from .tasks import run_postmortem_task
 # Statuses that mean the thesis is no longer "open" — derived from the model to
 # avoid divergence when a new status is added later.
 _CLOSED_STATUSES = {s for s, _ in Thesis.STATUS_CHOICES if s != "open"}
+
+
+def _resolve_fk[M: models.Model](model: type[M], pk: object) -> M | None:
+    """Look up *model* by pk, returning None for a falsy pk or unknown row."""
+    if not pk:
+        return None
+    return model.objects.filter(id=pk).first()
 
 
 def _error(code: str, message: str, status: int) -> Response:
@@ -57,18 +64,10 @@ class ThesisViewSet(viewsets.ModelViewSet):
     def create(self, request: Request, *args: object, **kwargs: object) -> Response:
         data = request.data
 
-        # Resolve optional FKs from the submitted ids
-        profile: TradingProfile | None = None
-        if pid := data.get("profile_id"):
-            profile = TradingProfile.objects.filter(id=pid).first()
-
-        thread: Thread | None = None
-        if tid := data.get("thread_id"):
-            thread = Thread.objects.filter(id=tid).first()
-
-        snapshot: Snapshot | None = None
-        if sid := data.get("snapshot_id"):
-            snapshot = Snapshot.objects.filter(id=sid).first()
+        # Resolve optional FKs from the submitted ids (unknown id -> None)
+        profile = _resolve_fk(TradingProfile, data.get("profile_id"))
+        thread = _resolve_fk(Thread, data.get("thread_id"))
+        snapshot = _resolve_fk(Snapshot, data.get("snapshot_id"))
 
         # Mutable copy of posted data so we can inject defaults
         mutable_data = dict(data)

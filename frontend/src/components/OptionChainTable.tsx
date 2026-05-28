@@ -16,6 +16,19 @@ interface ChainPayload {
   expiries: Record<string, { calls: Contract[]; puts: Contract[] }>;
 }
 
+// The four right-aligned bid/ask/Δ/IV cells shown for one side (calls or puts)
+// at a given strike. `null`/missing contracts render em-dashes.
+function ContractCells({ c }: { c: Contract | undefined }) {
+  return (
+    <>
+      <td style={{ textAlign: "right" }}>{c?.bid ?? "—"}</td>
+      <td style={{ textAlign: "right" }}>{c?.ask ?? "—"}</td>
+      <td style={{ textAlign: "right" }}>{c?.delta ?? "—"}</td>
+      <td style={{ textAlign: "right" }}>{c?.iv ?? "—"}</td>
+    </>
+  );
+}
+
 export default function OptionChainTable({ payload }: { payload: ChainPayload | null }) {
   const expiryDates = payload ? Object.keys(payload.expiries).sort() : [];
   const [selected, setSelected] = useState(expiryDates[0] || "");
@@ -73,15 +86,9 @@ export default function OptionChainTable({ payload }: { payload: ChainPayload | 
             const isAtm = atm !== null && Math.abs(parseFloat(strike) - atm) < 0.5;
             return (
               <tr key={strike} style={{ background: isAtm ? "color-mix(in srgb, var(--copper-500) 14%, transparent)" : "transparent" }}>
-                <td style={{ textAlign: "right" }}>{c?.bid ?? "—"}</td>
-                <td style={{ textAlign: "right" }}>{c?.ask ?? "—"}</td>
-                <td style={{ textAlign: "right" }}>{c?.delta ?? "—"}</td>
-                <td style={{ textAlign: "right" }}>{c?.iv ?? "—"}</td>
+                <ContractCells c={c} />
                 <td style={{ textAlign: "center", fontWeight: isAtm ? "bold" : "normal" }}>{strike}</td>
-                <td style={{ textAlign: "right" }}>{p?.bid ?? "—"}</td>
-                <td style={{ textAlign: "right" }}>{p?.ask ?? "—"}</td>
-                <td style={{ textAlign: "right" }}>{p?.delta ?? "—"}</td>
-                <td style={{ textAlign: "right" }}>{p?.iv ?? "—"}</td>
+                <ContractCells c={p} />
               </tr>
             );
           })}

@@ -106,13 +106,9 @@ def _iv_stats(history: list[OptionChainSnapshot]) -> tuple[float | None, float |
         for sides in expiries.values():
             for side_key in ("calls", "puts"):
                 for line in sides.get(side_key, []) or []:
-                    v = line.get("iv")
-                    if v in (None, ""):
-                        continue
-                    try:
-                        ivs.append(float(v))
-                    except (TypeError, ValueError):
-                        continue
+                    iv = _parse_iv(line.get("iv"))
+                    if iv is not None:
+                        ivs.append(iv)
     if len(ivs) < 2:
         return (None, None)
     return (statistics.mean(ivs), statistics.stdev(ivs))

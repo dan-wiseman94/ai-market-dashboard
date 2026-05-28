@@ -4,6 +4,7 @@ import { useUnusualOptions } from "@/hooks/useAnalytics";
 export function UnusualOptionsCard() {
   const [ticker, setTicker] = useState("");
   const { data, isLoading, error } = useUnusualOptions(ticker.toUpperCase());
+  const rows = data?.rows ?? [];
   return (
     <section data-testid="analytics-card-unusual-options" className="ledger-surface p-5 md:col-span-2">
       <header className="ledger-eyebrow mb-3">Unusual options</header>
@@ -18,12 +19,12 @@ export function UnusualOptionsCard() {
       )}
       {isLoading && <p className="text-sm text-slate-400">Loading…</p>}
       {error && <p className="text-sm text-rose-700 dark:text-rose-400">{String(error)}</p>}
-      {data && (data.rows ?? []).length === 0 && (
+      {data && rows.length === 0 && (
         <p className="text-sm text-slate-500">
           No unusual lines in the latest chain.
         </p>
       )}
-      {data && (data.rows ?? []).length > 0 && (
+      {data && rows.length > 0 && (
         <table className="w-full text-sm font-mono">
           <thead>
             <tr className="text-slate-400 text-left">
@@ -32,7 +33,7 @@ export function UnusualOptionsCard() {
             </tr>
           </thead>
           <tbody>
-            {(data.rows ?? []).map((r, i) => (
+            {rows.map((r, i) => (
               <tr key={i} className="border-t border-slate-800">
                 <td>{r.expiry}</td>
                 <td>{r.side}</td>

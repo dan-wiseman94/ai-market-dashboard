@@ -44,11 +44,6 @@ def summary(*, start: datetime, end: datetime) -> dict:
     qs = AIRun.objects.filter(created_at__gte=start, created_at__lt=end)
     by_provider = list(qs.values("provider").annotate(**_TOKEN_AGG).order_by("-cost_usd"))
     by_model = list(qs.values("provider", "model").annotate(**_TOKEN_AGG).order_by("-cost_usd"))
-    by_thread = list(
-        qs.values("message__thread_id", "message__thread__title")
-        .annotate(cost_usd=Sum("cost_usd"), runs=Count("id"))
-        .order_by("-cost_usd")[:10]
-    )
     by_thread = [
         {
             "thread_id": r["message__thread_id"],
@@ -56,7 +51,9 @@ def summary(*, start: datetime, end: datetime) -> dict:
             "cost_usd": r["cost_usd"],
             "runs": r["runs"],
         }
-        for r in by_thread
+        for r in qs.values("message__thread_id", "message__thread__title")
+        .annotate(cost_usd=Sum("cost_usd"), runs=Count("id"))
+        .order_by("-cost_usd")[:10]
     ]
 
     daily_rows = list(
@@ -125,37 +122,39 @@ def caps() -> list[dict]:
 
     out: list[dict] = []
     for pc in ProviderConfig.objects.all():
-        day_spent = (
-            AIRun.objects.filter(
-                provider=pc.provider,
-                created_at__gte=day_start,
-            ).aggregate(s=Sum("cost_usd"))["s"]
-        ) or Decimal("0")
-
+        day_spent = _spend_since(pc.provider, day_start)
         daily = {
             "cap": pc.daily_cost_cap_usd,
             "spent": day_spent,
-            "pct": min(1.0, float(day_spent / pc.daily_cost_cap_usd))
-            if pc.daily_cost_cap_usd
-            else 0.0,
+            "pct": _cap_pct(day_spent, pc.daily_cost_cap_usd),
         }
 
         monthly = None
         if pc.monthly_cost_cap_usd is not None:
-            month_spent = (
-                AIRun.objects.filter(
-                    provider=pc.provider,
-                    created_at__gte=month_window_start,
-                ).aggregate(s=Sum("cost_usd"))["s"]
-            ) or Decimal("0")
+            month_spent = _spend_since(pc.provider, month_window_start)
             monthly = {
                 "cap": pc.monthly_cost_cap_usd,
                 "spent": month_spent,
-                "pct": min(1.0, float(month_spent / pc.monthly_cost_cap_usd)),
+                "pct": _cap_pct(month_spent, pc.monthly_cost_cap_usd),
             }
 
         out.append({"provider": pc.provider, "daily": daily, "monthly": monthly})
     return out
+
+
+def _spend_since(provider: str, since: datetime) -> Decimal:
+    """Total AIRun cost for a provider since *since* (inclusive). 0 if none."""
+    total = AIRun.objects.filter(provider=provider, created_at__gte=since).aggregate(
+        s=Sum("cost_usd")
+    )["s"]
+    return total or Decimal("0")
+
+
+def _cap_pct(spent: Decimal, cap: Decimal | None) -> float:
+    """Fraction of *cap* consumed by *spent*, clamped to 1.0. 0.0 if no cap."""
+    if not cap:
+        return 0.0
+    return min(1.0, float(spent / cap))
 
 
 def snapshot_breakdown(snapshot_id: int) -> list[dict]:

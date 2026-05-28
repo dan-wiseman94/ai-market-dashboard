@@ -26,6 +26,15 @@ const TAPE_VERB: Record<SessionKind, string> = {
   closed: "closed",
 };
 
+// Time-of-day greeting for the hero, keyed off the local hour.
+function greetingForHour(hour: number): string {
+  if (hour < 5) return "Late watch";
+  if (hour < 12) return "Good morning";
+  if (hour < 17) return "Good afternoon";
+  if (hour < 21) return "Good evening";
+  return "Late watch";
+}
+
 function SessionStatus({ kind }: { kind: SessionKind }) {
   const { label, tone, dot } = SESSION[kind];
   return (
@@ -51,12 +60,7 @@ export default function Dashboard() {
 
   const now = new Date();
   const date = DATE_FMT.format(now);
-  const hour = now.getHours();
-  const greeting =
-    hour < 5 ? "Late watch" :
-    hour < 12 ? "Good morning" :
-    hour < 17 ? "Good afternoon" :
-    hour < 21 ? "Good evening" : "Late watch";
+  const greeting = greetingForHour(now.getHours());
 
   return (
     <main className="px-8 py-8 max-w-[1400px] mx-auto ledger-fade-in">

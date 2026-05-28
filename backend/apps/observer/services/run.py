@@ -95,28 +95,7 @@ def run_observer(schedule_id: int) -> int | None:
         _stamp_fired(sched)
         return snap.id
 
-    if sched.mode == "diff":
-        from apps.snapshots.diff import diff_sections
-        from apps.snapshots.models import Snapshot
-
-        prev_snap = (
-            Snapshot.objects.filter(profile=sched.profile, status="ready")
-            .exclude(id=snap.id)
-            .order_by("-created_at")
-            .first()
-        )
-        if prev_snap is not None:
-            prev_sections = {s.kind: s.payload for s in prev_snap.sections.all()}
-            curr_sections = {s.kind: s.payload for s in snap.sections.all()}
-            delta_text = diff_sections(prev_sections, curr_sections)
-            payload_text = (
-                f"Objective: {sched.objective_template}\n\n"
-                f"Delta since snapshot #{prev_snap.id}:\n{delta_text}"
-            )
-        else:
-            payload_text = serialize_for_ai(snap, provider=provider_name, model=model_name)
-    else:
-        payload_text = serialize_for_ai(snap, provider=provider_name, model=model_name)
+    payload_text = _build_payload_text(sched, snap, provider_name, model_name)
 
     msg = Message.objects.create(
         thread=thread,
@@ -150,6 +129,30 @@ def run_observer(schedule_id: int) -> int | None:
         link=f"/threads/observer/{sched.profile.id}",
     )
     return snap.id
+
+
+def _build_payload_text(sched: ObserverSchedule, snap, provider_name: str, model_name: str) -> str:
+    """The user-turn text for this fire: a diff vs the prior snapshot, or the full payload."""
+    if sched.mode == "diff":
+        from apps.snapshots.diff import diff_sections
+        from apps.snapshots.models import Snapshot
+
+        prev_snap = (
+            Snapshot.objects.filter(profile=sched.profile, status="ready")
+            .exclude(id=snap.id)
+            .order_by("-created_at")
+            .first()
+        )
+        if prev_snap is not None:
+            prev_sections = {s.kind: s.payload for s in prev_snap.sections.all()}
+            curr_sections = {s.kind: s.payload for s in snap.sections.all()}
+            delta_text = diff_sections(prev_sections, curr_sections)
+            return (
+                f"Objective: {sched.objective_template}\n\n"
+                f"Delta since snapshot #{prev_snap.id}:\n{delta_text}"
+            )
+
+    return serialize_for_ai(snap, provider=provider_name, model=model_name)
 
 
 def _run_structured_and_record(

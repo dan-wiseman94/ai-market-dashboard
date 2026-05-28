@@ -1,7 +1,6 @@
-// frontend/src/pages/ExportPage.tsx
 import { useState } from "react";
 import { useCreateExport, useDeleteExport, useExports } from "@/hooks/useExport";
-import type { ExportScope } from "@/api/export";
+import type { ExportJob, ExportScope } from "@/api/export";
 import { SkeletonRows } from "@/components/Skeleton";
 import { EmptyState } from "@/components/EmptyState";
 import { useToast } from "@/hooks/useToast";
@@ -89,10 +88,7 @@ export default function ExportPage() {
                   <tr key={j.id} data-testid={`export-row-${j.id}`}>
                     <td className="px-4 py-2.5 text-ink-300">{new Date(j.created_at).toLocaleString()}</td>
                     <td className="px-4 py-2.5">
-                      {j.status === "running" || j.status === "pending"
-                        ? <span className="text-copper-300">{j.status}…</span>
-                        : j.status === "done" ? <span className="text-gain">done</span>
-                        : <span className="text-loss" title={j.error}>{j.status}</span>}
+                      <JobStatusBadge status={j.status} error={j.error} />
                     </td>
                     <td className="px-4 py-2.5 tabular-nums text-ink-200">{fmtSize(j.size_bytes)}</td>
                     <td className="px-4 py-2.5 font-mono text-[11px] text-ink-200">{j.filename}</td>
@@ -119,6 +115,16 @@ export default function ExportPage() {
       </div>
     </SettingsSection>
   );
+}
+
+function JobStatusBadge({ status, error }: { status: ExportJob["status"]; error: string }) {
+  if (status === "running" || status === "pending") {
+    return <span className="text-copper-300">{status}…</span>;
+  }
+  if (status === "done") {
+    return <span className="text-gain">done</span>;
+  }
+  return <span className="text-loss" title={error}>{status}</span>;
 }
 
 function ScopeCheck({ label, checked, onChange }: { label: string; checked: boolean; onChange: (v: boolean) => void }) {

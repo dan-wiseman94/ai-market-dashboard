@@ -25,6 +25,50 @@ interface ObserverThread {
   messages: Message[];
 }
 
+function isStructuredObservation(m: Message): m is Message & { content: { report: ObservationReport } } {
+  return m.role === "assistant" && m.content.kind === "structured_observation" && !!m.content.report;
+}
+
+function isSkipped(m: Message): boolean {
+  return m.role === "system" && (m.content.text ?? "").startsWith("⏸");
+}
+
+function messageHeadline(m: Message): string {
+  const when = new Date(m.created_at).toLocaleString();
+  if (m.role === "user") return `📷 Snapshot — ${when}`;
+  if (isStructuredObservation(m)) return `📊 ${m.content.report.headline} — ${when}`;
+  return `🤖 Response — ${when}`;
+}
+
+function TimelineRow({
+  message,
+  isOpen,
+  onToggle,
+}: {
+  message: Message;
+  isOpen: boolean;
+  onToggle: () => void;
+}) {
+  const skipped = isSkipped(message);
+  return (
+    <li
+      className={`rounded border ${skipped ? "border-slate-700 bg-slate-950/50 text-slate-500"
+        : "border-slate-700 bg-slate-900"}`}
+    >
+      <button type="button" onClick={onToggle} className="w-full text-left px-3 py-2 text-sm">
+        {skipped ? `🔒 ${message.content.text}` : messageHeadline(message)}
+      </button>
+      {isOpen && !skipped && (
+        <div className="px-3 pb-3 text-sm">
+          {isStructuredObservation(message)
+            ? <ObservationReportCard report={message.content.report} />
+            : <div className="whitespace-pre-wrap">{message.content.text ?? ""}</div>}
+        </div>
+      )}
+    </li>
+  );
+}
+
 export default function ObserverTimelinePage() {
   const { profileId } = useParams<{ profileId: string }>();
   const { data: thread, isLoading } = useQuery({
@@ -34,6 +78,8 @@ export default function ObserverTimelinePage() {
   });
 
   const [expanded, setExpanded] = useState<Record<number, boolean>>({});
+  const toggle = (id: number) =>
+    setExpanded((e) => ({ ...e, [id]: !(e[id] ?? false) }));
 
   if (isLoading) {
     return (
@@ -63,33 +109,14 @@ export default function ObserverTimelinePage() {
       )}
 
       <ul className="space-y-2">
-        {sorted.map((m) => {
-          const isOpen = expanded[m.id] ?? false;
-          const isStructured = m.role === "assistant" && m.content.kind === "structured_observation" && !!m.content.report;
-          const headline = m.role === "user"
-            ? `📷 Snapshot — ${new Date(m.created_at).toLocaleString()}`
-            : isStructured
-              ? `📊 ${m.content.report!.headline} — ${new Date(m.created_at).toLocaleString()}`
-              : `🤖 Response — ${new Date(m.created_at).toLocaleString()}`;
-          const isSkipped = m.role === "system" && (m.content.text ?? "").startsWith("⏸");
-          return (
-            <li key={m.id}
-                className={`rounded border ${isSkipped ? "border-slate-700 bg-slate-950/50 text-slate-500"
-                  : "border-slate-700 bg-slate-900"}`}>
-              <button type="button" onClick={() => setExpanded((e) => ({ ...e, [m.id]: !isOpen }))}
-                      className="w-full text-left px-3 py-2 text-sm">
-                {isSkipped ? `🔒 ${m.content.text}` : headline}
-              </button>
-              {isOpen && !isSkipped && (
-                <div className="px-3 pb-3 text-sm">
-                  {isStructured
-                    ? <ObservationReportCard report={m.content.report!} />
-                    : <div className="whitespace-pre-wrap">{m.content.text ?? ""}</div>}
-                </div>
-              )}
-            </li>
-          );
-        })}
+        {sorted.map((m) => (
+          <TimelineRow
+            key={m.id}
+            message={m}
+            isOpen={expanded[m.id] ?? false}
+            onToggle={() => toggle(m.id)}
+          />
+        ))}
       </ul>
     </main>
   );

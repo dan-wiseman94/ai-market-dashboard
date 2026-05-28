@@ -1,4 +1,3 @@
-// frontend/src/pages/settings/SettingsLayout.tsx
 import { NavLink, Outlet } from "react-router-dom";
 
 const SECTIONS: Array<[string, string, string]> = [

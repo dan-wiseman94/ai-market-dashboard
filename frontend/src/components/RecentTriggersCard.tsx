@@ -25,6 +25,53 @@ function describeMatched(values: Firing["matched_values"]): string {
     .join(" · ");
 }
 
+function FiringStatus({ firing }: { firing: Firing }) {
+  if (firing.cost_capped) {
+    return <span className="ledger-pill" data-tone="copper">cost-capped</span>;
+  }
+  if (firing.thread_id) {
+    return (
+      <Link
+        to={`/threads/${firing.thread_id}`}
+        className="ledger-pill hover:border-copper-500/60 hover:text-copper-200 transition-colors"
+      >
+        open thread →
+      </Link>
+    );
+  }
+  return null;
+}
+
+function FiringRow({ firing }: { firing: Firing }) {
+  const firedAt = new Date(firing.fired_at);
+  const matched = describeMatched(firing.matched_values);
+  return (
+    <li className="group relative hover:bg-copper-500/[0.04] transition-colors">
+      <div className="flex items-center gap-4 px-5 py-3">
+        <div className="flex flex-col min-w-[96px]">
+          <span className="font-mono text-[10px] uppercase tracking-wider text-ink-500">
+            {TIME_FMT.format(firedAt)}
+          </span>
+          <span className="font-mono text-[10px] text-ink-600 mt-0.5">
+            {DATE_FMT.format(firedAt)}
+          </span>
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="font-display text-[15px] text-ink-100 truncate">
+            {firing.trigger_name}
+          </div>
+          <div className="text-[12px] text-ink-400 font-mono mt-0.5 truncate">
+            {matched || <span className="italic">condition met</span>}
+          </div>
+        </div>
+        <div className="shrink-0">
+          <FiringStatus firing={firing} />
+        </div>
+      </div>
+    </li>
+  );
+}
+
 export default function RecentTriggersCard() {
   const { data, isLoading } = useQuery({
     queryKey: ["recent-firings"],
@@ -47,43 +94,9 @@ export default function RecentTriggersCard() {
         </Link>
       </div>
       <ul className="divide-y divide-rule-soft">
-        {data.map((f: Firing) => {
-          const firedAt = new Date(f.fired_at);
-          return (
-          <li key={f.id} className="group relative hover:bg-copper-500/[0.04] transition-colors">
-            <div className="flex items-center gap-4 px-5 py-3">
-              <div className="flex flex-col min-w-[96px]">
-                <span className="font-mono text-[10px] uppercase tracking-wider text-ink-500">
-                  {TIME_FMT.format(firedAt)}
-                </span>
-                <span className="font-mono text-[10px] text-ink-600 mt-0.5">
-                  {DATE_FMT.format(firedAt)}
-                </span>
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="font-display text-[15px] text-ink-100 truncate">
-                  {f.trigger_name}
-                </div>
-                <div className="text-[12px] text-ink-400 font-mono mt-0.5 truncate">
-                  {describeMatched(f.matched_values) || <span className="italic">condition met</span>}
-                </div>
-              </div>
-              <div className="shrink-0">
-                {f.cost_capped ? (
-                  <span className="ledger-pill" data-tone="copper">cost-capped</span>
-                ) : f.thread_id ? (
-                  <Link
-                    to={`/threads/${f.thread_id}`}
-                    className="ledger-pill hover:border-copper-500/60 hover:text-copper-200 transition-colors"
-                  >
-                    open thread →
-                  </Link>
-                ) : null}
-              </div>
-            </div>
-          </li>
-          );
-        })}
+        {data.map((f: Firing) => (
+          <FiringRow key={f.id} firing={f} />
+        ))}
       </ul>
     </div>
   );
