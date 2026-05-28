@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     "apps.export",
     "apps.files",
     "apps.thesis",
+    "apps.briefing",
 ]
 
 MIDDLEWARE = [
