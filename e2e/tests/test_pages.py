@@ -100,10 +100,10 @@ def test_observer_pages() -> None:
         "mode_select",
         "structured_toggle",
         "run_now_btn",
-        "pause_btn",
+        "enabled_checkbox",
         "create",
         "run_now",
-        "pause",
+        "set_enabled",
     ):
         assert m in _names(SchedulesPage)
 
