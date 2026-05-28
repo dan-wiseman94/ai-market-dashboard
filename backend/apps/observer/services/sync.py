@@ -10,6 +10,14 @@ from django_celery_beat.models import CrontabSchedule, PeriodicTask
 from apps.observer.models import ObserverSchedule
 
 
+def crontab_to_cron(crontab: CrontabSchedule) -> str:
+    """Render a CrontabSchedule back into a 5-field cron expression."""
+    return (
+        f"{crontab.minute} {crontab.hour} {crontab.day_of_month} "
+        f"{crontab.month_of_year} {crontab.day_of_week}"
+    )
+
+
 def sync_periodic_task(schedule: ObserverSchedule, *, cron: str) -> PeriodicTask:
     """Create or update the linked PeriodicTask from a 5-field cron expression."""
     minute, hour, dom, month, dow = cron.split()
