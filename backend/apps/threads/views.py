@@ -46,6 +46,7 @@ class ThreadViewSet(
     mixins.ListModelMixin,
     mixins.RetrieveModelMixin,
     mixins.CreateModelMixin,
+    mixins.UpdateModelMixin,
     viewsets.GenericViewSet,
 ):
     queryset = Thread.objects.select_related("profile").prefetch_related("messages__ai_run")

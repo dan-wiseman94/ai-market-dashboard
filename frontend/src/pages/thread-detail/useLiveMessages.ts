@@ -44,6 +44,7 @@ export function useLiveMessages(
           provider: m.ai_run?.provider,
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           parent_message_id: (m as any).parent_message_id ?? null,
+          snapshot_id: m.snapshot_id ?? null,
         };
       }
       setLive(seed);

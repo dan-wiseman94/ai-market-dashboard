@@ -1,4 +1,4 @@
-import { memo } from "react";
+import { memo, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { usd } from "@/utils/format";
@@ -13,34 +13,84 @@ type Props = {
   provider?: string;
   /** When true, render without the outer ledger-surface (caller provides one). */
   bare?: boolean;
+  /** Set on the synthetic snapshot turn; collapses the data sections below the objective. */
+  snapshotId?: number | null;
 };
 
-function Message({ role, text, status, error, cost, model, provider, bare = false }: Props) {
+/** Split the snapshot turn at the first `## ` heading: preamble (objective /
+ * notes / market-state) stays visible, the data sections go in a collapsed box. */
+function splitSnapshot(text: string): { preamble: string; data: string; titles: string[] } {
+  const idx = text.search(/(?:^|\n)## /);
+  if (idx === -1) return { preamble: text, data: "", titles: [] };
+  const preamble = text.slice(0, idx).trimEnd();
+  const data = text.slice(idx).replace(/^\n+/, "");
+  const titles = [...data.matchAll(/(?:^|\n)## (.+)/g)]
+    .map((m) => m[1].trim().split(/\s+[—(]/)[0].trim())
+    .filter(Boolean);
+  return { preamble, data, titles };
+}
+
+const userTextClass =
+  "text-ink-100 text-[15px] leading-[1.7] font-display whitespace-pre-wrap";
+const userTextStyle = { fontVariationSettings: '"opsz" 18, "SOFT" 40' } as const;
+
+function UserMessage({ text, snapshotId }: { text: string; snapshotId?: number | null }) {
+  const [open, setOpen] = useState(false);
+  const { preamble, data, titles } =
+    snapshotId != null ? splitSnapshot(text) : { preamble: text, data: "", titles: [] };
+  const label = titles.length
+    ? `${titles.slice(0, 4).join(", ")}${titles.length > 4 ? ", …" : ""}`
+    : "data";
+
+  return (
+    <article className="relative group ledger-reveal pl-5">
+      <div
+        aria-hidden
+        className="absolute left-0 top-1.5 bottom-1.5 w-[2px]"
+        style={{
+          background:
+            "linear-gradient(180deg, transparent 0%, color-mix(in srgb, var(--copper-500) 60%, transparent) 30%, color-mix(in srgb, var(--copper-500) 60%, transparent) 70%, transparent 100%)",
+        }}
+      />
+      <div className="flex items-center gap-2 mb-1">
+        <span className="ledger-eyebrow" style={{ color: "var(--copper-300)" }}>You</span>
+      </div>
+      {preamble ? (
+        <div className={userTextClass} style={userTextStyle}>{preamble}</div>
+      ) : (
+        !data && <span className="italic text-ink-400">(empty)</span>
+      )}
+      {data && (
+        <div className="mt-3">
+          <button
+            type="button"
+            onClick={() => setOpen((o) => !o)}
+            aria-expanded={open}
+            className="ledger-eyebrow flex items-center gap-2 text-copper-300 hover:text-copper-200 transition-colors"
+          >
+            <span aria-hidden className="text-copper-400">{open ? "▾" : "▸"}</span>
+            <span>Snapshot data</span>
+            <span className="text-ink-500 normal-case tracking-normal">({label})</span>
+          </button>
+          {open && (
+            <div
+              className="mt-2 border border-rule-soft rounded-ledger bg-ink-950 px-4 py-3 overflow-x-auto font-mono text-[12.5px] leading-[1.55] text-ink-200 whitespace-pre-wrap"
+            >
+              {data}
+            </div>
+          )}
+        </div>
+      )}
+    </article>
+  );
+}
+
+function Message({ role, text, status, error, cost, model, provider, bare = false, snapshotId }: Props) {
   const isUser = role === "user";
   const isStreaming = status === "streaming";
 
   if (isUser) {
-    return (
-      <article className="relative group ledger-reveal pl-5">
-        <div
-          aria-hidden
-          className="absolute left-0 top-1.5 bottom-1.5 w-[2px]"
-          style={{
-            background:
-              "linear-gradient(180deg, transparent 0%, color-mix(in srgb, var(--copper-500) 60%, transparent) 30%, color-mix(in srgb, var(--copper-500) 60%, transparent) 70%, transparent 100%)",
-          }}
-        />
-        <div className="flex items-center gap-2 mb-1">
-          <span className="ledger-eyebrow" style={{ color: "var(--copper-300)" }}>You</span>
-        </div>
-        <div
-          className="text-ink-100 text-[15px] leading-[1.7] font-display whitespace-pre-wrap"
-          style={{ fontVariationSettings: '"opsz" 18, "SOFT" 40' }}
-        >
-          {text || <span className="italic text-ink-400">(empty)</span>}
-        </div>
-      </article>
-    );
+    return <UserMessage text={text} snapshotId={snapshotId} />;
   }
 
   const label = provider

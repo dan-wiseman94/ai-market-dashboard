@@ -10,6 +10,8 @@ export type LiveMessage = {
   model?: string;
   provider?: string;
   parent_message_id?: number | null;
+  // Present only on the synthetic snapshot turn; drives the collapsible payload box.
+  snapshot_id?: number | null;
 };
 
 // WebSocket messages on the thread channel are an open event union; the

@@ -37,6 +37,11 @@ def serialize_for_ai(
         parts.append(f"**Objective:** {snapshot.objective.strip()}")
     if snapshot.notes.strip():
         parts.append(f"**Notes:** {snapshot.notes.strip()}")
+    if snapshot.manual_positions.strip():
+        parts.append(
+            "## Positions (manually entered — parse and reason over these)\n"
+            f"{snapshot.manual_positions.strip()}"
+        )
 
     ms = snapshot.market_state
     if ms and not ms.get("any_open", True):
