@@ -32,6 +32,7 @@ class Snapshot(models.Model):
     source = models.CharField(max_length=16, choices=SOURCE_CHOICES, default="manual")
     captured_at = models.DateTimeField(auto_now_add=True)
     market_state = models.JSONField(null=True, blank=True)
+    primary_ticker = models.CharField(max_length=16, null=True, blank=True, db_index=True)  # noqa: DJ001
 
     class Meta:
         indexes: ClassVar = [models.Index(fields=["-captured_at"])]
