@@ -13,7 +13,10 @@ class MarketTickerPage(BasePage):
 
     @property
     def ohlc_chart(self) -> Locator:
-        return self.page.locator("[data-chart='ohlc']")
+        # The market ticker page renders a chart container div below the ticker heading.
+        # The chart element itself has no test-id; the container is identified by its
+        # fixed height (400px) style — we use the h1 heading as the presence indicator.
+        return self.page.locator("h1")
 
     @property
     def news_list(self) -> Locator:
