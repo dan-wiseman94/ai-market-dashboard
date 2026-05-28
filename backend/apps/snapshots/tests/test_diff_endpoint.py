@@ -1,60 +1,32 @@
-"""GET /api/snapshots/<id>/diff/?against=<other_id> returns the delta."""
-
-from __future__ import annotations
-
 import pytest
 from rest_framework.test import APIClient
 
-
-@pytest.fixture
-def profile(db):
-    from apps.profiles.models import TradingProfile
-
-    return TradingProfile.objects.create(name="p", style="s")
+from apps.profiles.models import TradingProfile
+from apps.snapshots.models import Snapshot, SnapshotSection
 
 
-@pytest.fixture
-def two_snapshots(db, profile):
-    from apps.snapshots.models import Snapshot, SnapshotSection
-
-    prev = Snapshot.objects.create(profile=profile, status="ready", source="manual")
-    SnapshotSection.objects.create(
-        snapshot=prev,
-        kind="quotes",
-        status="done",
-        payload={"SPY": {"last": 520.0}, "QQQ": {"last": 440.0}},
+def _snap(p, last):
+    s = Snapshot.objects.create(
+        profile=p, includes=["quotes"], status="ready", primary_ticker="NVDA"
     )
-    curr = Snapshot.objects.create(profile=profile, status="ready", source="manual")
     SnapshotSection.objects.create(
-        snapshot=curr,
-        kind="quotes",
-        status="done",
-        payload={"SPY": {"last": 525.0}, "QQQ": {"last": 440.5}},
+        snapshot=s, kind="quotes", status="done", payload={"NVDA": {"last": last}}
     )
-    return prev, curr
+    return s
 
 
-def test_snapshot_diff_endpoint_returns_markdown(db, two_snapshots) -> None:
-    prev, curr = two_snapshots
-    client = APIClient()
-    resp = client.get(f"/api/snapshots/{curr.id}/diff/?against={prev.id}")
-    assert resp.status_code == 200
-    body = resp.json()
-    assert "delta" in body
-    assert "SPY" in body["delta"]
-    assert body["prev_id"] == prev.id
-    assert body["curr_id"] == curr.id
+@pytest.mark.django_db
+def test_diff_auto_selects_prior():
+    p = TradingProfile.objects.create(name="P", default_includes=["quotes"])
+    a, b = _snap(p, 100), _snap(p, 110)
+    r = APIClient().get(f"/api/snapshots/{b.id}/diff/")  # no ?against
+    assert r.status_code == 200
+    assert r.json()["prev_id"] == a.id and r.json()["curr_id"] == b.id
 
 
-def test_snapshot_diff_missing_against_400(db, two_snapshots) -> None:
-    _, curr = two_snapshots
-    client = APIClient()
-    resp = client.get(f"/api/snapshots/{curr.id}/diff/")
-    assert resp.status_code == 400
-
-
-def test_snapshot_diff_unknown_id_404(db, two_snapshots) -> None:
-    _, curr = two_snapshots
-    client = APIClient()
-    resp = client.get(f"/api/snapshots/{curr.id}/diff/?against=999999")
-    assert resp.status_code == 404
+@pytest.mark.django_db
+def test_diff_no_prior_returns_400():
+    p = TradingProfile.objects.create(name="P", default_includes=["quotes"])
+    only = _snap(p, 100)
+    r = APIClient().get(f"/api/snapshots/{only.id}/diff/")
+    assert r.status_code == 400 and r.json()["code"] == "no_prior"

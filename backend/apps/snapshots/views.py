@@ -127,19 +127,23 @@ class SnapshotViewSet(
     def diff(self, request, pk=None):
         """GET /api/snapshots/<id>/diff/?against=<other_id>
 
-        Returns {delta: <markdown>, prev_id, curr_id}. The caller chooses
-        which snapshot is 'prev' via the `against` query param; this
-        endpoint is direction-agnostic — it just diffs the two.
+        Returns {delta: <markdown>, prev_id, curr_id}. When `against` is
+        omitted, auto-selects the most-recent prior ready snapshot sharing
+        the same primary_ticker. Returns {code: no_prior} 400 when none.
         """
-        against_id = request.query_params.get("against")
-        if not against_id:
-            return Response({"code": "missing_against"}, status=400)
-        try:
-            prev = Snapshot.objects.prefetch_related("sections").get(id=against_id)
-            curr = Snapshot.objects.prefetch_related("sections").get(id=pk)
-        except Snapshot.DoesNotExist:
-            return Response({"code": "not_found"}, status=404)
+        from apps.snapshots.primary import previous_snapshot_for
 
+        curr = get_object_or_404(Snapshot.objects.prefetch_related("sections"), id=pk)
+        against_id = request.query_params.get("against")
+        if against_id:
+            try:
+                prev = Snapshot.objects.prefetch_related("sections").get(id=against_id)
+            except Snapshot.DoesNotExist:
+                return Response({"code": "not_found"}, status=404)
+        else:
+            prev = previous_snapshot_for(curr)
+            if prev is None:
+                return Response({"code": "no_prior"}, status=400)
         prev_sections = {s.kind: s.payload for s in prev.sections.all()}
         curr_sections = {s.kind: s.payload for s in curr.sections.all()}
         delta = diff_sections(prev_sections, curr_sections)
