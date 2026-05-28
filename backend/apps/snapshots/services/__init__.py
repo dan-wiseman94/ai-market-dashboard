@@ -13,7 +13,7 @@ from apps.market.services.chain import fetch_chain
 from apps.market.services.context import fetch_market_context
 from apps.market.services.events import upcoming_events
 from apps.market.services.news import fetch_news
-from apps.market.services.ohlc import fetch_ohlc
+from apps.market.services.ohlc import SESSION_TIMEFRAMES, fetch_ohlc, fetch_ohlc_session
 from apps.market.services.positions import fetch_positions
 from apps.market.services.quotes import fetch_quotes
 from apps.profiles.models import TradingProfile
@@ -81,11 +81,17 @@ def _fetch_ohlc_section(
     **_,
 ) -> dict:
     ticker = _pick_ticker(ohlc_ticker, watchlist_tickers)
+    # Intraday: send the whole session + 1h premarket so the AI sees the full day.
+    # Daily: keep the fixed bar count (a "session window" of daily bars is moot).
+    if ohlc_timeframe in SESSION_TIMEFRAMES:
+        bars = fetch_ohlc_session(ticker, timeframe=ohlc_timeframe)
+    else:
+        bars = fetch_ohlc(ticker, timeframe=ohlc_timeframe, bars=ohlc_bars)
     return {
         "data": {
             "ticker": ticker,
             "timeframe": ohlc_timeframe,
-            "bars": fetch_ohlc(ticker, timeframe=ohlc_timeframe, bars=ohlc_bars),
+            "bars": bars,
         }
     }
 

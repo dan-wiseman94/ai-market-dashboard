@@ -28,6 +28,7 @@ class SnapshotSerializer(serializers.ModelSerializer):
             "profile_id",
             "objective",
             "notes",
+            "manual_positions",
             "status",
             "includes",
             "source",

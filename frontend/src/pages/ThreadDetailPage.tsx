@@ -1,11 +1,18 @@
 import { useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { useSnapshot } from "@/hooks/useSnapshot";
-import { useCompareMessage, useSendMessage, useStopMessage, useThread } from "@/hooks/useThread";
+import {
+  useCompareMessage,
+  useRenameThread,
+  useSendMessage,
+  useStopMessage,
+  useThread,
+} from "@/hooks/useThread";
 import ThreadExportButton from "@/components/ThreadExportButton";
 import CompareDialog from "@/components/CompareDialog";
 import Conversation from "./thread-detail/Conversation";
 import Composer from "./thread-detail/Composer";
+import EditableTitle from "./thread-detail/EditableTitle";
 import FileAttach from "./thread-detail/FileAttach";
 import ThesisForm from "./thread-detail/ThesisForm";
 import JournalPanel from "./thread-detail/JournalPanel";
@@ -32,6 +39,7 @@ export default function ThreadDetailPage() {
   const send = useSendMessage(tid ?? 0);
   const compare = useCompareMessage(tid ?? 0);
   const stop = useStopMessage(tid ?? 0);
+  const rename = useRenameThread(tid ?? 0);
 
   if (!thread) {
     return (
@@ -78,12 +86,11 @@ export default function ThreadDetailPage() {
             ← Desk
           </Link>
         </div>
-        <h1
-          className="ledger-display"
-          style={{ fontSize: "clamp(1.5rem, 2.4vw, 2rem)" }}
-        >
-          {thread.title || <em className="italic text-copper-300">Untitled consultation</em>}
-        </h1>
+        <EditableTitle
+          title={thread.title}
+          onSave={(t) => rename.mutate(t)}
+          pending={rename.isPending}
+        />
       </header>
 
       {/* New thesis inline form */}

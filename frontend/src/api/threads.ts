@@ -1,4 +1,4 @@
-import { apiGet, apiPost } from "./client";
+import { apiGet, apiPatch, apiPost } from "./client";
 
 export type AiRun = {
   id: number; provider: string; model: string;
@@ -16,6 +16,8 @@ export type Message = {
   error: string;
   created_at: string;
   ai_run?: AiRun | null;
+  // Set on the synthetic snapshot turn (the pinned-snapshot user message).
+  snapshot_id?: number | null;
 };
 
 export type Thread = {
@@ -54,3 +56,6 @@ export const compareMessage = (threadId: number, text: string, branches: {provid
 
 export const stopMessage = (threadId: number, messageId: number) =>
   apiPost<{ ok: boolean }>(`/api/threads/${threadId}/stop/${messageId}/`);
+
+export const renameThread = (threadId: number, title: string) =>
+  apiPatch<Thread>(`/api/threads/${threadId}/`, { title });

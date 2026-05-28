@@ -51,6 +51,8 @@ def test_full_m5_capture_emits_all_sections():
         patch("apps.snapshots.services.render_chart_png", side_effect=fake_render),
         patch("apps.snapshots.services.fetch_quotes", return_value={"SPY": {"last": 521.3}}),
         patch("apps.snapshots.services.fetch_ohlc", return_value=[]),
+        # Intraday timeframe (5m) routes through the session-window fetcher.
+        patch("apps.snapshots.services.fetch_ohlc_session", return_value=[]),
         patch("apps.snapshots.services.fetch_positions", return_value=[]),
         patch("apps.snapshots.services.fetch_market_context", return_value={}),
     ):

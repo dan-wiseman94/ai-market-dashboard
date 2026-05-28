@@ -97,6 +97,31 @@ def test_auto_reply_without_snapshot_does_not_enqueue(api, django_capture_on_com
 
 
 @pytest.mark.django_db
+def test_patch_thread_renames_title(api):
+    p = TradingProfile.objects.create(name="P", style="x")
+    t = Thread.objects.create(kind="consult", profile=p, title="old")
+    resp = api.patch(f"/api/threads/{t.id}/", {"title": "renamed"}, format="json")
+    assert resp.status_code == 200
+    assert resp.json()["title"] == "renamed"
+    t.refresh_from_db()
+    assert t.title == "renamed"
+
+
+@pytest.mark.django_db
+def test_patch_thread_ignores_readonly_kind(api):
+    """Only title is mutable; kind/pinned_snapshot are locked on update."""
+    p = TradingProfile.objects.create(name="P", style="x")
+    t = Thread.objects.create(kind="consult", profile=p, title="x")
+    resp = api.patch(
+        f"/api/threads/{t.id}/", {"title": "y", "kind": "chat"}, format="json"
+    )
+    assert resp.status_code == 200
+    t.refresh_from_db()
+    assert t.title == "y"
+    assert t.kind == "consult"  # unchanged
+
+
+@pytest.mark.django_db
 def test_send_message_enqueues_ai_run(api):
     p = TradingProfile.objects.create(name="P", style="x")
     t = Thread.objects.create(kind="consult", profile=p, title="x")

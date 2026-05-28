@@ -32,7 +32,10 @@ export default function Conversation({
           const active = children.find((c) => c.id === activeId) ?? children[0];
           return (
             <div key={m.id} data-testid={`message-${m.id}`} className="space-y-4">
-              <StreamingMessage role="user" text={m.text} status={m.status} />
+              <StreamingMessage
+                role="user" text={m.text} status={m.status}
+                snapshotId={m.snapshot_id ?? null}
+              />
               {children.length > 0 && (
                 <div className="ledger-surface overflow-hidden">
                   <BranchGroup

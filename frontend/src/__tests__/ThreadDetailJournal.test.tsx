@@ -44,6 +44,11 @@ vi.mock("@/hooks/useThread", () => ({
     mutateAsync: vi.fn(),
     isPending: false,
   })),
+  useRenameThread: vi.fn(() => ({
+    mutate: vi.fn(),
+    mutateAsync: vi.fn(),
+    isPending: false,
+  })),
 }));
 
 vi.mock("@/hooks/useSnapshot", () => ({
