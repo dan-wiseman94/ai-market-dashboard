@@ -83,6 +83,7 @@ class Notification(models.Model):
         ("cost_limit", "Cost limit"),
         ("backup", "Backup"),
         ("postmortem", "Post-mortem"),
+        ("briefing", "Briefing"),
     ]
 
     # Nullable for v1 (no user-auth surface yet). When auth lands, backfill or
