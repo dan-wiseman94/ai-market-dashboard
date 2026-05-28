@@ -1,0 +1,146 @@
+"""Calibration scorecard: thesis conviction-vs-outcome + provider hit-rate.
+
+On-demand aggregation over PostMortem ⋈ Thesis (and Thesis → source thread →
+AIRun.provider). No AI key, no scheduled task — like the other analytics.
+"""
+
+from __future__ import annotations
+
+from datetime import datetime
+
+VALID_HORIZONS = (7, 30, 90)
+_DECISIVE = ("correct", "incorrect")
+_ALL_VERDICTS = ("correct", "incorrect", "mixed", "inconclusive")
+
+
+def _prob_for_conviction(conviction: int) -> float:
+    """Linear map conviction 1..5 -> implied probability 0.5..0.9 (documented, returned in payload)."""
+    c = max(1, min(5, int(conviction)))
+    return round(0.5 + (c - 1) / 4 * 0.4, 4)
+
+
+PROB_MAP = {c: _prob_for_conviction(c) for c in range(1, 6)}
+
+
+def _hit_rate(correct: int, incorrect: int) -> float | None:
+    den = correct + incorrect
+    return round(correct / den, 4) if den else None
+
+
+def _thesis_section(rows: list[tuple[int, str, str, float | None]]) -> dict:
+    buckets = {
+        c: {
+            "conviction": c,
+            "n": 0,
+            "correct": 0,
+            "incorrect": 0,
+            "mixed": 0,
+            "inconclusive": 0,
+            "hit_rate": None,
+        }
+        for c in range(1, 6)
+    }
+    by_dir: dict[str, dict] = {}
+    tot = {"scored": 0, "correct": 0, "incorrect": 0, "mixed": 0, "inconclusive": 0}
+    brier_terms: list[float] = []
+    ret_sum, ret_n = 0.0, 0
+
+    for conviction, direction, verdict, fwd in rows:
+        c = max(1, min(5, int(conviction)))
+        b = buckets[c]
+        b["n"] += 1
+        tot["scored"] += 1
+        if verdict in _ALL_VERDICTS:
+            b[verdict] += 1
+            tot[verdict] += 1
+        d = by_dir.setdefault(direction, {"n": 0, "correct": 0, "incorrect": 0})
+        d["n"] += 1
+        if verdict in _DECISIVE:
+            d[verdict] += 1
+            o = 1.0 if verdict == "correct" else 0.0
+            brier_terms.append((_prob_for_conviction(c) - o) ** 2)
+        if fwd is not None:
+            ret_sum += float(fwd)
+            ret_n += 1
+
+    for b in buckets.values():
+        b["hit_rate"] = _hit_rate(b["correct"], b["incorrect"])
+
+    return {
+        "buckets": [buckets[c] for c in range(1, 6)],
+        "brier": round(sum(brier_terms) / len(brier_terms), 4) if brier_terms else None,
+        "prob_map": PROB_MAP,
+        "overall": {
+            "scored": tot["scored"],
+            "hit_rate": _hit_rate(tot["correct"], tot["incorrect"]),
+            "correct": tot["correct"],
+            "incorrect": tot["incorrect"],
+            "mixed": tot["mixed"],
+            "inconclusive": tot["inconclusive"],
+            "avg_forward_return_pct": round(ret_sum / ret_n, 4) if ret_n else None,
+        },
+        "by_direction": {
+            d: {"n": v["n"], "hit_rate": _hit_rate(v["correct"], v["incorrect"])}
+            for d, v in by_dir.items()
+        },
+    }
+
+
+def _provider_section(pms) -> tuple[list[dict], int]:
+    from apps.threads.models import AIRun
+
+    agg: dict[tuple[str, str], dict] = {}
+    attributable = 0
+    for pm in pms:
+        thread_id = pm.thesis.thread_id
+        if not thread_id:
+            continue
+        pairs = list(
+            AIRun.objects.filter(message__thread_id=thread_id, status="done")
+            .values_list("provider", "model")
+            .distinct()
+        )
+        if not pairs:
+            continue
+        attributable += 1
+        for provider, model in pairs:
+            a = agg.setdefault(
+                (provider, model),
+                {"provider": provider, "model": model, "n": 0, "correct": 0, "incorrect": 0},
+            )
+            a["n"] += 1
+            if pm.verdict in _DECISIVE:
+                a[pm.verdict] += 1
+    rows = []
+    for a in agg.values():
+        a["hit_rate"] = _hit_rate(a["correct"], a["incorrect"])
+        rows.append(a)
+    rows.sort(key=lambda r: r["n"], reverse=True)
+    return rows, attributable
+
+
+def calibration(*, start: datetime, end: datetime, horizon: int = 30) -> dict:
+    from apps.thesis.models import PostMortem
+
+    horizon = horizon if horizon in VALID_HORIZONS else 30
+    pms = list(
+        PostMortem.objects.filter(
+            status="done",
+            horizon_days=horizon,
+            completed_at__gte=start,
+            completed_at__lt=end,
+            forward_return_pct__isnull=False,
+        ).select_related("thesis")
+    )
+    thesis_rows = [
+        (pm.thesis.conviction, pm.thesis.direction, pm.verdict, pm.forward_return_pct) for pm in pms
+    ]
+    thesis = _thesis_section(thesis_rows)
+    provider, attributable = _provider_section(pms)
+    return {
+        "horizon": horizon,
+        "scored": thesis["overall"]["scored"],
+        "attributable": attributable,
+        "thesis": thesis,
+        "provider": provider,
+    }
