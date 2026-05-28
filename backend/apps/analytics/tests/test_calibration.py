@@ -103,7 +103,7 @@ def test_provider_attribution_via_source_thread(profile):
     AIRun.objects.create(
         message=msg,
         provider="claude",
-        model="claude-opus-4-7",
+        model="claude-opus-4-8",
         cost_usd=Decimal("0.1"),
         latency_ms=1000,
         status="done",

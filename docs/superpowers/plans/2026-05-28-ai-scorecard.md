@@ -125,7 +125,7 @@ def test_mixed_inconclusive_counted_but_excluded_from_hitrate(profile):
 def test_provider_attribution_via_source_thread(profile):
     thread = Thread.objects.create(kind="consult", profile=profile)
     msg = Message.objects.create(thread=thread, role="assistant", content={"text": ""}, status="done")
-    AIRun.objects.create(message=msg, provider="claude", model="claude-opus-4-7",
+    AIRun.objects.create(message=msg, provider="claude", model="claude-opus-4-8",
                          cost_usd=Decimal("0.1"), latency_ms=1000, status="done")
     _pm(_thesis(5, thread=thread), horizon=30, verdict="correct", fwd=7.0)
     out = calibration(start=WIN[0], end=WIN[1], horizon=30)
@@ -643,7 +643,7 @@ describe("ScorecardPage", () => {
 
   it("renders buckets + provider rows when populated", () => {
     mock({ horizon: 30, scored: 2, attributable: 1,
-      provider: [{ provider: "claude", model: "claude-opus-4-7", n: 1, correct: 1, incorrect: 0, hit_rate: 1 }],
+      provider: [{ provider: "claude", model: "claude-opus-4-8", n: 1, correct: 1, incorrect: 0, hit_rate: 1 }],
       thesis: { brier: 0.12, prob_map: {},
         overall: { scored: 2, hit_rate: 0.5, correct: 1, incorrect: 1, mixed: 0, inconclusive: 0, avg_forward_return_pct: 3 },
         by_direction: {},

@@ -29,7 +29,7 @@ def _run(profile, *, cost: str, at: datetime, snap: Snapshot | None = None):
     r = AIRun.objects.create(
         message=m,
         provider="claude",
-        model="claude-opus-4-7",
+        model="claude-opus-4-8",
         cost_usd=Decimal(cost),
         status="done",
     )

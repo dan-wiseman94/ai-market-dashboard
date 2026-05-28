@@ -43,7 +43,7 @@ export const AssistantWithCost: Story = {
   args: {
     role: "assistant",
     provider: "claude",
-    model: "claude-opus-4-7",
+    model: "claude-opus-4-8",
     status: "done",
     cost: "0.0123",
     text: "Breadth is **firming**: advancers lead 2:1 while the index treads water.",

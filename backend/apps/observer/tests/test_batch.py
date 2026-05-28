@@ -17,7 +17,7 @@ def provider_cfg(db) -> ProviderConfig:
     cfg = ProviderConfig.objects.create(
         provider="claude",
         enabled=True,
-        default_model="claude-opus-4-7",
+        default_model="claude-opus-4-8",
     )
     cfg.api_key = "sk-test"
     cfg.save()

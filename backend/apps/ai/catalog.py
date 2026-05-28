@@ -27,8 +27,8 @@ class ModelInfo:
 _CATALOG: list[ModelInfo] = [
     ModelInfo(
         provider="claude",
-        id="claude-opus-4-7",
-        name="Claude Opus 4.7",
+        id="claude-opus-4-8",
+        name="Claude Opus 4.8",
         input_per_mtok=15.00,
         output_per_mtok=75.00,
         cached_per_mtok=1.875,

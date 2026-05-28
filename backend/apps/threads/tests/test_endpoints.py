@@ -112,9 +112,7 @@ def test_patch_thread_ignores_readonly_kind(api):
     """Only title is mutable; kind/pinned_snapshot are locked on update."""
     p = TradingProfile.objects.create(name="P", style="x")
     t = Thread.objects.create(kind="consult", profile=p, title="x")
-    resp = api.patch(
-        f"/api/threads/{t.id}/", {"title": "y", "kind": "chat"}, format="json"
-    )
+    resp = api.patch(f"/api/threads/{t.id}/", {"title": "y", "kind": "chat"}, format="json")
     assert resp.status_code == 200
     t.refresh_from_db()
     assert t.title == "y"

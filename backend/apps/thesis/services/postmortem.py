@@ -148,7 +148,7 @@ def _attempt_ai_narrative(
     model_id = (
         (thesis.profile.default_model if thesis.profile else "")
         or cfg.default_model
-        or "claude-opus-4-7"
+        or "claude-opus-4-8"
     )
     system = thesis.profile.style if thesis.profile else ""
     prompt = _build_prompt(thesis, pm, fwd, path)

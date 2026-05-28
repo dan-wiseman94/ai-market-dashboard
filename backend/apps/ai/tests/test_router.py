@@ -36,9 +36,9 @@ def test_override_wins_over_profile():
     resolved = resolve_provider_and_model(
         thread=t,
         message=None,
-        override={"provider": "claude", "model": "claude-opus-4-7"},
+        override={"provider": "claude", "model": "claude-opus-4-8"},
     )
-    assert resolved == ("claude", "claude-opus-4-7")
+    assert resolved == ("claude", "claude-opus-4-8")
 
 
 @pytest.mark.django_db
