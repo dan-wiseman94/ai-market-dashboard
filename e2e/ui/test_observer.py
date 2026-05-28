@@ -24,27 +24,26 @@ def test_create_schedule_and_run_now(page, frontend_base_url, observer) -> None:
 
 @pytest.mark.integration
 @pytest.mark.ui
-@pytest.mark.xfail(
-    reason=(
-        "GAP: SchedulesPage (frontend/src/pages/SchedulesPage.tsx) has no Pause/Resume button — "
-        "enabled state is toggled via a checkbox, not a button labelled 'Pause'/'Resume'. "
-        "The SchedulesPage POM's pause_btn()/pause() target a non-existent affordance."
-    ),
-    strict=False,
-)
 def test_schedule_pause_resume(page, frontend_base_url, observer) -> None:
+    """Pause/resume a schedule via its 'enabled' checkbox; the change persists."""
     from apps.observer.models import ObserverSchedule
 
     sched = ObserverSchedule.objects.get(name="E2E active schedule")
     s = SchedulesPage(page, frontend_base_url)
     s.go()
     s.expect_error_boundary_absent()
-    expect(s.pause_btn(sched.id)).to_be_visible(timeout=10_000)
-    s.pause(sched.id)
-    # Pausing flips the control to a Resume affordance.
-    expect(s.schedule_row(sched.id).get_by_role("button", name="Resume")).to_be_visible(
-        timeout=10_000
-    )
+    cb = s.enabled_checkbox(sched.id)
+    expect(cb).to_be_checked(timeout=10_000)
+    # Pause = uncheck → persisted to the backend.
+    s.set_enabled(sched.id, False)
+    expect(cb).not_to_be_checked(timeout=10_000)
+    sched.refresh_from_db()
+    assert sched.enabled is False
+    # Resume = re-check.
+    s.set_enabled(sched.id, True)
+    expect(cb).to_be_checked(timeout=10_000)
+    sched.refresh_from_db()
+    assert sched.enabled is True
 
 
 @pytest.mark.integration
