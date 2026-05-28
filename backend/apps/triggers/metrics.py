@@ -6,6 +6,7 @@ The evaluator is pure and consumes whatever dict we return here.
 
 from __future__ import annotations
 
+import contextlib
 import logging
 import statistics
 import time
@@ -15,8 +16,11 @@ from typing import cast
 import redis
 from django.conf import settings
 
+from apps.market.services.ohlc import fetch_ohlc
 from apps.market.services.positions import fetch_positions
 from apps.market.services.quotes import fetch_quotes
+from apps.triggers import indicators as ind
+from apps.triggers.dsl import DAILY_ONLY_METRICS, INDICATOR_METRICS, PARAMS_SPEC
 from apps.triggers.evaluator import CROSSING_OPS, MetricsSnapshot, iter_leaves, leaf_key
 from apps.triggers.models import EventTrigger
 
@@ -25,6 +29,95 @@ log = logging.getLogger(__name__)
 _WINDOW_SECONDS = {"1m": 60, "5m": 300, "15m": 900, "1h": 3600, "1d": 86400}
 _VOL_SAMPLES = 30  # rolling baseline length for volume_z
 _VOL_MIN_SAMPLES = 3  # intervals needed before a z-score is meaningful
+_OHLC_MAX_TTL = 3600  # daily bars barely move intraday
+
+
+def _resolved_params(leaf: dict) -> dict:
+    spec = PARAMS_SPEC.get(leaf["metric"], {})
+    p = dict(leaf.get("params") or {})
+    for k, (_t, default, *_r) in spec.items():
+        p.setdefault(k, default)
+    return p
+
+
+def _bars_needed(leaves: list[dict]) -> int:
+    need = 30
+    for lf in leaves:
+        pr = _resolved_params(lf)
+        need = max(
+            need,
+            pr.get("period", 0) + 1,
+            pr.get("slow", 0) + 1,
+            252 if lf["metric"].startswith("dist_from_52w") else 0,
+        )
+    return min(need + 5, 500)
+
+
+def _read_redis_str(r: redis.Redis, key: str) -> str | None:
+    try:
+        raw = r.get(key)
+    except Exception as exc:
+        log.warning("trigger.metrics.redis_get_failed key=%s: %s", key, exc)
+        return None
+    if raw is None:
+        return None
+    if isinstance(raw, bytes):
+        return raw.decode()
+    return str(raw)
+
+
+def _ohlc_history(r: redis.Redis, ticker: str, timeframe: str, bars: int) -> list[dict]:
+    import json
+
+    key = f"trigger:ohlc:{ticker}:{timeframe}:{bars}"
+    cached = _read_redis_str(r, key)
+    if cached:
+        try:
+            return json.loads(cached)
+        except ValueError:
+            pass
+    try:
+        data = fetch_ohlc(ticker, timeframe=timeframe, bars=bars)
+    except Exception as exc:
+        log.warning("trigger.metrics.ohlc_failed %s/%s: %s", ticker, timeframe, exc)
+        return []
+    ttl = min(_WINDOW_SECONDS.get(timeframe, 60), _OHLC_MAX_TTL)
+    with contextlib.suppress(Exception):
+        r.setex(key, ttl, json.dumps(data))
+    return data
+
+
+def _indicator_value(
+    metric: str,
+    params: dict,
+    closes: list[float],
+    bars: list[dict],
+    last: float | None,
+) -> float | None:
+    if last is None and metric not in ("rsi", "sma_spread_pct"):
+        return None
+    if metric == "rsi":
+        return ind.rsi(closes, params["period"])
+    if metric == "sma_spread_pct":
+        return ind.sma_spread_pct(closes, fast=params["fast"], slow=params["slow"])
+    if last is None:
+        return None
+    if metric == "atr_pct":
+        return ind.atr_pct(bars, period=params["period"], last=last)
+    if metric == "dist_from_sma_pct":
+        return ind.dist_from_sma_pct(closes, period=params["period"], last=last)
+    if metric == "dist_from_52w_high":
+        return ind.dist_from_high([float(b["high"]) for b in bars], last=last)
+    if metric == "dist_from_52w_low":
+        return ind.dist_from_low([float(b["low"]) for b in bars], last=last)
+    if metric == "gap_pct":
+        if len(bars) < 2:
+            return None
+        return ind.gap_pct(
+            today_open=float(bars[-1]["open"]),
+            prev_close=float(bars[-2]["close"]),
+        )
+    return None
 
 
 def _redis() -> redis.Redis:
@@ -116,6 +209,23 @@ def build_snapshot(triggers: Iterable[EventTrigger]) -> MetricsSnapshot:
             assert ticker is not None
             snapshot[key] = earnings_days.get(ticker.upper())
 
+        elif metric in INDICATOR_METRICS:
+            assert ticker is not None
+            tf = "1d" if metric in DAILY_ONLY_METRICS else window
+            params = _resolved_params(leaf)
+            resolved_key = leaf_key({**leaf, "params": params})
+            if resolved_key not in snapshot:
+                history = _ohlc_history(r, ticker, tf, _bars_needed([leaf]))
+                closes = [float(b["close"]) for b in history if b.get("close") is not None]
+                last = _extract_last(quotes.get(ticker)) or (closes[-1] if closes else None)
+                value = _indicator_value(metric, params, closes, history, last)
+                snapshot[resolved_key] = value
+                if op in CROSSING_OPS:
+                    last_key = f"trigger:last:{resolved_key}"
+                    snapshot[f"_prior:{resolved_key}"] = _read_redis_float(r, last_key)
+                    if value is not None:
+                        r.setex(last_key, _OHLC_MAX_TTL, str(value))
+
     try:
         r.setex("trigger:last_tick_at", 120, str(int(time.time())))
     except Exception as exc:
@@ -153,7 +263,8 @@ def _ticker_union(leaves: list[dict]) -> set[str]:
     return {
         leaf["ticker"]
         for leaf in leaves
-        if leaf.get("ticker") and leaf["metric"] in ("price", "pct_change", "volume_z")
+        if leaf.get("ticker")
+        and leaf["metric"] in {"price", "pct_change", "volume_z"} | INDICATOR_METRICS
     }
 
 
