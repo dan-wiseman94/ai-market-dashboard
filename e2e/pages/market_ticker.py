@@ -13,10 +13,16 @@ class MarketTickerPage(BasePage):
 
     @property
     def ohlc_chart(self) -> Locator:
-        # The market ticker page renders a chart container div below the ticker heading.
-        # The chart element itself has no test-id; the container is identified by its
-        # fixed height (400px) style — we use the h1 heading as the presence indicator.
-        return self.page.locator("h1")
+        # Chart.tsx renders <div id="chart-root"> (also the headless-capture target).
+        return self.page.locator("#chart-root")
+
+    @property
+    def chain_heading(self) -> Locator:
+        return self.page.get_by_role("heading", name="Option chain")
+
+    @property
+    def news_heading(self) -> Locator:
+        return self.page.get_by_role("heading", name="News")
 
     @property
     def news_list(self) -> Locator:

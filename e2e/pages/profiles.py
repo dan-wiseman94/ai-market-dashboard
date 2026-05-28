@@ -1,4 +1,10 @@
-"""Profiles page — /profiles."""
+"""Profiles page — /profiles.
+
+The /profiles create form exposes only name, trading style, and default
+provider. The per-profile capability flags (enable_tools / enable_memory /
+thinking_budget) exist on the model but are NOT editable here — see the xfail
+test in test_profiles.py and the Phase-2 gap report.
+"""
 
 from __future__ import annotations
 
@@ -17,35 +23,19 @@ class ProfilesPage(BasePage):
         return self.page.get_by_test_id(f"profile-row-{name}")
 
     @property
-    def tools_toggle(self) -> Locator:
-        return self.page.get_by_label("Enable tools")
+    def name_input(self) -> Locator:
+        return self.page.get_by_placeholder("Profile name")
 
     @property
-    def thinking_budget(self) -> Locator:
-        return self.page.get_by_label("Thinking budget")
+    def style_input(self) -> Locator:
+        return self.page.get_by_placeholder("Trading style (used as system prompt)")
 
     @property
-    def memory_toggle(self) -> Locator:
-        return self.page.get_by_label("Enable memory")
+    def create_btn(self) -> Locator:
+        return self.page.get_by_role("button", name="Create")
 
-    def create(
-        self,
-        *,
-        name: str,
-        enable_tools: bool = False,
-        thinking_budget: int | None = None,
-        enable_memory: bool = False,
-    ) -> None:
-        # The profile form is always visible (no modal/dialog).
-        # Name is filled via placeholder — the UI has no aria-label for the name field.
-        # Style (system prompt) is required by the API even though the textarea looks optional.
-        # enable_tools / thinking_budget / enable_memory are not exposed in the current UI form.
-        self.page.get_by_placeholder("Profile name").fill(name)
-        self.page.get_by_placeholder("Trading style (used as system prompt)").fill("E2E test style")
-        # Submit the profile form (first form on the page).
-        self.page.get_by_role("button", name="Create").click()
-
-    def toggle_active(self, name: str) -> None:
-        # The profiles list has no "Activate" button in the current UI;
-        # profiles are always active by default. This method is a no-op placeholder.
-        pass
+    def create(self, name: str, style: str = "E2E test style") -> None:
+        # Style is required by the API even though the textarea looks optional.
+        self.name_input.fill(name)
+        self.style_input.fill(style)
+        self.create_btn.click()

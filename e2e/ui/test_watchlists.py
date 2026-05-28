@@ -13,11 +13,16 @@ from e2e.pages.watchlists import WatchlistsPage
 @pytest.mark.integration
 @pytest.mark.ui
 def test_watchlists_list_and_create(page, frontend_base_url, market) -> None:
+    import uuid
+
+    # Unique name: the e2e DB is shared and not rolled back, so a fixed name
+    # would collide with a prior run (duplicate-name create is a no-op).
+    name = f"E2E WL {uuid.uuid4().hex[:8]}"
     w = WatchlistsPage(page, frontend_base_url)
     w.go()
     w.expect_error_boundary_absent()
-    w.create("E2E Created WL")
-    expect(w.list_item("E2E Created WL")).to_be_visible(timeout=10_000)
+    w.create(name)
+    expect(w.list_item(name)).to_be_visible(timeout=10_000)
 
 
 @pytest.mark.integration
@@ -29,8 +34,11 @@ def test_watchlist_detail_add_remove_ticker(page, frontend_base_url, market) -> 
     d = WatchlistDetailPage(page, frontend_base_url)
     d.go(wl.id)
     d.expect_error_boundary_absent()
-    # The detail page shows the watchlist's name as a heading.
-    expect(page.get_by_role("heading", name="E2E Core")).to_be_visible(timeout=10_000)
+    # Add a ticker → its row appears; remove it → the row goes away.
+    d.add("NVDA")
+    expect(d.ticker_row("NVDA")).to_be_visible(timeout=10_000)
+    d.remove("NVDA")
+    expect(d.ticker_row("NVDA")).to_have_count(0, timeout=10_000)
 
 
 @pytest.mark.integration
@@ -39,4 +47,7 @@ def test_market_ticker_page_renders_ohlc_and_news(page, frontend_base_url, marke
     m = MarketTickerPage(page, frontend_base_url)
     m.go("AAPL")
     m.expect_error_boundary_absent()
+    # The ticker page renders its chart root plus the Option chain and News sections.
     expect(m.ohlc_chart).to_be_visible(timeout=10_000)
+    expect(m.chain_heading).to_be_visible()
+    expect(m.news_heading).to_be_visible()
