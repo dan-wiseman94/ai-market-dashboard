@@ -17,7 +17,7 @@ from apps.market.services.ohlc import fetch_ohlc
 from apps.market.services.positions import fetch_positions
 from apps.market.services.quotes import fetch_quotes
 from apps.profiles.models import TradingProfile
-from apps.snapshots.models import Snapshot, SnapshotSection
+from apps.snapshots.models import Snapshot, SnapshotImage, SnapshotSection
 from apps.snapshots.services.render import render_chart_png
 from apps.snapshots.token_budget import estimate_tokens
 
@@ -124,6 +124,40 @@ def _broadcast(snapshot_id: int, payload: dict) -> None:
     group_broadcast(f"snapshot.{snapshot_id}", "snapshot_event", payload)
 
 
+def _attach_client_captures(snap: Snapshot) -> bool:
+    """Merge staged client-capture screenshots into the snapshot's ``image`` section.
+
+    Client uploads are FK-attached to the Snapshot by ``SnapshotViewSet.create``
+    but never enter ``payload["image_ids"]`` — the only ids the AI-delivery path
+    (``apps.threads._request._snapshot_image_ids``) and the markdown serializer
+    (``_render_image``) read. Without this merge, server-rendered charts were
+    delivered while user screenshots were silently dropped (M5 design intends
+    both). The ``image`` section may not exist yet — the composer does not add
+    ``"image"`` to ``includes`` just because a screenshot was staged — so create
+    it when needed. Returns True when any client capture was attached.
+    """
+    client_ids = list(
+        SnapshotImage.objects.filter(snapshot=snap, kind="client_capture")
+        .order_by("id")
+        .values_list("id", flat=True)
+    )
+    if not client_ids:
+        return False
+    section, _ = SnapshotSection.objects.get_or_create(
+        snapshot=snap, kind="image", defaults={"status": "done", "payload": {}}
+    )
+    existing = list((section.payload or {}).get("image_ids") or [])
+    section.payload = {
+        **(section.payload or {}),
+        "image_ids": existing + [i for i in client_ids if i not in existing],
+    }
+    # A staged screenshot is deliverable even if the server render failed.
+    section.status = "done"
+    section.error = ""
+    section.save(update_fields=["payload", "status", "error"])
+    return True
+
+
 def capture_for_existing(
     snap: Snapshot,
     *,
@@ -170,9 +204,13 @@ def capture_for_existing(
             section.save()
             _broadcast(snap.id, {"event": "section_failed", "kind": kind, "error": section.error})
 
+    # Staged client screenshots are FK-attached pre-capture; fold them into the
+    # image section so they actually reach the AI (not just the server render).
+    attached_client_images = _attach_client_captures(snap)
+
     reps = _representative_tickers(snap, list(watchlist_tickers), ohlc_ticker)
     snap.market_state = _build_market_state(reps)
-    snap.status = "ready" if ok_count > 0 else "failed"
+    snap.status = "ready" if (ok_count > 0 or attached_client_images) else "failed"
     snap.save()
     _broadcast(snap.id, {"event": snap.status, "snapshot_id": snap.id})
     return snap
