@@ -36,15 +36,16 @@ class ProfilesPage(BasePage):
         thinking_budget: int | None = None,
         enable_memory: bool = False,
     ) -> None:
-        self.page.get_by_role("button", name="New profile").click()
-        self.page.get_by_label("Name").fill(name)
-        if enable_tools:
-            self.tools_toggle.check()
-        if thinking_budget is not None:
-            self.thinking_budget.fill(str(thinking_budget))
-        if enable_memory:
-            self.memory_toggle.check()
-        self.page.get_by_role("button", name="Save").click()
+        # The profile form is always visible (no modal/dialog).
+        # Name is filled via placeholder — the UI has no aria-label for the name field.
+        # Style (system prompt) is required by the API even though the textarea looks optional.
+        # enable_tools / thinking_budget / enable_memory are not exposed in the current UI form.
+        self.page.get_by_placeholder("Profile name").fill(name)
+        self.page.get_by_placeholder("Trading style (used as system prompt)").fill("E2E test style")
+        # Submit the profile form (first form on the page).
+        self.page.get_by_role("button", name="Create").click()
 
     def toggle_active(self, name: str) -> None:
-        self.row(name).get_by_role("button", name="Activate").click()
+        # The profiles list has no "Activate" button in the current UI;
+        # profiles are always active by default. This method is a no-op placeholder.
+        pass
