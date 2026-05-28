@@ -96,3 +96,39 @@ class CalendarOverride(models.Model):
         result = super().delete(*args, **kwargs)
         clear_resolution_cache()
         return result
+
+
+class MarketEvent(models.Model):
+    """A scheduled market catalyst — per-ticker earnings or curated US macro. Deduped on (source, external_id)."""
+
+    KINDS: ClassVar = [
+        ("earnings", "earnings"),
+        ("fomc", "fomc"),
+        ("cpi", "cpi"),
+        ("nfp", "nfp"),
+        ("pce", "pce"),
+        ("gdp", "gdp"),
+    ]
+    source = models.CharField(max_length=16)  # "finnhub" | "seed"
+    external_id = models.CharField(max_length=80, db_index=True)
+    kind = models.CharField(max_length=16, choices=KINDS)
+    ticker = models.CharField(max_length=16, blank=True, default="", db_index=True)
+    title = models.CharField(max_length=200)
+    event_time = models.DateTimeField(db_index=True)
+    when_hint = models.CharField(max_length=8, blank=True, default="")  # bmo|amc|""
+    impact = models.CharField(max_length=8, blank=True, default="")  # high|medium|low
+    detail = models.JSONField(default=dict)
+    fetched_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints: ClassVar = [
+            models.UniqueConstraint(fields=["source", "external_id"], name="uniq_event_source_id"),
+        ]
+        indexes: ClassVar = [
+            models.Index(fields=["ticker", "event_time"]),
+            models.Index(fields=["kind", "event_time"]),
+            models.Index(fields=["event_time"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"MarketEvent({self.kind}, {self.ticker or '-'}, {self.event_time:%Y-%m-%d})"

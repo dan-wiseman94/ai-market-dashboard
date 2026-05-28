@@ -6,6 +6,7 @@ const SECTIONS = [
   { key: "notes", label: "My notes" },
   { key: "chain", label: "Option chain" },
   { key: "news", label: "News" },
+  { key: "events", label: "Upcoming events" },
   { key: "image", label: "Charts (server-render)" },
 ];
 

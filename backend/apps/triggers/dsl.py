@@ -10,11 +10,20 @@ from typing import Any
 
 from django.core.exceptions import ValidationError
 
-VALID_METRICS = {"price", "pct_change", "volume_z", "vix", "position_pl", "position_pl_pct"}
+VALID_METRICS = {
+    "price",
+    "pct_change",
+    "volume_z",
+    "vix",
+    "position_pl",
+    "position_pl_pct",
+    "days_to_earnings",
+}
 VALID_OPS = {">", ">=", "<", "<=", "==", "crosses_above", "crosses_below"}
 VALID_WINDOWS = {"1m", "5m", "15m", "1h", "1d"}
-TICKER_REQUIRED = {"price", "pct_change", "volume_z"}
+TICKER_REQUIRED = {"price", "pct_change", "volume_z", "days_to_earnings"}
 WINDOW_REQUIRED = {"pct_change", "volume_z"}
+NON_CROSSING_METRICS = {"days_to_earnings"}
 LEAF_KEYS = {"metric", "ticker", "op", "value", "window"}
 
 
@@ -59,6 +68,8 @@ def validate_condition(node: Any, *, path: str = "") -> None:
     value = node.get("value")
     if not isinstance(value, int | float) or isinstance(value, bool):
         raise ValidationError(f"{path}.value: must be a number")
+    if metric in NON_CROSSING_METRICS and op in ("crosses_above", "crosses_below"):
+        raise ValidationError(f"{path}.op: crossing ops not supported for metric {metric!r}")
     if metric in TICKER_REQUIRED:
         ticker = node.get("ticker")
         if not isinstance(ticker, str) or not ticker:

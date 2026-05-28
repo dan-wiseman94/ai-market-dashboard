@@ -30,4 +30,7 @@ def _format_one(key: str, value: float) -> str:
     if key == "position_pl_pct":
         sign = "+" if value >= 0 else ""
         return f"position_pl {sign}{value * 100:.2f}%"
+    if key.startswith("days_to_earnings:"):
+        _, ticker = key.split(":", 1)
+        return f"{ticker} earnings in {int(value)}d"
     return f"{key}={value}"

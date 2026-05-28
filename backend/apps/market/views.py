@@ -12,6 +12,7 @@ from apps.market.schwab_client import SchwabNotConnectedError
 from apps.market.serializers import CalendarOverrideSerializer
 from apps.market.services.chain import fetch_chain
 from apps.market.services.context import fetch_market_context
+from apps.market.services.events import upcoming_events
 from apps.market.services.news import fetch_news
 from apps.market.services.ohlc import fetch_ohlc
 from apps.market.services.positions import fetch_positions
@@ -91,6 +92,18 @@ def news(request: HttpRequest) -> JsonResponse:
     except ValueError:
         return _err("invalid_lookback", "lookback must be int hours", 400)
     return JsonResponse({"items": fetch_news(tickers, lookback_hours=lookback)})
+
+
+@require_GET
+def events(request: HttpRequest) -> JsonResponse:
+    raw = request.GET.get("tickers", "").strip()
+    tickers = [t.strip() for t in raw.split(",") if t.strip()]
+    try:
+        within = int(request.GET.get("within_days", "14"))
+    except ValueError:
+        return _err("invalid_within_days", "within_days must be an integer", 400)
+    include_macro = request.GET.get("include_macro", "true").lower() != "false"
+    return JsonResponse(upcoming_events(tickers, within_days=within, include_macro=include_macro))
 
 
 class CalendarOverrideViewSet(viewsets.ModelViewSet):

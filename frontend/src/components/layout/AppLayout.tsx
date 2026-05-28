@@ -33,6 +33,7 @@ function useDefaultCommands(): Command[] {
         run: () => nav("/analytics") },
       { id: "go-theses", label: "Go to Theses", keywords: "thesis decision call",
         run: () => nav("/theses") },
+      { id: "go-events", label: "Go to Events", keywords: "earnings calendar fomc cpi macro", run: () => nav("/events") },
       { id: "toggle-theme", label: "Toggle theme", keywords: "light dark system appearance mode",
         run: cycle },
     ],
