@@ -34,7 +34,12 @@ export default function BriefingPage() {
     );
   }
 
-  const d = briefing.data;
+  const d = briefing.data ?? ({} as Partial<typeof briefing.data>);
+  const theses = d.theses ?? [];
+  const events = d.events ?? { earnings: [], macro: [] };
+  const triggers = d.triggers ?? [];
+  const news = d.news ?? [];
+  const market = d.market ?? {};
 
   return (
     <main className="max-w-4xl mx-auto p-6 space-y-8 ledger-fade-in">
@@ -54,6 +59,9 @@ export default function BriefingPage() {
             {run.isPending ? "Running…" : "Run now"}
           </button>
         </div>
+        {briefing.status === "failed" && (
+          <p className="mt-2 text-sm text-rose-700 dark:text-rose-400">Last briefing failed to assemble. Try "Run now".</p>
+        )}
       </header>
 
       <section className="rounded border border-rule p-4">
@@ -76,7 +84,7 @@ export default function BriefingPage() {
           <h2 className="ledger-eyebrow">Open theses</h2>
           <span className="flex-1 h-px bg-rule" />
         </div>
-        {d.theses.length === 0 ? (
+        {theses.length === 0 ? (
           <EmptyState title="No open theses" />
         ) : (
           <table className="w-full text-sm">
@@ -91,7 +99,7 @@ export default function BriefingPage() {
               </tr>
             </thead>
             <tbody>
-              {d.theses.map((t) => (
+              {theses.map((t) => (
                 <tr key={t.id} className="border-b border-rule">
                   <td className="py-2 font-mono text-copper-400 uppercase">
                     {t.ticker}
@@ -123,11 +131,11 @@ export default function BriefingPage() {
           <h2 className="ledger-eyebrow">Upcoming events</h2>
           <span className="flex-1 h-px bg-rule" />
         </div>
-        {d.events.earnings.length + d.events.macro.length === 0 ? (
+        {events.earnings.length + events.macro.length === 0 ? (
           <EmptyState title="No upcoming events" />
         ) : (
           <ul className="text-sm space-y-1">
-            {[...d.events.earnings, ...d.events.macro].map((e, i) => {
+            {[...events.earnings, ...events.macro].map((e, i) => {
               const ev = e as {
                 title?: string;
                 ticker?: string;
@@ -152,11 +160,11 @@ export default function BriefingPage() {
           <h2 className="ledger-eyebrow">Overnight triggers</h2>
           <span className="flex-1 h-px bg-rule" />
         </div>
-        {d.triggers.length === 0 ? (
+        {triggers.length === 0 ? (
           <EmptyState title="No triggers fired" />
         ) : (
           <ul className="text-sm space-y-1">
-            {d.triggers.map((t) => (
+            {triggers.map((t) => (
               <li key={t.fired_at} className="flex items-baseline justify-between border-b border-rule py-2">
                 <span className="font-medium text-ink-200">{t.name}</span>
                 <span className="text-muted">{t.summary}</span>
@@ -171,17 +179,31 @@ export default function BriefingPage() {
           <h2 className="ledger-eyebrow">Overnight news</h2>
           <span className="flex-1 h-px bg-rule" />
         </div>
-        {d.news.length === 0 ? (
+        {news.length === 0 ? (
           <EmptyState title="No news" />
         ) : (
           <ul className="text-sm space-y-1">
-            {d.news.map((n, i) => (
+            {news.map((n, i) => (
               <li key={i} className="flex items-baseline justify-between border-b border-rule py-2">
                 <span className="text-ink-200 flex-1 mr-4">{n.headline}</span>
                 <span className="text-muted shrink-0">{n.source}</span>
               </li>
             ))}
           </ul>
+        )}
+      </section>
+
+      <section>
+        <div className="flex items-center gap-3 mb-3">
+          <h2 className="ledger-eyebrow">Market context</h2>
+          <span className="flex-1 h-px bg-rule" />
+        </div>
+        {Object.keys(market).length === 0 ? <EmptyState title="No market data" /> : (
+          <p className="text-sm">
+            SPX {String((market as Record<string, unknown>).spx_last ?? "—")} · QQQ{" "}
+            {String((market as Record<string, unknown>).qqq_last ?? "—")} · VIX{" "}
+            {String((market as Record<string, unknown>).vix_last ?? "—")}
+          </p>
         )}
       </section>
     </main>

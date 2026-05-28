@@ -18,6 +18,15 @@ describe("BriefingPage", () => {
     expect(screen.getByText(/No briefing yet/i)).toBeInTheDocument();
   });
 
+  it("does not crash on a failed run with empty data", () => {
+    mockLatest({
+      id: 2, status: "failed", created_at: "x", scheduled_date: null, snapshot: null,
+      synthesis_text: "", synthesis_status: "", data: {},
+    });
+    render(<MemoryRouter><BriefingPage /></MemoryRouter>);
+    expect(screen.getByText(/failed to assemble/i)).toBeInTheDocument();
+  });
+
   it("renders synthesis + theses when populated", () => {
     mockLatest({
       id: 1, status: "ready", created_at: "x", scheduled_date: null, snapshot: null,
