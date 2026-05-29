@@ -12,8 +12,9 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Coroutine
 from decimal import Decimal
+from typing import Any
 
 from celery import shared_task
 from django.db import transaction
@@ -43,6 +44,7 @@ __all__ = [
 ]
 
 _STOP_POLL_SECONDS = 0.25  # how often the streaming loop checks the stop flag
+_PARTIAL_FLUSH_SECONDS = 0.75  # how often buffered text is persisted to the DB mid-stream
 
 
 def _broadcast(thread_id: int, payload: dict) -> None:
@@ -210,6 +212,36 @@ def _make_should_stop(assistant_id: int) -> Callable[[], bool]:
     return _should_stop
 
 
+def _make_flush_partial(
+    assistant_id: int, buffer: list[str]
+) -> Callable[..., Coroutine[Any, Any, None]]:
+    """Throttled async flush of the streamed buffer into the assistant Message.
+
+    Persists ``"".join(buffer)`` into ``content`` at most once per
+    ``_PARTIAL_FLUSH_SECONDS`` (``force=True`` bypasses the throttle) so a mid-stream
+    page reload reads the partial response instead of an empty bubble. The write is
+    guarded on ``status='streaming'`` so it can never resurrect or clobber a message
+    that the stop endpoint (or the terminal write) has already finalized.
+    """
+    from asgiref.sync import sync_to_async
+
+    last_flush = 0.0
+
+    @sync_to_async
+    def _write(text: str) -> None:
+        Message.objects.filter(id=assistant_id, status="streaming").update(content={"text": text})
+
+    async def _flush(force: bool = False) -> None:
+        nonlocal last_flush
+        now = time.monotonic()
+        if not force and now - last_flush < _PARTIAL_FLUSH_SECONDS:
+            return
+        last_flush = now
+        await _write("".join(buffer))
+
+    return _flush
+
+
 def _run_ai_on_message(
     *,
     thread_id: int,
@@ -278,6 +310,7 @@ def _run_ai_on_message(
         thread_id,
         assistant.id,
         _make_should_stop(assistant.id),
+        _make_flush_partial(assistant.id, buffer),
     )
     asyncio.run(drive())
     clear_stop(assistant.id)
