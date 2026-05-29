@@ -17,6 +17,7 @@ export interface ConditionFormProps {
   preview: UseQueryResult<EvaluateResult, Error>;
   save: UseMutationResult<EventTrigger, Error, void>;
   onCancel: () => void;
+  readOnly?: boolean;
 }
 
 function formatPreviewValues(values: EvaluateResult["values"]): string {
@@ -27,10 +28,15 @@ function formatPreviewValues(values: EvaluateResult["values"]): string {
 }
 
 export default function ConditionForm({
-  form, onFormChange, profiles, profileId, onProfileChange, preview, save, onCancel,
+  form, onFormChange, profiles, profileId, onProfileChange, preview, save, onCancel, readOnly,
 }: ConditionFormProps) {
   return (
     <>
+      {readOnly && (
+        <div className="mb-4 px-3 py-2 rounded bg-amber-900/30 border border-amber-800/50 text-amber-400 text-sm">
+          This trigger is managed by a thesis. Condition is read-only.
+        </div>
+      )}
       <div className="space-y-3">
         <div>
           <label className="block text-sm text-neutral-400 mb-1" htmlFor="tr-name">Name</label>
@@ -39,6 +45,7 @@ export default function ConditionForm({
             className="bg-neutral-800 px-3 py-2 rounded w-full"
             value={form.name}
             onChange={(e) => onFormChange({ ...form, name: e.target.value })}
+            readOnly={readOnly}
           />
         </div>
 
@@ -78,6 +85,7 @@ export default function ConditionForm({
       <RuleBuilder
         value={form.condition}
         onChange={(c: Condition) => onFormChange({ ...form, condition: c })}
+        readOnly={readOnly}
       />
 
       <div className="border-t border-neutral-800 pt-4 text-sm">

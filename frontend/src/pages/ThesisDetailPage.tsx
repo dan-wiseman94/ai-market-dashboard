@@ -1,5 +1,6 @@
+import { Link } from "react-router-dom";
 import { useParams } from "react-router-dom";
-import { useThesis } from "@/hooks/useTheses";
+import { useThesis, useUpdateThesis } from "@/hooks/useTheses";
 import { SkeletonRows } from "@/components/Skeleton";
 import { EmptyState } from "@/components/EmptyState";
 import { ThesisMasthead } from "./thesis-detail/ThesisMasthead";
@@ -7,6 +8,60 @@ import { ThesisFields } from "./thesis-detail/ThesisFields";
 import { SourceLinks } from "./thesis-detail/SourceLinks";
 import { CloseThesisForm } from "./thesis-detail/CloseThesisForm";
 import { PostMortemsSection } from "./thesis-detail/PostMortemsSection";
+import Toggle from "@/components/ui/Toggle";
+import type { Thesis } from "@/api/thesis";
+
+function PriceGuardToggle({ thesis }: { thesis: Thesis }) {
+  const hasTargetOrInvalidation =
+    thesis.target_price != null || thesis.invalidation_price != null;
+  const hasProfile = thesis.profile_id != null;
+  const canEnable = hasTargetOrInvalidation && hasProfile;
+  const update = useUpdateThesis();
+
+  const disabledReason = !hasTargetOrInvalidation
+    ? "Set a target or invalidation price to enable"
+    : !hasProfile
+      ? "Attach a profile to enable"
+      : undefined;
+
+  return (
+    <section className="mb-8 pb-6 border-b border-rule">
+      <h2 className="ledger-eyebrow mb-3">Price guard</h2>
+      <div className="flex items-center gap-3">
+        <Toggle
+          id="guard-toggle"
+          label="Price guard"
+          checked={thesis.guard_enabled}
+          onChange={(next) => update.mutate({ id: thesis.id, body: { guard_enabled: next } })}
+          disabled={!canEnable || update.isPending}
+        />
+        <label
+          htmlFor="guard-toggle"
+          className="text-sm text-ink-300 cursor-pointer"
+        >
+          Auto-trigger on target / invalidation cross
+        </label>
+        {disabledReason && (
+          <span className="text-xs text-ink-500 italic" title={disabledReason}>
+            ({disabledReason})
+          </span>
+        )}
+      </div>
+      {thesis.guard_trigger_id != null && (
+        <p className="mt-2 text-xs text-ink-400">
+          Linked trigger:{" "}
+          <Link
+            to={`/triggers/${thesis.guard_trigger_id}`}
+            className="text-copper-400 hover:text-copper-300"
+            data-testid="guard-trigger-link"
+          >
+            #{thesis.guard_trigger_id}
+          </Link>
+        </p>
+      )}
+    </section>
+  );
+}
 
 export default function ThesisDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -34,6 +89,7 @@ export default function ThesisDetailPage() {
       <ThesisMasthead thesis={thesis} />
       <ThesisFields thesis={thesis} />
       <SourceLinks thesis={thesis} />
+      <PriceGuardToggle thesis={thesis} />
       {thesis.status === "open" && <CloseThesisForm thesisId={thesis.id} />}
       <PostMortemsSection thesisId={thesis.id} postmortems={thesis.postmortems} />
     </main>

@@ -20,6 +20,8 @@ const BASE_THESIS = {
   thread_id: 42,
   snapshot_id: null,
   review_thread_id: null,
+  guard_enabled: false,
+  guard_trigger_id: null,
   opened_at: "2026-05-01T00:00:00Z",
   closed_at: null,
   close_note: "",

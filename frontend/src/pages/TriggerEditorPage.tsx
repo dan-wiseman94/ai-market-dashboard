@@ -146,6 +146,7 @@ export default function TriggerEditorPage() {
         preview={previewQ}
         save={save}
         onCancel={() => navigate("/triggers")}
+        readOnly={existing?.source_thesis_id != null}
       />
     );
   }
