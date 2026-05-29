@@ -59,7 +59,7 @@ def _score_line(
 ) -> dict | None:
     volume = float(line.get("volume") or 0)
     oi = float(line.get("oi") or 0)
-    iv = _parse_iv(line.get("iv"))
+    iv = parse_iv(line.get("iv"))
 
     vol_ratio = volume / max(oi, 1.0)
     iv_z: float | None = None
@@ -89,7 +89,7 @@ def _score_line(
     }
 
 
-def _parse_iv(raw: object) -> float | None:
+def parse_iv(raw: object) -> float | None:
     if raw is None or raw == "":
         return None
     try:
@@ -98,17 +98,23 @@ def _parse_iv(raw: object) -> float | None:
         return None
 
 
-def _iv_stats(history: list[OptionChainSnapshot]) -> tuple[float | None, float | None]:
-    """Mean + stdev of IV values across the historical chain snapshots."""
+def iv_values(history: list[OptionChainSnapshot]) -> list[float]:
+    """All parseable IV values across the historical chain snapshots."""
     ivs: list[float] = []
     for snap in history:
         expiries = (snap.payload or {}).get("expiries") or {}
         for sides in expiries.values():
             for side_key in ("calls", "puts"):
                 for line in sides.get(side_key, []) or []:
-                    iv = _parse_iv(line.get("iv"))
+                    iv = parse_iv(line.get("iv"))
                     if iv is not None:
                         ivs.append(iv)
+    return ivs
+
+
+def _iv_stats(history: list[OptionChainSnapshot]) -> tuple[float | None, float | None]:
+    """Mean + stdev of IV values across the historical chain snapshots."""
+    ivs = iv_values(history)
     if len(ivs) < 2:
         return (None, None)
     return (statistics.mean(ivs), statistics.stdev(ivs))
