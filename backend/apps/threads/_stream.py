@@ -9,7 +9,7 @@ to the running ``drive()`` loop.
 
 from __future__ import annotations
 
-from collections.abc import Callable, Coroutine
+from collections.abc import Awaitable, Callable, Coroutine
 from dataclasses import asdict
 from typing import Any
 
@@ -26,6 +26,10 @@ from apps.ai.types import (
 )
 
 
+async def _noop_flush(*_a: object, **_k: object) -> None:
+    return None
+
+
 def _build_stream_runner(
     buffer: list[str],
     usage_dict: dict[str, int],
@@ -36,6 +40,7 @@ def _build_stream_runner(
     thread_id: int,
     assistant_id: int,
     should_stop: Callable[[], bool] = lambda: False,
+    flush_partial: Callable[..., Awaitable[None]] = _noop_flush,
 ) -> Callable[[], Coroutine[Any, Any, None]]:
     """Return a drive() coroutine that reads from the provider stream.
 
@@ -47,6 +52,11 @@ def _build_stream_runner(
 
     `should_stop` is polled before each event; when it returns True the loop breaks
     and the provider generator is closed, aborting the upstream stream.
+
+    `flush_partial` is awaited after each text delta (it self-throttles) and once more,
+    forced, in the `finally` — so the accumulated `buffer` is persisted to the DB during
+    the stream. A mid-stream page reload then reads the partial text instead of an empty
+    bubble. It is guarded against clobbering a finalized/cancelled message.
     """
     # Resolve the broadcaster off the tasks module so test patches of
     # apps.threads.tasks._broadcast_async take effect inside drive().
@@ -66,6 +76,7 @@ def _build_stream_runner(
                     await emit(
                         {"event": "text_delta", "message_id": assistant_id, "text": evt.text}
                     )
+                    await flush_partial()
                 elif isinstance(evt, ThinkingDeltaEvent):
                     await emit(
                         {"event": "thinking_delta", "message_id": assistant_id, "text": evt.text}
@@ -115,6 +126,9 @@ def _build_stream_runner(
                 elif isinstance(evt, DoneEvent):
                     return
         finally:
+            # Persist whatever was buffered, even on an early break (stop/cancel) — the
+            # guarded flush no-ops if the message already reached a terminal state.
+            await flush_partial(force=True)
             # Close the generator so a break aborts the upstream stream. Providers
             # are async generators (have aclose); guard for plain async iterators.
             aclose = getattr(gen, "aclose", None)
