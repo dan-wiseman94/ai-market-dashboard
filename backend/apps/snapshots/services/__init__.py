@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 from collections.abc import Iterable
 
 from django.utils import timezone
@@ -52,6 +53,13 @@ def stamp_payload_tokens(
 
 def _pick_ticker(ohlc_ticker: str | None, watchlist_tickers: list[str]) -> str:
     return ohlc_ticker or (watchlist_tickers[0] if watchlist_tickers else "SPY")
+
+
+def _overnight_news_lookback_hours(as_of, *, now=None) -> int:
+    """Hours from the prior session close (`as_of`) to now, rounded up, clamped [1, 48]."""
+    now = now or timezone.now()
+    hours = math.ceil((now - as_of).total_seconds() / 3600)
+    return max(1, min(48, hours))
 
 
 def _representative_tickers(
