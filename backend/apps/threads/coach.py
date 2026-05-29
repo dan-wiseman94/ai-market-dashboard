@@ -63,6 +63,7 @@ def build_system_prompt(profile, *, now: datetime) -> str:
 
 
 def _safe(fn, default: str = "") -> str:
+    # A sub-section that legitimately returns "" collapses to default ("") — harmless here.
     try:
         return fn() or default
     except Exception:

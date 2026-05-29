@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 import pytest
+from django.utils import timezone
 
 from apps.profiles.models import TradingProfile
 from apps.snapshots.models import Snapshot, SnapshotSection
@@ -91,7 +92,10 @@ def test_coach_includes_open_thesis_with_header(coach_profile):
 
 @pytest.mark.django_db
 def test_coach_includes_diff_vs_prior(coach_profile):
-    _snap(coach_profile, last=181.1)            # prior ready snapshot, same ticker
+    prior = _snap(coach_profile, last=181.1)    # prior ready snapshot, same ticker
+    # Pin captured_at strictly earlier — previous_snapshot_for uses captured_at__lt,
+    # and two auto_now_add rows could otherwise collide on timestamp (flaky).
+    Snapshot.objects.filter(pk=prior.pk).update(captured_at=timezone.now() - timedelta(hours=1))
     curr = _snap(coach_profile, last=188.2)
     out = assemble_coach_context(curr, coach_profile)
     assert "Since your last look" in out
