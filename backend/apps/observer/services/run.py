@@ -17,7 +17,7 @@ from apps.observer.services.threads import get_or_create_observer_thread
 from apps.secrets.models import ProviderConfig
 from apps.snapshots.serializer import serialize_for_ai
 from apps.snapshots.services import capture
-from apps.threads.coach import assemble_coach_context
+from apps.threads.coach import assemble_coach_context, build_system_prompt
 from apps.threads.models import Message
 from apps.threads.tasks import run_ai_on_message
 
@@ -179,7 +179,7 @@ def _run_structured_and_record(
         report = run_structured(
             api_key=cfg.api_key,
             model=model_id,
-            system=sched.profile.style or "",
+            system=build_system_prompt(sched.profile, now=timezone.now()),
             user=payload_text,
             output_model=ObservationReport,
             base_url=cfg.base_url or "",
