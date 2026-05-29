@@ -80,3 +80,30 @@ def test_serialize_without_intel_is_unchanged(profile):
         payload={"spx_last": 1, "qqq_last": 1, "vix_last": 1, "sectors": {}, "breadth": {}},
     )
     assert "## Market intelligence" not in serialize_for_ai(snap)
+
+
+@pytest.mark.django_db
+def test_serialize_tolerates_malformed_intel_payload(profile):
+    snap = Snapshot.objects.create(
+        profile=profile,
+        status="ready",
+        includes=["breadth"],
+        source="manual",
+        primary_ticker="NVDA",
+    )
+    SnapshotSection.objects.create(
+        snapshot=snap,
+        kind="intel",
+        status="done",
+        payload={
+            "rotation": {"ranked": [{"sector": "Technology", "pct": 1.0}]},  # missing "etf"
+            "iv": {
+                "ticker": "NVDA",
+                "atm_iv": 0.5,
+                "term": {"front_iv": 0.5, "next_iv": 0.4},
+            },  # term missing "shape"
+        },
+    )
+    out = serialize_for_ai(snap)  # must NOT raise
+    assert "## Market intelligence" in out
+    assert "→ None" not in out
