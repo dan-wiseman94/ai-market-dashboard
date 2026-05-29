@@ -33,6 +33,7 @@ class Snapshot(models.Model):
     captured_at = models.DateTimeField(auto_now_add=True)
     market_state = models.JSONField(null=True, blank=True)
     primary_ticker = models.CharField(max_length=16, null=True, blank=True, db_index=True)  # noqa: DJ001
+    overnight = models.BooleanField(default=False, db_index=True)
 
     class Meta:
         indexes: ClassVar = [models.Index(fields=["-captured_at"])]
@@ -52,6 +53,7 @@ class SnapshotSection(models.Model):
         ("news", "News"),
         ("notes", "User notes"),
         ("image", "Chart image"),
+        ("overnight", "Overnight board"),
     ]
     SECTION_STATUS_CHOICES: ClassVar[list[tuple[str, str]]] = [
         ("pending", "Pending"),
