@@ -40,6 +40,17 @@ def _eval_node(node: dict, metrics: MetricsSnapshot, values: dict) -> bool:
     return _eval_leaf(node, metrics, values)
 
 
+_INDICATOR_KEY_PARAMS = {
+    "rsi": ("period",),
+    "atr_pct": ("period",),
+    "dist_from_sma_pct": ("period",),
+    "sma_spread_pct": ("fast", "slow"),
+    "dist_from_52w_high": (),
+    "dist_from_52w_low": (),
+    "gap_pct": (),
+}
+
+
 def leaf_key(node: dict) -> str:
     metric = node["metric"]
     if metric == "vix":
@@ -52,6 +63,13 @@ def leaf_key(node: dict) -> str:
         return f"volume_z:{node['ticker']}:{node['window']}"
     if metric == "days_to_earnings":
         return f"days_to_earnings:{node['ticker']}"
+    if metric in _INDICATOR_KEY_PARAMS:
+        params = node.get("params") or {}
+        parts = [metric, node["ticker"]]
+        if node.get("window"):
+            parts.append(node["window"])
+        parts += [str(params.get(pk)) for pk in _INDICATOR_KEY_PARAMS[metric]]
+        return ":".join(parts)
     # price
     return f"price:{node['ticker']}"
 

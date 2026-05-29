@@ -18,6 +18,19 @@ function ListHeader() {
   );
 }
 
+function ManagedBadge({ thesisId }: { thesisId: number }) {
+  return (
+    <Link
+      to={`/theses/${thesisId}`}
+      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-mono bg-amber-900/40 text-amber-400 hover:text-amber-300 border border-amber-800/50"
+      title={`Managed by thesis #${thesisId}`}
+      data-testid={`managed-badge-${thesisId}`}
+    >
+      thesis #{thesisId}
+    </Link>
+  );
+}
+
 export default function TriggersListPage() {
   const qc = useQueryClient();
   const { push } = useToast();
@@ -93,51 +106,67 @@ export default function TriggersListPage() {
           </tr>
         </thead>
         <tbody>
-          {triggers.map((t) => (
-            <tr key={t.id} data-testid={`trigger-row-${t.id}`} className="border-t border-neutral-800">
-              <td className="py-2 font-medium">
-                <Link to={`/triggers/${t.id}`} className="hover:text-indigo-700 dark:hover:text-indigo-400">{t.name}</Link>
-              </td>
-              <td className="py-2 text-neutral-400 max-w-md truncate">
-                {describeCondition(t.condition)}
-              </td>
-              <td className="py-2 tabular-nums text-neutral-400">
-                {t.last_fired_at ? new Date(t.last_fired_at).toLocaleString() : "—"}
-              </td>
-              <td className="py-2 tabular-nums">{t.firings_count} firings</td>
-              <td className="py-2">
-                <input
-                  type="checkbox"
-                  checked={t.enabled}
-                  aria-label={`enable ${t.name}`}
-                  onChange={(e) => toggle.mutate({ id: t.id, enabled: e.target.checked })}
-                />
-              </td>
-              <td className="py-2 space-x-2">
-                <button
-                  className="text-amber-700 hover:text-amber-600 dark:text-amber-400 dark:hover:text-amber-300"
-                  onClick={() => {
-                    if (window.confirm(`Fire "${t.name}" now? This will capture a snapshot and run the AI.`)) {
-                      fire.mutate(t.id);
-                    }
-                  }}
-                >
-                  Fire now
-                </button>
-                <Link to={`/triggers/${t.id}`} className="text-indigo-700 hover:text-indigo-600 dark:text-indigo-400 dark:hover:text-indigo-300">Edit</Link>
-                <button
-                  className="text-rose-700 hover:text-rose-600 dark:text-rose-400 dark:hover:text-rose-300"
-                  onClick={() => {
-                    if (window.confirm(`Delete "${t.name}"? Firings history will be removed.`)) {
-                      remove.mutate(t.id);
-                    }
-                  }}
-                >
-                  Delete
-                </button>
-              </td>
-            </tr>
-          ))}
+          {triggers.map((t) => {
+            const isManaged = t.source_thesis_id != null;
+            return (
+              <tr key={t.id} data-testid={`trigger-row-${t.id}`} className="border-t border-neutral-800">
+                <td className="py-2 font-medium">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Link to={`/triggers/${t.id}`} className="hover:text-indigo-700 dark:hover:text-indigo-400">{t.name}</Link>
+                    {isManaged && <ManagedBadge thesisId={t.source_thesis_id!} />}
+                  </div>
+                </td>
+                <td className="py-2 text-neutral-400 max-w-md truncate">
+                  {describeCondition(t.condition)}
+                </td>
+                <td className="py-2 tabular-nums text-neutral-400">
+                  {t.last_fired_at ? new Date(t.last_fired_at).toLocaleString() : "—"}
+                </td>
+                <td className="py-2 tabular-nums">{t.firings_count} firings</td>
+                <td className="py-2">
+                  <input
+                    type="checkbox"
+                    checked={t.enabled}
+                    aria-label={`enable ${t.name}`}
+                    onChange={(e) => toggle.mutate({ id: t.id, enabled: e.target.checked })}
+                  />
+                </td>
+                <td className="py-2 space-x-2">
+                  <button
+                    className="text-amber-700 hover:text-amber-600 dark:text-amber-400 dark:hover:text-amber-300"
+                    onClick={() => {
+                      if (window.confirm(`Fire "${t.name}" now? This will capture a snapshot and run the AI.`)) {
+                        fire.mutate(t.id);
+                      }
+                    }}
+                  >
+                    Fire now
+                  </button>
+                  {isManaged ? (
+                    <Link
+                      to={`/triggers/${t.id}`}
+                      className="text-neutral-500 hover:text-neutral-400"
+                      title="Condition is managed by the linked thesis"
+                    >
+                      View
+                    </Link>
+                  ) : (
+                    <Link to={`/triggers/${t.id}`} className="text-indigo-700 hover:text-indigo-600 dark:text-indigo-400 dark:hover:text-indigo-300">Edit</Link>
+                  )}
+                  <button
+                    className="text-rose-700 hover:text-rose-600 dark:text-rose-400 dark:hover:text-rose-300"
+                    onClick={() => {
+                      if (window.confirm(`Delete "${t.name}"? Firings history will be removed.`)) {
+                        remove.mutate(t.id);
+                      }
+                    }}
+                  >
+                    Delete
+                  </button>
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>

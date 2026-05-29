@@ -41,6 +41,12 @@ def _compute_indicator(
     return compute_ind_svc(indicator, closes, period=period)
 
 
+def _recall(*, query: str, k: int = 5) -> list[dict]:
+    from apps.recall.services.search import search
+
+    return search(query, k=k)
+
+
 def default_toolset() -> Toolset:
     ts = Toolset()
     ts.register(
@@ -139,6 +145,24 @@ def default_toolset() -> Toolset:
                 "required": ["ticker", "indicator", "period"],
             },
             fn=_compute_indicator,
+        )
+    )
+    ts.register(
+        ToolSpec(
+            name="recall",
+            description=(
+                "Search your own past observations, theses, snapshots, and notes by meaning. "
+                "Returns top matches with kind, snippet, and link."
+            ),
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string"},
+                    "k": {"type": "integer", "minimum": 1, "maximum": 20, "default": 5},
+                },
+                "required": ["query"],
+            },
+            fn=_recall,
         )
     )
     return ts

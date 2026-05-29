@@ -28,6 +28,7 @@ app.autodiscover_tasks(
         "apps.export",
         "apps.thesis",
         "apps.briefing",
+        "apps.recall",
     ]
 )
 
@@ -55,5 +56,9 @@ app.conf.beat_schedule = {
     "briefing-run-scheduled": {
         "task": "briefing.run_scheduled",
         "schedule": crontab(minute="*/15"),
+    },
+    "recall-index-pending": {
+        "task": "recall.index_pending",
+        "schedule": crontab(minute="*/5"),
     },
 }

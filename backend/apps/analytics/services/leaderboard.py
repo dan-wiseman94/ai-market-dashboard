@@ -26,6 +26,7 @@ from decimal import Decimal
 from django.db.models import Avg, Count, Sum
 
 from apps.market.returns import trading_day_forward_return_pct
+from apps.snapshots.primary import primary_ticker
 from apps.threads.models import AIRun
 
 
@@ -58,7 +59,7 @@ def provider_leaderboard(
         snap = run.message.thread.pinned_snapshot
         if snap is None:
             continue
-        primary = _primary_ticker(snap)
+        primary = primary_ticker(snap)
         if primary is None:
             continue
         ret = trading_day_forward_return_pct(primary, run.created_at, forward_hours)
@@ -85,11 +86,3 @@ def provider_leaderboard(
             }
         )
     return rows
-
-
-def _primary_ticker(snap) -> str | None:
-    for sec in snap.sections.all():
-        if sec.kind == "quotes" and isinstance(sec.payload, dict):
-            for key in sec.payload:
-                return str(key)
-    return None

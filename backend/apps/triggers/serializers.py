@@ -13,6 +13,7 @@ from apps.triggers.models import EventTrigger, TriggerFiring
 
 class EventTriggerSerializer(serializers.ModelSerializer):
     firings_count = serializers.IntegerField(read_only=True, default=0)
+    source_thesis_id = serializers.IntegerField(read_only=True, allow_null=True)
 
     class Meta:
         model = EventTrigger
@@ -25,6 +26,7 @@ class EventTriggerSerializer(serializers.ModelSerializer):
             "enabled",
             "last_fired_at",
             "firings_count",
+            "source_thesis_id",
             "created_at",
             "updated_at",
         ]
@@ -34,6 +36,7 @@ class EventTriggerSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
             "firings_count",
+            "source_thesis_id",
         ]
 
     def validate_condition(self, value):

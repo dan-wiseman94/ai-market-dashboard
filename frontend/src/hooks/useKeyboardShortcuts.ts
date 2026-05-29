@@ -26,6 +26,8 @@ export const SHORTCUTS: Record<string, { path: string; label: string }> = {
   e: { path: "/events", label: "Events" },
   b: { path: "/briefing", label: "Briefing" },
   k: { path: "/scorecard", label: "Scorecard" },
+  n: { path: "/snapshots", label: "Snapshots" },
+  r: { path: "/recall", label: "Recall" },
 };
 
 function isEditable(el: Element | null): boolean {

@@ -6,8 +6,10 @@ import {
   getThesis,
   listTheses,
   runPostmortem,
+  updateThesis,
   type CloseThesisBody,
   type CreateThesisBody,
+  type Thesis,
 } from "@/api/thesis";
 
 export function useTheses() {
@@ -58,6 +60,18 @@ export function useRunPostmortem() {
   return useMutation({
     mutationFn: (id: number) => runPostmortem(id),
     onSuccess: (_data, id) => {
+      qc.invalidateQueries({ queryKey: ["theses", id] });
+      qc.invalidateQueries({ queryKey: ["theses"] });
+    },
+  });
+}
+
+export function useUpdateThesis() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: number; body: Partial<Thesis> }) =>
+      updateThesis(id, body),
+    onSuccess: (_data, { id }) => {
       qc.invalidateQueries({ queryKey: ["theses", id] });
       qc.invalidateQueries({ queryKey: ["theses"] });
     },

@@ -5,9 +5,17 @@ export type Op =
   | "crosses_above" | "crosses_below";
 
 export type Metric =
-  | "price" | "pct_change" | "volume_z" | "vix" | "position_pl" | "position_pl_pct";
+  | "price" | "pct_change" | "volume_z" | "vix" | "position_pl" | "position_pl_pct"
+  | "rsi" | "sma_spread_pct" | "atr_pct" | "dist_from_sma_pct"
+  | "dist_from_52w_high" | "dist_from_52w_low" | "gap_pct";
 
 export type Window = "1m" | "5m" | "15m" | "1h" | "1d";
+
+export type IndicatorParams = {
+  period?: number;
+  fast?: number;
+  slow?: number;
+};
 
 export type Leaf = {
   metric: Metric;
@@ -15,6 +23,7 @@ export type Leaf = {
   op: Op;
   value: number;
   window?: Window;
+  params?: IndicatorParams;
 };
 
 export type Condition =
@@ -32,6 +41,7 @@ export type EventTrigger = {
   enabled: boolean;
   last_fired_at: string | null;
   firings_count: number;
+  source_thesis_id: number | null;
   created_at: string;
   updated_at: string;
 };

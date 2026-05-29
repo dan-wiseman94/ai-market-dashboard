@@ -31,6 +31,11 @@ class PostMortemSerializer(serializers.ModelSerializer):
 
 class ThesisSerializer(serializers.ModelSerializer):
     postmortems = PostMortemSerializer(many=True, read_only=True)
+    guard_trigger_id = serializers.SerializerMethodField()
+
+    def get_guard_trigger_id(self, obj):
+        g = obj.guard_triggers.first()
+        return g.id if g else None
 
     class Meta:
         model = Thesis
@@ -51,6 +56,9 @@ class ThesisSerializer(serializers.ModelSerializer):
             "thread_id",
             "snapshot_id",
             "review_thread_id",
+            # guard fields
+            "guard_enabled",
+            "guard_trigger_id",
             # timestamps
             "opened_at",
             "closed_at",
@@ -64,6 +72,7 @@ class ThesisSerializer(serializers.ModelSerializer):
             "closed_at",
             "created_at",
             "updated_at",
+            "guard_trigger_id",
         ]
 
 

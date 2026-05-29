@@ -18,6 +18,7 @@ import ThesisForm from "./thread-detail/ThesisForm";
 import JournalPanel from "./thread-detail/JournalPanel";
 import { useLiveMessages } from "./thread-detail/useLiveMessages";
 import { useThesisJournal } from "./thread-detail/useThesisJournal";
+import { RelatedObservations } from "@/components/RelatedObservations";
 
 export default function ThreadDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -175,6 +176,9 @@ export default function ThreadDetailPage() {
       />
 
       {tid && <FileAttach threadId={tid} />}
+
+      {/* Related observations — keyed off the thread's pinned snapshot message, if present */}
+      {tid && <RelatedObservations kind="message" id={tid} />}
 
       {showCompare && (
         <CompareDialog

@@ -74,3 +74,18 @@ export const fetchSnapshotDiff = (id: number, against?: number) => {
   const q = against ? `?against=${against}` : "";
   return apiGet<SnapshotDiff>(`/api/snapshots/${id}/diff/${q}`);
 };
+
+export type SnapshotListRow = {
+  id: number; captured_at: string; profile_id: number; profile_name: string;
+  objective: string; status: string; source: string; primary_ticker: string | null;
+  section_kinds: string[]; section_statuses: Record<string, string>;
+  has_image: boolean; total_payload_tokens: number; headline_delta_pct?: number | null;
+};
+export const fetchSnapshots = (params: Record<string, string> = {}) =>
+  apiGet<{ results: SnapshotListRow[]; count?: number }>(
+    `/api/snapshots/?${new URLSearchParams(params)}`);
+export const fetchSnapshotTimeline = (ticker: string) =>
+  apiGet<{ results: SnapshotListRow[] }>(`/api/snapshots/timeline/?ticker=${encodeURIComponent(ticker)}`);
+export const explainDiff = (id: number, against?: number) =>
+  apiPost<{ thread_id: number; message_id: number; delta: string }>(
+    `/api/snapshots/${id}/explain-diff/`, against ? { against } : {});

@@ -36,7 +36,9 @@ test("TopNav renders primary route links", () => {
   );
   renderWithProviders(router);
   expect(screen.getByRole("link", { name: /dashboard/i })).toHaveAttribute("href", "/");
-  expect(screen.getByRole("link", { name: /snapshot/i })).toHaveAttribute("href", "/snapshot");
+  // Exact match: the SideNav now also has a "Snapshots" browser link (/snapshots),
+  // so /snapshot/i would match two elements. The TopNav composer link is exactly "Snapshot".
+  expect(screen.getByRole("link", { name: "Snapshot" })).toHaveAttribute("href", "/snapshot");
   expect(screen.getByRole("link", { name: /threads/i })).toHaveAttribute("href", "/threads");
   expect(screen.getByRole("link", { name: /triggers/i })).toHaveAttribute("href", "/triggers");
   expect(screen.getByRole("link", { name: /schedules/i })).toHaveAttribute("href", "/schedules");
