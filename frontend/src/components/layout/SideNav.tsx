@@ -5,6 +5,7 @@ const TRADING: Array<[string, string, string]> = [
   ["/theses", "Theses", "TH"],
   ["/events", "Events", "EV"],
   ["/briefing", "Briefing", "BR"],
+  ["/snapshots", "Snapshots", "SN"],
   ["/profiles", "Profiles", "PR"],
   ["/watchlists", "Watchlists", "WL"],
 ];
