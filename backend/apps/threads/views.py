@@ -7,6 +7,7 @@ from rest_framework.response import Response
 from apps.profiles.models import TradingProfile
 from apps.snapshots.models import Snapshot
 from apps.snapshots.serializer import serialize_for_ai
+from apps.threads.coach import assemble_coach_context
 from apps.threads.models import Message, Thread
 from apps.threads.serializers import MessageSerializer, ThreadSerializer
 from apps.threads.stop import request_stop
@@ -80,10 +81,11 @@ class ThreadViewSet(
                     if profile is not None
                     else {}
                 )
+                coach = assemble_coach_context(snap, profile)
                 synthetic_msg = Message.objects.create(
                     thread=t,
                     role="user",
-                    content={"text": serialize_for_ai(snap, **serialize_kwargs)},
+                    content={"text": coach + serialize_for_ai(snap, **serialize_kwargs)},
                     snapshot_ref=snap,
                     status="done",
                 )

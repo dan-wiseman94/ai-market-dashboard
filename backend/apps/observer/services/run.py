@@ -17,6 +17,7 @@ from apps.observer.services.threads import get_or_create_observer_thread
 from apps.secrets.models import ProviderConfig
 from apps.snapshots.serializer import serialize_for_ai
 from apps.snapshots.services import capture
+from apps.threads.coach import assemble_coach_context
 from apps.threads.models import Message
 from apps.threads.tasks import run_ai_on_message
 
@@ -96,11 +97,12 @@ def run_observer(schedule_id: int) -> int | None:
         return snap.id
 
     payload_text = _build_payload_text(sched, snap, provider_name, model_name)
+    coach = assemble_coach_context(snap, sched.profile)
 
     msg = Message.objects.create(
         thread=thread,
         role="user",
-        content={"text": payload_text},
+        content={"text": coach + payload_text},
         snapshot_ref=snap,
         status="done",
     )
