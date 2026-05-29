@@ -218,7 +218,8 @@ def test_build_request_includes_snapshot_on_first_user_turn(
     )
 
     req = _build_request(thread, follow_up)
-    assert req.system == "Aggressive intraday"
+    assert "Aggressive intraday" in req.system
+    assert "observational" in req.system.lower()
     assert len(req.messages) == 2
     assert req.messages[0].role == "user"
     assert "Gauge SPY intraday momentum" in req.messages[0].content
