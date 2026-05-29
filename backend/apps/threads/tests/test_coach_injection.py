@@ -81,7 +81,7 @@ def test_follow_up_send_has_no_coach_block():
     tid = create.json()["id"]
     with patch("apps.threads.views.run_ai_on_message"):
         send = APIClient().post(
-            f"/api/threads/{tid}/send", data={"text": "what next?"}, format="json"
+            f"/api/threads/{tid}/send/", data={"text": "what next?"}, format="json"
         )
     assert send.status_code == 202
     follow = Message.objects.get(id=send.json()["id"])
