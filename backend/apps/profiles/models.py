@@ -66,6 +66,12 @@ class TradingProfile(models.Model):
         help_text="Expose the Memory tool with a per-profile namespace under "
         "/data/memory/<profile_id>/.",
     )
+    enable_coach = models.BooleanField(
+        default=True,
+        help_text="Inject the Decision Coach context (prior theses, diff-vs-last "
+        "snapshot, per-ticker track record, recall) plus a base observational "
+        "system prompt. Off = legacy behavior (system prompt is just the style).",
+    )
     skills = models.JSONField(
         default=list,
         blank=True,
