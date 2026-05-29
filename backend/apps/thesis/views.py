@@ -92,8 +92,17 @@ class ThesisViewSet(viewsets.ModelViewSet):
             )
             # Lay down the 7/30/90-day post-mortems for this new thesis.
             schedule_postmortems(thesis)
+            from apps.triggers.services.thesis_guard import sync_thesis_guard
+
+            sync_thesis_guard(thesis)
 
         return Response(ThesisSerializer(thesis).data, status=201)
+
+    def perform_update(self, serializer):
+        thesis = serializer.save()
+        from apps.triggers.services.thesis_guard import sync_thesis_guard
+
+        sync_thesis_guard(thesis)
 
     @action(detail=True, methods=["post"])
     def close(self, request: Request, pk: str | None = None) -> Response:
@@ -115,6 +124,9 @@ class ThesisViewSet(viewsets.ModelViewSet):
             thesis.close_note = (request.data.get("close_note") or "").strip()
         thesis.closed_at = timezone.now()
         thesis.save()
+        from apps.triggers.services.thesis_guard import sync_thesis_guard
+
+        sync_thesis_guard(thesis)
         return Response(ThesisSerializer(thesis).data, status=200)
 
     @action(detail=True, methods=["post"], url_path="run-postmortem")

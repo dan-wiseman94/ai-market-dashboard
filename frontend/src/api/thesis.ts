@@ -1,4 +1,4 @@
-import { apiDelete, apiGet, apiPost } from "./client";
+import { apiDelete, apiGet, apiPatch, apiPost } from "./client";
 
 export type ThesisDirection = "bullish" | "bearish" | "neutral";
 export type ThesisStatus =
@@ -60,6 +60,8 @@ export interface Thesis {
   thread_id: number | null;
   snapshot_id: number | null;
   review_thread_id: number | null;
+  guard_enabled: boolean;
+  guard_trigger_id: number | null;
   opened_at: string;
   closed_at: string | null;
   close_note: string;
@@ -92,6 +94,8 @@ export const listTheses = () => apiGet<Thesis[]>("/api/theses/");
 export const getThesis = (id: number) => apiGet<Thesis>(`/api/theses/${id}/`);
 export const createThesis = (body: CreateThesisBody) =>
   apiPost<Thesis>("/api/theses/", body);
+export const updateThesis = (id: number, body: Partial<Thesis>) =>
+  apiPatch<Thesis>(`/api/theses/${id}/`, body);
 export const closeThesis = (id: number, body: CloseThesisBody) =>
   apiPost<Thesis>(`/api/theses/${id}/close/`, body);
 export const deleteThesis = (id: number) => apiDelete(`/api/theses/${id}/`);
