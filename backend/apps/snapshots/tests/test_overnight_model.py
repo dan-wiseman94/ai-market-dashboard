@@ -18,6 +18,8 @@ def test_overnight_defaults_false_and_serializes():
 def test_overnight_section_kind_allowed():
     profile = TradingProfile.objects.create(name="P", style="x")
     snap = Snapshot.objects.create(profile=profile, includes=["overnight"], overnight=True)
-    sec = SnapshotSection.objects.create(snapshot=snap, kind="overnight", payload={"ok": True}, status="done")
+    sec = SnapshotSection.objects.create(
+        snapshot=snap, kind="overnight", payload={"ok": True}, status="done"
+    )
     sec.full_clean()  # choices validation must pass
     assert sec.kind == "overnight"
