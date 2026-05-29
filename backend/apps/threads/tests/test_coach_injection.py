@@ -108,3 +108,43 @@ def test_observer_fire_includes_coach_block():
     user_msg = thread.messages.filter(role="user").get()
     assert "🧭 What you already know" in user_msg.content["text"]
     assert "AI capex" in user_msg.content["text"]
+
+
+@pytest.mark.django_db
+def test_structured_observer_fire_feeds_coach_block_to_run_structured():
+    """Fix 1 regression guard: structured path must pass coach + payload_text to run_structured."""
+    from unittest.mock import MagicMock
+
+    from apps.secrets.models import ProviderConfig
+
+    profile = TradingProfile.objects.create(name="S", style="swing")
+    sched = ObserverSchedule.objects.create(
+        name="structured-hourly",
+        profile=profile,
+        market_hours_only=False,
+        objective_template="Structured check",
+        structured=True,
+    )
+    snap = _ready_snap(profile)
+    Thesis.objects.create(
+        title="AI capex", ticker="NVDA", direction="bullish", conviction=4, status="open"
+    )
+    cfg = ProviderConfig.objects.create(provider="claude")
+    cfg.api_key = "sk-test-key"
+    cfg.save()
+
+    fake_report = MagicMock()
+    fake_report.model_dump.return_value = {}
+
+    with (
+        patch("apps.observer.services.run.any_market_open", return_value=True),
+        patch("apps.observer.services.run.capture", return_value=snap),
+        patch("apps.observer.services.run.run_structured", return_value=fake_report) as mock_rs,
+    ):
+        run_observer(sched.id)
+
+    mock_rs.assert_called_once()
+    user_arg = mock_rs.call_args.kwargs["user"]
+    assert "🧭 What you already know" in user_arg, (
+        f"coach block missing from run_structured user arg; got: {user_arg[:200]!r}"
+    )
