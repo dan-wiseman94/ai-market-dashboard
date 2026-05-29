@@ -31,6 +31,7 @@ from apps.snapshots.primary import (
 from apps.snapshots.primary import (
     primary_ticker_from_quotes,
 )
+from apps.snapshots.services.enrich import enrich_snapshot
 from apps.snapshots.services.render import render_chart_png
 from apps.snapshots.token_budget import estimate_tokens
 
@@ -270,6 +271,7 @@ def capture_for_existing(
     reps = _representative_tickers(snap, list(watchlist_tickers), ohlc_ticker)
     snap.market_state = _build_market_state(reps)
     snap.primary_ticker = derive_primary_ticker(snap) if _primary is None else _primary
+    enrich_snapshot(snap)
     snap.status = "ready" if (ok_count > 0 or attached_client_images) else "failed"
     snap.save()
     _broadcast(snap.id, {"event": snap.status, "snapshot_id": snap.id})
