@@ -24,7 +24,7 @@ def test_semantic_search_orders_by_cosine(monkeypatch):
     b = _doc(2, far)  # noqa: F841
     monkeypatch.setattr(S, "embed", lambda texts: [near])
     hits = S.search("q", k=2)
-    assert hits[0]["object_id"] == a.id
+    assert hits[0]["object_id"] == a.object_id
 
 
 @pytest.mark.django_db
