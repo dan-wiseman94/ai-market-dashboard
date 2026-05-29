@@ -32,7 +32,9 @@ def sector_rotation() -> dict | None:
         pct = (quotes.get(etf) or {}).get("pct_change")
         if pct is None:
             continue
-        ranked.append({"etf": etf, "sector": _SECTOR_NAMES.get(etf, etf), "pct": round(float(pct), 2)})
+        ranked.append(
+            {"etf": etf, "sector": _SECTOR_NAMES.get(etf, etf), "pct": round(float(pct), 2)}
+        )
     if not ranked:
         return None
     ranked.sort(key=lambda r: r["pct"], reverse=True)
