@@ -31,19 +31,20 @@ _BASE_FRAMING = (
 def _when_line(now: datetime) -> str:
     """'Today is <local date/time>; US equity markets are OPEN|CLOSED.'
 
-    Localized to OBSERVER_BEAT_TIMEZONE (the repo's display-tz convention). The
-    session phrase is best-effort: any calendar failure degrades to date-only.
+    Localized to OBSERVER_BEAT_TIMEZONE (the repo's display-tz convention).
+    Entirely best-effort: any failure (bad tz setting, calendar error) degrades
+    to a date-only line so build_system_prompt never raises.
     """
-    tz = ZoneInfo(getattr(settings, "OBSERVER_BEAT_TIMEZONE", "UTC"))
-    stamp = now.astimezone(tz).strftime("%A %Y-%m-%d, %H:%M %Z")
     try:
+        tz = ZoneInfo(getattr(settings, "OBSERVER_BEAT_TIMEZONE", "UTC") or "UTC")
+        stamp = now.astimezone(tz).strftime("%A %Y-%m-%d, %H:%M %Z")
         from apps.market.calendar.sessions import market_state
 
         st = market_state(market="us_equity", at=now)
         return f"Today is {stamp}; US equity markets are {'OPEN' if st.is_open else 'CLOSED'}."
     except Exception:
         log.warning("coach.session_lookup_failed", exc_info=True)
-        return f"Today is {stamp}."
+        return f"Today is {now.strftime('%Y-%m-%d')}."
 
 
 def build_system_prompt(profile, *, now: datetime) -> str:
