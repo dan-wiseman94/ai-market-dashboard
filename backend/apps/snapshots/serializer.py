@@ -361,7 +361,10 @@ def _render_intel(payload: dict) -> str:
 
     rot = payload.get("rotation")
     if rot and rot.get("ranked"):
-        cells = [f"{r['etf']} {r.get('sector', '')} {_fmt(r.get('pct'))}%" for r in rot["ranked"]]
+        cells = [
+            f"{r.get('etf', '?')} {r.get('sector', '')} {_fmt(r.get('pct'))}%"
+            for r in rot["ranked"]
+        ]
         blocks.append(
             "### Sector rotation (today)\n" + " · ".join(cells) + "   (leaders → laggards)"
         )
@@ -395,7 +398,7 @@ def _render_intel(payload: dict) -> str:
         if term:
             lines.append(
                 f"- Term: front {_fmt(term.get('front_iv'))} vs next {_fmt(term.get('next_iv'))} "
-                f"→ {term.get('shape')}"
+                f"→ {term.get('shape') or '?'}"
             )
         blocks.append("\n".join(lines))
 
