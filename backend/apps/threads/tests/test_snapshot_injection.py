@@ -196,7 +196,7 @@ def test_build_request_includes_snapshot_on_first_user_turn(
     ready_snapshot,
 ) -> None:
     """After thread creation + one user follow-up, _build_request should emit
-    [system=profile.style, user=snapshot_markdown, user=follow_up]."""
+    [system=coach_framing+style, user=snapshot_markdown, user=follow_up]."""
     client = APIClient()
     resp = client.post(
         "/api/threads/",
@@ -218,7 +218,8 @@ def test_build_request_includes_snapshot_on_first_user_turn(
     )
 
     req = _build_request(thread, follow_up)
-    assert req.system == "Aggressive intraday"
+    assert "Aggressive intraday" in req.system
+    assert "observational" in req.system.lower()
     assert len(req.messages) == 2
     assert req.messages[0].role == "user"
     assert "Gauge SPY intraday momentum" in req.messages[0].content

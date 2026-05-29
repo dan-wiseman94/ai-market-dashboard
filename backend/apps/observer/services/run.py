@@ -17,6 +17,7 @@ from apps.observer.services.threads import get_or_create_observer_thread
 from apps.secrets.models import ProviderConfig
 from apps.snapshots.serializer import serialize_for_ai
 from apps.snapshots.services import capture
+from apps.threads.coach import assemble_coach_context, build_system_prompt
 from apps.threads.models import Message
 from apps.threads.tasks import run_ai_on_message
 
@@ -96,17 +97,18 @@ def run_observer(schedule_id: int) -> int | None:
         return snap.id
 
     payload_text = _build_payload_text(sched, snap, provider_name, model_name)
+    coach = assemble_coach_context(snap, sched.profile)
 
     msg = Message.objects.create(
         thread=thread,
         role="user",
-        content={"text": payload_text},
+        content={"text": coach + payload_text},
         snapshot_ref=snap,
         status="done",
     )
 
     if sched.structured:
-        _run_structured_and_record(sched, thread, payload_text, provider_name, cfg)
+        _run_structured_and_record(sched, thread, coach + payload_text, provider_name, cfg)
     else:
         override: dict = {}
         if sched.override_provider:
@@ -177,7 +179,7 @@ def _run_structured_and_record(
         report = run_structured(
             api_key=cfg.api_key,
             model=model_id,
-            system=sched.profile.style or "",
+            system=build_system_prompt(sched.profile, now=timezone.now()),
             user=payload_text,
             output_model=ObservationReport,
             base_url=cfg.base_url or "",

@@ -37,6 +37,7 @@ class TradingProfileSerializer(serializers.ModelSerializer):
             "enable_thinking",
             "thinking_budget",
             "enable_memory",
+            "enable_coach",
             "active",
             "created_at",
             "updated_at",

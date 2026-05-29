@@ -119,6 +119,71 @@ def _provider_section(pms) -> tuple[list[dict], int]:
     return rows, attributable
 
 
+def track_record_for_ticker(
+    ticker: str, *, direction: str | None = None, conviction: int | None = None, min_n: int = 3
+) -> dict | None:
+    """Deterministic (no-AI) track record for one ticker, plus an optional
+    direction+conviction slice over all history.
+
+    Per-ticker summary uses closed `Thesis.status` (what actually happened to
+    your calls on this name). The slice uses decisive `PostMortem` verdicts for
+    theses matching direction+conviction (objective forward-return outcome).
+    Returns None when there is not enough history to be meaningful (ticker
+    closed-count < min_n AND no qualifying slice of >= min_n).
+    """
+    from apps.thesis.models import PostMortem, Thesis
+
+    ticker = (ticker or "").upper()
+    if not ticker:
+        return None
+
+    counts = {"win": 0, "loss": 0, "scratch": 0, "invalidated": 0}
+    _by_status = {
+        "closed_win": "win",
+        "closed_loss": "loss",
+        "closed_scratch": "scratch",
+        "invalidated": "invalidated",
+    }
+    last = None
+    for t in Thesis.objects.filter(ticker=ticker).exclude(status="open").order_by("-opened_at"):
+        key = _by_status.get(t.status)
+        if key:
+            counts[key] += 1
+        if last is None:
+            last = {"direction": t.direction, "conviction": t.conviction, "status": t.status}
+    ticker_n = sum(counts.values())
+
+    slice_info = None
+    if direction is not None and conviction is not None:
+        pms = PostMortem.objects.filter(
+            status="done",
+            verdict__in=_DECISIVE,
+            thesis__direction=direction,
+            thesis__conviction=conviction,
+        )
+        n = pms.count()
+        if n >= min_n:
+            correct = sum(1 for v in pms.values_list("verdict", flat=True) if v == "correct")
+            slice_info = {
+                "direction": direction,
+                "conviction": conviction,
+                "correct": correct,
+                "n": n,
+                "hit_rate": _hit_rate(correct, n - correct),
+            }
+
+    if ticker_n < min_n and slice_info is None:
+        return None
+    return {
+        "ticker": ticker,
+        "closed_n": ticker_n,
+        "counts": counts,
+        "hit_rate": _hit_rate(counts["win"], counts["loss"]),
+        "last": last,
+        "slice": slice_info,
+    }
+
+
 def calibration(*, start: datetime, end: datetime, horizon: int = 30) -> dict:
     from apps.thesis.models import PostMortem
 
