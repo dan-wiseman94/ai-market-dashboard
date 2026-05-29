@@ -196,7 +196,7 @@ def test_build_request_includes_snapshot_on_first_user_turn(
     ready_snapshot,
 ) -> None:
     """After thread creation + one user follow-up, _build_request should emit
-    [system=profile.style, user=snapshot_markdown, user=follow_up]."""
+    [system=coach_framing+style, user=snapshot_markdown, user=follow_up]."""
     client = APIClient()
     resp = client.post(
         "/api/threads/",

@@ -27,3 +27,11 @@ def test_system_prompt_is_legacy_style_only_when_disabled():
 
 def test_system_prompt_none_profile_is_empty():
     assert build_system_prompt(None, now=NOW) == ""
+
+
+@pytest.mark.django_db
+def test_system_prompt_omits_style_header_when_style_is_blank():
+    p = TradingProfile.objects.create(name="p", style="")
+    out = build_system_prompt(p, now=NOW)
+    assert "observational" in out.lower()
+    assert "## Your trading style" not in out
