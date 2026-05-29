@@ -54,6 +54,7 @@ class SnapshotSection(models.Model):
         ("notes", "User notes"),
         ("image", "Chart image"),
         ("overnight", "Overnight board"),
+        ("intel", "Market intel"),
     ]
     SECTION_STATUS_CHOICES: ClassVar[list[tuple[str, str]]] = [
         ("pending", "Pending"),
