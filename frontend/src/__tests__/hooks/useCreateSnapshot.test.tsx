@@ -14,6 +14,7 @@ const snapshotFixture: Snapshot = {
   includes: ["quotes"],
   source: "manual",
   captured_at: "2026-05-17T09:30:00Z",
+  overnight: false,
   sections: [],
 };
 

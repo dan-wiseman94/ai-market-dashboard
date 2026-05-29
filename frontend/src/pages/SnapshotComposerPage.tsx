@@ -23,6 +23,7 @@ export default function SnapshotComposerPage() {
   const [watchlistId, setWatchlistId] = useState<number | null>(null);
   const [customTickers, setCustomTickers] = useState<string[]>([]);
   const [includes, setIncludes] = useState<string[]>(["quotes", "positions", "breadth"]);
+  const [overnight, setOvernight] = useState(false);
   const [objective, setObjective] = useState("");
   const [notes, setNotes] = useState("");
   const [manualPositions, setManualPositions] = useState("");
@@ -84,6 +85,7 @@ export default function SnapshotComposerPage() {
         ohlc_timeframe: "1m",
         ohlc_bars: 60,
         image_ids: stagedIds,
+        overnight,
       });
       // Capture runs asynchronously in a Celery worker, so the snapshot comes
       // back as "pending". Wait for it to finish before pinning it to a thread —
@@ -170,6 +172,23 @@ export default function SnapshotComposerPage() {
         <div>
           <label className="block text-xs text-slate-500 mb-1">Sections</label>
           <SnapshotSectionPicker value={includes} onChange={setIncludes} />
+        </div>
+
+        <div>
+          <label className="flex items-center gap-2 text-sm text-slate-300">
+            <input
+              type="checkbox"
+              checked={overnight}
+              onChange={(e) => setOvernight(e.target.checked)}
+              className="accent-emerald-500"
+            />
+            Overnight (pre-market)
+          </label>
+          {overnight && (
+            <p className="text-xs text-slate-500 mt-1">
+              OHLC, quotes, and news shift to extended hours; adds a futures + overseas board.
+            </p>
+          )}
         </div>
 
         {(presets ?? []).filter((p) => p.active).length > 0 && (
