@@ -21,6 +21,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "django.contrib.postgres",
     # 3rd party
     "channels",
     "rest_framework",
@@ -44,6 +45,7 @@ INSTALLED_APPS = [
     "apps.files",
     "apps.thesis",
     "apps.briefing",
+    "apps.recall",
 ]
 
 MIDDLEWARE = [
