@@ -90,6 +90,7 @@ def _title(kind: str) -> str:
         "notes": "Notes",
         "image": "Chart image",
         "events": "Upcoming events",
+        "overnight": "Overnight board",
     }.get(kind, kind.title())
 
 
@@ -103,17 +104,23 @@ def _render_section(kind: str, payload) -> str:
 def _render_quotes(payload: dict) -> str:
     if not payload:
         return "## Quotes\n_(empty)_"
-    lines = [
-        "## Quotes",
-        "| Ticker | Last | %chg | Bid | Ask | Vol | High | Low |",
-        "|---|---:|---:|---:|---:|---:|---:|---:|",
-    ]
+    has_gap = any(isinstance(q, dict) and q.get("gap_pct") is not None for q in payload.values())
+    if has_gap:
+        head = "| Ticker | Last | %chg | Gap% | PrevClose | Bid | Ask | Vol | High | Low |"
+        sep = "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|"
+    else:
+        head = "| Ticker | Last | %chg | Bid | Ask | Vol | High | Low |"
+        sep = "|---|---:|---:|---:|---:|---:|---:|---:|"
+    lines = ["## Quotes", head, sep]
     for ticker, q in payload.items():
-        lines.append(
-            f"| {ticker} | {_fmt(q.get('last'))} | {_fmt(q.get('pct_change'))}% | "
-            f"{_fmt(q.get('bid'))} | {_fmt(q.get('ask'))} | {_fmt_int(q.get('volume'))} | "
+        row = f"| {ticker} | {_fmt(q.get('last'))} | {_fmt(q.get('pct_change'))}% |"
+        if has_gap:
+            row += f" {_fmt(q.get('gap_pct'))}% | {_fmt(q.get('prior_close'))} |"
+        row += (
+            f" {_fmt(q.get('bid'))} | {_fmt(q.get('ask'))} | {_fmt_int(q.get('volume'))} | "
             f"{_fmt(q.get('high'))} | {_fmt(q.get('low'))} |"
         )
+        lines.append(row)
     return "\n".join(lines)
 
 
@@ -122,6 +129,8 @@ def _render_ohlc(payload: dict) -> str:
     if not bars:
         return "## OHLC\n_(empty)_"
     header = f"## OHLC ({payload.get('ticker', '?')} @ {payload.get('timeframe', '?')})"
+    if payload.get("window") == "overnight":
+        header += " — overnight (extended hours)"
     csv_lines = ["ts,open,high,low,close,volume"]
     for b in bars:
         csv_lines.append(f"{b['ts']},{b['open']},{b['high']},{b['low']},{b['close']},{b['volume']}")
@@ -166,6 +175,30 @@ def _render_breadth(payload: dict) -> str:
     return "\n".join(lines)
 
 
+def _render_overnight(payload: dict) -> str:
+    if not isinstance(payload, dict):
+        return ""
+    groups = [("Index futures", "futures"), ("Vol & rates", "vol_rates"), ("Overseas", "overseas")]
+    out = ["## Overnight board"]
+    any_rows = False
+    for label, key in groups:
+        rows = payload.get(key) or {}
+        if not rows:
+            continue
+        any_rows = True
+        out.append(f"### {label}")
+        out.append("| Symbol | Last | Gap% | Prev close |")
+        out.append("|---|---:|---:|---:|")
+        for sym, q in rows.items():
+            out.append(
+                f"| {sym} | {_fmt(q.get('last'))} | {_fmt(q.get('gap_pct'))}% | "
+                f"{_fmt(q.get('prior_close'))} |"
+            )
+    if not any_rows:
+        return "## Overnight board\n_(no overnight quotes available)_"
+    return "\n".join(out)
+
+
 def _format_news_ts(it: dict) -> str:
     # `is not None` (not `or`) so epoch 0 doesn't silently fall through to published_at.
     ts_raw = it["datetime"] if it.get("datetime") is not None else it.get("published_at")
@@ -179,9 +212,11 @@ def _format_news_ts(it: dict) -> str:
 def _render_news(payload) -> str:
     # Trusts upstream ordering (newest-first) — see fetch_news in apps/market/services/news.py.
     items = payload.get("items", []) if isinstance(payload, dict) else (payload or [])
+    overnight = isinstance(payload, dict) and payload.get("window") == "overnight"
+    title = "## News (overnight, since the prior close)" if overnight else "## News (last 24h)"
     if not items:
-        return "## News (last 24h)\n_(no headlines)_"
-    lines = ["## News (last 24h)", ""]
+        return f"{title}\n_(no headlines)_"
+    lines = [title, ""]
     for it in items[:15]:
         when = _format_news_ts(it)
         head = it.get("headline") or "?"
@@ -316,5 +351,6 @@ _RENDERERS = {
     "news": _render_news,
     "image": _render_image,
     "events": _render_events,
+    "overnight": _render_overnight,
     "notes": lambda _p: "",
 }
