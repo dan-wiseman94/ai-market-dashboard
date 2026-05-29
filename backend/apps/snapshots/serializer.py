@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import base64
+import logging
 from datetime import UTC, datetime
 
 from apps.snapshots.models import Snapshot, SnapshotImage
 from apps.snapshots.token_budget import prune_to_budget
+
+log = logging.getLogger(__name__)
 
 
 def serialize_for_ai(
@@ -83,7 +86,11 @@ def serialize_for_ai(
         and intel_sec.payload
         and "intel" not in snapshot.includes
     ):
-        intel_md = _render_intel(intel_sec.payload)
+        try:
+            intel_md = _render_intel(intel_sec.payload)
+        except Exception:
+            log.warning("serialize.intel_render_failed", exc_info=True)
+            intel_md = ""
         if intel_md:
             parts.append(intel_md)
 
