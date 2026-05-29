@@ -25,6 +25,10 @@ COPY pyproject.toml uv.lock ./
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-install-project --dev
 
+# Bake the local embedding model into the image so Recall works offline at runtime.
+ENV FASTEMBED_CACHE_PATH=/app/.fastembed_cache
+RUN python -c "from fastembed import TextEmbedding; TextEmbedding('BAAI/bge-small-en-v1.5')"
+
 COPY backend /app/backend
 
 WORKDIR /app/backend
