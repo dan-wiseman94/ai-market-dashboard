@@ -9,10 +9,13 @@ from __future__ import annotations
 
 from typing import cast
 
+from django.utils import timezone
+
 from apps.ai.citations import news_to_search_result_blocks
 from apps.ai.types import ChatMessage, RoleType, RunRequest
 from apps.snapshots.models import SnapshotSection
 from apps.snapshots.serializer import build_image_blocks
+from apps.threads.coach import build_system_prompt
 from apps.threads.models import Message, Thread
 
 
@@ -129,7 +132,7 @@ def _build_request(
     provider_name: str = "claude",
     supports_tools: bool = False,
 ) -> RunRequest:
-    system = thread.profile.style if thread.profile else ""
+    system = build_system_prompt(thread.profile, now=timezone.now())
     history = _history_messages(thread)
     chat_messages: list[ChatMessage] = [
         ChatMessage(
