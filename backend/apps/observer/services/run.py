@@ -108,7 +108,7 @@ def run_observer(schedule_id: int) -> int | None:
     )
 
     if sched.structured:
-        _run_structured_and_record(sched, thread, payload_text, provider_name, cfg)
+        _run_structured_and_record(sched, thread, coach + payload_text, provider_name, cfg)
     else:
         override: dict = {}
         if sched.override_provider:
