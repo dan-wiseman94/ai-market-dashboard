@@ -76,6 +76,17 @@ def serialize_for_ai(
     if pruned_kinds:
         parts.append(f"_(pruned for token budget: {', '.join(pruned_kinds)})_")
 
+    intel_sec = sections_by_kind.get("intel")
+    if (
+        intel_sec is not None
+        and intel_sec.status == "done"
+        and intel_sec.payload
+        and "intel" not in snapshot.includes
+    ):
+        intel_md = _render_intel(intel_sec.payload)
+        if intel_md:
+            parts.append(intel_md)
+
     return "\n\n".join(parts).strip() or "_(empty snapshot)_"
 
 
@@ -91,6 +102,7 @@ def _title(kind: str) -> str:
         "image": "Chart image",
         "events": "Upcoming events",
         "overnight": "Overnight board",
+        "intel": "Market intel",
     }.get(kind, kind.title())
 
 
@@ -342,6 +354,54 @@ def _render_image(payload: dict) -> str:
     return "\n".join(rows)
 
 
+def _render_intel(payload: dict) -> str:
+    if not isinstance(payload, dict):
+        return ""
+    blocks: list[str] = ["## Market intelligence"]
+
+    rot = payload.get("rotation")
+    if rot and rot.get("ranked"):
+        cells = [f"{r['etf']} {r.get('sector', '')} {_fmt(r.get('pct'))}%" for r in rot["ranked"]]
+        blocks.append(
+            "### Sector rotation (today)\n" + " · ".join(cells) + "   (leaders → laggards)"
+        )
+
+    rs = payload.get("relative_strength")
+    if rs and rs.get("windows"):
+        lines = [f"### {rs.get('ticker', '?')} relative strength vs {rs.get('benchmark', 'SPY')}"]
+        for w in rs["windows"]:
+            rs_pct = w.get("rs_pct")
+            tag = ""
+            if rs_pct is not None:
+                tag = " (outperforming)" if rs_pct > 0 else " (lagging)" if rs_pct < 0 else ""
+            lines.append(
+                f"- {w.get('days')}d: {rs.get('ticker')} {_fmt(w.get('ticker_pct'))}% vs "
+                f"{rs.get('benchmark')} {_fmt(w.get('benchmark_pct'))}% → {_fmt(rs_pct)}% RS{tag}"
+            )
+        blocks.append("\n".join(lines))
+
+    iv = payload.get("iv")
+    if iv and iv.get("atm_iv") is not None:
+        lines = [f"### {iv.get('ticker', '?')} implied volatility"]
+        bits = [f"ATM IV {_fmt(iv.get('atm_iv'))}"]
+        if iv.get("z") is not None:
+            bits.append(f"{_fmt(iv.get('z'))}s vs 30-day mean ({_fmt(iv.get('mean_30d'))})")
+        if iv.get("percentile") is not None:
+            bits.append(f"{_fmt(iv.get('percentile'))} pctile")
+        lines.append("- " + ", ".join(bits))
+        if iv.get("skew") is not None:
+            lines.append(f"- Skew (put-call ATM): {_fmt(iv.get('skew'))}")
+        term = iv.get("term")
+        if term:
+            lines.append(
+                f"- Term: front {_fmt(term.get('front_iv'))} vs next {_fmt(term.get('next_iv'))} "
+                f"→ {term.get('shape')}"
+            )
+        blocks.append("\n".join(lines))
+
+    return "\n\n".join(blocks) if len(blocks) > 1 else ""
+
+
 _RENDERERS = {
     "quotes": _render_quotes,
     "ohlc": _render_ohlc,
@@ -353,4 +413,5 @@ _RENDERERS = {
     "events": _render_events,
     "overnight": _render_overnight,
     "notes": lambda _p: "",
+    "intel": _render_intel,
 }
