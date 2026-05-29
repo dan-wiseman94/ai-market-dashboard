@@ -156,7 +156,11 @@ class _MockSchwabClient:
                         "highPrice": 101.0,
                         "lowPrice": 99.0,
                         "netPercentChange": 0.5,
-                    }
+                        "closePrice": 98.0,
+                        "mark": 100.05,
+                        "securityStatus": "Normal",
+                    },
+                    "regular": {"regularMarketLastPrice": 98.5},
                 }
                 for t in tickers
             }
