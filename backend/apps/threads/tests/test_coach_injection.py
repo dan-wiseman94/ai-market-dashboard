@@ -148,3 +148,7 @@ def test_structured_observer_fire_feeds_coach_block_to_run_structured():
     assert "🧭 What you already know" in user_arg, (
         f"coach block missing from run_structured user arg; got: {user_arg[:200]!r}"
     )
+    system_arg = mock_rs.call_args.kwargs["system"]
+    assert "observational" in system_arg.lower(), (
+        f"base system prompt missing from run_structured system arg; got: {system_arg[:200]!r}"
+    )
