@@ -58,6 +58,73 @@ def fetch_ohlc_session(ticker: str, *, timeframe: str, premarket_minutes: int = 
     )
 
 
+def fetch_ohlc_overnight(ticker: str, *, timeframe: str) -> list[dict]:
+    """Intraday OHLC spanning the prior session's open through now, extended hours
+    included and never clamped to the regular close.
+
+    For a pre-market capture this yields one continuous series: the prior regular
+    session + after-hours + overnight + this morning's pre-market. Use this for
+    overnight-mode snapshot capture only.
+    """
+    if timeframe not in _METHOD_BY_TIMEFRAME:
+        raise ValueError(f"Unsupported timeframe: {timeframe}")
+    ticker = normalize_symbol(ticker)
+    return cache.get_or_fetch(
+        f"market:ohlc:{ticker}:{timeframe}:overnight",
+        ttl_seconds=cache.ttl_for_kind(f"ohlc_{timeframe}"),
+        fetcher=lambda: _fetch_overnight_from_schwab(ticker, timeframe),
+    )
+
+
+def _overnight_window(
+    ticker: str, *, at: datetime | None = None
+) -> tuple[datetime, datetime] | None:
+    """(start, now) UTC: start = the regular open of the most-recently-closed
+    session at/before `at`; end = `at`. None when no session falls in the lookback.
+    """
+    now = at or timezone.now()
+    cal = get_market_calendar(calendar_for(ticker))
+    try:
+        sched = cal.schedule(
+            start_date=(now - timedelta(days=7)).date(),
+            end_date=(now + timedelta(days=1)).date(),
+        )
+    except Exception as exc:  # mcal can raise on odd ranges; treat as no data
+        log.warning("ohlc.overnight_window schedule failed for %s: %s", ticker, exc)
+        return None
+    start = None
+    for _idx, row in sched.iterrows():
+        if row["market_close"].to_pydatetime() <= now:  # latest session already closed
+            start = row["market_open"].to_pydatetime()
+    if start is None:
+        return None
+    return start, now
+
+
+def _fetch_overnight_from_schwab(ticker: str, timeframe: str) -> list[dict]:
+    window = _overnight_window(ticker)
+    if window is None:
+        return _fetch_session_from_schwab(ticker, timeframe, 60)
+    start_dt, end_dt = window
+    client = get_schwab_client()
+    method = getattr(client, _METHOD_BY_TIMEFRAME[timeframe])
+    candles = schwab_json(
+        method(
+            ticker,
+            start_datetime=start_dt,
+            end_datetime=end_dt,
+            need_extended_hours_data=True,
+        )
+    ).get("candles", [])
+    rows = [
+        r
+        for r in _rows_from_candles(candles)
+        if start_dt <= datetime.fromisoformat(r["ts"]) <= end_dt
+    ]
+    _persist_bars(ticker, timeframe, rows)
+    return rows
+
+
 def _rows_from_candles(candles: list[dict]) -> list[dict]:
     return [
         {

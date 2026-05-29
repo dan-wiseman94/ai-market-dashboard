@@ -56,6 +56,8 @@ class SnapshotViewSet(
             qs = qs.filter(captured_at__gte=p["since"])
         if p.get("until"):
             qs = qs.filter(captured_at__lte=p["until"])
+        if p.get("overnight") in ("true", "1"):
+            qs = qs.filter(overnight=True)
         return qs
 
     def create(self, request, *args, **kwargs):
@@ -73,6 +75,7 @@ class SnapshotViewSet(
             includes=data.get("includes") or profile.default_includes,
             source="manual",
             status="pending",
+            overnight=bool(data.get("overnight", False)),
         )
         image_ids = data.get("image_ids") or []
         if image_ids:
@@ -87,6 +90,7 @@ class SnapshotViewSet(
             ohlc_ticker=data.get("ohlc_ticker"),
             ohlc_timeframe=data.get("ohlc_timeframe", "1m"),
             ohlc_bars=data.get("ohlc_bars", 60),
+            overnight=bool(data.get("overnight", False)),
             scenario=current_scenario() if is_mock_mode() else None,
         )
         return Response(SnapshotSerializer(snap).data, status=202)

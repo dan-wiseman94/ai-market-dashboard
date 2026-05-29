@@ -350,6 +350,28 @@ describe("SnapshotComposerPage", () => {
     expect(JSON.parse(localStorage.getItem("staged_image_ids") ?? "[]")).toEqual([8]);
   });
 
+  it("sends overnight: true when the overnight toggle is on", async () => {
+    const user = userEvent.setup();
+    mockCreateSnap.mockResolvedValue({ id: 100, status: "ready", includes: [] });
+    mockCreateThread.mockResolvedValue({ id: 200, title: "Consult" });
+
+    const nav = { captured: "" };
+    renderComposer(nav);
+    await waitFor(() => {
+      const [profileSelect] = screen.getAllByRole("combobox");
+      expect((profileSelect as HTMLSelectElement).value).toBe("1");
+    });
+
+    await user.click(screen.getByRole("checkbox", { name: /overnight/i }));
+    await user.click(screen.getByTestId("capture-btn"));
+
+    await waitFor(() => {
+      expect(mockCreateSnap).toHaveBeenCalledWith(
+        expect.objectContaining({ overnight: true }),
+      );
+    });
+  });
+
   it("clears localStorage after successful capture", async () => {
     const user = userEvent.setup();
     localStorage.setItem("staged_image_ids", JSON.stringify([7]));
