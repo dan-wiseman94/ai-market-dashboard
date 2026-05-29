@@ -37,6 +37,7 @@ class SnapshotListSerializer(serializers.ModelSerializer):
             "status",
             "source",
             "primary_ticker",
+            "overnight",
             "section_kinds",
             "section_statuses",
             "has_image",
@@ -72,6 +73,7 @@ class SnapshotSerializer(serializers.ModelSerializer):
             "source",
             "captured_at",
             "primary_ticker",
+            "overnight",
             "sections",
         ]
         read_only_fields: ClassVar = ["captured_at", "status"]

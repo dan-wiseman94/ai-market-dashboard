@@ -56,6 +56,8 @@ class SnapshotViewSet(
             qs = qs.filter(captured_at__gte=p["since"])
         if p.get("until"):
             qs = qs.filter(captured_at__lte=p["until"])
+        if p.get("overnight") in ("true", "1"):
+            qs = qs.filter(overnight=True)
         return qs
 
     def create(self, request, *args, **kwargs):
