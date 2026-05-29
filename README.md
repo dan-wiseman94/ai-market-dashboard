@@ -39,13 +39,15 @@ A single-user desktop dashboard that captures point-in-time **stock-market snaps
 | M11 | Second brain (theses, post-mortems, decision journal) | — |
 | M12 | Analytics (leaderboard, heatmap, unusual options) | `m12-analytics` |
 
-> M11 merged via PR #51 without a release tag. Since then, **provider tool parity** (tool use on all three providers, with visible capability warnings) has also shipped.
+> M11 merged via PR #51 without a release tag. Several features have shipped since the M12 tag and don't have milestone tags of their own: **provider tool parity** (tool use on all three providers, with visible capability warnings), a **Decision Coach** that feeds prior theses / snapshot diffs / your track record / semantic recall into the prompt, **semantic recall**, a daily **Morning Briefing**, a **forward earnings + macro calendar**, **overnight (pre-market) snapshots**, and a **calibration scorecard**.
 
 ## Features
 
 ### Market data & snapshots
 
-- **Snapshots** — capture a point-in-time market picture from opt-in sections: real-time **quotes**, **OHLC** history, **option chains**, **positions**, **market breadth**, **news**, and **rendered chart images** (headless-Chromium PNGs). A section that fails is marked `failed` and explicitly flagged in the AI payload — partial captures are fine, never silently dropped.
+- **Snapshots** — capture a point-in-time market picture from opt-in sections: real-time **quotes**, **OHLC** history, **option chains**, **positions**, **market breadth**, **news**, **rendered chart images** (headless-Chromium PNGs), and the **events** forward calendar. A section that fails is marked `failed` and explicitly flagged in the AI payload — partial captures are fine, never silently dropped.
+- **Overnight (pre-market) snapshots** — an opt-in capture mode that adds index/vol/rates **futures**, overseas quotes, extended-hours OHLC, and overnight news (since the prior close), with per-ticker `gap_pct` vs. `prior_close`. Toggle it with the *Overnight* checkbox in the snapshot composer.
+- **Forward calendar** — upcoming **earnings** (per-ticker, BMO/AMC hints + EPS estimates via Finnhub) and curated US **macro** events (FOMC / CPI / NFP / PCE / GDP). Surfaced three ways: the opt-in `events` snapshot section, the `days_to_earnings` trigger leaf, and `GET /api/market/events/?tickers=…&within_days=14`. Refreshed daily by the `market.refresh_events` beat task; macro degrades to a seeded list when Finnhub's economic calendar is unavailable.
 - **Watchlists** — group tickers and drill into a per-ticker market page.
 - **Objective + profile framing** — every capture carries a free-text objective and a named trading-style profile, so the model knows *how* to look and *what* you're asking.
 - **Token budgeting** — the payload is trimmed to a per-model budget (from the model catalog) before it reaches the LLM; per-section token counts are recorded for the cost drill-down.
@@ -76,6 +78,18 @@ A single-user desktop dashboard that captures point-in-time **stock-market snaps
 - **Structured observations** *(Claude)* — observer runs can return a typed `ObservationReport` for structured UI cards.
 
 > **Capability warnings, not silent no-ops.** Extended thinking and memory are Claude-only; tool use needs a credential that supports it. Enabling one of these on a provider that can't honor it no longer fails quietly — `run_ai_on_message` posts a visible `capability_warning` system message and a `warning` WebSocket event, then continues the run with whatever the provider *can* do.
+
+### Decision Coach & semantic recall
+
+This is what wires the "second brain" into the *generation* path — the model no longer reasons from a blank slate.
+
+- **Decision Coach** *(per profile, on by default — `TradingProfile.enable_coach`)* — pairs a base observational system prompt with an auto-assembled **"what you already know"** context block injected into snapshot and observer runs: open theses on the primary ticker (conviction, direction, entry / target / invalidation with % distance), the **diff vs. the prior snapshot**, your **per-ticker track record** (closed theses, win/loss, hit-rate by conviction), and the top semantic-recall hits. Off = legacy behavior (system prompt is just the style).
+- **Semantic recall** — search across messages, snapshots, theses, journal entries, observations, and post-mortems. Embedding-based similarity when available (`BAAI/bge-small-en-v1.5` via fastembed + pgvector HNSW), with a keyword full-text fallback. `GET /api/recall/?q=…&k=&kind=&ticker=`, plus `/api/recall/related/` and `/api/recall/status/`; documents are indexed by the `recall.index_pending` beat task. Browse it at `/recall` (`g r`).
+
+### Morning Briefing
+
+- **Daily hybrid synthesis** (`apps.briefing`) — assembles deterministic sections (open theses with price-vs-target, upcoming earnings/macro, overnight trigger firings, overnight news, a breadth-only capture) and optionally posts them into a Claude thread for a best-effort AI synthesis. Every section is wrapped so it never breaks the briefing, and the AI layer degrades gracefully with no key.
+- **Once-a-day, idempotent** — the `briefing.run_scheduled` beat task (every 15 min) fires once per day past the configured send time via a unique `scheduled_date` claim; `POST /api/briefings/run/` triggers an unlimited manual run. Configure via `GET`/`PATCH /api/briefings/config/`; view at `/briefing` (`g b`).
 
 ### Second brain — theses, post-mortems & decision journal
 
@@ -112,13 +126,14 @@ The "decide → review" half of the loop: Ledger records what the market looked 
 - **Provider leaderboard** — correlates each run against the snapshot's primary ticker using stored OHLC at capture vs. capture + N hours, with an honest `coverage_pct` when price history is missing.
 - **Cost per insight**, **trigger heatmap**, and an **observer timeline** built from message history.
 - **Unusual-options detector** — flags chain lines on volume/OI or IV-z outliers, returning a per-line reason for *why* each was flagged.
+- **Calibration scorecard** — aggregates post-mortem'd theses into conviction calibration (hit-rate per conviction bucket + a Brier score over a documented conviction→probability map, by direction) and per-(provider, model) calibration. `GET /api/analytics/calibration/?horizon=` (7 / 30 / 90); on its own page at `/scorecard` (`g k`), separate from the `/analytics` card grid.
 
 ### Operations & UX
 
 - **Backups** — scheduled `pg_dump` with rotation; `make restore file=<name>` to roll back.
 - **Export** — async zip bundles of threads, snapshots, observations, triggers, profiles, and watchlists.
 - **App shell** — shared layout with top/side nav, breadcrumbs, a notification bell, and a live connection-status dot.
-- **Command palette** (`Cmd`/`Ctrl`-K) and `g <x>` keyboard shortcuts to every top-level route.
+- **Command palette** (`Cmd`/`Ctrl`-K) and `g <x>` keyboard shortcuts to every top-level route (e.g. `g r` recall, `g b` briefing, `g e` events, `g k` scorecard, `g a` analytics).
 - **Encrypted secrets** — Schwab OAuth tokens and provider API keys are stored encrypted at rest.
 
 ## Tech stack
@@ -127,8 +142,8 @@ The "decide → review" half of the loop: Ledger records what the market looked 
 |---|---|
 | Backend | Python 3.13 · Django 6 + Django REST Framework · Channels 4 over Daphne (ASGI/WebSockets) |
 | Async | Celery 5 worker + beat (`DatabaseScheduler`), Redis broker |
-| Data | Postgres 16 (psycopg 3) · Redis (broker, Channels layer, cache) |
-| AI | `anthropic` + `openai` SDKs · `tiktoken` for token counting |
+| Data | Postgres 16 (psycopg 3) + `pgvector` (recall embeddings) · Redis (broker, Channels layer, cache) |
+| AI | `anthropic` + `openai` SDKs · `tiktoken` for token counting · `fastembed` (`bge-small-en-v1.5`) for semantic recall |
 | Market | `schwab-py` · `pandas` · `pandas-market-calendars` · Playwright / headless Chromium for chart PNGs |
 | Secrets | `django-cryptography` (key derived from `DJANGO_SECRET_KEY` + `/data/secret.salt`) |
 | Frontend | React 19 + TypeScript · Vite · React Router 7 · TanStack Query 5 · lightweight-charts + Recharts · react-markdown |
@@ -234,7 +249,7 @@ Backend code lives under `backend/apps/<name>/` (imported as `apps.<name>`):
 - `market` · Schwab client, quotes/OHLC/chain/news, shared forward-return helpers (`returns.py`)
 - `snapshots` · capture orchestration + token budget
 - `ai` · provider abstraction (Claude / OpenAI / Local), router, catalog, cost calc, tool/thinking/memory/citations support + capability-gap detection
-- `threads` · messages, streaming consumer, multi-provider compare, stop, file attach
+- `threads` · messages, streaming consumer, multi-provider compare, stop, file attach, Decision Coach context (`coach.py`)
 - `observer` · scheduled AI runs via Celery beat (structured / diff / batch modes)
 - `triggers` · event-trigger evaluator + condition DSL + firings + backtest
 - `profiles` · trading-style profiles + agent presets
@@ -242,6 +257,8 @@ Backend code lives under `backend/apps/<name>/` (imported as `apps.<name>`):
 - `costs` · per-provider / per-model / per-thread aggregation, caps, CSV export, snapshot drill-down
 - `analytics` · on-demand aggregations (leaderboard, cost-per-insight, trigger heatmap, observer timeline, unusual options)
 - `thesis` · theses + post-mortems + decision journal (M11 "second brain")
+- `recall` · semantic + keyword search across all documents; pgvector embeddings index (feeds the Decision Coach)
+- `briefing` · daily Morning Briefing assembly + AI synthesis
 - `files` · Anthropic Files API proxy (upload + attach to threads)
 - `backups` · scheduled `pg_dump` + rotation
 - `export` · async zip bundles (threads, snapshots, observations, triggers, profiles, watchlists)
