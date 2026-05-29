@@ -83,6 +83,31 @@ def test_serialize_without_intel_is_unchanged(profile):
 
 
 @pytest.mark.django_db
+@pytest.mark.parametrize(
+    "bad_payload",
+    [
+        {"rotation": {"ranked": ["notadict", None, 42]}},
+        {"rotation": {"ranked": "notalist"}},
+        {"rotation": "notadict"},
+        {"relative_strength": {"windows": ["x", None]}},
+        {"iv": {"atm_iv": 0.5, "term": "notadict"}},
+        {"iv": "notadict"},
+    ],
+)
+def test_serialize_never_raises_on_malformed_intel(profile, bad_payload):
+    snap = Snapshot.objects.create(
+        profile=profile,
+        status="ready",
+        includes=["breadth"],
+        source="manual",
+        primary_ticker="NVDA",
+    )
+    SnapshotSection.objects.create(snapshot=snap, kind="intel", status="done", payload=bad_payload)
+    out = serialize_for_ai(snap)  # must NOT raise
+    assert isinstance(out, str)
+
+
+@pytest.mark.django_db
 def test_serialize_tolerates_malformed_intel_payload(profile):
     snap = Snapshot.objects.create(
         profile=profile,
