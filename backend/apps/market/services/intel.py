@@ -6,7 +6,10 @@ stores. Snapshot-agnostic; each public function returns a plain dict or None.
 
 from __future__ import annotations
 
+from datetime import datetime
+
 from apps.market.services.context import SECTOR_ETFS
+from apps.market.services.ohlc import fetch_ohlc
 from apps.market.services.quotes import fetch_quotes
 
 _SECTOR_NAMES = {
@@ -61,7 +64,7 @@ def _atm_iv(lines: list[dict], underlying: float | None, parse_iv) -> float | No
     return best[1] if best else None
 
 
-def iv_summary(ticker: str, *, at) -> dict | None:
+def iv_summary(ticker: str, *, at: datetime) -> dict | None:
     """ATM IV z-score + percentile (vs 30-day history) + skew + term structure.
 
     Returns None for a falsy ticker, no chain snapshot, or indeterminable ATM IV.
@@ -130,3 +133,42 @@ def iv_summary(ticker: str, *, at) -> dict | None:
                 "shape": "backwardation" if atm_iv > next_iv else "contango",
             }
     return result
+
+
+def _window_pct(bars: list[dict], n: int) -> float | None:
+    if len(bars) <= n:
+        return None
+    prev = _to_float(bars[-1 - n].get("close"))
+    cur = _to_float(bars[-1].get("close"))
+    if prev is None or cur is None or prev == 0:
+        return None
+    return round((cur - prev) / prev * 100.0, 2)
+
+
+def relative_strength(
+    ticker: str, *, benchmark: str = "SPY", windows: tuple[int, ...] = (5, 20)
+) -> dict | None:
+    """Ticker vs benchmark % change over each window (sessions), from daily bars."""
+    if not ticker:
+        return None
+    t_bars = sorted(fetch_ohlc(ticker, timeframe="1d", bars=25), key=lambda b: b["ts"])
+    if not t_bars:
+        return None
+    b_bars = sorted(fetch_ohlc(benchmark, timeframe="1d", bars=25), key=lambda b: b["ts"])
+    windows_out: list[dict] = []
+    for n in windows:
+        tp = _window_pct(t_bars, n)
+        if tp is None:
+            continue
+        bp = _window_pct(b_bars, n)
+        windows_out.append(
+            {
+                "days": n,
+                "ticker_pct": tp,
+                "benchmark_pct": bp,
+                "rs_pct": round(tp - bp, 2) if bp is not None else None,
+            }
+        )
+    if not windows_out:
+        return None
+    return {"ticker": ticker, "benchmark": benchmark, "windows": windows_out}

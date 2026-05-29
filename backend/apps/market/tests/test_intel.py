@@ -6,7 +6,7 @@ from unittest.mock import patch
 import pytest
 
 from apps.market.models import OptionChainSnapshot
-from apps.market.services.intel import iv_summary, sector_rotation
+from apps.market.services.intel import iv_summary, relative_strength, sector_rotation
 
 
 @patch("apps.market.services.intel.fetch_quotes")
@@ -86,3 +86,42 @@ def test_sector_rotation_drops_non_numeric_pct(mock_fq):
     mock_fq.return_value = {"XLK": {"pct_change": "N/A"}, "XLF": {"pct_change": 1.0}}
     out = sector_rotation()
     assert [r["etf"] for r in out["ranked"]] == ["XLF"]
+
+
+def _daily(closes: list[float]) -> list[dict]:
+    return [
+        {
+            "ts": f"2026-05-{1 + i:02d}T00:00:00+00:00",
+            "open": c,
+            "high": c,
+            "low": c,
+            "close": c,
+            "volume": 1,
+        }
+        for i, c in enumerate(closes)
+    ]
+
+
+@patch("apps.market.services.intel.fetch_ohlc")
+def test_relative_strength_5d_window(mock_ohlc):
+    def side_effect(ticker, *, timeframe, bars):
+        if ticker == "NVDA":
+            return _daily([100, 100, 100, 100, 100, 103.9])  # +3.9% over 5 sessions
+        return _daily([100, 100, 100, 100, 100, 101.2])  # SPY +1.2%
+
+    mock_ohlc.side_effect = side_effect
+    out = relative_strength("NVDA")
+    assert out["ticker"] == "NVDA" and out["benchmark"] == "SPY"
+    assert out["windows"] == [
+        {"days": 5, "ticker_pct": 3.9, "benchmark_pct": 1.2, "rs_pct": 2.7}
+    ]  # 20d omitted (only 6 bars)
+
+
+@patch("apps.market.services.intel.fetch_ohlc")
+def test_relative_strength_none_when_no_ticker_bars(mock_ohlc):
+    mock_ohlc.return_value = []
+    assert relative_strength("NVDA") is None
+
+
+def test_relative_strength_none_for_falsy_ticker():
+    assert relative_strength("") is None
