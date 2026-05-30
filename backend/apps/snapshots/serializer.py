@@ -173,6 +173,28 @@ def _render_breadth(payload: dict) -> str:
         lines.append(
             "- Breadth: " + ", ".join(f"{k}={_fmt(v)}" for k, v in payload["breadth"].items())
         )
+    # Relative strength — keys in windows dict are int in Python but may be str after a
+    # JSON round-trip (stored payload); .items() works for both, so no special casing needed.
+    rs = payload.get("relative_strength")
+    if rs and rs.get("windows"):
+        bits = []
+        for w, d in rs["windows"].items():
+            if d.get("rs") is not None:
+                bits.append(f"{w}d {d['rs']:+.2f}%")
+        if bits:
+            lines.append(
+                f"- Relative strength ({rs['ticker']} vs {rs['benchmark']}): " + ", ".join(bits)
+            )
+    # Sector rotation — show leader (first) and laggard (last).
+    rotation = payload.get("sector_rotation") or []
+    if rotation:
+        top = rotation[0]
+        bot = rotation[-1]
+        lines.append(
+            f"- Sector rotation ({len(rotation)} sectors): "
+            f"leader {top['sector']} {top['return_pct']:+.2f}%, "
+            f"laggard {bot['sector']} {bot['return_pct']:+.2f}%"
+        )
     return "\n".join(lines)
 
 
