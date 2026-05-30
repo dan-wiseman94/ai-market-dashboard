@@ -1,4 +1,5 @@
 /** Shared types for the ThreadDetailPage subtree. */
+import type { ObservationReport } from "@/components/ObservationReportCard";
 
 export type LiveMessage = {
   id: number;
@@ -12,6 +13,9 @@ export type LiveMessage = {
   parent_message_id?: number | null;
   // Present only on the synthetic snapshot turn; drives the collapsible payload box.
   snapshot_id?: number | null;
+  // Present on structured observation messages (observer fires with structured=True).
+  kind?: "structured_observation";
+  report?: ObservationReport;
 };
 
 // WebSocket messages on the thread channel are an open event union; the

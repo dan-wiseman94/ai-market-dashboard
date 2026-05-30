@@ -1,4 +1,5 @@
 import { apiGet, apiPatch, apiPost } from "./client";
+import type { ObservationReport } from "@/components/ObservationReportCard";
 
 export type AiRun = {
   id: number; provider: string; model: string;
@@ -11,7 +12,11 @@ export type AiRun = {
 export type Message = {
   id: number;
   role: "user" | "assistant" | "system";
-  content: { text?: string };
+  content: {
+    text?: string;
+    kind?: "structured_observation";
+    report?: ObservationReport;
+  };
   status: "done" | "streaming" | "failed";
   error: string;
   created_at: string;
