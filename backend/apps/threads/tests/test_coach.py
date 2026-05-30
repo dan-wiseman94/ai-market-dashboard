@@ -47,8 +47,11 @@ def coach_profile(db) -> TradingProfile:
 
 def _snap(profile, *, ticker="NVDA", last=188.2) -> Snapshot:
     snap = Snapshot.objects.create(
-        profile=profile, status="ready", includes=["quotes"],
-        source="manual", primary_ticker=ticker,
+        profile=profile,
+        status="ready",
+        includes=["quotes"],
+        source="manual",
+        primary_ticker=ticker,
     )
     SnapshotSection.objects.create(
         snapshot=snap, kind="quotes", status="done", payload={ticker: {"last": last}}
@@ -81,8 +84,12 @@ def test_coach_empty_when_no_history(coach_profile):
 @pytest.mark.django_db
 def test_coach_includes_open_thesis_with_header(coach_profile):
     Thesis.objects.create(
-        title="AI capex", ticker="NVDA", direction="bullish",
-        conviction=4, status="open", target_price=210,
+        title="AI capex",
+        ticker="NVDA",
+        direction="bullish",
+        conviction=4,
+        status="open",
+        target_price=210,
     )
     out = assemble_coach_context(_snap(coach_profile), coach_profile)
     assert "🧭 What you already know" in out
@@ -92,7 +99,7 @@ def test_coach_includes_open_thesis_with_header(coach_profile):
 
 @pytest.mark.django_db
 def test_coach_includes_diff_vs_prior(coach_profile):
-    prior = _snap(coach_profile, last=181.1)    # prior ready snapshot, same ticker
+    prior = _snap(coach_profile, last=181.1)  # prior ready snapshot, same ticker
     # Pin captured_at strictly earlier — previous_snapshot_for uses captured_at__lt,
     # and two auto_now_add rows could otherwise collide on timestamp (flaky).
     Snapshot.objects.filter(pk=prior.pk).update(captured_at=timezone.now() - timedelta(hours=1))
@@ -105,8 +112,11 @@ def test_coach_includes_diff_vs_prior(coach_profile):
 def test_coach_caps_open_theses_at_three(coach_profile):
     for i in range(5):
         Thesis.objects.create(
-            title=f"thesis-{i}", ticker="NVDA", direction="bullish",
-            conviction=3, status="open",
+            title=f"thesis-{i}",
+            ticker="NVDA",
+            direction="bullish",
+            conviction=3,
+            status="open",
         )
     out = assemble_coach_context(_snap(coach_profile), coach_profile)
     assert out.count("[bullish · conviction") == 3
@@ -121,6 +131,161 @@ def test_coach_never_raises_when_a_subsource_throws(coach_profile, monkeypatch):
     def boom(*a, **k):
         raise RuntimeError("recall is down")
 
-    monkeypatch.setattr("apps.recall.services.search.related_to_ticker", boom)
+    monkeypatch.setattr("apps.threads.coach.related_to_situation", boom)
     out = assemble_coach_context(_snap(coach_profile), coach_profile)  # must NOT raise
     assert "Open theses on NVDA" in out  # the healthy section still renders
+
+
+@pytest.mark.django_db
+def test_recall_block_uses_situation_search(coach_profile, monkeypatch):
+    from apps.threads import coach as coach_mod
+
+    snap = _snap(coach_profile)  # primary_ticker NVDA, quotes section last=188.2
+    captured = {}
+
+    def fake(ticker, query, *, k, kinds):
+        captured["ticker"] = ticker
+        captured["query"] = query
+        captured["k"] = k
+        captured["kinds"] = kinds
+        return [
+            {
+                "kind": "postmortem",
+                "object_id": 7,
+                "snippet": "NVDA ran into earnings",
+                "source_created_at": NOW,
+                "tickers": ["NVDA"],
+                "link": "/theses/7",
+            }
+        ]
+
+    monkeypatch.setattr(coach_mod, "related_to_situation", fake)
+    out = coach_mod._recall_block(snap, "NVDA")
+
+    assert captured["ticker"] == "NVDA"
+    assert "NVDA" in captured["query"]
+    assert captured["k"] == coach_mod._MAX_RECALL_ITEMS
+    assert set(captured["kinds"]) == {"postmortem", "thesis", "observation"}
+    assert "### You've noted this before" in out
+    assert "NVDA ran into earnings" in out
+
+
+@pytest.mark.django_db
+def test_recall_block_empty_ticker_returns_empty(coach_profile):
+    from apps.threads.coach import _recall_block
+
+    assert _recall_block(_snap(coach_profile), "") == ""
+
+
+@pytest.mark.django_db
+def test_lessons_block_renders_decisive_postmortems(coach_profile):
+    from apps.thesis.models import PostMortem, Thesis
+    from apps.threads.coach import _lessons_block
+
+    t = Thesis.objects.create(
+        title="Earnings run",
+        ticker="NVDA",
+        direction="bullish",
+        conviction=4,
+        status="closed_loss",
+    )
+    pm = PostMortem.objects.create(
+        thesis=t,
+        horizon_days=30,
+        due_at=NOW,
+        status="done",
+        verdict="incorrect",
+        forward_return_pct=-5.0,
+        report={
+            "lessons": ["Size smaller into earnings", "Wait for the IV crush"],
+            "what_missed": ["Guidance was already priced in"],
+        },
+    )
+    PostMortem.objects.filter(pk=pm.pk).update(completed_at=NOW)
+
+    out = _lessons_block("NVDA")
+    assert "### Lessons learned" in out
+    assert "incorrect" in out
+    assert "30d" in out
+    assert "Size smaller into earnings" in out
+
+
+@pytest.mark.django_db
+def test_lessons_block_ignores_inconclusive_and_unfinished(coach_profile):
+    from apps.thesis.models import PostMortem, Thesis
+    from apps.threads.coach import _lessons_block
+
+    t = Thesis.objects.create(
+        title="x", ticker="NVDA", direction="bullish", conviction=3, status="open"
+    )
+    PostMortem.objects.create(  # inconclusive -> excluded
+        thesis=t,
+        horizon_days=7,
+        due_at=NOW,
+        status="done",
+        verdict="inconclusive",
+        report={"lessons": ["nope"]},
+    )
+    PostMortem.objects.create(  # still scheduled -> excluded
+        thesis=t,
+        horizon_days=90,
+        due_at=NOW,
+        status="scheduled",
+        verdict="correct",
+        report={"lessons": ["also nope"]},
+    )
+    assert _lessons_block("NVDA") == ""
+
+
+@pytest.mark.django_db
+def test_lessons_block_caps_at_two(coach_profile):
+    from apps.thesis.models import PostMortem, Thesis
+    from apps.threads.coach import _lessons_block
+
+    for i in range(4):
+        t = Thesis.objects.create(
+            title=f"t{i}", ticker="NVDA", direction="bullish", conviction=3, status="open"
+        )
+        pm = PostMortem.objects.create(
+            thesis=t,
+            horizon_days=30,
+            due_at=NOW,
+            status="done",
+            verdict="correct",
+            forward_return_pct=4.0,
+            report={"lessons": [f"lesson {i}"]},
+        )
+        PostMortem.objects.filter(pk=pm.pk).update(completed_at=NOW)
+    out = _lessons_block("NVDA")
+    # At most 2 post-mortem bullet headers (one per pm) rendered.
+    assert out.count("[correct, 30d]") == 2
+
+
+def test_lessons_block_empty_ticker():
+    from apps.threads.coach import _lessons_block
+
+    assert _lessons_block("") == ""
+
+
+@pytest.mark.django_db
+def test_assemble_includes_lessons_block(coach_profile):
+    from apps.thesis.models import PostMortem, Thesis
+
+    t = Thesis.objects.create(
+        title="y", ticker="NVDA", direction="bearish", conviction=2, status="closed_win"
+    )
+    pm = PostMortem.objects.create(
+        thesis=t,
+        horizon_days=90,
+        due_at=NOW,
+        status="done",
+        verdict="correct",
+        forward_return_pct=8.0,
+        report={"lessons": ["Trust the breadth signal"]},
+    )
+    PostMortem.objects.filter(pk=pm.pk).update(completed_at=NOW)
+
+    out = assemble_coach_context(_snap(coach_profile), coach_profile)
+    assert "🧭 What you already know" in out
+    assert "### Lessons learned" in out
+    assert "Trust the breadth signal" in out

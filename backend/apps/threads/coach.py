@@ -15,7 +15,21 @@ from zoneinfo import ZoneInfo
 
 from django.conf import settings
 
+from apps.recall.services.search import related_to_situation
+
 log = logging.getLogger(__name__)
+
+# Recall sub-block bounds: at most N semantically-related past notes, scoped to a
+# short situation query. Kinds worth recalling into the coach (not raw messages/snapshots).
+_MAX_RECALL_ITEMS = 3
+_RECALL_QUERY_MAX_CHARS = 400
+_RECALL_KINDS = ("postmortem", "thesis", "observation")
+
+# Lessons block: at most this many decisive post-mortems, each with <=2 bullets.
+_MAX_LESSONS = 2
+_MAX_LESSON_BULLETS = 2
+# Free-form report keys that hold lesson bullets (read defensively; report is JSON).
+_LESSON_REPORT_KEYS = ("lessons", "what_missed")
 
 _BASE_FRAMING = (
     "You are a market-observation assistant for one experienced trader.\n"
@@ -94,7 +108,9 @@ def _theses_block(ticker: str, snapshot) -> str:
     from apps.thesis.models import Thesis
 
     theses = list(
-        Thesis.objects.filter(ticker=ticker, status="open").order_by("-conviction", "-opened_at")[:3]
+        Thesis.objects.filter(ticker=ticker, status="open").order_by("-conviction", "-opened_at")[
+            :3
+        ]
     )
     if not theses:
         return ""
@@ -171,10 +187,63 @@ def _track_record_block(ticker: str) -> str:
     return "\n".join(lines)
 
 
-def _recall_block(ticker: str) -> str:
-    from apps.recall.services.search import related_to_ticker
+def _lessons_block(ticker: str) -> str:
+    """Top decisive post-mortems for the ticker, newest first, with lessons.
 
-    hits = related_to_ticker(ticker, k=5)
+    Reads only ``status="done"`` post-mortems with a decisive verdict
+    (correct/incorrect) — look-ahead-safe by construction, since a horizon-H
+    post-mortem only completes >=H days after the thesis opened. Lazy-imports
+    PostMortem to respect the threads->thesis import cycle. Never raises (caller
+    wraps it in _safe; this body also tolerates missing/odd report shapes).
+    """
+    if not ticker:
+        return ""
+    from apps.thesis.models import PostMortem
+
+    rows = list(
+        PostMortem.objects.filter(
+            thesis__ticker=ticker.upper(),
+            status="done",
+            verdict__in=["correct", "incorrect"],
+        )
+        .select_related("thesis")
+        .order_by("-completed_at")[:_MAX_LESSONS]
+    )
+    if not rows:
+        return ""
+    lines = ["### Lessons learned"]
+    for pm in rows:
+        title = (pm.thesis.title or "").strip() or f"thesis #{pm.thesis_id}"
+        lines.append(f"- {title} [{pm.verdict}, {pm.horizon_days}d]")
+        report = pm.report if isinstance(pm.report, dict) else {}
+        bullets: list[str] = []
+        for key in _LESSON_REPORT_KEYS:
+            val = report.get(key)
+            if isinstance(val, list):
+                bullets.extend(str(x).strip() for x in val if str(x).strip())
+        for bullet in bullets[:_MAX_LESSON_BULLETS]:
+            lines.append(f"  - {bullet}")
+    return "\n".join(lines)
+
+
+def _situation_query(snapshot, ticker: str) -> str:
+    """A short free-text query describing the current situation for recall.
+
+    Ticker + a couple of headline numbers from the snapshot's own quotes section
+    (no fetch). Bounded to _RECALL_QUERY_MAX_CHARS so the embed/FTS call stays cheap.
+    """
+    parts = [ticker]
+    last = _snapshot_last(snapshot, ticker)
+    if last is not None:
+        parts.append(f"last {_fmt_num(last)}")
+    return " ".join(parts)[:_RECALL_QUERY_MAX_CHARS]
+
+
+def _recall_block(snapshot, ticker: str) -> str:
+    if not ticker:
+        return ""
+    query = _situation_query(snapshot, ticker)
+    hits = related_to_situation(ticker, query, k=_MAX_RECALL_ITEMS, kinds=list(_RECALL_KINDS))
     if not hits:
         return ""
     lines = ["### You've noted this before"]
@@ -203,7 +272,8 @@ def assemble_coach_context(snapshot, profile) -> str:
         _safe(lambda: _theses_block(ticker, snapshot)),
         _safe(lambda: _diff_block(snapshot)),
         _safe(lambda: _track_record_block(ticker)),
-        _safe(lambda: _recall_block(ticker)),
+        _safe(lambda: _recall_block(snapshot, ticker)),
+        _safe(lambda: _lessons_block(ticker)),
     ]
     body = "\n\n".join(s for s in sections if s)
     if not body:
