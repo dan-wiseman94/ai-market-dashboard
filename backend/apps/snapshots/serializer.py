@@ -91,6 +91,7 @@ def _title(kind: str) -> str:
         "image": "Chart image",
         "events": "Upcoming events",
         "overnight": "Overnight board",
+        "fundamentals": "Company fundamentals",
     }.get(kind, kind.title())
 
 
@@ -400,6 +401,47 @@ def _render_image(payload: dict) -> str:
     return "\n".join(rows)
 
 
+def _render_fundamentals(payload: dict) -> str:
+    """Render per-ticker fundamentals as a markdown table.
+
+    payload: {ticker: {pe, eps_ttm, rev_growth_yoy, net_margin, market_cap,
+                        wk52_high, wk52_low, sector, ...}, ...}
+    """
+    if not payload:
+        return "## Company fundamentals\n_(no fundamentals data)_"
+
+    lines = [
+        "## Company fundamentals",
+        "| Ticker | P/E | EPS | Rev growth | Net margin | Mkt cap ($M) | 52wk pos | Sector |",
+        "|---|---:|---:|---:|---:|---:|---|---|",
+    ]
+    for ticker, f in payload.items():
+        if not isinstance(f, dict):
+            continue
+        high = f.get("wk52_high")
+        low = f.get("wk52_low")
+        if high is not None and low is not None and high != low:
+            try:
+                pos = f"{(float(high) - float(low)):.2f} range ({_fmt(low)}-{_fmt(high)})"
+            except (TypeError, ValueError):
+                pos = "—"
+        else:
+            pos = "—"
+        lines.append(
+            f"| {ticker} "
+            f"| {_fmt(f.get('pe'))} "
+            f"| {_fmt(f.get('eps_ttm'))} "
+            f"| {_fmt(f.get('rev_growth_yoy'))}% "
+            f"| {_fmt(f.get('net_margin'))}% "
+            f"| {_fmt(f.get('market_cap'))} "
+            f"| {pos} "
+            f"| {f.get('sector') or '—'} |"
+        )
+    if len(lines) == 3:
+        return "## Company fundamentals\n_(no fundamentals data)_"
+    return "\n".join(lines)
+
+
 _RENDERERS = {
     "quotes": _render_quotes,
     "ohlc": _render_ohlc,
@@ -410,5 +452,6 @@ _RENDERERS = {
     "image": _render_image,
     "events": _render_events,
     "overnight": _render_overnight,
+    "fundamentals": _render_fundamentals,
     "notes": lambda _p: "",
 }
