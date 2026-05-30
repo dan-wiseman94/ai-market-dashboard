@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { installFakeWebSocket } from "../testUtils";
 import { MemoryRouter, createMemoryRouter, RouterProvider } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { WebSocketProvider } from "@/realtime/WebSocketProvider";
 import Breadcrumbs from "../../components/layout/Breadcrumbs";
 import ConnectionStatusDot from "../../components/layout/ConnectionStatusDot";
 import NotificationBell from "../../components/NotificationBell";
@@ -62,9 +63,11 @@ describe("layout testids", () => {
   it("NotificationBell has data-testid='notification-bell'", () => {
     render(
       <QueryClientProvider client={makeQc()}>
-        <MemoryRouter>
-          <NotificationBell />
-        </MemoryRouter>
+        <WebSocketProvider>
+          <MemoryRouter>
+            <NotificationBell />
+          </MemoryRouter>
+        </WebSocketProvider>
       </QueryClientProvider>,
     );
     expect(screen.getByTestId("notification-bell")).toBeInTheDocument();
