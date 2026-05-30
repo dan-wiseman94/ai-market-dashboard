@@ -259,4 +259,22 @@ describe("Dashboard", () => {
       expect.objectContaining({ queryKey: ["dashboard"] }),
     );
   });
+
+  it("does not invalidate dashboard query on non-notification messages", () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const invalidateSpy = vi.spyOn(client, "invalidateQueries");
+
+    renderDashboard(client);
+
+    const sock = fake.find("/ws/notifications/");
+    expect(sock).toBeDefined();
+
+    act(() => {
+      sock!.emitMessage({ type: "text_delta", text: "x" });
+    });
+
+    expect(invalidateSpy).not.toHaveBeenCalledWith(
+      expect.objectContaining({ queryKey: ["dashboard"] }),
+    );
+  });
 });
