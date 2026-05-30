@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
-import { Outlet, useNavigate } from "react-router-dom";
+import { Outlet, useMatches, useNavigate, type UIMatch } from "react-router-dom";
 import TopNav from "./TopNav";
 import SideNav from "./SideNav";
 import {
@@ -13,6 +13,17 @@ import { Toasts } from "@/components/Toasts";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { CommandPalette, type Command } from "@/components/CommandPalette";
 import { useTheme } from "@/hooks/useTheme";
+import { useDocumentTitle } from "@/hooks/useDocumentTitle";
+
+type CrumbFn = (m: UIMatch) => string;
+type Handle = { crumb?: string | CrumbFn };
+
+function resolveCrumb(match: UIMatch): string | null {
+  const h = match.handle as Handle | undefined;
+  if (!h?.crumb) return null;
+  if (typeof h.crumb === "string") return h.crumb;
+  return h.crumb(match);
+}
 
 function useDefaultCommands(): Command[] {
   const nav = useNavigate();
@@ -55,6 +66,18 @@ export default function AppLayout() {
   useKeyboardShortcuts(handleHelp);
   useCommandPaletteTrigger(openPalette);
   const commands = useDefaultCommands();
+
+  // Derive the leaf (deepest) crumb from the router matches and set it as the
+  // browser tab title. Reuses the same resolveCrumb logic as Breadcrumbs so
+  // every route that has a handle.crumb automatically gets a title.
+  const matches = useMatches();
+  const leafCrumb = useMemo(() => {
+    const crumbs = matches
+      .map((m) => resolveCrumb(m))
+      .filter((c): c is string => c !== null);
+    return crumbs.at(-1) ?? undefined;
+  }, [matches]);
+  useDocumentTitle(leafCrumb);
 
   return (
     <ToastProvider>
