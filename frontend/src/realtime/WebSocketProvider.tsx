@@ -16,6 +16,9 @@ function pathForChannel(channel: string): string {
   if (channel.startsWith("snapshot.")) {
     return `/ws/snapshots/${channel.slice("snapshot.".length)}/`;
   }
+  if (channel === "notifications" || channel.startsWith("notifications.")) {
+    return `/ws/notifications/`;
+  }
   throw new Error(`Unknown channel: ${channel}`);
 }
 
