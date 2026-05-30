@@ -61,4 +61,8 @@ app.conf.beat_schedule = {
         "task": "recall.index_pending",
         "schedule": crontab(minute="*/5"),
     },
+    "ingest-daily-bars": {
+        "task": "market.ingest_daily_bars",
+        "schedule": crontab(hour=22, minute=30),
+    },
 }
