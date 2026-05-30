@@ -181,14 +181,14 @@ def _do_fire(*, trigger_id: int, matched_values: dict) -> None:
     firing.thread = thread
     firing.save(update_fields=["thread"])
 
+    from apps.threads.coach import assemble_coach_context
+
+    coach = assemble_coach_context(snap, trigger.profile)
+    text = serialize_for_ai(snap, provider=provider_name, model=trigger.profile.default_model)
     user_msg = Message.objects.create(
         thread=thread,
         role="user",
-        content={
-            "text": serialize_for_ai(
-                snap, provider=provider_name, model=trigger.profile.default_model
-            )
-        },
+        content={"text": coach + text},
         snapshot_ref=snap,
         status="done",
     )
