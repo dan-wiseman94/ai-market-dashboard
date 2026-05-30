@@ -1,7 +1,12 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { screen } from "@testing-library/react";
-import { renderWithProviders } from "./testUtils";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { render, screen, act } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { WebSocketProvider } from "@/realtime/WebSocketProvider";
+import { ToastProvider } from "@/hooks/useToast";
+import { Toasts } from "@/components/Toasts";
 import Dashboard from "@/pages/Dashboard";
+import { installFakeWebSocket, type FakeWebSocketController } from "./testUtils";
 
 // ---------------------------------------------------------------------------
 // Child component mocks — keep test surface flat
@@ -81,7 +86,10 @@ const DASHBOARD_PAYLOAD = {
   },
 };
 
+let fake: FakeWebSocketController;
+
 beforeEach(() => {
+  fake = installFakeWebSocket();
   vi.clearAllMocks();
   mockMarketStatus.mockReturnValue({
     data: { markets: { us_equity: { is_open: true, phase: "open" } } },
@@ -92,14 +100,38 @@ beforeEach(() => {
   });
 });
 
+afterEach(() => {
+  fake.restore();
+});
+
+/**
+ * Dashboard uses useChannel → useWebSocket → requires WebSocketProvider.
+ * Wrap with the full provider tree including the shared WS broker.
+ */
+function renderDashboard(client = new QueryClient({ defaultOptions: { queries: { retry: false } } })) {
+  render(
+    <QueryClientProvider client={client}>
+      <WebSocketProvider>
+        <ToastProvider>
+          <Toasts />
+          <MemoryRouter>
+            <Dashboard />
+          </MemoryRouter>
+        </ToastProvider>
+      </WebSocketProvider>
+    </QueryClientProvider>,
+  );
+  return client;
+}
+
 describe("Dashboard", () => {
   it("renders without crashing", () => {
-    renderWithProviders(<Dashboard />);
+    renderDashboard();
     expect(screen.getByRole("main")).toBeInTheDocument();
   });
 
   it("includes a time-based greeting in the hero heading", () => {
-    renderWithProviders(<Dashboard />);
+    renderDashboard();
     const heading = screen.getByRole("heading", { level: 1 });
     expect(heading.textContent).toMatch(/good morning|good afternoon|good evening|late watch/i);
   });
@@ -108,7 +140,7 @@ describe("Dashboard", () => {
     mockMarketStatus.mockReturnValue({
       data: { markets: { us_equity: { is_open: true, phase: "open" } } },
     });
-    renderWithProviders(<Dashboard />);
+    renderDashboard();
     expect(screen.getByRole("heading", { level: 1 }).textContent).toMatch(/the tape is open/i);
   });
 
@@ -116,7 +148,7 @@ describe("Dashboard", () => {
     mockMarketStatus.mockReturnValue({
       data: { markets: { us_equity: { is_open: false, phase: "postmarket" } } },
     });
-    renderWithProviders(<Dashboard />);
+    renderDashboard();
     const heading = screen.getByRole("heading", { level: 1 });
     expect(heading.textContent).toMatch(/the tape is in extended hours/i);
     expect(heading.textContent).not.toMatch(/the tape is open/i);
@@ -127,29 +159,29 @@ describe("Dashboard", () => {
     mockMarketStatus.mockReturnValue({
       data: { markets: { us_equity: { is_open: false, phase: "weekend" } } },
     });
-    renderWithProviders(<Dashboard />);
+    renderDashboard();
     expect(screen.getByRole("heading", { level: 1 }).textContent).toMatch(/the tape is closed/i);
   });
 
   it("includes the 'Market context' section label", () => {
-    renderWithProviders(<Dashboard />);
+    renderDashboard();
     expect(screen.getByText(/market context/i)).toBeInTheDocument();
   });
 
   it("includes the 'The book' section label (positions area)", () => {
-    renderWithProviders(<Dashboard />);
+    renderDashboard();
     expect(screen.getByText(/the book/i)).toBeInTheDocument();
   });
 
   it("includes a 'Capture snapshot' call-to-action link", () => {
-    renderWithProviders(<Dashboard />);
+    renderDashboard();
     const ctaLink = screen.getByRole("link", { name: /capture snapshot/i });
     expect(ctaLink).toBeInTheDocument();
     expect(ctaLink).toHaveAttribute("href", "/snapshot");
   });
 
   it("includes a 'Watchlists' navigation link in the book section", () => {
-    renderWithProviders(<Dashboard />);
+    renderDashboard();
     expect(screen.getByRole("link", { name: /watchlists/i })).toBeInTheDocument();
   });
 
@@ -158,46 +190,73 @@ describe("Dashboard", () => {
   // ------------------------------------------------------------------
 
   it("shows the AAPL thesis from useDashboard", () => {
-    renderWithProviders(<Dashboard />);
+    renderDashboard();
     expect(screen.getByText("AAPL")).toBeInTheDocument();
   });
 
   it("shows armed triggers count from useDashboard", () => {
-    renderWithProviders(<Dashboard />);
+    renderDashboard();
     expect(screen.getByTestId("triggers-armed-count").textContent).toBe("7");
   });
 
   it("shows latest firing name from useDashboard", () => {
-    renderWithProviders(<Dashboard />);
+    renderDashboard();
     expect(screen.getByText("SPY drop")).toBeInTheDocument();
   });
 
   it("shows observer runs_today from useDashboard", () => {
-    renderWithProviders(<Dashboard />);
+    renderDashboard();
     expect(screen.getByTestId("observer-runs-today").textContent).toBe("5");
   });
 
   it("shows briefing status badge from useDashboard", () => {
-    renderWithProviders(<Dashboard />);
+    renderDashboard();
     // The BriefingSummaryTile shows a 'ready' badge
     expect(screen.getByText("ready")).toBeInTheDocument();
   });
 
   it("shows upcoming NVDA earnings event from useDashboard", () => {
-    renderWithProviders(<Dashboard />);
+    renderDashboard();
     expect(screen.getByText(/NVDA earnings/i)).toBeInTheDocument();
   });
 
   it("shows Skeleton rows while useDashboard is loading", () => {
     mockUseDashboard.mockReturnValue({ data: undefined, isLoading: true });
-    renderWithProviders(<Dashboard />);
+    renderDashboard();
     // SkeletonRows renders data-testid="skeleton-row"
     const rows = screen.getAllByTestId("skeleton-row");
     expect(rows.length).toBeGreaterThan(0);
   });
 
   it("shows 'Command centre' section heading", () => {
-    renderWithProviders(<Dashboard />);
+    renderDashboard();
     expect(screen.getByText(/command centre/i)).toBeInTheDocument();
+  });
+
+  // ------------------------------------------------------------------
+  // Live refresh via shared notifications WS channel (W4b-2)
+  // ------------------------------------------------------------------
+
+  it("invalidates the dashboard query when a notification.event arrives over /ws/notifications/", () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const invalidateSpy = vi.spyOn(client, "invalidateQueries");
+
+    renderDashboard(client);
+
+    // The shared WebSocketProvider opens /ws/notifications/ because Dashboard
+    // subscribes to the "notifications" channel via useChannel.
+    const sock = fake.find("/ws/notifications/");
+    expect(sock).toBeDefined();
+
+    act(() => {
+      sock!.emitMessage({
+        type: "notification.event",
+        payload: { kind: "observer_done", title: "Observer ran" },
+      });
+    });
+
+    expect(invalidateSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ queryKey: ["dashboard"] }),
+    );
   });
 });
