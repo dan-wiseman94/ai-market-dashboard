@@ -40,3 +40,16 @@ class ObservationReport(BaseModel):
         max_length=80,
         description="When or under what condition the observer should re-check.",
     )
+    predicted_direction: Literal["bullish", "bearish", "neutral"] | None = Field(
+        default=None,
+        description="Your single directional call for the primary ticker over the horizon, if any.",
+    )
+    predicted_horizon_days: int | None = Field(
+        default=None,
+        description="Horizon in trading days for predicted_direction.",
+    )
+    grounding: list[str] = Field(
+        default_factory=list,
+        max_length=12,
+        description="Which provided data sections each key claim used (e.g. 'quotes', 'chain analytics').",
+    )
