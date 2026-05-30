@@ -12,6 +12,12 @@ const mockCreateSnap = vi.fn();
 const mockCreateThread = vi.fn();
 const mockWaitForReady = vi.fn();
 
+// useSnapshotProgress subscribes to the WS channel; these tests don't need a
+// real WebSocketProvider — stub it to return an empty sections map.
+vi.mock("@/hooks/useSnapshotProgress", () => ({
+  useSnapshotProgress: () => ({ sections: new Map() }),
+}));
+
 // Capture is async (Celery), so createSnapshot returns status="pending". The
 // composer must wait for the snapshot to become ready before pinning it to a
 // thread; stub the polling helper so tests control when "ready" arrives.

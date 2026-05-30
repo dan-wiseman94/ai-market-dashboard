@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { ApiError } from "@/api/client";
 import { waitForSnapshotReady } from "@/api/snapshots";
 import SnapshotSectionPicker from "@/components/SnapshotSectionPicker";
+import { SnapshotCaptureProgress } from "@/components/SnapshotCaptureProgress";
 import TickerChipsInput from "@/components/TickerChipsInput";
 import { useProfiles } from "@/hooks/useProfiles";
 import { useAgentPresets } from "@/hooks/useAgentPresets";
@@ -10,6 +11,7 @@ import { useCreateSnapshot } from "@/hooks/useCreateSnapshot";
 import { useCreateConsultThread } from "@/hooks/useCreateConsultThread";
 import { useWatchlists } from "@/hooks/useWatchlists";
 import { useMarketStatus } from "@/hooks/useMarketStatus";
+import { useSnapshotProgress } from "@/hooks/useSnapshotProgress";
 
 export default function SnapshotComposerPage() {
   const navigate = useNavigate();
@@ -30,6 +32,12 @@ export default function SnapshotComposerPage() {
   const [title, setTitle] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  // Set to the created snapshot id once the POST returns so we can subscribe
+  // to its WS channel for live per-section progress events. Cleared on terminal
+  // (navigation away or error). The HTTP poll remains the terminal source of
+  // truth — this is progress-only.
+  const [capturingId, setCapturingId] = useState<number | null>(null);
+  const { sections: captureSections } = useSnapshotProgress(capturingId);
   const [stagedIds, setStagedIds] = useState<number[]>(() => {
     try { return JSON.parse(localStorage.getItem("staged_image_ids") || "[]"); }
     catch { return []; }
@@ -87,6 +95,9 @@ export default function SnapshotComposerPage() {
         image_ids: stagedIds,
         overnight,
       });
+      // Subscribe to the WS channel for live per-section progress. The HTTP
+      // poll below remains the terminal source of truth — WS is progress-only.
+      setCapturingId(created.id);
       // Capture runs asynchronously in a Celery worker, so the snapshot comes
       // back as "pending". Wait for it to finish before pinning it to a thread —
       // the thread-create endpoint 400s on a non-ready snapshot.
@@ -107,6 +118,7 @@ export default function SnapshotComposerPage() {
       setStagedIds([]);
       navigate(`/threads/${thread.id}?snapshot=${snap.id}`);
     } catch (err) {
+      setCapturingId(null);
       setError(
         err instanceof ApiError ? err.message : "Failed to capture snapshot — please try again.",
       );
@@ -272,6 +284,12 @@ export default function SnapshotComposerPage() {
                 </div>
               ))}
             </div>
+          </div>
+        )}
+
+        {submitting && captureSections.size > 0 && (
+          <div data-testid="capture-progress">
+            <SnapshotCaptureProgress sections={captureSections} />
           </div>
         )}
 
