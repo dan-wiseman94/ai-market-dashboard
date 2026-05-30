@@ -5,6 +5,25 @@ stateful "what you already know" context block.
 (added in a later task) composes prior theses / diff-vs-last / track record /
 recall and uses LAZY, function-local cross-app imports so importing this module
 from `apps.threads` never triggers the documented threads -> thesis cycle.
+
+Coverage map (verified 2026-05-30 — keep in sync if you add an AI entry point):
+
+* Threads chat — apps.threads.views.ThreadViewSet.create prepends
+  assemble_coach_context(snap, profile) to the synthetic pinned-snapshot user
+  Message. (build_system_prompt is the pure SYSTEM-prompt builder; it does NOT
+  inject the coach.)
+* Observer — apps.observer.services.run calls
+  assemble_coach_context(snap, sched.profile) and prepends it to the user turn.
+
+NOTE: apps.triggers.tasks._do_fire does NOT yet call assemble_coach_context
+(W8 — pending). Once W8 lands, add a third bullet here and update the
+test_w5_coach_gate_parity docstring.
+
+All two active sites funnel through assemble_coach_context, which is the single
+place the enable_coach flag and the primary-ticker guard live — flag/ticker
+parity is structural, not duplicated. assemble_coach_context returns "" when the
+profile is None / coach-disabled, when there is no primary ticker, or when every
+sub-section is empty.
 """
 
 from __future__ import annotations

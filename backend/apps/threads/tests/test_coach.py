@@ -289,3 +289,37 @@ def test_assemble_includes_lessons_block(coach_profile):
     assert "🧭 What you already know" in out
     assert "### Lessons learned" in out
     assert "Trust the breadth signal" in out
+
+
+@pytest.mark.django_db
+def test_w5_coach_gate_parity(coach_profile):
+    """W5: assemble_coach_context is the single enable_coach/primary_ticker gate
+    that all three injection sites (threads view, observer, trigger) call."""
+    Thesis.objects.create(
+        title="AI capex",
+        ticker="NVDA",
+        direction="bullish",
+        conviction=4,
+        status="open",
+        target_price=210,
+    )
+    snap = _snap(coach_profile)  # primary_ticker=NVDA
+
+    # enable_coach defaults True for coach_profile -> block present.
+    on_out = assemble_coach_context(snap, coach_profile)
+    assert "🧭 What you already know" in on_out
+    assert "Open theses on NVDA" in on_out
+
+    # Flip the flag -> the same call returns "" (no per-site divergence possible).
+    coach_profile.enable_coach = False
+    coach_profile.save()
+    assert assemble_coach_context(snap, coach_profile) == ""
+
+    # No primary ticker -> "" regardless of flag (the other gate).
+    coach_profile.enable_coach = True
+    coach_profile.save()
+    blank = Snapshot.objects.create(
+        profile=coach_profile, status="ready", includes=["quotes"], source="manual"
+    )
+    assert blank.primary_ticker is None
+    assert assemble_coach_context(blank, coach_profile) == ""
