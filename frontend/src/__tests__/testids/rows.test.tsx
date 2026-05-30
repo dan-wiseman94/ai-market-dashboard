@@ -308,7 +308,18 @@ describe("SnapshotComposerPage", () => {
       return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
     }) as never;
 
-    wrap(<SnapshotComposerPage />);
+    // SnapshotComposerPage uses useSnapshotProgress → useChannel → WebSocket context
+    render(
+      <QueryClientProvider client={makeQc()}>
+        <ToastProvider>
+          <WebSocketProvider>
+            <MemoryRouter>
+              <SnapshotComposerPage />
+            </MemoryRouter>
+          </WebSocketProvider>
+        </ToastProvider>
+      </QueryClientProvider>,
+    );
     expect(await screen.findByTestId("capture-btn")).toBeInTheDocument();
   });
 });
