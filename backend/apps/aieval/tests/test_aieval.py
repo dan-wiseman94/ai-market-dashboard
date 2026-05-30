@@ -15,7 +15,7 @@ from django.core.management import call_command
 from django.utils import timezone
 
 from apps.aieval import services as svc
-from apps.aieval.services import evaluate, labeled_examples, replay_one
+from apps.aieval.services import confidence_calibration, evaluate, labeled_examples, replay_one
 from apps.observer.schemas import ObservationReport, Signal
 from apps.profiles.models import TradingProfile
 from apps.snapshots.models import Snapshot
@@ -270,3 +270,160 @@ def test_command_zero_data_friendly_message(db):
     out = StringIO()
     call_command("aieval", "--model", "claude-opus-4-8", stdout=out)
     assert "no labeled data yet" in out.getvalue()
+
+
+# --------------------------------------------------------------------------- #
+# M6-3 — confidence_calibration reliability curve
+# --------------------------------------------------------------------------- #
+
+
+def test_confidence_calibration_bucket_assignment():
+    """Hand-checkable: confidences [0.95(hit), 0.92(miss), 0.6(hit), 0.4(hit)].
+
+    Bucket breakdown:
+      [0.0, 0.5): confidence=0.4, hit=True -> n=1, hits=1, observed=1.0, mean_conf=0.4
+      [0.5, 0.7): confidence=0.6, hit=True -> n=1, hits=1, observed=1.0, mean_conf=0.6
+      [0.7, 0.9): no entries           -> n=0, observed=None, mean_conf=None
+      [0.9, 1.0): confidence=0.95(hit) and 0.92(miss) -> n=2, hits=1, observed=0.5, mean_conf=round((0.95+0.92)/2,4)=0.935
+    """
+    results = [
+        {"confidence": 0.95, "hit": True},
+        {"confidence": 0.92, "hit": False},
+        {"confidence": 0.6, "hit": True},
+        {"confidence": 0.4, "hit": True},
+    ]
+    buckets = confidence_calibration(results)
+    assert len(buckets) == 4
+
+    b_low = buckets[0]  # [0.0, 0.5)
+    assert b_low["bin_low"] == 0.0
+    assert b_low["bin_high"] == 0.5
+    assert b_low["n"] == 1
+    assert b_low["hits"] == 1
+    assert b_low["observed_hit_rate"] == 1.0
+    assert b_low["mean_confidence"] == 0.4
+
+    b_mid1 = buckets[1]  # [0.5, 0.7)
+    assert b_mid1["n"] == 1
+    assert b_mid1["hits"] == 1
+    assert b_mid1["observed_hit_rate"] == 1.0
+    assert b_mid1["mean_confidence"] == 0.6
+
+    b_mid2 = buckets[2]  # [0.7, 0.9) — empty
+    assert b_mid2["n"] == 0
+    assert b_mid2["observed_hit_rate"] is None
+    assert b_mid2["mean_confidence"] is None
+
+    b_high = buckets[3]  # [0.9, 1.0)
+    assert b_high["bin_low"] == 0.9
+    assert b_high["bin_high"] == 1.0
+    assert b_high["n"] == 2
+    assert b_high["hits"] == 1
+    assert b_high["observed_hit_rate"] == 0.5
+    assert b_high["mean_confidence"] == round((0.95 + 0.92) / 2, 4)  # 0.935
+
+
+def test_confidence_calibration_excludes_none_rows():
+    """Rows with confidence=None OR hit=None must be silently excluded."""
+    results = [
+        {"confidence": None, "hit": True},  # excluded: no confidence
+        {"confidence": 0.8, "hit": None},  # excluded: non-directional (no hit)
+        {"confidence": 0.8, "hit": True},  # counted: [0.7, 0.9) bucket
+        {"confidence": 0.8, "hit": False},  # counted: [0.7, 0.9) bucket
+    ]
+    buckets = confidence_calibration(results)
+    b_mid2 = buckets[2]  # [0.7, 0.9)
+    assert b_mid2["n"] == 2
+    assert b_mid2["hits"] == 1
+    assert b_mid2["observed_hit_rate"] == 0.5
+
+    # Buckets for [0.0,0.5) and [0.5,0.7) and [0.9,1.0) must be empty
+    assert buckets[0]["n"] == 0
+    assert buckets[1]["n"] == 0
+    assert buckets[3]["n"] == 0
+
+
+def test_confidence_calibration_empty_results():
+    """Empty input produces four buckets all with n=0 and None rates."""
+    buckets = confidence_calibration([])
+    assert len(buckets) == 4
+    for b in buckets:
+        assert b["n"] == 0
+        assert b["observed_hit_rate"] is None
+        assert b["mean_confidence"] is None
+
+
+def test_confidence_calibration_error_hand_checkable():
+    """calibration_error = mean abs(observed - mean_conf) over non-empty buckets.
+
+    Using confidences [0.95(hit), 0.92(miss), 0.6(hit), 0.4(hit)]:
+      non-empty buckets:
+        [0.0,0.5): observed=1.0, mean_conf=0.4 -> abs=0.6
+        [0.5,0.7): observed=1.0, mean_conf=0.6 -> abs=0.4
+        [0.9,1.0): observed=0.5, mean_conf=0.935 -> abs=0.435
+      calibration_error = round((0.6 + 0.4 + 0.435) / 3, 4) = round(1.435/3, 4) = 0.4783
+    """
+    results = [
+        {"confidence": 0.95, "hit": True},
+        {"confidence": 0.92, "hit": False},
+        {"confidence": 0.6, "hit": True},
+        {"confidence": 0.4, "hit": True},
+    ]
+    buckets = confidence_calibration(results)
+    non_empty = [b for b in buckets if b["n"] > 0]
+    abs_errors = [abs(b["observed_hit_rate"] - b["mean_confidence"]) for b in non_empty]
+    expected_error = round(sum(abs_errors) / len(abs_errors), 4)
+    assert expected_error == round((0.6 + 0.4 + 0.435) / 3, 4)  # 0.4783
+
+
+def test_evaluate_includes_calibration_key(profile):
+    """evaluate() must return a 'calibration' key (list of buckets) and
+    a 'calibration_error' key. Verified with a minimal dataset."""
+    snap = _snapshot(profile)
+    _postmortem(
+        _thesis(profile, direction="bullish", conviction=3, snapshot=snap),
+        verdict="correct",
+        fwd=5.0,
+    )
+    with patch.object(svc, "run_structured", return_value=_report("bullish", confs=(0.85,))):
+        res = evaluate(system="sys", model="claude-opus-4-8", label="cal-test")
+
+    assert "calibration" in res
+    assert isinstance(res["calibration"], list)
+    assert len(res["calibration"]) == 4  # one bucket per _CONF_BINS entry
+
+    # The single hit at confidence=0.85 lands in [0.7, 0.9)
+    b_mid2 = res["calibration"][2]
+    assert b_mid2["n"] == 1
+    assert b_mid2["hits"] == 1
+    assert b_mid2["observed_hit_rate"] == 1.0
+    assert b_mid2["mean_confidence"] == 0.85
+
+    assert "calibration_error" in res
+    # Only one non-empty bucket: abs(1.0 - 0.85) = 0.15
+    assert res["calibration_error"] == round(abs(1.0 - 0.85), 4)  # 0.15
+
+
+def test_command_prints_calibration_table(profile):
+    """The management command must print a calibration table when data exists."""
+    snap = _snapshot(profile)
+    _postmortem(
+        _thesis(profile, direction="bullish", conviction=3, snapshot=snap),
+        verdict="correct",
+        fwd=5.0,
+    )
+    out = StringIO()
+    with patch.object(svc, "run_structured", return_value=_report("bullish", confs=(0.85,))):
+        call_command(
+            "aieval",
+            "--model",
+            "claude-opus-4-8",
+            "--limit",
+            "1",
+            "--label",
+            "caltest",
+            stdout=out,
+        )
+    text = out.getvalue()
+    assert "calibration" in text
+    assert "conf [" in text

@@ -95,3 +95,17 @@ class Command(BaseCommand):
                 f"verdict={r['actual_verdict']} "
                 f"confidence={r['confidence']} hit={r['hit']}"
             )
+
+        # Calibration reliability table
+        non_empty = [b for b in res.get("calibration", []) if b["n"] > 0]
+        if non_empty:
+            self.stdout.write("\ncalibration reliability curve:")
+            for b in non_empty:
+                self.stdout.write(
+                    f"  conf [{b['bin_low']:.2f},{b['bin_high']:.2f}): "
+                    f"n={b['n']} observed={b['observed_hit_rate']} stated={b['mean_confidence']}"
+                )
+            if res.get("calibration_error") is not None:
+                self.stdout.write(
+                    f"calibration_error (mean|observed-stated|)={res['calibration_error']}"
+                )

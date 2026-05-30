@@ -39,6 +39,41 @@ _DECISIVE = ("correct", "incorrect")
 # Direction opposite, used to recover the OUTCOME direction from (thesis dir, verdict).
 _OPPOSITE = {"bullish": "bearish", "bearish": "bullish", "neutral": "neutral"}
 
+# Reliability bins for stated-confidence calibration.
+_CONF_BINS = [(0.0, 0.5), (0.5, 0.7), (0.7, 0.9), (0.9, 1.01)]
+
+
+def confidence_calibration(results: list[dict]) -> list[dict]:
+    """Reliability curve: bucket scored predictions by stated confidence, report observed hit-rate.
+
+    Only includes predictions with a non-None confidence AND a non-None hit (decisive, scored).
+    Each bucket: {bin_low, bin_high, n, hits, observed_hit_rate (float|None), mean_confidence (float|None)}.
+    A well-calibrated model has observed_hit_rate ≈ mean_confidence within each bucket.
+    """
+    buckets = []
+    for lo, hi in _CONF_BINS:
+        rows = [
+            r
+            for r in results
+            if r.get("confidence") is not None
+            and r.get("hit") is not None
+            and lo <= r["confidence"] < hi
+        ]
+        n = len(rows)
+        hits = sum(1 for r in rows if r["hit"])
+        confs = [r["confidence"] for r in rows]
+        buckets.append(
+            {
+                "bin_low": lo,
+                "bin_high": min(hi, 1.0),
+                "n": n,
+                "hits": hits,
+                "observed_hit_rate": round(hits / n, 4) if n else None,
+                "mean_confidence": round(sum(confs) / len(confs), 4) if confs else None,
+            }
+        )
+    return buckets
+
 
 def labeled_examples(*, horizon: int | None = None, limit: int | None = None) -> list[PostMortem]:
     """Decisive ``PostMortem`` ⋈ ``Thesis`` rows that have a frozen source
@@ -203,6 +238,17 @@ def evaluate(
         p = _prob_for_conviction(ex.thesis.conviction)
         brier_terms.append((p - o) ** 2)
 
+    calibration = confidence_calibration(rows)
+    non_empty = [b for b in calibration if b["n"] > 0]
+    calibration_error: float | None = None
+    if non_empty:
+        abs_errors = [
+            abs(b["observed_hit_rate"] - b["mean_confidence"])
+            for b in non_empty
+            if b["observed_hit_rate"] is not None and b["mean_confidence"] is not None
+        ]
+        calibration_error = round(sum(abs_errors) / len(abs_errors), 4) if abs_errors else None
+
     return {
         "label": label,
         "model": model,
@@ -214,4 +260,6 @@ def evaluate(
         "brier": round(sum(brier_terms) / len(brier_terms), 4) if brier_terms else None,
         "avg_confidence": (round(sum(confidences) / len(confidences), 4) if confidences else None),
         "examples": rows,
+        "calibration": calibration,
+        "calibration_error": calibration_error,
     }
