@@ -14,10 +14,9 @@ import {
   renderWithProviders,
   installFakeWebSocket,
   type FakeWebSocketController,
+  newQueryClient,
 } from "./testUtils";
 import SnapshotComposerPage from "@/pages/SnapshotComposerPage";
-import type { QueryClient } from "@tanstack/react-query";
-import { newQueryClient } from "./testUtils";
 
 // ---- Module-level mocks (same shape as SnapshotComposerPage.test.tsx) ----
 
@@ -56,18 +55,8 @@ vi.mock("@/hooks/useAgentPresets", () => ({
 
 // ---- Helper ----
 
-function renderComposerWithWs(client: QueryClient) {
-  return renderWithProviders(<SnapshotComposerPage />, {
-    client,
-    initialEntries: ["/compose"],
-    routePath: "/compose",
-    // Wrap with WebSocketProvider so useSnapshotProgress can subscribe
-    // (overrides the default Wrapper by injecting it inside)
-  });
-}
-
-// Wrap with WebSocketProvider in addition to the standard providers.
-// We do this by rendering inside WebSocketProvider directly.
+// Wrap with WebSocketProvider in addition to the standard providers so
+// useSnapshotProgress can subscribe to the snapshot.<id> channel.
 function renderWithWs() {
   const client = newQueryClient();
   const { container } = renderWithProviders(
