@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     "apps.briefing",
     "apps.recall",
     "apps.dashboard",
+    "apps.portfolio",
 ]
 
 MIDDLEWARE = [
