@@ -153,6 +153,67 @@ def _render_quotes(payload: dict) -> str:
     return "\n".join(lines)
 
 
+def _ohlc_gap_note(bars: list[dict]) -> str:
+    """Return a one-line caveat if bars contain a material history gap, else ''.
+
+    Algorithm:
+    - Parse the 'ts' field of each bar as an ISO datetime and compute consecutive deltas.
+    - Sort the deltas and take the median of the lower half as the 'typical' interval
+      (robust to a single large gap polluting the overall median).
+    - Flag the largest delta when it is >= 4x the typical interval (conservative: handles
+      Fri->Mon 3-calendar-day weekends without false-positives; only fires on clear multi-
+      session holes like 7+ calendar days for daily bars).
+    - Returns '' when data is contiguous or when bars are too few to assess (<= 2 bars).
+    """
+    if len(bars) < 3:
+        return ""
+
+    # Parse timestamps — bars['ts'] is an ISO 8601 string.
+    timestamps: list[datetime] = []
+    for b in bars:
+        raw = b.get("ts")
+        if raw is None:
+            return ""
+        try:
+            dt = datetime.fromisoformat(str(raw))
+            # Ensure timezone-aware for consistent subtraction
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=UTC)
+            timestamps.append(dt)
+        except (ValueError, TypeError):
+            return ""
+
+    if len(timestamps) < 3:
+        return ""
+
+    deltas_s = sorted(
+        [(timestamps[i + 1] - timestamps[i]).total_seconds() for i in range(len(timestamps) - 1)]
+    )
+
+    # Typical interval = median of the lower half (ignores the largest outlier(s))
+    lower_half = deltas_s[: max(1, len(deltas_s) // 2)]
+    typical_s = lower_half[len(lower_half) // 2]
+
+    if typical_s <= 0:
+        return ""
+
+    max_s = deltas_s[-1]  # already sorted ascending
+
+    # Only flag when the largest gap is >= 4x the typical interval
+    if max_s < 4 * typical_s:
+        return ""
+
+    # Find which consecutive pair produced the largest delta (unsorted timestamps needed)
+    raw_deltas = [
+        (timestamps[i + 1] - timestamps[i]).total_seconds() for i in range(len(timestamps) - 1)
+    ]
+    gap_idx = max(range(len(raw_deltas)), key=lambda i: raw_deltas[i])
+    before = timestamps[gap_idx].strftime("%Y-%m-%d")
+    after = timestamps[gap_idx + 1].strftime("%Y-%m-%d")
+
+    return f"_(history gap: largest hole between {before} and {after})_"
+
+
 def _render_ohlc(payload: dict) -> str:
     bars = payload.get("bars", [])
     if not bars:
@@ -163,7 +224,11 @@ def _render_ohlc(payload: dict) -> str:
     csv_lines = ["ts,open,high,low,close,volume"]
     for b in bars:
         csv_lines.append(f"{b['ts']},{b['open']},{b['high']},{b['low']},{b['close']},{b['volume']}")
-    return f"{header}\n```csv\n" + "\n".join(csv_lines) + "\n```"
+    result = f"{header}\n```csv\n" + "\n".join(csv_lines) + "\n```"
+    gap_note = _ohlc_gap_note(bars)
+    if gap_note:
+        result += f"\n{gap_note}"
+    return result
 
 
 def _render_positions(payload: list) -> str:
