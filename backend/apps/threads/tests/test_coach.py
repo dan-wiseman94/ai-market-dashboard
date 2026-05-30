@@ -208,6 +208,8 @@ def test_lessons_block_renders_decisive_postmortems(coach_profile):
     assert "incorrect" in out
     assert "30d" in out
     assert "Size smaller into earnings" in out
+    assert "Wait for the IV crush" in out  # 2nd bullet (cap = 2)
+    assert "Guidance was already priced in" not in out  # 3rd bullet dropped by _MAX_LESSON_BULLETS
 
 
 @pytest.mark.django_db
@@ -233,6 +235,14 @@ def test_lessons_block_ignores_inconclusive_and_unfinished(coach_profile):
         status="scheduled",
         verdict="correct",
         report={"lessons": ["also nope"]},
+    )
+    PostMortem.objects.create(  # mixed -> excluded (only correct/incorrect are decisive)
+        thesis=t,
+        horizon_days=30,
+        due_at=NOW,
+        status="done",
+        verdict="mixed",
+        report={"lessons": ["still nope"]},
     )
     assert _lessons_block("NVDA") == ""
 
