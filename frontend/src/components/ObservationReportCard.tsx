@@ -1,3 +1,6 @@
+import { useRef } from "react";
+import { SaveCardButton } from "./SaveCardButton";
+
 type Bias = "bullish" | "bearish" | "neutral" | "mixed";
 
 export type ObservationReport = {
@@ -36,13 +39,17 @@ function SectionHeading({ children }: { children: string }) {
 }
 
 export default function ObservationReportCard({ report }: { report: ObservationReport }) {
+  const cardRef = useRef<HTMLDivElement>(null);
+  const filename = `observation-${report.bias}.png`;
+
   return (
-    <div className="space-y-3">
+    <div ref={cardRef} className="space-y-3">
       <div className="flex items-start gap-3">
         <span className={`shrink-0 inline-block px-2 py-0.5 text-[10px] uppercase tracking-wider border rounded ${BIAS_COLOR[report.bias]}`}>
           {report.bias}
         </span>
-        <h3 className="font-medium text-ink-100">{report.headline}</h3>
+        <h3 className="font-medium text-ink-100 flex-1">{report.headline}</h3>
+        <SaveCardButton targetRef={cardRef} filename={filename} />
       </div>
       <p className="text-sm text-ink-300">{report.summary}</p>
 
