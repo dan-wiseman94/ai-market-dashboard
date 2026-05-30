@@ -234,6 +234,8 @@ def _or_dash(v) -> str:
 
 
 def _render_chain(payload: dict, *, ticker: str = "?") -> str:
+    from apps.market.services.option_analytics import chain_analytics
+
     underlying = payload.get("underlying_last")
     header = f"## Option chain — {ticker}"
     if underlying:
@@ -253,7 +255,7 @@ def _render_chain(payload: dict, *, ticker: str = "?") -> str:
         all_strikes = sorted(set(calls_by_strike) | set(puts_by_strike), key=lambda s: float(s))
         lines.append(f"\n### Expiry {exp}")
         lines.append(
-            "| strike | call bid | call ask | call Δ | call IV | put bid | put ask | put Δ | put IV |"
+            "| strike | call bid | call ask | call delta | call IV | put bid | put ask | put delta | put IV |"
         )
         lines.append("|---|---:|---:|---:|---:|---:|---:|---:|---:|")
         for strike in all_strikes:
@@ -265,7 +267,63 @@ def _render_chain(payload: dict, *, ticker: str = "?") -> str:
                 f"{_or_dash(p.get('bid'))} | {_or_dash(p.get('ask'))} | "
                 f"{_or_dash(p.get('delta'))} | {_or_dash(p.get('iv'))} |"
             )
+
+    # Chain analytics — computed over ALL expiries in the payload (not just the 2 displayed).
+    try:
+        spot: float | None = float(underlying) if underlying else None
+    except (TypeError, ValueError):
+        spot = None
+
+    flat: list[dict] = []
+    for exp, section in expiries.items():
+        for contract in section.get("calls", []):
+            flat.append({**contract, "side": "call", "expiry": exp})
+        for contract in section.get("puts", []):
+            flat.append({**contract, "side": "put", "expiry": exp})
+
+    analytics = chain_analytics(flat, spot=spot)
+    lines.append("\n### Chain analytics")
+    lines.append(_render_chain_analytics(analytics))
+
     return "\n".join(lines)
+
+
+def _render_chain_analytics(a: dict) -> str:
+    """Format chain_analytics() output as a compact markdown block."""
+    parts: list[str] = []
+
+    pc = a.get("put_call") or {}
+    vol_r = pc.get("volume_ratio")
+    oi_r = pc.get("oi_ratio")
+    parts.append(
+        f"- P/C volume ratio: {_fmt(vol_r) if vol_r is not None else '—'}  "
+        f"| P/C OI ratio: {_fmt(oi_r) if oi_r is not None else '—'}"
+    )
+
+    mp = a.get("max_pain")
+    parts.append(f"- Max-pain strike (nearest expiry): {_fmt(mp) if mp is not None else '—'}")
+
+    skew = a.get("iv_skew_25d")
+    parts.append(
+        f"- 25-delta IV skew (put IV - call IV, nearest expiry): "
+        f"{_fmt(skew) if skew is not None else '—'}"
+    )
+
+    ts = a.get("term_structure") or []
+    if ts:
+        curve = ", ".join(
+            f"{t['expiry']} {_fmt(t['atm_iv']) if t['atm_iv'] is not None else '—'}" for t in ts
+        )
+        parts.append(f"- ATM IV term structure: {curve}")
+
+    gex = a.get("gex") or {}
+    total_gex = gex.get("total")
+    flip = gex.get("flip_strike")
+    gex_total_s = f"{total_gex:,.0f}" if total_gex is not None else "—"
+    gex_flip_s = _fmt(flip) if flip is not None else "—"
+    parts.append(f"- Dealer GEX total: {gex_total_s} | zero-gamma flip strike: {gex_flip_s}")
+
+    return "\n".join(parts)
 
 
 def _fmt(v) -> str:
