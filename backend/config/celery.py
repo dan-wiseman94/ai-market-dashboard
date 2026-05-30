@@ -76,12 +76,8 @@ app.conf.beat_schedule = {
         "task": "recall.index_pending",
         "schedule": crontab(minute="*/5"),
     },
-    "prune-retention": {
-        "task": "core.prune_retention",
-        "schedule": crontab(hour=4, minute=0),  # daily 4am UTC, low-traffic window
-    },
-    "verify-latest-backup": {
-        "task": "backups.verify_latest",
-        "schedule": crontab(day_of_week=0, hour=5, minute=0),  # weekly Sunday 5am UTC
+    "ingest-daily-bars": {
+        "task": "market.ingest_daily_bars",
+        "schedule": crontab(hour=22, minute=30),
     },
 }
