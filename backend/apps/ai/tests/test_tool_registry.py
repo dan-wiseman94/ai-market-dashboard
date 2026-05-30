@@ -7,7 +7,7 @@ from unittest.mock import patch
 from apps.ai.tools.registry import default_toolset
 
 
-def test_default_toolset_registers_six_tools() -> None:
+def test_default_toolset_registers_seven_tools() -> None:
     ts = default_toolset()
     names = set(ts.specs)
     assert names == {
@@ -17,6 +17,7 @@ def test_default_toolset_registers_six_tools() -> None:
         "get_option_chain",
         "compute_indicator",
         "recall",
+        "track_record",
     }
 
 
@@ -72,7 +73,7 @@ def test_tool_error_is_captured_not_raised() -> None:
 def test_anthropic_tools_shape() -> None:
     ts = default_toolset()
     tools = ts.anthropic_tools()
-    assert len(tools) == 6
+    assert len(tools) == 7
     first = tools[0]
     assert {"name", "description", "input_schema"} <= set(first)
 
