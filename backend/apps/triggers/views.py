@@ -117,12 +117,23 @@ class EventTriggerViewSet(viewsets.ModelViewSet):
         except (KeyError, ValueError) as exc:
             return Response({"code": "bad_dates", "message": str(exc)}, status=400)
 
+        from apps.triggers.backtest import backtest_summary
+
         timeframe = data.get("timeframe", "1d")
         matches = run_backtest(condition, start=start, end=end, timeframe=timeframe)
         return Response(
             {
                 "match_count": len(matches),
-                "matches": [{"ts": m.ts.isoformat(), "values": m.values} for m in matches[:500]],
+                "matches": [
+                    {
+                        "ts": m.ts.isoformat(),
+                        "values": m.values,
+                        "fwd_1d_pct": m.fwd_1d_pct,
+                        "fwd_5d_pct": m.fwd_5d_pct,
+                    }
+                    for m in matches[:500]
+                ],
+                "summary": backtest_summary(matches),
             }
         )
 
