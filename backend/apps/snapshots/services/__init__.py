@@ -13,6 +13,7 @@ from apps.market.calendar import any_market_open, calendar_for, market_state
 from apps.market.services.chain import fetch_chain
 from apps.market.services.context import fetch_market_context
 from apps.market.services.events import upcoming_events
+from apps.market.services.fundamentals import fetch_fundamentals
 from apps.market.services.news import fetch_news
 from apps.market.services.ohlc import (
     SESSION_TIMEFRAMES,
@@ -151,6 +152,9 @@ _FETCHERS = {
     },
     "events": lambda *, watchlist_tickers, **_: {
         "data": upcoming_events(list(watchlist_tickers), within_days=14, include_macro=True),
+    },
+    "fundamentals": lambda *, watchlist_tickers, **_: {
+        "data": {t: fetch_fundamentals(t) for t in (list(watchlist_tickers) or [])[:8]},
     },
     "news": _fetch_news_section,
     "notes": lambda **_: {"data": {}},
