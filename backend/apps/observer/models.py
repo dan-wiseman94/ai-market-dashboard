@@ -52,6 +52,12 @@ class ObserverSchedule(models.Model):
         help_text="When True, fires submit a Messages Batch per watchlist "
         "ticker instead of streaming. 50% cheaper; not interactive.",
     )
+    consensus = models.BooleanField(
+        default=False,
+        help_text="When True (with structured), fan the ObservationReport across "
+        "every structured-capable provider and record a cross-model agreement "
+        "signal instead of a single structured report. ~Nx cost; opt-in only.",
+    )
     last_batch_id = models.CharField(max_length=64, blank=True, default="")
     fire_mode = models.CharField(max_length=20, choices=FIRE_MODE_CHOICES, default="cron")
     close_offset_minutes = models.PositiveIntegerField(
