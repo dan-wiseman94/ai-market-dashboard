@@ -32,6 +32,21 @@ app.autodiscover_tasks(
     ]
 )
 
+app.conf.update(
+    # A wedged provider stream or hung pg_dump must not pin a worker slot forever.
+    task_soft_time_limit=600,  # 10 min: SoftTimeLimitExceeded (catchable cleanup)
+    task_time_limit=660,  # 11 min: hard kill if soft limit ignored
+    # Redelivery on worker crash (tasks are idempotent — see CLAUDE.md):
+    #   postmortem: scheduled→running DB claim; triggers: Redis SET NX lock;
+    #   backups: Redis acquire_lock() SET NX; observer: close_relative once-per-day guard.
+    task_acks_late=True,
+    task_reject_on_worker_lost=True,
+    # Recycle workers to bound chromium/fastembed memory creep.
+    worker_max_tasks_per_child=200,
+    # Don't let the Redis result backend accumulate forever.
+    result_expires=3600,
+)
+
 app.conf.beat_schedule = {
     "refresh-schwab-token-every-minute": {
         "task": "market.refresh_schwab_token",

@@ -86,6 +86,10 @@ logs: ## Tail logs: make logs s=worker
 prod: ## Start prod stack (frontend baked into web)
 	$(COMPOSE) -f compose.yaml -f compose.prod.yaml up
 
+.PHONY: reload-workers
+reload-workers: ## Restart worker + beat to pick up new tasks / beat schedule
+	$(COMPOSE) restart worker beat
+
 .PHONY: restore
 restore: ## Restore DB from /data/backups/<file>. Usage: make restore file=2026-04-18.sql.gz
 	@test -n "$(file)" || (echo "usage: make restore file=<name>" >&2; exit 1)
