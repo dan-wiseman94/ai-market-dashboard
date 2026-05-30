@@ -14,6 +14,7 @@ from typing import cast
 from openai import AsyncOpenAI
 from openai.types.chat import ChatCompletionMessageParam
 
+from apps.ai.providers._config import client_kwargs
 from apps.ai.types import (
     DoneEvent,
     ErrorEvent,
@@ -39,10 +40,11 @@ class OpenAIProvider:
         # exercisable) in mock mode. Never used for a real request.
         if not api_key and is_mock_mode():
             api_key = "mock-no-key"
+        kw = client_kwargs()
         if base_url:
-            self._client = AsyncOpenAI(api_key=api_key, base_url=base_url)
+            self._client = AsyncOpenAI(api_key=api_key, base_url=base_url, **kw)
         else:
-            self._client = AsyncOpenAI(api_key=api_key)
+            self._client = AsyncOpenAI(api_key=api_key, **kw)
 
     async def run(self, req: RunRequest) -> AsyncIterator[RunEvent]:
         from apps.core.mocks import is_mock_mode

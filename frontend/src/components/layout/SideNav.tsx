@@ -13,6 +13,7 @@ const SYSTEM: Array<[string, string, string]> = [
   ["/analytics", "Analytics", "AN"],
   ["/scorecard", "Scorecard", "SC"],
   ["/recall", "Recall", "RC"],
+  ["/errors", "Errors", "ER"],
   ["/settings", "Settings", "ST"],
 ];
 
