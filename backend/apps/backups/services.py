@@ -156,3 +156,49 @@ def reconcile_disk() -> None:
         if not (d / rec.filename).exists():
             rec.status = "missing"
             rec.save(update_fields=["status"])
+
+
+def verify_latest() -> dict:
+    """Restore-drill: run pg_restore --list on the newest successful backup to confirm
+    it is restorable — not just byte-intact (sha256 proves the former, not the latter).
+
+    Records a CRITICAL ErrorEvent on failure so it surfaces in /api/errors/.
+    Never raises — always returns a dict.
+    """
+    rec = BackupRecord.objects.filter(status="ok").order_by("-created_at").first()
+    if rec is None:
+        return {"ok": False, "reason": "no_backup"}
+
+    # Reconstruct the full path from backups_dir() + filename, mirroring how
+    # perform_backup writes it (it never stores the full path on the model).
+    path = backups_dir() / rec.filename
+
+    try:
+        # pg_restore --list reads the file directly — no DB connection needed.
+        # It exits 0 and writes a table-of-contents to stdout if the file is a
+        # valid custom-format dump; non-zero or empty stdout means corrupt.
+        result = subprocess.run(
+            ["pg_restore", "--list", str(path)],
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
+        ok = result.returncode == 0 and bool(result.stdout.strip())
+        err_detail: str | None = result.stderr.strip() if not ok else None
+    except Exception as exc:
+        ok = False
+        err_detail = str(exc)
+
+    if not ok:
+        from apps.core.models import ErrorEvent
+
+        ErrorEvent.record(
+            level="critical",
+            source="backups.verify_latest",
+            message=f"Backup {rec.filename} failed restore-drill (pg_restore --list)",
+            detail={"backup_id": rec.id, "filename": rec.filename, "error": err_detail},
+            fingerprint="backups.verify_latest",
+        )
+        return {"ok": False, "filename": rec.filename, "backup_id": rec.id}
+
+    return {"ok": True, "filename": rec.filename, "backup_id": rec.id}

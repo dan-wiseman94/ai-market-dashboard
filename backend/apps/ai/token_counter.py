@@ -37,13 +37,14 @@ def _claude_count_tokens(text: str, model: str) -> int:
     """
     from anthropic import Anthropic
 
+    from apps.ai.providers._config import client_kwargs
     from apps.secrets.models import ProviderConfig
 
     cfg = ProviderConfig.objects.filter(provider="claude").first()
     if cfg is None or not cfg.api_key:
         return len(_ENC.encode(text))
 
-    client = Anthropic(api_key=cfg.api_key)
+    client = Anthropic(api_key=cfg.api_key, **client_kwargs())
     resp = client.messages.count_tokens(
         model=model,
         messages=[{"role": "user", "content": text}],

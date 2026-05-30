@@ -14,6 +14,8 @@ from __future__ import annotations
 from anthropic import Anthropic
 from pydantic import BaseModel
 
+from apps.ai.providers._config import client_kwargs
+
 
 class StructuredParseError(RuntimeError):
     """Claude did not return parseable output for the requested schema."""
@@ -29,7 +31,7 @@ def run_structured[M: BaseModel](
     max_tokens: int = 2048,
     base_url: str = "",
 ) -> M:
-    client = Anthropic(api_key=api_key, base_url=base_url or None)
+    client = Anthropic(api_key=api_key, base_url=base_url or None, **client_kwargs())
     resp = client.messages.parse(
         model=model,
         system=system,

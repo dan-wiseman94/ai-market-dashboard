@@ -9,6 +9,26 @@ from apps.snapshots.models import Snapshot, SnapshotImage
 from apps.snapshots.token_budget import prune_to_budget
 
 
+def _age_str(captured_at: datetime) -> str:
+    """Return a human-readable age string relative to now (UTC)."""
+    now = datetime.now(UTC)
+    delta = now - captured_at
+    total_seconds = int(delta.total_seconds())
+    if total_seconds < 0:
+        # Captured in the future (clock skew) — just say "just now"
+        return "just now"
+    minutes = total_seconds // 60
+    hours = minutes // 60
+    days = hours // 24
+    if days >= 1:
+        return f"{days} days ago" if days > 1 else "1 day ago"
+    if hours >= 1:
+        return f"{hours} hours ago" if hours > 1 else "1 hour ago"
+    if minutes >= 1:
+        return f"{minutes} minutes ago" if minutes > 1 else "1 minute ago"
+    return "just now"
+
+
 def serialize_for_ai(
     snapshot: Snapshot,
     *,
@@ -42,6 +62,14 @@ def serialize_for_ai(
             "## Positions (manually entered — parse and reason over these)\n"
             f"{snapshot.manual_positions.strip()}"
         )
+
+    # Capture-freshness line — always emit when captured_at is available so the AI knows
+    # the data age.  Uses captured_at (auto_now_add on Snapshot, so always set after save).
+    cap = snapshot.captured_at
+    if cap is not None:
+        ts_str = cap.strftime("%Y-%m-%d %H:%M UTC")
+        age = _age_str(cap)
+        parts.append(f"> **Captured:** {ts_str} ({age}).")
 
     ms = snapshot.market_state
     if ms and not ms.get("any_open", True):
@@ -91,6 +119,7 @@ def _title(kind: str) -> str:
         "image": "Chart image",
         "events": "Upcoming events",
         "overnight": "Overnight board",
+        "fundamentals": "Company fundamentals",
     }.get(kind, kind.title())
 
 
@@ -124,6 +153,67 @@ def _render_quotes(payload: dict) -> str:
     return "\n".join(lines)
 
 
+def _ohlc_gap_note(bars: list[dict]) -> str:
+    """Return a one-line caveat if bars contain a material history gap, else ''.
+
+    Algorithm:
+    - Parse the 'ts' field of each bar as an ISO datetime and compute consecutive deltas.
+    - Sort the deltas and take the median of the lower half as the 'typical' interval
+      (robust to a single large gap polluting the overall median).
+    - Flag the largest delta when it is >= 4x the typical interval (conservative: handles
+      Fri->Mon 3-calendar-day weekends without false-positives; only fires on clear multi-
+      session holes like 7+ calendar days for daily bars).
+    - Returns '' when data is contiguous or when bars are too few to assess (<= 2 bars).
+    """
+    if len(bars) < 3:
+        return ""
+
+    # Parse timestamps — bars['ts'] is an ISO 8601 string.
+    timestamps: list[datetime] = []
+    for b in bars:
+        raw = b.get("ts")
+        if raw is None:
+            return ""
+        try:
+            dt = datetime.fromisoformat(str(raw))
+            # Ensure timezone-aware for consistent subtraction
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=UTC)
+            timestamps.append(dt)
+        except (ValueError, TypeError):
+            return ""
+
+    if len(timestamps) < 3:
+        return ""
+
+    deltas_s = sorted(
+        [(timestamps[i + 1] - timestamps[i]).total_seconds() for i in range(len(timestamps) - 1)]
+    )
+
+    # Typical interval = median of the lower half (ignores the largest outlier(s))
+    lower_half = deltas_s[: max(1, len(deltas_s) // 2)]
+    typical_s = lower_half[len(lower_half) // 2]
+
+    if typical_s <= 0:
+        return ""
+
+    max_s = deltas_s[-1]  # already sorted ascending
+
+    # Only flag when the largest gap is >= 4x the typical interval
+    if max_s < 4 * typical_s:
+        return ""
+
+    # Find which consecutive pair produced the largest delta (unsorted timestamps needed)
+    raw_deltas = [
+        (timestamps[i + 1] - timestamps[i]).total_seconds() for i in range(len(timestamps) - 1)
+    ]
+    gap_idx = max(range(len(raw_deltas)), key=lambda i: raw_deltas[i])
+    before = timestamps[gap_idx].strftime("%Y-%m-%d")
+    after = timestamps[gap_idx + 1].strftime("%Y-%m-%d")
+
+    return f"_(history gap: largest hole between {before} and {after})_"
+
+
 def _render_ohlc(payload: dict) -> str:
     bars = payload.get("bars", [])
     if not bars:
@@ -134,7 +224,11 @@ def _render_ohlc(payload: dict) -> str:
     csv_lines = ["ts,open,high,low,close,volume"]
     for b in bars:
         csv_lines.append(f"{b['ts']},{b['open']},{b['high']},{b['low']},{b['close']},{b['volume']}")
-    return f"{header}\n```csv\n" + "\n".join(csv_lines) + "\n```"
+    result = f"{header}\n```csv\n" + "\n".join(csv_lines) + "\n```"
+    gap_note = _ohlc_gap_note(bars)
+    if gap_note:
+        result += f"\n{gap_note}"
+    return result
 
 
 def _render_positions(payload: list) -> str:
@@ -171,6 +265,28 @@ def _render_breadth(payload: dict) -> str:
     if payload.get("breadth"):
         lines.append(
             "- Breadth: " + ", ".join(f"{k}={_fmt(v)}" for k, v in payload["breadth"].items())
+        )
+    # Relative strength — keys in windows dict are int in Python but may be str after a
+    # JSON round-trip (stored payload); .items() works for both, so no special casing needed.
+    rs = payload.get("relative_strength")
+    if rs and rs.get("windows"):
+        bits = []
+        for w, d in rs["windows"].items():
+            if d.get("rs") is not None:
+                bits.append(f"{w}d {d['rs']:+.2f}%")
+        if bits:
+            lines.append(
+                f"- Relative strength ({rs['ticker']} vs {rs['benchmark']}): " + ", ".join(bits)
+            )
+    # Sector rotation — show leader (first) and laggard (last).
+    rotation = payload.get("sector_rotation") or []
+    if rotation:
+        top = rotation[0]
+        bot = rotation[-1]
+        lines.append(
+            f"- Sector rotation ({len(rotation)} sectors): "
+            f"leader {top['sector']} {top['return_pct']:+.2f}%, "
+            f"laggard {bot['sector']} {bot['return_pct']:+.2f}%"
         )
     return "\n".join(lines)
 
@@ -400,6 +516,47 @@ def _render_image(payload: dict) -> str:
     return "\n".join(rows)
 
 
+def _render_fundamentals(payload: dict) -> str:
+    """Render per-ticker fundamentals as a markdown table.
+
+    payload: {ticker: {pe, eps_ttm, rev_growth_yoy, net_margin, market_cap,
+                        wk52_high, wk52_low, sector, ...}, ...}
+    """
+    if not payload:
+        return "## Company fundamentals\n_(no fundamentals data)_"
+
+    lines = [
+        "## Company fundamentals",
+        "| Ticker | P/E | EPS | Rev growth | Net margin | Mkt cap ($M) | 52wk pos | Sector |",
+        "|---|---:|---:|---:|---:|---:|---|---|",
+    ]
+    for ticker, f in payload.items():
+        if not isinstance(f, dict):
+            continue
+        high = f.get("wk52_high")
+        low = f.get("wk52_low")
+        if high is not None and low is not None and high != low:
+            try:
+                pos = f"{(float(high) - float(low)):.2f} range ({_fmt(low)}-{_fmt(high)})"
+            except (TypeError, ValueError):
+                pos = "—"
+        else:
+            pos = "—"
+        lines.append(
+            f"| {ticker} "
+            f"| {_fmt(f.get('pe'))} "
+            f"| {_fmt(f.get('eps_ttm'))} "
+            f"| {_fmt(f.get('rev_growth_yoy'))}% "
+            f"| {_fmt(f.get('net_margin'))}% "
+            f"| {_fmt(f.get('market_cap'))} "
+            f"| {pos} "
+            f"| {f.get('sector') or '—'} |"
+        )
+    if len(lines) == 3:
+        return "## Company fundamentals\n_(no fundamentals data)_"
+    return "\n".join(lines)
+
+
 _RENDERERS = {
     "quotes": _render_quotes,
     "ohlc": _render_ohlc,
@@ -410,5 +567,6 @@ _RENDERERS = {
     "image": _render_image,
     "events": _render_events,
     "overnight": _render_overnight,
+    "fundamentals": _render_fundamentals,
     "notes": lambda _p: "",
 }
