@@ -1,0 +1,169 @@
+/**
+ * Integration test: SnapshotComposerPage progress checklist wiring.
+ *
+ * Verifies that, while a capture is in-flight (submitting=true):
+ *  - The page subscribes to the snapshot.<id> WS channel
+ *  - snapshot.section events are rendered as a per-section checklist
+ *  - The HTTP poll is kept (waitForSnapshotReady is still called)
+ */
+import { screen, waitFor, act } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { beforeEach, afterEach, describe, it, expect, vi } from "vitest";
+import { WebSocketProvider } from "@/realtime/WebSocketProvider";
+import {
+  renderWithProviders,
+  installFakeWebSocket,
+  type FakeWebSocketController,
+} from "./testUtils";
+import SnapshotComposerPage from "@/pages/SnapshotComposerPage";
+import type { QueryClient } from "@tanstack/react-query";
+import { newQueryClient } from "./testUtils";
+
+// ---- Module-level mocks (same shape as SnapshotComposerPage.test.tsx) ----
+
+const mockCreateSnap = vi.fn();
+const mockCreateThread = vi.fn();
+const mockWaitForReady = vi.fn();
+
+vi.mock("@/api/snapshots", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/api/snapshots")>()),
+  waitForSnapshotReady: (...args: unknown[]) => mockWaitForReady(...args),
+}));
+
+vi.mock("@/hooks/useCreateSnapshot", () => ({
+  useCreateSnapshot: () => ({ mutateAsync: mockCreateSnap, isPending: false }),
+}));
+
+vi.mock("@/hooks/useCreateConsultThread", () => ({
+  useCreateConsultThread: () => ({ mutateAsync: mockCreateThread, isPending: false }),
+}));
+
+vi.mock("@/hooks/useProfiles", () => ({
+  useProfiles: () => ({
+    data: [{ id: 1, name: "Day Trader", default_includes: ["quotes", "ohlc"] }],
+  }),
+}));
+
+vi.mock("@/hooks/useWatchlists", () => ({
+  useWatchlists: () => ({
+    data: [{ id: 10, name: "Tech", symbols: [{ ticker: "AAPL" }] }],
+  }),
+}));
+
+vi.mock("@/hooks/useAgentPresets", () => ({
+  useAgentPresets: () => ({ data: [] }),
+}));
+
+// ---- Helper ----
+
+function renderComposerWithWs(client: QueryClient) {
+  return renderWithProviders(<SnapshotComposerPage />, {
+    client,
+    initialEntries: ["/compose"],
+    routePath: "/compose",
+    // Wrap with WebSocketProvider so useSnapshotProgress can subscribe
+    // (overrides the default Wrapper by injecting it inside)
+  });
+}
+
+// Wrap with WebSocketProvider in addition to the standard providers.
+// We do this by rendering inside WebSocketProvider directly.
+function renderWithWs() {
+  const client = newQueryClient();
+  const { container } = renderWithProviders(
+    <WebSocketProvider>
+      <SnapshotComposerPage />
+    </WebSocketProvider>,
+    {
+      client,
+      initialEntries: ["/compose"],
+      routePath: "/compose",
+    },
+  );
+  return { container, client };
+}
+
+// ---- Tests ----
+
+let fake: FakeWebSocketController;
+
+beforeEach(() => {
+  fake = installFakeWebSocket();
+  vi.clearAllMocks();
+  localStorage.clear();
+});
+
+afterEach(() => {
+  fake.restore();
+  localStorage.clear();
+});
+
+describe("SnapshotComposerPage – capture progress (WS integration)", () => {
+  it("shows per-section progress entries after WS events arrive during capture", async () => {
+    const user = userEvent.setup();
+
+    // createSnapshot returns immediately with "pending"; poll stays blocked so
+    // we can observe the in-flight state with WS events arriving.
+    mockCreateSnap.mockResolvedValue({ id: 55, status: "pending", includes: [] });
+    let resolveReady!: (s: { id: number; status: string }) => void;
+    mockWaitForReady.mockReturnValue(
+      new Promise((resolve) => {
+        resolveReady = resolve;
+      }),
+    );
+    mockCreateThread.mockResolvedValue({ id: 99, title: "t" });
+
+    renderWithWs();
+
+    // Wait for auto-select
+    await waitFor(() => {
+      const [sel] = screen.getAllByRole("combobox");
+      expect((sel as HTMLSelectElement).value).toBe("1");
+    });
+
+    // Click capture
+    await user.click(screen.getByTestId("capture-btn"));
+
+    // The page calls createSnap, then sets capturingId=55 and starts polling.
+    // The WS channel for snapshot.55 should be open.
+    await waitFor(() => {
+      expect(fake.find("/ws/snapshots/55/")).toBeDefined();
+    });
+
+    const sock = fake.find("/ws/snapshots/55/")!;
+
+    // Emit a running event for "quotes"
+    act(() => {
+      sock.emitMessage({ type: "snapshot.section", section: "quotes", status: "running" });
+    });
+
+    // The checklist entry must be rendered with the section name and running icon
+    await waitFor(() => {
+      expect(screen.getByTestId("capture-progress")).toBeInTheDocument();
+    });
+    const progress = screen.getByTestId("capture-progress");
+    expect(progress).toHaveTextContent("quotes");
+    expect(progress).toHaveTextContent("⏳");
+
+    // Emit done for quotes, then failed for news
+    act(() => {
+      sock.emitMessage({ type: "snapshot.section", section: "quotes", status: "done" });
+      sock.emitMessage({ type: "snapshot.section", section: "news", status: "failed" });
+    });
+
+    await waitFor(() => {
+      expect(progress).toHaveTextContent("✓");
+      expect(progress).toHaveTextContent("✗");
+    });
+    expect(progress).toHaveTextContent("quotes");
+    expect(progress).toHaveTextContent("news");
+
+    // The HTTP poll must still be in flight (not yet resolved)
+    expect(mockWaitForReady).toHaveBeenCalledWith(55);
+    expect(mockCreateThread).not.toHaveBeenCalled();
+
+    // Unblock the poll — navigation takes over
+    resolveReady({ id: 55, status: "ready" });
+    await waitFor(() => expect(mockCreateThread).toHaveBeenCalled());
+  });
+});
