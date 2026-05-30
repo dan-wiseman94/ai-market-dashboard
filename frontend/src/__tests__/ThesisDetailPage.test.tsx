@@ -78,9 +78,13 @@ const THESIS_WITH_PMS = {
   postmortems: [DONE_PM, SCHEDULED_PM],
 };
 
+// All ThesisDetailPage renders now also call GET /api/portfolio/positions/?thesis=<id>.
+// Every mockApi call in this file must include that route to avoid a "no handler" error.
+const NO_POSITIONS = { "GET /api/portfolio/positions/": [] } as const;
+
 describe("ThesisDetailPage", () => {
   it("renders thesis fields: title, ticker, direction, rationale, prices", async () => {
-    mockApi({ "GET /api/theses/1/": THESIS });
+    mockApi({ "GET /api/theses/1/": THESIS, ...NO_POSITIONS });
     renderWithProviders(<ThesisDetailPage />, {
       initialEntries: ["/theses/1"],
       routePath: "/theses/:id",
@@ -99,7 +103,7 @@ describe("ThesisDetailPage", () => {
   });
 
   it("shows Open status badge for open thesis", async () => {
-    mockApi({ "GET /api/theses/1/": THESIS });
+    mockApi({ "GET /api/theses/1/": THESIS, ...NO_POSITIONS });
     renderWithProviders(<ThesisDetailPage />, {
       initialEntries: ["/theses/1"],
       routePath: "/theses/:id",
@@ -110,7 +114,7 @@ describe("ThesisDetailPage", () => {
   });
 
   it("shows Win status badge for closed_win thesis", async () => {
-    mockApi({ "GET /api/theses/2/": CLOSED_THESIS });
+    mockApi({ "GET /api/theses/2/": CLOSED_THESIS, ...NO_POSITIONS });
     renderWithProviders(<ThesisDetailPage />, {
       initialEntries: ["/theses/2"],
       routePath: "/theses/:id",
@@ -122,7 +126,7 @@ describe("ThesisDetailPage", () => {
   });
 
   it("renders the close control for an open thesis", async () => {
-    mockApi({ "GET /api/theses/1/": THESIS });
+    mockApi({ "GET /api/theses/1/": THESIS, ...NO_POSITIONS });
     renderWithProviders(<ThesisDetailPage />, {
       initialEntries: ["/theses/1"],
       routePath: "/theses/:id",
@@ -133,7 +137,7 @@ describe("ThesisDetailPage", () => {
   });
 
   it("does NOT render the close button for a closed thesis", async () => {
-    mockApi({ "GET /api/theses/2/": CLOSED_THESIS });
+    mockApi({ "GET /api/theses/2/": CLOSED_THESIS, ...NO_POSITIONS });
     renderWithProviders(<ThesisDetailPage />, {
       initialEntries: ["/theses/2"],
       routePath: "/theses/:id",
@@ -145,7 +149,7 @@ describe("ThesisDetailPage", () => {
   });
 
   it("shows close form when 'Close thesis' button is clicked", async () => {
-    mockApi({ "GET /api/theses/1/": THESIS });
+    mockApi({ "GET /api/theses/1/": THESIS, ...NO_POSITIONS });
     renderWithProviders(<ThesisDetailPage />, {
       initialEntries: ["/theses/1"],
       routePath: "/theses/:id",
@@ -160,7 +164,7 @@ describe("ThesisDetailPage", () => {
   });
 
   it("shows empty post-mortems state when postmortems is empty", async () => {
-    mockApi({ "GET /api/theses/1/": THESIS });
+    mockApi({ "GET /api/theses/1/": THESIS, ...NO_POSITIONS });
     renderWithProviders(<ThesisDetailPage />, {
       initialEntries: ["/theses/1"],
       routePath: "/theses/:id",
@@ -172,7 +176,7 @@ describe("ThesisDetailPage", () => {
   });
 
   it("shows thread link with correct href when thread_id is set", async () => {
-    mockApi({ "GET /api/theses/1/": THESIS });
+    mockApi({ "GET /api/theses/1/": THESIS, ...NO_POSITIONS });
     renderWithProviders(<ThesisDetailPage />, {
       initialEntries: ["/theses/1"],
       routePath: "/theses/:id",
@@ -190,7 +194,7 @@ describe("ThesisDetailPage", () => {
       thread_id: null,
       snapshot_id: 99,
     };
-    mockApi({ "GET /api/theses/1/": SNAPSHOT_ONLY });
+    mockApi({ "GET /api/theses/1/": SNAPSHOT_ONLY, ...NO_POSITIONS });
     renderWithProviders(<ThesisDetailPage />, {
       initialEntries: ["/theses/1"],
       routePath: "/theses/:id",
@@ -206,7 +210,7 @@ describe("ThesisDetailPage", () => {
   // --- Post-mortem section tests ---
 
   it("renders the Run now button", async () => {
-    mockApi({ "GET /api/theses/1/": THESIS });
+    mockApi({ "GET /api/theses/1/": THESIS, ...NO_POSITIONS });
     renderWithProviders(<ThesisDetailPage />, {
       initialEntries: ["/theses/1"],
       routePath: "/theses/:id",
@@ -218,7 +222,7 @@ describe("ThesisDetailPage", () => {
   });
 
   it("renders the done post-mortem card with verdict badge, forward return, summary and lessons", async () => {
-    mockApi({ "GET /api/theses/1/": THESIS_WITH_PMS });
+    mockApi({ "GET /api/theses/1/": THESIS_WITH_PMS, ...NO_POSITIONS });
     renderWithProviders(<ThesisDetailPage />, {
       initialEntries: ["/theses/1"],
       routePath: "/theses/:id",
@@ -247,7 +251,7 @@ describe("ThesisDetailPage", () => {
   });
 
   it("renders the scheduled post-mortem card with 'Scheduled for' state (no verdict/return)", async () => {
-    mockApi({ "GET /api/theses/1/": THESIS_WITH_PMS });
+    mockApi({ "GET /api/theses/1/": THESIS_WITH_PMS, ...NO_POSITIONS });
     renderWithProviders(<ThesisDetailPage />, {
       initialEntries: ["/theses/1"],
       routePath: "/theses/:id",
@@ -273,7 +277,7 @@ describe("ThesisDetailPage", () => {
       ...THESIS_WITH_PMS,
       postmortems: [SCHEDULED_PM, DONE_PM],
     };
-    mockApi({ "GET /api/theses/1/": REVERSED });
+    mockApi({ "GET /api/theses/1/": REVERSED, ...NO_POSITIONS });
     renderWithProviders(<ThesisDetailPage />, {
       initialEntries: ["/theses/1"],
       routePath: "/theses/:id",
@@ -293,6 +297,7 @@ describe("ThesisDetailPage", () => {
     const { calls } = mockApi({
       "GET /api/theses/1/": THESIS,
       "POST /api/theses/1/run-postmortem/": { postmortem_id: 42 },
+      ...NO_POSITIONS,
     });
     renderWithProviders(<ThesisDetailPage />, {
       initialEntries: ["/theses/1"],
@@ -316,6 +321,7 @@ describe("ThesisDetailPage", () => {
     mockApi({
       "GET /api/theses/1/": THESIS,
       "POST /api/theses/1/run-postmortem/": { postmortem_id: 42 },
+      ...NO_POSITIONS,
     });
     renderWithProviders(<ThesisDetailPage />, {
       initialEntries: ["/theses/1"],
@@ -343,6 +349,7 @@ describe("ThesisDetailPage", () => {
         // Keep the promise pending until we resolve it
         return pendingPromise as Promise<unknown>;
       },
+      ...NO_POSITIONS,
     });
     renderWithProviders(<ThesisDetailPage />, {
       initialEntries: ["/theses/1"],
@@ -381,6 +388,7 @@ describe("ThesisDetailPage", () => {
     };
     mockApi({
       "GET /api/theses/1/": { ...THESIS, postmortems: [FAILED_PM] },
+      ...NO_POSITIONS,
     });
     renderWithProviders(<ThesisDetailPage />, {
       initialEntries: ["/theses/1"],
@@ -409,6 +417,7 @@ describe("ThesisDetailPage", () => {
     };
     mockApi({
       "GET /api/theses/1/": { ...THESIS, postmortems: [RUNNING_PM] },
+      ...NO_POSITIONS,
     });
     renderWithProviders(<ThesisDetailPage />, {
       initialEntries: ["/theses/1"],
@@ -420,5 +429,74 @@ describe("ThesisDetailPage", () => {
     );
 
     expect(screen.getByText("Analysis in progress…")).toBeInTheDocument();
+  });
+
+  // --- Linked positions section tests ---
+
+  it("shows linked-positions section with EmptyState when no positions", async () => {
+    mockApi({ "GET /api/theses/1/": THESIS, ...NO_POSITIONS });
+    renderWithProviders(<ThesisDetailPage />, {
+      initialEntries: ["/theses/1"],
+      routePath: "/theses/:id",
+    });
+    // Wait for the EmptyState text (query must have resolved to an empty list)
+    await waitFor(() =>
+      expect(screen.getByText(/No linked positions/i)).toBeInTheDocument(),
+    );
+    expect(screen.getByTestId("linked-positions-section")).toBeInTheDocument();
+  });
+
+  it("renders linked position with ticker, direction, and P&L", async () => {
+    const LINKED_POS = {
+      id: 5,
+      ticker: "SPY",
+      direction: "long",
+      quantity: "10.00000000",
+      avg_cost: "550.00",
+      opened_at: "2026-05-01T00:00:00Z",
+      closed_at: null,
+      close_price: null,
+      realized_pnl: null,
+      status: "open",
+      note: "",
+      thesis_id: 1,
+      profile_id: null,
+      unrealized: {
+        last: 580.0,
+        market_value: 5800.0,
+        unrealized_pnl: 300.0,
+        unrealized_pct: 5.45,
+      },
+      created_at: "2026-05-01T00:00:00Z",
+      updated_at: "2026-05-01T00:00:00Z",
+    };
+    mockApi({ "GET /api/theses/1/": THESIS, "GET /api/portfolio/positions/": [LINKED_POS] });
+    renderWithProviders(<ThesisDetailPage />, {
+      initialEntries: ["/theses/1"],
+      routePath: "/theses/:id",
+    });
+    await waitFor(() =>
+      expect(screen.getByTestId("thesis-position-5")).toBeInTheDocument(),
+    );
+    const posRow = screen.getByTestId("thesis-position-5");
+    expect(posRow).toHaveTextContent("SPY");
+    expect(posRow).toHaveTextContent("long");
+    expect(screen.getByTestId("thesis-pnl-5")).toHaveTextContent("+300.00");
+    expect(screen.getByTestId("thesis-pnl-5").className).toContain("text-gain-400");
+  });
+
+  it("requests ?thesis=<id> filter for the linked positions", async () => {
+    const { calls } = mockApi({ "GET /api/theses/1/": THESIS, ...NO_POSITIONS });
+    renderWithProviders(<ThesisDetailPage />, {
+      initialEntries: ["/theses/1"],
+      routePath: "/theses/:id",
+    });
+    await waitFor(() =>
+      expect(screen.getByTestId("linked-positions-section")).toBeInTheDocument(),
+    );
+    const call = calls.find(
+      (c) => c.method === "GET" && c.url.includes("/api/portfolio/positions/") && c.url.includes("thesis=1"),
+    );
+    expect(call).toBeDefined();
   });
 });

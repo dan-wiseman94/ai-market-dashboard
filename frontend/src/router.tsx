@@ -28,6 +28,7 @@ import EventsPage from "./pages/EventsPage";
 import BriefingPage from "./pages/BriefingPage";
 import SnapshotsPage from "./pages/SnapshotsPage";
 import RecallPage from "./pages/RecallPage";
+import PortfolioPage from "./pages/PortfolioPage";
 
 export const router = createBrowserRouter([
   // Render route bypasses AppLayout — it's for headless-chromium PNG captures.
@@ -76,6 +77,7 @@ export const router = createBrowserRouter([
       { path: "scorecard", element: <ScorecardPage />, handle: { crumb: "Scorecard" } },
       { path: "theses", element: <ThesesPage />, handle: { crumb: "Theses" } },
       { path: "recall", element: <RecallPage />, handle: { crumb: "Recall" } },
+      { path: "portfolio", element: <PortfolioPage />, handle: { crumb: "Portfolio" } },
       {
         path: "theses/:id",
         element: <ThesisDetailPage />,
