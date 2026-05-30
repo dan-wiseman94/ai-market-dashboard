@@ -37,6 +37,36 @@ describe("WebSocketProvider", () => {
     expect(sock?.url).toMatch(/\/ws\/threads\/42\/$/);
   });
 
+  it("opens a /ws/notifications/ socket for the 'notifications' channel", () => {
+    const handler = vi.fn();
+    render(
+      <WebSocketProvider>
+        <TestConsumer channel="notifications" onMsg={handler} />
+      </WebSocketProvider>,
+    );
+    const sock = fake.find("/ws/notifications/");
+    expect(sock).toBeDefined();
+    expect(sock?.url).toMatch(/\/ws\/notifications\/$/);
+  });
+
+  it("routes parsed JSON to the notifications handler via /ws/notifications/", () => {
+    const handler = vi.fn();
+    render(
+      <WebSocketProvider>
+        <TestConsumer channel="notifications" onMsg={handler} />
+      </WebSocketProvider>,
+    );
+    const sock = fake.find("/ws/notifications/");
+    expect(sock).toBeDefined();
+    act(() => {
+      sock!.emitMessage({ type: "notification.event", payload: { kind: "observer_done", title: "T" } });
+    });
+    expect(handler).toHaveBeenCalledWith({
+      type: "notification.event",
+      payload: { kind: "observer_done", title: "T" },
+    });
+  });
+
   it("opens a /ws/snapshots/<id>/ socket for snapshot.<id> channel", () => {
     const handler = vi.fn();
     render(
