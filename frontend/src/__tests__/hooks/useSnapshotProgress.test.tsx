@@ -6,7 +6,7 @@
  * events into a Map<section, status> that the UI renders as a checklist.
  */
 import { act, renderHook } from "@testing-library/react";
-import { describe, expect, it, beforeEach, afterEach, vi } from "vitest";
+import { describe, expect, it, beforeEach, afterEach } from "vitest";
 import { WebSocketProvider } from "@/realtime/WebSocketProvider";
 import { installFakeWebSocket, type FakeWebSocketController } from "../testUtils";
 import { useSnapshotProgress } from "@/hooks/useSnapshotProgress";
