@@ -107,7 +107,11 @@ def run_observer(schedule_id: int) -> int | None:
         status="done",
     )
 
-    if sched.structured:
+    if sched.consensus:
+        # Consensus is itself a structured operation (fans ObservationReport), so
+        # it takes precedence over the plain structured path. Opt-in, ~Nx cost.
+        _run_consensus_and_record(sched, thread, coach + payload_text)
+    elif sched.structured:
         _run_structured_and_record(sched, thread, coach + payload_text, provider_name, cfg)
     else:
         override: dict = {}
@@ -197,5 +201,28 @@ def _run_structured_and_record(
         thread=thread,
         role="assistant",
         content={"kind": "structured_observation", "report": report.model_dump()},
+        status="done",
+    )
+
+
+def _run_consensus_and_record(sched: ObserverSchedule, thread, payload_text: str) -> None:
+    """Fan ObservationReport across structured-capable providers; record the signal.
+
+    Always records an assistant ``consensus_report`` Message — even the honest
+    degraded shape (``n_providers<2``, ``bias_agreement=None``) — because that is
+    a valid, truthful result, not a failure. ``consensus_report`` never raises
+    (a provider that errors or is over its cap is skipped + counted out), so this
+    needs no extra crash guard.
+    """
+    from apps.observer.services.consensus import consensus_report
+
+    report = consensus_report(
+        system=build_system_prompt(sched.profile, now=timezone.now()),
+        user=payload_text,
+    )
+    Message.objects.create(
+        thread=thread,
+        role="assistant",
+        content={"kind": "consensus_report", "report": report.model_dump()},
         status="done",
     )
