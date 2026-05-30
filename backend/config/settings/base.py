@@ -177,5 +177,9 @@ SCHWAB_TOKEN_URL = "https://api.schwabapi.com/v1/oauth/token"
 # Prod: empty → same-origin relative redirect (SPA is served by web on :8000).
 FRONTEND_BASE_URL = env("FRONTEND_BASE_URL", default="")
 
+# AI provider resilience: bounded SDK retry (exponential backoff on 429/5xx) + read timeout.
+AI_PROVIDER_MAX_RETRIES = env.int("AI_PROVIDER_MAX_RETRIES", default=2)
+AI_PROVIDER_TIMEOUT_SECONDS = env.float("AI_PROVIDER_TIMEOUT_SECONDS", default=60.0)
+
 # Logging: handled by apps.core.logging.configure_structlog, called from dev/prod settings.
 # We intentionally leave LOGGING at Django's default and reconfigure structlog imperatively.

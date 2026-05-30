@@ -7,6 +7,7 @@ from collections.abc import AsyncIterator
 
 from anthropic import AsyncAnthropic
 
+from apps.ai.providers._config import client_kwargs
 from apps.ai.types import (
     DoneEvent,
     ErrorEvent,
@@ -25,10 +26,11 @@ class ClaudeProvider:
     name = "claude"
 
     def __init__(self, api_key: str, base_url: str = "") -> None:
+        kw = client_kwargs()
         if base_url:
-            self._client = AsyncAnthropic(api_key=api_key, base_url=base_url)
+            self._client = AsyncAnthropic(api_key=api_key, base_url=base_url, **kw)
         else:
-            self._client = AsyncAnthropic(api_key=api_key)
+            self._client = AsyncAnthropic(api_key=api_key, **kw)
 
     async def run(self, req: RunRequest) -> AsyncIterator[RunEvent]:
         from apps.core.mocks import is_mock_mode
