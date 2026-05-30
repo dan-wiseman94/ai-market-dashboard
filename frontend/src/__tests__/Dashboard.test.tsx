@@ -170,7 +170,8 @@ describe("Dashboard", () => {
 
   it("includes the 'The book' section label (positions area)", () => {
     renderDashboard();
-    expect(screen.getByText(/the book/i)).toBeInTheDocument();
+    // "The book" appears in both the h2 section heading and the PositionsBookTile eyebrow
+    expect(screen.getAllByText(/the book/i).length).toBeGreaterThanOrEqual(1);
   });
 
   it("includes a 'Capture snapshot' call-to-action link", () => {
