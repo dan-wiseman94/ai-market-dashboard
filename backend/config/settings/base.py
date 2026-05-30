@@ -181,5 +181,13 @@ FRONTEND_BASE_URL = env("FRONTEND_BASE_URL", default="")
 AI_PROVIDER_MAX_RETRIES = env.int("AI_PROVIDER_MAX_RETRIES", default=2)
 AI_PROVIDER_TIMEOUT_SECONDS = env.float("AI_PROVIDER_TIMEOUT_SECONDS", default=60.0)
 
+# Retention windows for the daily prune_retention beat task (core.prune_retention).
+# Generous defaults — these are standalone time-series / ephemera tables only.
+# Load-bearing tables (Snapshot, Message, Thesis, AIRun, PostMortem, …) are NEVER pruned.
+AI_RETENTION_OHLC_DAYS = env.int("AI_RETENTION_OHLC_DAYS", default=400)
+AI_RETENTION_CHAIN_DAYS = env.int("AI_RETENTION_CHAIN_DAYS", default=120)
+AI_RETENTION_NOTIFICATION_DAYS = env.int("AI_RETENTION_NOTIFICATION_DAYS", default=90)
+AI_RETENTION_ERROR_DAYS = env.int("AI_RETENTION_ERROR_DAYS", default=90)
+
 # Logging: handled by apps.core.logging.configure_structlog, called from dev/prod settings.
 # We intentionally leave LOGGING at Django's default and reconfigure structlog imperatively.
