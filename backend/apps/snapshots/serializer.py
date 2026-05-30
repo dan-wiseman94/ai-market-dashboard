@@ -9,6 +9,26 @@ from apps.snapshots.models import Snapshot, SnapshotImage
 from apps.snapshots.token_budget import prune_to_budget
 
 
+def _age_str(captured_at: datetime) -> str:
+    """Return a human-readable age string relative to now (UTC)."""
+    now = datetime.now(UTC)
+    delta = now - captured_at
+    total_seconds = int(delta.total_seconds())
+    if total_seconds < 0:
+        # Captured in the future (clock skew) — just say "just now"
+        return "just now"
+    minutes = total_seconds // 60
+    hours = minutes // 60
+    days = hours // 24
+    if days >= 1:
+        return f"{days} days ago" if days > 1 else "1 day ago"
+    if hours >= 1:
+        return f"{hours} hours ago" if hours > 1 else "1 hour ago"
+    if minutes >= 1:
+        return f"{minutes} minutes ago" if minutes > 1 else "1 minute ago"
+    return "just now"
+
+
 def serialize_for_ai(
     snapshot: Snapshot,
     *,
@@ -42,6 +62,14 @@ def serialize_for_ai(
             "## Positions (manually entered — parse and reason over these)\n"
             f"{snapshot.manual_positions.strip()}"
         )
+
+    # Capture-freshness line — always emit when captured_at is available so the AI knows
+    # the data age.  Uses captured_at (auto_now_add on Snapshot, so always set after save).
+    cap = snapshot.captured_at
+    if cap is not None:
+        ts_str = cap.strftime("%Y-%m-%d %H:%M UTC")
+        age = _age_str(cap)
+        parts.append(f"> **Captured:** {ts_str} ({age}).")
 
     ms = snapshot.market_state
     if ms and not ms.get("any_open", True):
