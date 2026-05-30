@@ -5,6 +5,7 @@ from apps.analytics.views import (
     CostPerInsightView,
     LeaderboardView,
     ObserverTimelineView,
+    TrackRecordView,
     TriggerHeatmapView,
     UnusualOptionsView,
 )
@@ -20,4 +21,5 @@ urlpatterns = [
         UnusualOptionsView.as_view(),
         name="analytics-unusual-options",
     ),
+    path("track-record/", TrackRecordView.as_view(), name="analytics-track-record"),
 ]

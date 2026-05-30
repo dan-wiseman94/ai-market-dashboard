@@ -111,3 +111,20 @@ class CalibrationView(APIView):
                 **calibration(start=start, end=end, horizon=horizon),
             }
         )
+
+
+class TrackRecordView(APIView):
+    def get(self, request: Request) -> Response:
+        from apps.analytics.services.calibration import track_record_for_ticker
+
+        ticker = (request.query_params.get("ticker") or "").upper()
+        if not ticker:
+            return Response({"ticker": "", "available": False, "record": None})
+        direction = request.query_params.get("direction") or None
+        conviction_raw = request.query_params.get("conviction")
+        try:
+            conviction = int(conviction_raw) if conviction_raw is not None else None
+        except ValueError:
+            conviction = None
+        record = track_record_for_ticker(ticker, direction=direction, conviction=conviction)
+        return Response({"ticker": ticker, "available": record is not None, "record": record})
