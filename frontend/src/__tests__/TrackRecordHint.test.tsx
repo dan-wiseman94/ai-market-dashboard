@@ -30,7 +30,7 @@ describe("TrackRecordHint", () => {
       isSuccess: true,
     } as ReturnType<typeof analytics.useTrackRecord>);
 
-    const { container } = render(<TrackRecordHint ticker="NVDA" />, { wrapper });
+    render(<TrackRecordHint ticker="NVDA" />, { wrapper });
 
     // testid present
     expect(screen.getByTestId("track-record-hint")).toBeInTheDocument();
