@@ -132,3 +132,21 @@ class MarketEvent(models.Model):
 
     def __str__(self) -> str:
         return f"MarketEvent({self.kind}, {self.ticker or '-'}, {self.event_time:%Y-%m-%d})"
+
+
+class CompanyFundamentals(models.Model):
+    """Current-snapshot fundamental metrics for a single ticker. Upserted on each fetch."""
+
+    ticker = models.CharField(max_length=16, db_index=True)
+    sector = models.CharField(max_length=64, blank=True, default="")
+    industry = models.CharField(max_length=96, blank=True, default="")
+    metrics = models.JSONField(default=dict)
+    fetched_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints: ClassVar = [
+            models.UniqueConstraint(fields=["ticker"], name="uniq_fundamentals_ticker"),
+        ]
+
+    def __str__(self) -> str:
+        return f"CompanyFundamentals({self.ticker})"
