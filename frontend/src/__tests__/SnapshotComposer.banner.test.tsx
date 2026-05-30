@@ -5,6 +5,12 @@ import SnapshotComposerPage from "@/pages/SnapshotComposerPage";
 
 const mockMarketStatus = vi.fn();
 
+// useSnapshotProgress subscribes to the WS channel; this test renders without
+// a real WebSocketProvider — stub it to return an empty sections map.
+vi.mock("@/hooks/useSnapshotProgress", () => ({
+  useSnapshotProgress: () => ({ sections: new Map() }),
+}));
+
 vi.mock("@/hooks/useMarketStatus", () => ({ useMarketStatus: () => mockMarketStatus() }));
 vi.mock("@/hooks/useProfiles", () => ({ useProfiles: () => ({ data: [{ id: 1, name: "P", default_includes: [] }] }) }));
 vi.mock("@/hooks/useAgentPresets", () => ({ useAgentPresets: () => ({ data: [] }) }));

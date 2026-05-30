@@ -143,3 +143,60 @@ def test_fire_trigger_idempotent_via_redis_lock(fake_redis, provider_cfg):
         fire_trigger(trigger_id=t.id, matched_values={"price:SPY": 100.0})
 
     assert TriggerFiring.objects.filter(trigger=t).count() == 0
+
+
+@pytest.mark.django_db
+def test_fire_trigger_injects_coach_when_enabled(fake_redis, provider_cfg):
+    """W8: when the profile enables the coach and the captured snapshot has a
+    primary_ticker, the trigger user-turn is prefixed with the coach block."""
+    from apps.snapshots.models import SnapshotSection
+    from apps.thesis.models import Thesis
+    from apps.threads.models import Message
+    from apps.triggers.tasks import fire_trigger
+
+    p = TradingProfile.objects.create(
+        name="coach",
+        style="s",
+        default_provider="claude",
+        enable_coach=True,
+        default_includes=["quotes"],
+    )
+    t = EventTrigger.objects.create(
+        name="T",
+        profile=p,
+        condition={"all": []},
+    )
+    fake_snap = Snapshot.objects.create(
+        profile=p,
+        status="ready",
+        includes=["quotes"],
+        source="trigger",
+        primary_ticker="NVDA",
+    )
+    SnapshotSection.objects.create(
+        snapshot=fake_snap,
+        kind="quotes",
+        status="done",
+        payload={"NVDA": {"last": 188.2}},
+    )
+    Thesis.objects.create(
+        title="AI capex",
+        ticker="NVDA",
+        direction="bullish",
+        conviction=4,
+        status="open",
+        target_price=210,
+    )
+
+    with (
+        patch("apps.triggers.tasks.capture", return_value=fake_snap),
+        patch("apps.triggers.tasks.serialize_for_ai", return_value="SNAP_TEXT"),
+        patch("apps.triggers.tasks.run_ai_on_message") as ai,
+        patch("apps.triggers.tasks.notify"),
+    ):
+        fire_trigger(trigger_id=t.id, matched_values={})
+
+    ai.delay.assert_called_once()
+    msg = Message.objects.filter(role="user", snapshot_ref=fake_snap).latest("id")
+    assert "🧭 What you already know" in msg.content["text"]
+    assert msg.content["text"].endswith("SNAP_TEXT")

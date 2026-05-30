@@ -1,4 +1,5 @@
 import type { ThesisDirection } from "@/api/thesis";
+import { TrackRecordHint } from "@/components/TrackRecordHint";
 
 const FIELD_CLASS =
   "bg-ink-void border border-rule rounded px-3 py-1.5 text-[13px] text-ink-100 w-full focus:outline-none focus:border-copper-500 placeholder:text-ink-500";
@@ -116,6 +117,7 @@ export default function ThesisForm({
           />
         </div>
       </div>
+      <TrackRecordHint ticker={ticker} direction={direction} conviction={conviction} />
       <div className="flex gap-2 pt-1">
         <button
           type="submit"

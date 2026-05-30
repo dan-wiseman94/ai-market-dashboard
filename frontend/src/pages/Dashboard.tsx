@@ -1,11 +1,19 @@
+import { useCallback } from "react";
 import MarketContextStrip from "@/components/MarketContextStrip";
-import UpcomingEvents from "@/components/UpcomingEvents";
 import PositionsTable from "@/components/PositionsTable";
 import CostChip from "@/components/CostChip";
-import RecentTriggersCard from "@/components/RecentTriggersCard";
 import { Link } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { useMarketStatus } from "@/hooks/useMarketStatus";
 import { sessionKind, type SessionKind } from "@/lib/marketSession";
+import { useDashboard } from "@/hooks/useDashboard";
+import { useChannel } from "@/hooks/useChannel";
+import { SkeletonRows } from "@/components/Skeleton";
+import { OpenThesesTile } from "@/components/dashboard/OpenThesesTile";
+import { ObserverTodayTile } from "@/components/dashboard/ObserverTodayTile";
+import { ArmedTriggersTile } from "@/components/dashboard/ArmedTriggersTile";
+import { BriefingSummaryTile } from "@/components/dashboard/BriefingSummaryTile";
+import { UpcomingEventsRow } from "@/components/dashboard/UpcomingEventsRow";
 
 const DATE_FMT = new Intl.DateTimeFormat(undefined, {
   weekday: "long", month: "long", day: "numeric", year: "numeric",
@@ -14,7 +22,7 @@ const DATE_FMT = new Intl.DateTimeFormat(undefined, {
 // Hero session display, keyed off the authoritative backend phase (same source
 // as the nav MarketStatusBadge — see @/lib/marketSession).
 const SESSION: Record<SessionKind, { label: string; tone: string; dot: string }> = {
-  open: { label: "NYSE Open", tone: "text-gain", dot: "var(--gain-400)" },
+  open: { label: "NYSE Open", tone: "text-gain-400", dot: "var(--gain-400)" },
   extended: { label: "Extended Hours", tone: "text-copper-300", dot: "var(--copper-400)" },
   closed: { label: "Closed", tone: "text-ink-400", dot: "var(--ink-500)" },
 };
@@ -53,10 +61,38 @@ function SessionStatus({ kind }: { kind: SessionKind }) {
   );
 }
 
+function TilesLoading() {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+      {[1, 2, 3, 4].map((i) => (
+        <div key={i} className="ledger-surface p-5">
+          <SkeletonRows rows={4} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function Dashboard() {
   const { data: marketData } = useMarketStatus();
   const equity = marketData?.markets?.us_equity;
   const kind: SessionKind = equity ? sessionKind(equity) : "closed";
+
+  const { data: dashboard, isLoading: dashLoading } = useDashboard();
+
+  // Live refresh: invalidate the dashboard query whenever an observer completion,
+  // trigger firing, backup, or export event arrives over the notifications channel.
+  const qc = useQueryClient();
+  const dashboardLiveHandler = useCallback(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (m: any) => {
+      if (m.type === "notification.event") {
+        qc.invalidateQueries({ queryKey: ["dashboard"] });
+      }
+    },
+    [qc],
+  );
+  useChannel("notifications", dashboardLiveHandler);
 
   const now = new Date();
   const date = DATE_FMT.format(now);
@@ -99,19 +135,38 @@ export default function Dashboard() {
       <section className="mb-10 ledger-reveal" style={{ animationDelay: "220ms" }}>
         <div className="flex items-baseline justify-between mb-3">
           <h2 className="ledger-eyebrow">Market context</h2>
-          <div className="flex items-center gap-4">
-            <UpcomingEvents />
-            <Link to="/market/$SPX" className="font-mono text-[10px] text-ink-500 hover:text-copper-300 transition-colors uppercase tracking-wider">
-              Tickers →
-            </Link>
-          </div>
+          <Link to="/market/$SPX" className="font-mono text-[10px] text-ink-500 hover:text-copper-300 transition-colors uppercase tracking-wider">
+            Tickers →
+          </Link>
         </div>
         <MarketContextStrip />
       </section>
 
-      {/* Two-column: positions + recent triggers */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
-        <section className="lg:col-span-3 ledger-reveal" style={{ animationDelay: "300ms" }}>
+      {/* Command-centre tiles */}
+      <section className="mb-8 ledger-reveal" style={{ animationDelay: "300ms" }}>
+        <h2 className="ledger-eyebrow mb-4">Command centre</h2>
+        {dashLoading ? (
+          <TilesLoading />
+        ) : dashboard ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+            <OpenThesesTile theses={dashboard.theses} />
+            <ObserverTodayTile observer={dashboard.observer} />
+            <ArmedTriggersTile triggers={dashboard.triggers} />
+            <BriefingSummaryTile briefing={dashboard.briefing} />
+          </div>
+        ) : null}
+      </section>
+
+      {/* Upcoming events strip */}
+      {dashboard && (
+        <section className="mb-8 ledger-reveal" style={{ animationDelay: "360ms" }}>
+          <UpcomingEventsRow events={dashboard.events} />
+        </section>
+      )}
+
+      {/* Two-column: positions */}
+      <div className="grid grid-cols-1 gap-8 ledger-reveal" style={{ animationDelay: "420ms" }}>
+        <section>
           <div className="flex items-baseline justify-between mb-3">
             <h2 className="ledger-eyebrow">The book</h2>
             <Link to="/watchlists" className="font-mono text-[10px] text-ink-500 hover:text-copper-300 transition-colors uppercase tracking-wider">
@@ -119,10 +174,6 @@ export default function Dashboard() {
             </Link>
           </div>
           <PositionsTable />
-        </section>
-
-        <section className="lg:col-span-2 ledger-reveal" style={{ animationDelay: "380ms" }}>
-          <RecentTriggersCard />
         </section>
       </div>
 

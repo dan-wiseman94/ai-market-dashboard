@@ -18,8 +18,13 @@ def _thesis(status: str, *, direction="bullish", conviction=4) -> Thesis:
 
 def _pm(thesis: Thesis, verdict: str) -> PostMortem:
     return PostMortem.objects.create(
-        thesis=thesis, horizon_days=30, due_at=NOW, status="done",
-        verdict=verdict, forward_return_pct=1.0, completed_at=NOW,
+        thesis=thesis,
+        horizon_days=30,
+        due_at=NOW,
+        status="done",
+        verdict=verdict,
+        forward_return_pct=1.0,
+        completed_at=NOW,
     )
 
 
@@ -48,7 +53,11 @@ def test_direction_conviction_slice_from_postmortems():
         _pm(_thesis("closed_win"), v)
     tr = track_record_for_ticker("NVDA", direction="bullish", conviction=4)
     assert tr["slice"] == {
-        "direction": "bullish", "conviction": 4, "correct": 1, "n": 4, "hit_rate": 0.25
+        "direction": "bullish",
+        "conviction": 4,
+        "correct": 1,
+        "n": 4,
+        "hit_rate": 0.25,
     }
 
 

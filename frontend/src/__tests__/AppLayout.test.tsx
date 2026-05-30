@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/react";
 import { createMemoryRouter, RouterProvider } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import AppLayout from "@/components/layout/AppLayout";
+import { WebSocketProvider } from "@/realtime/WebSocketProvider";
 import { beforeEach, vi } from "vitest";
 import { installFakeWebSocket } from "./testUtils";
 import userEvent from "@testing-library/user-event";
@@ -13,7 +14,9 @@ function makeQc() {
 function renderWithProviders(router: ReturnType<typeof createMemoryRouter>) {
   return render(
     <QueryClientProvider client={makeQc()}>
-      <RouterProvider router={router} />
+      <WebSocketProvider>
+        <RouterProvider router={router} />
+      </WebSocketProvider>
     </QueryClientProvider>,
   );
 }

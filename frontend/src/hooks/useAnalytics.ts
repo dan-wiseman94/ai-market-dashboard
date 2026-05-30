@@ -155,3 +155,48 @@ export function useCalibration(days = 90, horizon = 30) {
       ),
   });
 }
+
+export interface TrackRecord {
+  ticker: string;
+  closed_n: number;
+  counts: { win: number; loss: number; scratch: number; invalidated: number };
+  hit_rate: number | null;
+  last: { direction: string; conviction: number; status: string } | null;
+  slice: {
+    direction: string;
+    conviction: number;
+    correct: number;
+    n: number;
+    hit_rate: number | null;
+  } | null;
+}
+
+interface TrackRecordResponse {
+  ticker: string;
+  available: boolean;
+  record: TrackRecord | null;
+}
+
+export function useTrackRecord(
+  ticker: string,
+  direction?: string,
+  conviction?: number,
+) {
+  const params = new URLSearchParams();
+  if (ticker) params.set("ticker", ticker);
+  if (direction) params.set("direction", direction);
+  if (conviction != null) params.set("conviction", String(conviction));
+  return useQuery({
+    queryKey: [
+      "analytics/track-record",
+      ticker,
+      direction ?? null,
+      conviction ?? null,
+    ],
+    queryFn: () =>
+      apiGet<TrackRecordResponse>(
+        `/api/analytics/track-record/?${params.toString()}`,
+      ),
+    enabled: Boolean(ticker),
+  });
+}

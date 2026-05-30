@@ -2,6 +2,7 @@ import { memo, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { usd } from "@/utils/format";
+import ObservationReportCard, { type ObservationReport } from "@/components/ObservationReportCard";
 
 type Props = {
   role: "user" | "assistant" | "system";
@@ -15,6 +16,9 @@ type Props = {
   bare?: boolean;
   /** Set on the synthetic snapshot turn; collapses the data sections below the objective. */
   snapshotId?: number | null;
+  /** Set on structured observation messages produced by the observer. */
+  kind?: "structured_observation";
+  report?: ObservationReport;
 };
 
 /** Split the snapshot turn at the first `## ` heading: preamble (objective /
@@ -85,7 +89,7 @@ function UserMessage({ text, snapshotId }: { text: string; snapshotId?: number |
   );
 }
 
-function Message({ role, text, status, error, cost, model, provider, bare = false, snapshotId }: Props) {
+function Message({ role, text, status, error, cost, model, provider, bare = false, snapshotId, kind, report }: Props) {
   const isUser = role === "user";
   const isStreaming = status === "streaming";
 
@@ -134,6 +138,8 @@ function Message({ role, text, status, error, cost, model, provider, bare = fals
             <span className="ledger-pill mr-2" data-tone="loss">failed</span>
             {error || "unknown error"}
           </div>
+        ) : kind === "structured_observation" && report ? (
+          <ObservationReportCard report={report} />
         ) : (
           <div className="ledger-prose">
             <ReactMarkdown remarkPlugins={[remarkGfm]}>

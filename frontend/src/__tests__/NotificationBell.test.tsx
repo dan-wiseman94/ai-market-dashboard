@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { WebSocketProvider } from "@/realtime/WebSocketProvider";
 import NotificationBell from "../components/NotificationBell";
 import { installFakeWebSocket, type FakeWebSocketController } from "./testUtils";
 
@@ -29,21 +30,34 @@ afterEach(() => {
 
 const qc = () => new QueryClient({ defaultOptions: { queries: { retry: false } } });
 
+/** Minimal wrapper: QueryClient + WebSocketProvider + Router. */
+function Wrapper({ client, children }: { client: QueryClient; children: React.ReactNode }) {
+  return (
+    <QueryClientProvider client={client}>
+      <WebSocketProvider>
+        <MemoryRouter>{children}</MemoryRouter>
+      </WebSocketProvider>
+    </QueryClientProvider>
+  );
+}
+
 describe("NotificationBell", () => {
   it("shows unread badge count", async () => {
+    const client = qc();
     render(
-      <QueryClientProvider client={qc()}>
-        <MemoryRouter><NotificationBell /></MemoryRouter>
-      </QueryClientProvider>,
+      <Wrapper client={client}>
+        <NotificationBell />
+      </Wrapper>,
     );
     await waitFor(() => expect(screen.getByText("1")).toBeInTheDocument());
   });
 
   it("opens dropdown on click and lists notifications", async () => {
+    const client = qc();
     render(
-      <QueryClientProvider client={qc()}>
-        <MemoryRouter><NotificationBell /></MemoryRouter>
-      </QueryClientProvider>,
+      <Wrapper client={client}>
+        <NotificationBell />
+      </Wrapper>,
     );
     await waitFor(() => expect(screen.getByLabelText(/notifications/i)).toBeInTheDocument());
     fireEvent.click(screen.getByLabelText(/notifications/i));
@@ -60,10 +74,11 @@ describe("NotificationBell", () => {
       }),
     });
 
+    const client = qc();
     render(
-      <QueryClientProvider client={qc()}>
-        <MemoryRouter><NotificationBell /></MemoryRouter>
-      </QueryClientProvider>,
+      <Wrapper client={client}>
+        <NotificationBell />
+      </Wrapper>,
     );
     await waitFor(() => expect(screen.getByLabelText(/notifications/i)).toBeInTheDocument());
     fireEvent.click(screen.getByLabelText(/notifications/i));
@@ -79,43 +94,43 @@ describe("NotificationBell", () => {
       }),
     });
 
+    const client = qc();
     render(
-      <QueryClientProvider client={qc()}>
-        <MemoryRouter><NotificationBell /></MemoryRouter>
-      </QueryClientProvider>,
+      <Wrapper client={client}>
+        <NotificationBell />
+      </Wrapper>,
     );
     await waitFor(() => expect(screen.getByLabelText(/notifications/i)).toBeInTheDocument());
     fireEvent.click(screen.getByLabelText(/notifications/i));
     expect(screen.queryByText(/desktop notification/i)).toBeNull();
   });
 
-  it("invalidates notifications query on notification.event WebSocket message", async () => {
+  it("invalidates notifications query on notification.event via shared WS broker", async () => {
     const client = qc();
     const invalidateSpy = vi.spyOn(client, "invalidateQueries");
 
     render(
-      <QueryClientProvider client={client}>
-        <MemoryRouter><NotificationBell /></MemoryRouter>
-      </QueryClientProvider>,
+      <Wrapper client={client}>
+        <NotificationBell />
+      </Wrapper>,
     );
 
     await waitFor(() => expect(screen.getByLabelText(/notifications/i)).toBeInTheDocument());
 
-    // NotificationBell uses ws.onmessage (property) not addEventListener,
-    // so we retrieve the FakeSocket and call onmessage directly.
+    // The shared WebSocketProvider opens the socket via addEventListener (not onmessage).
+    // emitMessage() calls all registered "message" listeners on the FakeSocket.
     const sock = fake.find("/ws/notifications/");
     expect(sock).toBeDefined();
 
-    const onmessageFn = (sock as unknown as { onmessage: ((ev: MessageEvent) => void) | null }).onmessage;
-    if (onmessageFn) {
-      act(() => {
-        onmessageFn(
-          new MessageEvent("message", {
-            data: JSON.stringify({ type: "notification.event", payload: { kind: "observer_done", title: "T", body: "B" } }),
-          }),
-        );
+    act(() => {
+      sock!.emitMessage({
+        type: "notification.event",
+        payload: { kind: "observer_done", title: "T", body: "B" },
       });
-      expect(invalidateSpy).toHaveBeenCalledWith(expect.objectContaining({ queryKey: ["notifications"] }));
-    }
+    });
+
+    expect(invalidateSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ queryKey: ["notifications"] }),
+    );
   });
 });
