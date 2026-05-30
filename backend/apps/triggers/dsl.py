@@ -41,6 +41,11 @@ LEAF_KEYS |= {"params"}
 TICKER_REQUIRED |= INDICATOR_METRICS
 WINDOW_REQUIRED |= INDICATOR_METRICS - DAILY_ONLY_METRICS
 
+FUNDAMENTAL_METRICS = {"pe_ratio", "market_cap", "revenue_growth", "gross_margin"}
+VALID_METRICS |= FUNDAMENTAL_METRICS
+TICKER_REQUIRED |= FUNDAMENTAL_METRICS
+NON_CROSSING_METRICS |= FUNDAMENTAL_METRICS
+
 # (type, default, min, max)
 PARAMS_SPEC: dict[str, dict[str, tuple]] = {
     "rsi": {"period": (int, 14, 2, 100)},

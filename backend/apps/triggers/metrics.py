@@ -16,11 +16,17 @@ from typing import cast
 import redis
 from django.conf import settings
 
+from apps.market.services.fundamentals import fetch_fundamentals
 from apps.market.services.ohlc import fetch_ohlc
 from apps.market.services.positions import fetch_positions
 from apps.market.services.quotes import fetch_quotes
 from apps.triggers import indicators as ind
-from apps.triggers.dsl import DAILY_ONLY_METRICS, INDICATOR_METRICS, PARAMS_SPEC
+from apps.triggers.dsl import (
+    DAILY_ONLY_METRICS,
+    FUNDAMENTAL_METRICS,
+    INDICATOR_METRICS,
+    PARAMS_SPEC,
+)
 from apps.triggers.evaluator import CROSSING_OPS, MetricsSnapshot, iter_leaves, leaf_key
 from apps.triggers.models import EventTrigger
 
@@ -154,6 +160,7 @@ def build_snapshot(triggers: Iterable[EventTrigger]) -> MetricsSnapshot:
             log.warning("trigger.metrics.positions_failed: %s", exc)
 
     snapshot: dict[str, float | None] = {}
+    fundamentals_cache: dict[str, dict] = {}
     r = _redis()
 
     for leaf in leaves:
@@ -208,6 +215,23 @@ def build_snapshot(triggers: Iterable[EventTrigger]) -> MetricsSnapshot:
         elif metric == "days_to_earnings":
             assert ticker is not None
             snapshot[key] = earnings_days.get(ticker.upper())
+
+        elif metric in FUNDAMENTAL_METRICS:
+            assert ticker is not None
+            fund = fundamentals_cache.get(ticker.upper())
+            if fund is None:
+                fund = fetch_fundamentals(ticker.upper())
+                fundamentals_cache[ticker.upper()] = fund
+            _metric_to_fund_key = {
+                "pe_ratio": "pe",
+                "market_cap": "market_cap",
+                "revenue_growth": "rev_growth_yoy",
+                "gross_margin": "gross_margin",
+            }
+            raw_val = fund.get(_metric_to_fund_key[metric])
+            if raw_val is not None:
+                snapshot[key] = float(raw_val)
+            # absent when fund == {} or value is None — evaluator treats missing key as no-match
 
         elif metric in INDICATOR_METRICS:
             assert ticker is not None

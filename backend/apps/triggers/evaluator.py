@@ -63,6 +63,8 @@ def leaf_key(node: dict) -> str:
         return f"volume_z:{node['ticker']}:{node['window']}"
     if metric == "days_to_earnings":
         return f"days_to_earnings:{node['ticker']}"
+    if metric in {"pe_ratio", "market_cap", "revenue_growth", "gross_margin"}:
+        return f"{metric}:{node['ticker']}"
     if metric in _INDICATOR_KEY_PARAMS:
         params = node.get("params") or {}
         parts = [metric, node["ticker"]]
