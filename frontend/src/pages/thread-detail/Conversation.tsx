@@ -52,6 +52,7 @@ export default function Conversation({
                           bare
                           role={active.role} text={active.text} status={active.status}
                           error={active.error} cost={active.cost} model={active.model} provider={active.provider}
+                          kind={active.kind} report={active.report}
                         />
                       </div>
                       {active.status === "streaming" && (
@@ -74,6 +75,7 @@ export default function Conversation({
               <StreamingMessage
                 role={m.role} text={m.text} status={m.status}
                 error={m.error} cost={m.cost} model={m.model} provider={m.provider}
+                kind={m.kind} report={m.report}
               />
             </div>
             {m.status === "streaming" && (
