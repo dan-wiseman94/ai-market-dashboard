@@ -1,10 +1,13 @@
+import { useCallback } from "react";
 import MarketContextStrip from "@/components/MarketContextStrip";
 import PositionsTable from "@/components/PositionsTable";
 import CostChip from "@/components/CostChip";
 import { Link } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { useMarketStatus } from "@/hooks/useMarketStatus";
 import { sessionKind, type SessionKind } from "@/lib/marketSession";
 import { useDashboard } from "@/hooks/useDashboard";
+import { useChannel } from "@/hooks/useChannel";
 import { SkeletonRows } from "@/components/Skeleton";
 import { OpenThesesTile } from "@/components/dashboard/OpenThesesTile";
 import { ObserverTodayTile } from "@/components/dashboard/ObserverTodayTile";
@@ -76,6 +79,20 @@ export default function Dashboard() {
   const kind: SessionKind = equity ? sessionKind(equity) : "closed";
 
   const { data: dashboard, isLoading: dashLoading } = useDashboard();
+
+  // Live refresh: invalidate the dashboard query whenever an observer completion,
+  // trigger firing, backup, or export event arrives over the notifications channel.
+  const qc = useQueryClient();
+  const dashboardLiveHandler = useCallback(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (m: any) => {
+      if (m.type === "notification.event") {
+        qc.invalidateQueries({ queryKey: ["dashboard"] });
+      }
+    },
+    [qc],
+  );
+  useChannel("notifications", dashboardLiveHandler);
 
   const now = new Date();
   const date = DATE_FMT.format(now);
