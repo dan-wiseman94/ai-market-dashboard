@@ -3,7 +3,10 @@ import { screen } from "@testing-library/react";
 import { renderWithProviders } from "./testUtils";
 import Dashboard from "@/pages/Dashboard";
 
-// Mock all child components' hooks to keep test surface flat
+// ---------------------------------------------------------------------------
+// Child component mocks — keep test surface flat
+// ---------------------------------------------------------------------------
+
 vi.mock("@/hooks/useMarketContext", () => ({
   useMarketContext: vi.fn(() => ({ data: null, isLoading: false })),
 }));
@@ -16,28 +19,82 @@ vi.mock("@/hooks/useCosts", () => ({
   useCostsToday: vi.fn(() => ({ data: null })),
 }));
 
-// RecentTriggersCard uses useQuery directly against fetchRecentFirings
-vi.mock("@/api/triggers", () => ({
-  fetchRecentFirings: vi.fn(() => Promise.resolve([])),
-}));
-
-// The hero's session status + headline derive from the authoritative backend.
 const mockMarketStatus = vi.fn();
 vi.mock("@/hooks/useMarketStatus", () => ({
   useMarketStatus: () => mockMarketStatus(),
 }));
+
+// useDashboard is the new boundary — mock it at the hook level
+const mockUseDashboard = vi.fn();
+vi.mock("@/hooks/useDashboard", () => ({
+  useDashboard: () => mockUseDashboard(),
+}));
+
+const DASHBOARD_PAYLOAD = {
+  theses: [
+    {
+      id: 1,
+      ticker: "AAPL",
+      direction: "bullish",
+      conviction: 4,
+      entry: 170.0,
+      target: 200.0,
+      invalidation: 155.0,
+      current: 185.0,
+      pct_to_target: 8.11,
+      pct_to_invalidation: -16.22,
+    },
+  ],
+  events: {
+    earnings: [
+      {
+        kind: "earnings",
+        ticker: "NVDA",
+        title: "NVDA earnings (BMO)",
+        event_time: "2026-06-01T13:00:00+00:00",
+        days_until: 2,
+        when_hint: "bmo",
+        impact: "high",
+        detail: {},
+      },
+    ],
+    macro: [],
+  },
+  observer: { enabled_schedules: 3, runs_today: 5 },
+  triggers: {
+    armed_count: 7,
+    latest_firings: [
+      {
+        id: 42,
+        trigger_id: 10,
+        trigger_name: "SPY drop",
+        fired_at: "2026-05-30T09:45:00Z",
+        cost_capped: false,
+      },
+    ],
+  },
+  briefing: {
+    id: 99,
+    status: "ready",
+    created_at: "2026-05-30T08:00:00Z",
+    scheduled_date: "2026-05-30",
+  },
+};
 
 beforeEach(() => {
   vi.clearAllMocks();
   mockMarketStatus.mockReturnValue({
     data: { markets: { us_equity: { is_open: true, phase: "open" } } },
   });
+  mockUseDashboard.mockReturnValue({
+    data: DASHBOARD_PAYLOAD,
+    isLoading: false,
+  });
 });
 
 describe("Dashboard", () => {
   it("renders without crashing", () => {
     renderWithProviders(<Dashboard />);
-    // header section exists
     expect(screen.getByRole("main")).toBeInTheDocument();
   });
 
@@ -94,5 +151,53 @@ describe("Dashboard", () => {
   it("includes a 'Watchlists' navigation link in the book section", () => {
     renderWithProviders(<Dashboard />);
     expect(screen.getByRole("link", { name: /watchlists/i })).toBeInTheDocument();
+  });
+
+  // ------------------------------------------------------------------
+  // Command-centre tiles — real content assertions (W4b)
+  // ------------------------------------------------------------------
+
+  it("shows the AAPL thesis from useDashboard", () => {
+    renderWithProviders(<Dashboard />);
+    expect(screen.getByText("AAPL")).toBeInTheDocument();
+  });
+
+  it("shows armed triggers count from useDashboard", () => {
+    renderWithProviders(<Dashboard />);
+    expect(screen.getByTestId("triggers-armed-count").textContent).toBe("7");
+  });
+
+  it("shows latest firing name from useDashboard", () => {
+    renderWithProviders(<Dashboard />);
+    expect(screen.getByText("SPY drop")).toBeInTheDocument();
+  });
+
+  it("shows observer runs_today from useDashboard", () => {
+    renderWithProviders(<Dashboard />);
+    expect(screen.getByTestId("observer-runs-today").textContent).toBe("5");
+  });
+
+  it("shows briefing status badge from useDashboard", () => {
+    renderWithProviders(<Dashboard />);
+    // The BriefingSummaryTile shows a 'ready' badge
+    expect(screen.getByText("ready")).toBeInTheDocument();
+  });
+
+  it("shows upcoming NVDA earnings event from useDashboard", () => {
+    renderWithProviders(<Dashboard />);
+    expect(screen.getByText(/NVDA earnings/i)).toBeInTheDocument();
+  });
+
+  it("shows Skeleton rows while useDashboard is loading", () => {
+    mockUseDashboard.mockReturnValue({ data: undefined, isLoading: true });
+    renderWithProviders(<Dashboard />);
+    // SkeletonRows renders data-testid="skeleton-row"
+    const rows = screen.getAllByTestId("skeleton-row");
+    expect(rows.length).toBeGreaterThan(0);
+  });
+
+  it("shows 'Command centre' section heading", () => {
+    renderWithProviders(<Dashboard />);
+    expect(screen.getByText(/command centre/i)).toBeInTheDocument();
   });
 });
