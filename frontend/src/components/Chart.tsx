@@ -4,12 +4,19 @@ import { createChart, IChartApi, ISeriesApi } from "lightweight-charts";
 import { useTheme, type ResolvedTheme } from "@/hooks/useTheme";
 import { lightweightLayout } from "@/lib/chartTheme";
 
+export interface PriceLineSpec {
+  price: number;
+  color: string;
+  title: string;
+}
+
 export interface ChartProps {
   ticker: string;
   timeframe: string;
   bars: number;
   theme?: ResolvedTheme;
   onReady?: () => void;
+  priceLines?: PriceLineSpec[];
 }
 
 interface OHLCBar {
@@ -27,7 +34,7 @@ interface OHLCResponse {
   bars: OHLCBar[];
 }
 
-export default function Chart({ ticker, timeframe, bars, theme, onReady }: ChartProps) {
+export default function Chart({ ticker, timeframe, bars, theme, onReady, priceLines }: ChartProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
@@ -82,6 +89,23 @@ export default function Chart({ ticker, timeframe, bars, theme, onReady }: Chart
       onReady?.();
     }
   }, [data, isError, onReady]);
+
+  useEffect(() => {
+    if (!seriesRef.current || !priceLines?.length) return;
+    for (const line of priceLines) {
+      seriesRef.current.createPriceLine({
+        price: line.price,
+        color: line.color,
+        lineWidth: 1,
+        lineStyle: 2, // dashed
+        axisLabelVisible: true,
+        title: line.title,
+      });
+    }
+    // Price lines are one-shot decorations — no cleanup needed when priceLines
+    // reference changes (e.g. a new series would be created on remount).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [priceLines]);
 
   const noData = isError || (!!data && !data.bars?.length);
 
