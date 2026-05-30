@@ -76,4 +76,8 @@ app.conf.beat_schedule = {
         "task": "recall.index_pending",
         "schedule": crontab(minute="*/5"),
     },
+    "prune-retention": {
+        "task": "core.prune_retention",
+        "schedule": crontab(hour=4, minute=0),  # daily 4am UTC, low-traffic window
+    },
 }
