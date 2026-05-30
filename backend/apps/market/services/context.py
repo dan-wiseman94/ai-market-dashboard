@@ -6,6 +6,12 @@ from apps.market import cache
 from apps.market.services.quotes import fetch_quotes
 
 SECTOR_ETFS = ["XLK", "XLF", "XLE", "XLV", "XLY", "XLP", "XLI", "XLU", "XLB", "XLRE", "XLC"]
+MACRO = {
+    "10Y yield": "$TNX",
+    "Dollar (UUP)": "UUP",
+    "Oil (USO)": "USO",
+    "Gold (GLD)": "GLD",
+}
 CORE = ["$SPX", "QQQ", "$VIX"]
 # Advance/decline indices — Schwab may or may not return these; we try and fall back silently.
 BREADTH = ["$ADVN", "$DECN", "$TICK", "$TRIN"]
