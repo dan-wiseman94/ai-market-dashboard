@@ -71,7 +71,7 @@ export function CommandPalette({
       data-testid="command-palette"
     >
       <div
-        className="w-[560px] max-w-[90vw] bg-slate-900 border border-slate-700 rounded-lg shadow-2xl overflow-hidden"
+        className="w-[560px] max-w-[90vw] bg-ink-900 border border-rule rounded-lg shadow-2xl overflow-hidden"
         onClick={(e) => e.stopPropagation()}
         onKeyDown={onKey}
       >
@@ -83,27 +83,27 @@ export function CommandPalette({
             setQ(e.target.value);
             setIdx(0);
           }}
-          className="w-full px-4 py-3 bg-transparent text-slate-100 outline-none border-b border-slate-700"
+          className="w-full px-4 py-3 bg-transparent text-ink-100 outline-none border-b border-rule"
         />
         <ul className="max-h-[400px] overflow-y-auto">
           {filtered.map((c, i) => (
             <li
               key={c.id}
-              className={`px-4 py-2 cursor-pointer ${i === idx ? "bg-slate-800" : ""}`}
+              className={`px-4 py-2 cursor-pointer ${i === idx ? "bg-ink-800" : ""}`}
               onMouseEnter={() => setIdx(i)}
               onClick={() => {
                 c.run();
                 onClose();
               }}
             >
-              <span className="text-slate-100">{c.label}</span>
+              <span className="text-ink-100">{c.label}</span>
               {c.keywords && (
-                <span className="ml-2 text-xs text-slate-500">{c.keywords}</span>
+                <span className="ml-2 text-xs text-ink-500">{c.keywords}</span>
               )}
             </li>
           ))}
           {filtered.length === 0 && (
-            <li className="px-4 py-3 text-sm text-slate-500">No commands match.</li>
+            <li className="px-4 py-3 text-sm text-ink-500">No commands match.</li>
           )}
         </ul>
       </div>
