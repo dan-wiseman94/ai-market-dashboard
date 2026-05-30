@@ -10,6 +10,7 @@ import { CloseThesisForm } from "./thesis-detail/CloseThesisForm";
 import { PostMortemsSection } from "./thesis-detail/PostMortemsSection";
 import Toggle from "@/components/ui/Toggle";
 import type { Thesis } from "@/api/thesis";
+import { TrackRecordHint } from "@/components/TrackRecordHint";
 
 function PriceGuardToggle({ thesis }: { thesis: Thesis }) {
   const hasTargetOrInvalidation =
@@ -87,6 +88,11 @@ export default function ThesisDetailPage() {
   return (
     <main className="max-w-3xl mx-auto p-6 ledger-fade-in">
       <ThesisMasthead thesis={thesis} />
+      <TrackRecordHint
+        ticker={thesis.ticker}
+        direction={thesis.direction}
+        conviction={thesis.conviction}
+      />
       <ThesisFields thesis={thesis} />
       <SourceLinks thesis={thesis} />
       <PriceGuardToggle thesis={thesis} />
