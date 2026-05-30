@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -6,6 +6,7 @@ import {
   NotificationDTO,
 } from "@/api/observer";
 import { formatRelative } from "@/utils/format";
+import { useChannel } from "@/hooks/useChannel";
 
 function unwrapResults(data: unknown): NotificationDTO[] {
   if (Array.isArray(data)) return data as NotificationDTO[];
@@ -13,13 +14,6 @@ function unwrapResults(data: unknown): NotificationDTO[] {
     return (data as { results: NotificationDTO[] }).results;
   }
   return [];
-}
-
-function notificationWsUrl(): string {
-  const configured = import.meta.env.VITE_WS_BASE_URL as string | undefined;
-  const proto = window.location.protocol === "https:" ? "wss" : "ws";
-  const base = configured && configured.length > 0 ? configured : `${proto}://${window.location.host}`;
-  return `${base}/ws/notifications/`;
 }
 
 function desktopNotificationsGranted(): boolean {
@@ -72,21 +66,16 @@ export default function NotificationBell() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["notifications"] }),
   });
 
-  useEffect(() => {
-    if (typeof WebSocket === "undefined") return;
-    const ws = new WebSocket(notificationWsUrl());
-    ws.onmessage = (ev: MessageEvent) => {
-      try {
-        const m = JSON.parse(ev.data);
-        if (m.type !== "notification.event") return;
-        qc.invalidateQueries({ queryKey: ["notifications"] });
-        if (desktopNotificationsGranted()) showDesktopNotification(m.payload);
-      } catch {
-        /* ignore parse errors */
-      }
-    };
-    return () => ws.close();
-  }, [qc]);
+  const notificationHandler = useCallback(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (m: any) => {
+      if (m.type !== "notification.event") return;
+      qc.invalidateQueries({ queryKey: ["notifications"] });
+      if (desktopNotificationsGranted()) showDesktopNotification(m.payload);
+    },
+    [qc],
+  );
+  useChannel("notifications", notificationHandler);
 
   return (
     <div className="relative" data-testid="notification-bell">

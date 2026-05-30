@@ -3,6 +3,7 @@ import { createMemoryRouter, RouterProvider } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, vi } from "vitest";
 import { installFakeWebSocket } from "./testUtils";
+import { WebSocketProvider } from "@/realtime/WebSocketProvider";
 import AppLayout from "@/components/layout/AppLayout";
 
 function makeQc() {
@@ -12,7 +13,9 @@ function makeQc() {
 function renderWithProviders(router: ReturnType<typeof createMemoryRouter>) {
   return render(
     <QueryClientProvider client={makeQc()}>
-      <RouterProvider router={router} />
+      <WebSocketProvider>
+        <RouterProvider router={router} />
+      </WebSocketProvider>
     </QueryClientProvider>,
   );
 }

@@ -5,6 +5,7 @@ import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { vi } from "vitest";
 import { ToastProvider } from "@/hooks/useToast";
 import { Toasts } from "@/components/Toasts";
+import { WebSocketProvider } from "@/realtime/WebSocketProvider";
 
 export function newQueryClient(): QueryClient {
   return new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -45,10 +46,12 @@ export function renderWithProviders(
     );
     return (
       <QueryClientProvider client={client}>
-        <ToastProvider>
-          <Toasts />
-          {router}
-        </ToastProvider>
+        <WebSocketProvider>
+          <ToastProvider>
+            <Toasts />
+            {router}
+          </ToastProvider>
+        </WebSocketProvider>
       </QueryClientProvider>
     );
   }

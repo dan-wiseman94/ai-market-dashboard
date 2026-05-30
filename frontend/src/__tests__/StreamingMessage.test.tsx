@@ -1,6 +1,19 @@
 import { render, screen } from "@testing-library/react";
 import { describe, it, expect } from "vitest";
 import StreamingMessage from "@/components/StreamingMessage";
+import type { ObservationReport } from "@/components/ObservationReportCard";
+
+const STRUCTURED_REPORT: ObservationReport = {
+  headline: "SPY holds 20-EMA on rising breadth",
+  bias: "bullish",
+  summary: "Momentum intact, no distribution signals.",
+  signals: [
+    { ticker: "SPY", bias: "bullish", thesis: "base breakout", invalidation: "below 520", confidence: 0.75 },
+  ],
+  key_levels: [{ label: "VWAP", price: 522.5, kind: "support" }],
+  risks: ["Fed minutes at 14:00"],
+  next_check_in: "after close",
+};
 
 describe("StreamingMessage", () => {
   it("user role shows You eyebrow and plain text body", () => {
@@ -52,5 +65,39 @@ describe("StreamingMessage", () => {
     );
     const inner = container.querySelector(".ledger-surface");
     expect(inner).toBeNull();
+  });
+
+  it("structured_observation message renders ObservationReportCard fields", () => {
+    render(
+      <StreamingMessage
+        role="assistant"
+        text=""
+        status="done"
+        kind="structured_observation"
+        report={STRUCTURED_REPORT}
+      />,
+    );
+    // Headline and summary are ObservationReportCard-rendered content
+    expect(screen.getByText("SPY holds 20-EMA on rising breadth")).toBeInTheDocument();
+    expect(screen.getByText(/Momentum intact/)).toBeInTheDocument();
+    // Signal ticker
+    expect(screen.getByText("SPY")).toBeInTheDocument();
+    // Risk item
+    expect(screen.getByText(/Fed minutes/)).toBeInTheDocument();
+  });
+
+  it("normal assistant message still renders markdown text (fallback unchanged)", () => {
+    render(
+      <StreamingMessage
+        role="assistant"
+        text="Market looks **stable** today."
+        status="done"
+      />,
+    );
+    // The text content should be present (markdown renders strong as bold but text is visible)
+    expect(screen.getByText(/Market looks/)).toBeInTheDocument();
+    expect(screen.getByText(/stable/)).toBeInTheDocument();
+    // No ObservationReportCard headline or sections
+    expect(screen.queryByText("SPY holds 20-EMA on rising breadth")).not.toBeInTheDocument();
   });
 });
