@@ -53,3 +53,51 @@ class ObservationReport(BaseModel):
         max_length=12,
         description="Which provided data sections each key claim used (e.g. 'quotes', 'chain analytics').",
     )
+
+
+class ProviderTake(BaseModel):
+    """One model's structured opinion in a consensus run."""
+
+    provider: str
+    model: str
+    bias: Bias
+    signal_bias: dict[str, Bias] = Field(
+        default_factory=dict,
+        description="Per-ticker directional call lifted from this take's signals.",
+    )
+
+
+class ConsensusReport(BaseModel):
+    """Cross-model agreement signal.
+
+    Fans the same ObservationReport prompt across several structured-capable
+    (provider, model) pairs and measures whether they agree. Agreement is a
+    confidence signal a single model can't give; divergence is an explicit
+    'do more homework' flag. Degrades honestly to a single-provider result
+    rather than fabricating a consensus.
+    """
+
+    n_providers: int
+    bias_agreement: float | None = Field(
+        default=None,
+        description="Fraction of takes agreeing with the modal overall bias; "
+        "None when fewer than 2 takes (no consensus possible).",
+    )
+    modal_bias: Bias | None = Field(
+        default=None,
+        description="Most common overall bias across takes; the single one (or "
+        "None) when fewer than 2 takes.",
+    )
+    divergent: bool = Field(
+        default=False,
+        description="True when takes disagree on the overall bias.",
+    )
+    per_ticker: dict[str, dict] = Field(
+        default_factory=dict,
+        description="ticker -> {agreement, modal, takes:{provider:bias}} across takes.",
+    )
+    takes: list[ProviderTake] = Field(default_factory=list)
+    note: str = Field(
+        default="",
+        description="Human-readable caveat, e.g. 'single provider — no consensus available'.",
+    )
