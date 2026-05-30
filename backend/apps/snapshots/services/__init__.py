@@ -134,7 +134,9 @@ def _fetch_news_section(
 
 
 _FETCHERS = {
-    "breadth": lambda **_: {"data": fetch_market_context()},
+    "breadth": lambda *, watchlist_tickers, **_: {
+        "data": fetch_market_context(tickers=list(watchlist_tickers))
+    },
     "chain": lambda *, watchlist_tickers, **_: {
         "data": fetch_chain(_pick_ticker(None, watchlist_tickers)),
     },
