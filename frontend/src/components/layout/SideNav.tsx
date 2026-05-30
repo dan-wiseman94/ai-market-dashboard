@@ -3,6 +3,7 @@ import { useSidebarCollapsed } from "@/hooks/useSidebarCollapsed";
 
 const TRADING: Array<[string, string, string]> = [
   ["/theses", "Theses", "TH"],
+  ["/portfolio", "Portfolio", "PF"],
   ["/events", "Events", "EV"],
   ["/briefing", "Briefing", "BR"],
   ["/snapshots", "Snapshots", "SN"],
