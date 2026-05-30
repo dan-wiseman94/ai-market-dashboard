@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from celery import shared_task
 
-from apps.backups.services import perform_backup
+from apps.backups.services import perform_backup, verify_latest
 
 
 @shared_task(
@@ -17,3 +17,16 @@ from apps.backups.services import perform_backup
 def run_backup(kind: str = "scheduled") -> int:
     rec = perform_backup(kind)
     return rec.id
+
+
+@shared_task(
+    name="backups.verify_latest",
+    autoretry_for=(),
+    max_retries=0,
+    # pg_restore --list is fast but give it headroom; never kills backup slots.
+    soft_time_limit=180,
+    time_limit=240,
+)
+def run_verify_latest() -> dict:
+    """Celery task wrapping verify_latest() for the weekly restore-drill beat entry."""
+    return verify_latest()

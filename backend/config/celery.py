@@ -80,4 +80,8 @@ app.conf.beat_schedule = {
         "task": "core.prune_retention",
         "schedule": crontab(hour=4, minute=0),  # daily 4am UTC, low-traffic window
     },
+    "verify-latest-backup": {
+        "task": "backups.verify_latest",
+        "schedule": crontab(day_of_week=0, hour=5, minute=0),  # weekly Sunday 5am UTC
+    },
 }
