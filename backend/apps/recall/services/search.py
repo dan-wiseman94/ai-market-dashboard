@@ -69,3 +69,16 @@ def related_to_ticker(ticker: str, *, k: int = 5) -> list[dict]:
         "-source_created_at"
     )
     return [_hit(d) for d in qs[:k]]
+
+
+def related_to_situation(ticker: str, query: str, *, k: int = 3, kinds=None) -> list[dict]:
+    """Situation-seeded, ticker-scoped semantic recall.
+
+    Thin wrapper over :func:`search`: scopes to ``ticker``, optionally filters to
+    ``kinds``, and bounds results to ``k``. Returns ``[]`` for an empty ticker and
+    degrades exactly as ``search`` (semantic -> FTS -> empty). Returns the same
+    dict-hit shape ``search`` does.
+    """
+    if not ticker:
+        return []
+    return search(query or ticker, k=k, kinds=kinds, ticker=ticker)
