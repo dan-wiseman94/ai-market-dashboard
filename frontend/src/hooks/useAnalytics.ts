@@ -156,6 +156,74 @@ export function useCalibration(days = 90, horizon = 30) {
   });
 }
 
+export interface CalibrationDrilldownRow {
+  thesis_id: number;
+  title: string;
+  ticker: string;
+  direction: string;
+  conviction: number;
+  verdict: string;
+  forward_return_pct: number;
+  horizon_days: number;
+  completed_at: string | null;
+  thread_id: number | null;
+}
+
+export interface CalibrationDrilldown {
+  start: string;
+  end: string;
+  horizon: number;
+  count: number;
+  filters: { conviction: number | null; direction: string | null; verdict: string | null };
+  rows: CalibrationDrilldownRow[];
+}
+
+/** Theses behind one calibration bucket. Disabled until a conviction is picked. */
+export function useCalibrationDrilldown(conviction: number | null, horizon = 30, days = 90) {
+  return useQuery({
+    queryKey: ["analytics/calibration/drilldown", conviction, horizon, days],
+    queryFn: () =>
+      apiGet<CalibrationDrilldown>(
+        `/api/analytics/calibration/drilldown/?conviction=${conviction}&horizon=${horizon}&start=${startISO(days)}`,
+      ),
+    enabled: conviction !== null,
+  });
+}
+
+export interface EvalReliabilityBucket {
+  bin_low: number;
+  bin_high: number;
+  n: number;
+  hits: number;
+  observed_hit_rate: number | null;
+  mean_confidence: number | null;
+}
+
+export interface EvalRunSummary {
+  id: number;
+  created_at: string;
+  source: string;
+  label: string;
+  model: string;
+  horizon: number | null;
+  n: number;
+  skipped: number;
+  scored: number;
+  hit_rate: number | null;
+  brier: number | null;
+  avg_confidence: number | null;
+  calibration_error: number | null;
+  calibration: EvalReliabilityBucket[];
+}
+
+/** Latest persisted offline eval run (M7). undefined when none has run yet (204). */
+export function useLatestEvalRun() {
+  return useQuery({
+    queryKey: ["aieval/latest"],
+    queryFn: () => apiGet<EvalRunSummary | null>("/api/aieval/runs/latest/"),
+  });
+}
+
 export interface TrackRecord {
   ticker: string;
   closed_n: number;
