@@ -12,11 +12,14 @@ from apps.market.schwab_client import SchwabNotConnectedError
 from apps.market.serializers import CalendarOverrideSerializer
 from apps.market.services.chain import fetch_chain
 from apps.market.services.context import fetch_market_context
+from apps.market.services.edgar import fetch_filings, fetch_insider
 from apps.market.services.events import upcoming_events
+from apps.market.services.fred import fetch_macro
 from apps.market.services.news import fetch_news
 from apps.market.services.ohlc import fetch_ohlc
 from apps.market.services.positions import fetch_positions
 from apps.market.services.quotes import fetch_quotes
+from apps.market.services.treasury import fetch_treasury
 
 
 def _err(code: str, message: str, status: int) -> JsonResponse:
@@ -104,6 +107,44 @@ def events(request: HttpRequest) -> JsonResponse:
         return _err("invalid_within_days", "within_days must be an integer", 400)
     include_macro = request.GET.get("include_macro", "true").lower() != "false"
     return JsonResponse(upcoming_events(tickers, within_days=within, include_macro=include_macro))
+
+
+@require_GET
+def macro(request: HttpRequest) -> JsonResponse:
+    """Macro indicators from FRED (CPI, rates, the Treasury yield curve, …).
+
+    Optional ``?series=CPIAUCSL,DGS10`` narrows to specific FRED series ids; default
+    returns the curated set. Keyless callers get {} until a FRED key is configured.
+    """
+    raw = request.GET.get("series", "").strip()
+    series = [s.strip().upper() for s in raw.split(",") if s.strip()] or None
+    return JsonResponse(fetch_macro(series))
+
+
+@require_GET
+def filings(request: HttpRequest) -> JsonResponse:
+    """Recent SEC filings (10-K/10-Q/8-K) per ticker from EDGAR. ``?tickers=AAPL,MSFT``."""
+    raw = request.GET.get("tickers", "").strip()
+    tickers = [t.strip() for t in raw.split(",") if t.strip()]
+    if not tickers:
+        return _err("missing_tickers", "Provide ?tickers=AAPL,MSFT", 400)
+    return JsonResponse({t.upper(): fetch_filings(t) for t in tickers})
+
+
+@require_GET
+def insider(request: HttpRequest) -> JsonResponse:
+    """Recent Form 4 insider filings per ticker from EDGAR. ``?tickers=AAPL,MSFT``."""
+    raw = request.GET.get("tickers", "").strip()
+    tickers = [t.strip() for t in raw.split(",") if t.strip()]
+    if not tickers:
+        return _err("missing_tickers", "Provide ?tickers=AAPL,MSFT", 400)
+    return JsonResponse({t.upper(): fetch_insider(t) for t in tickers})
+
+
+@require_GET
+def treasury(_request: HttpRequest) -> JsonResponse:
+    """US Treasury FiscalData: average interest rates + debt to the penny (keyless)."""
+    return JsonResponse(fetch_treasury())
 
 
 class CalendarOverrideViewSet(viewsets.ModelViewSet):

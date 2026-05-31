@@ -95,6 +95,8 @@ EXPECTED_BUILTIN_SLUGS = {
     "catalyst-scan",
     "breakout-scan",
     "trade-postmortem",
+    # 0008_seed_macro_fundamentals_preset
+    "macro-fundamentals-brief",
 }
 
 EXPECTED_INCLUDES: dict[str, list[str]] = {
@@ -112,6 +114,8 @@ EXPECTED_INCLUDES: dict[str, list[str]] = {
     "catalyst-scan": ["news", "events", "quotes"],
     "breakout-scan": ["quotes", "ohlc", "breadth"],
     "trade-postmortem": ["quotes", "ohlc", "news"],
+    # 0008_seed_macro_fundamentals_preset
+    "macro-fundamentals-brief": ["quotes", "macro", "treasury", "fundamentals", "filings", "news"],
 }
 
 
