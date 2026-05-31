@@ -11,6 +11,7 @@ from cryptography.fernet import InvalidToken
 from django.conf import settings
 from django.http import HttpRequest, HttpResponseRedirect, JsonResponse
 from django.utils import timezone
+from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_http_methods
 from rest_framework import viewsets
 from rest_framework.decorators import action
@@ -114,6 +115,7 @@ def _app_config_payload(cfg: SchwabAppConfig) -> dict:
     }
 
 
+@csrf_exempt  # SPA sends no CSRF token; this app has no auth, so CSRF guards nothing here
 @require_http_methods(["GET", "PATCH"])
 def schwab_app_config(request: HttpRequest) -> JsonResponse:
     """Read or update the Schwab app credentials (client_id + secret) from the UI.
@@ -290,6 +292,7 @@ def data_sources(_request: HttpRequest) -> JsonResponse:
     )
 
 
+@csrf_exempt  # SPA sends no CSRF token; this app has no auth, so CSRF guards nothing here
 @require_http_methods(["PUT", "DELETE"])
 def data_source_detail(request: HttpRequest, provider: str) -> JsonResponse:
     """Save (PUT) or clear (DELETE) the API key(s) for one key-based data source.
@@ -331,6 +334,7 @@ def data_source_detail(request: HttpRequest, provider: str) -> JsonResponse:
     return JsonResponse(_credential_status(provider))
 
 
+@csrf_exempt  # SPA sends no CSRF token; this app has no auth, so CSRF guards nothing here
 @require_http_methods(["POST"])
 def data_source_test(_request: HttpRequest, provider: str) -> JsonResponse:
     """Probe the saved credential for one key-based source. Returns ``{ok, message}``."""
