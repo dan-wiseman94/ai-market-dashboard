@@ -3,7 +3,6 @@ import { NavLink, Outlet } from "react-router-dom";
 const SECTIONS: Array<[string, string, string]> = [
   ["/settings", "AI Providers", "AI"],
   ["/settings/connections", "Connections", "CX"],
-  ["/settings/data-sources", "Data Sources", "DS"],
   ["/settings/system", "System", "SY"],
   ["/settings/backups", "Backups", "BK"],
   ["/settings/export", "Export", "EX"],

@@ -1,4 +1,4 @@
-import { apiGet, apiPut, apiDelete } from "./client";
+import { apiGet, apiPost, apiPut, apiDelete } from "./client";
 
 export type DataSourceAuth = "oauth" | "key" | "key_secret" | "none";
 
@@ -13,6 +13,7 @@ export interface DataSource {
   auth: DataSourceAuth;
   fields: string[];
   blurb: string;
+  signup_url: string;
   docs_url: string;
   status: DataSourceStatus;
 }
@@ -26,3 +27,12 @@ export const saveDataSourceKey = (provider: string, body: Record<string, string>
 
 export const clearDataSourceKey = (provider: string) =>
   apiDelete(`/api/schwab/data-sources/${provider}/`);
+
+export interface TestResult {
+  ok: boolean;
+  message: string;
+}
+
+/** Probe the saved credential to check whether the key actually works. */
+export const testDataSourceKey = (provider: string) =>
+  apiPost<TestResult>(`/api/schwab/data-sources/${provider}/test/`, {});

@@ -1,9 +1,13 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import SettingsSection from "@/components/settings/SettingsSection";
 import { useDataSources } from "@/hooks/useDataSources";
-import { saveDataSourceKey, clearDataSourceKey, type DataSource } from "@/api/dataSources";
+import {
+  saveDataSourceKey,
+  clearDataSourceKey,
+  testDataSourceKey,
+  type DataSource,
+  type TestResult,
+} from "@/api/dataSources";
 import { useToast } from "@/hooks/useToast";
 
 function fieldLabel(field: string): string {
@@ -24,9 +28,12 @@ function DataSourceCard({ ds, onChanged }: { ds: DataSource; onChanged: () => vo
   const { push } = useToast();
   const [values, setValues] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
+  const [testResult, setTestResult] = useState<TestResult | null>(null);
+  const keyed = ds.auth === "key" || ds.auth === "key_secret";
 
   const save = async () => {
     setBusy(true);
+    setTestResult(null);
     try {
       const body: Record<string, string> = {};
       for (const f of ds.fields) if (values[f]) body[`${f}_write`] = values[f];
@@ -43,6 +50,7 @@ function DataSourceCard({ ds, onChanged }: { ds: DataSource; onChanged: () => vo
 
   const clear = async () => {
     setBusy(true);
+    setTestResult(null);
     try {
       await clearDataSourceKey(ds.provider);
       setValues({});
@@ -55,29 +63,32 @@ function DataSourceCard({ ds, onChanged }: { ds: DataSource; onChanged: () => vo
     }
   };
 
+  const test = async () => {
+    setBusy(true);
+    try {
+      const res = await testDataSourceKey(ds.provider);
+      setTestResult(res);
+      push({ kind: res.ok ? "success" : "error", text: `${ds.label}: ${res.message}` });
+    } catch (e) {
+      push({ kind: "error", text: (e as Error).message });
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <div className="ledger-surface p-5" data-testid={`ds-card-${ds.provider}`}>
       <div className="flex items-center gap-3">
-        <h3 className="font-display text-[1.05rem] text-ink-50">{ds.label}</h3>
+        <h4 className="font-display text-[1rem] text-ink-50">{ds.label}</h4>
         <StatusPill ds={ds} />
       </div>
       <p className="mt-2 text-[13px] text-ink-300">{ds.blurb}</p>
-
-      {ds.auth === "oauth" && (
-        <p className="mt-3 text-[12px] text-ink-400">
-          Connect via OAuth on the{" "}
-          <Link to="/settings/connections" className="text-copper-300 hover:text-copper-200">
-            Connections
-          </Link>{" "}
-          tab.
-        </p>
-      )}
 
       {ds.auth === "none" && (
         <p className="mt-3 text-[12px] text-ink-400">Ready to use — no key required.</p>
       )}
 
-      {(ds.auth === "key" || ds.auth === "key_secret") && (
+      {keyed && (
         <div className="mt-4 grid gap-3">
           {ds.fields.map((f) => (
             <label key={f} className="grid gap-1">
@@ -94,10 +105,20 @@ function DataSourceCard({ ds, onChanged }: { ds: DataSource; onChanged: () => vo
               />
             </label>
           ))}
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <button type="button" onClick={save} disabled={busy} className="ledger-cta">
               {busy ? "Saving…" : "Save"}
             </button>
+            {ds.status.configured && (
+              <button
+                type="button"
+                onClick={test}
+                disabled={busy}
+                className="text-[12px] text-copper-300 hover:text-copper-200"
+              >
+                Test key
+              </button>
+            )}
             {ds.status.configured && (
               <button
                 type="button"
@@ -108,41 +129,60 @@ function DataSourceCard({ ds, onChanged }: { ds: DataSource; onChanged: () => vo
                 Clear
               </button>
             )}
+            {testResult && (
+              <span className="ledger-pill" data-tone={testResult.ok ? "gain" : "loss"}>
+                {testResult.message}
+              </span>
+            )}
           </div>
         </div>
       )}
 
-      <a
-        href={ds.docs_url}
-        target="_blank"
-        rel="noreferrer"
-        className="mt-3 inline-block font-mono text-[11px] text-ink-500 hover:text-copper-300"
-      >
-        docs ↗
-      </a>
+      <div className="mt-3 flex items-center gap-4">
+        {keyed && ds.signup_url && (
+          <a
+            href={ds.signup_url}
+            target="_blank"
+            rel="noreferrer"
+            className="font-mono text-[11px] text-copper-300 hover:text-copper-200"
+          >
+            Get a free key ↗
+          </a>
+        )}
+        <a
+          href={ds.docs_url}
+          target="_blank"
+          rel="noreferrer"
+          className="font-mono text-[11px] text-ink-500 hover:text-copper-300"
+        >
+          docs ↗
+        </a>
+      </div>
     </div>
   );
 }
 
-export default function DataSourcesSettings() {
+/** The list of free / key-based market-data providers, embedded on the Connections tab.
+ *  Schwab (auth "oauth") is excluded — it has its own OAuth connect card above this. */
+export default function DataSourcesPanel() {
   const { data, isLoading } = useDataSources();
   const qc = useQueryClient();
   const onChanged = () => {
     void qc.invalidateQueries({ queryKey: ["data-sources"] });
   };
+  const sources = (data?.data_sources ?? []).filter((ds) => ds.auth !== "oauth");
 
   return (
-    <SettingsSection
-      title="Data sources"
-      description="Connect free market-data providers alongside Schwab. Most run on a free API key; a couple need none."
-    >
+    <div className="space-y-4">
+      <div className="flex items-baseline gap-3">
+        <h3 className="font-display text-[1.1rem] text-ink-50">Free data sources</h3>
+        <span className="text-[12px] text-ink-400">Optional providers that run alongside Schwab.</span>
+      </div>
       {isLoading ? (
         <p className="text-ink-400 text-sm">Loading…</p>
       ) : (
-        (data?.data_sources ?? []).map((ds) => (
-          <DataSourceCard key={ds.provider} ds={ds} onChanged={onChanged} />
-        ))
+        sources.map((ds) => <DataSourceCard key={ds.provider} ds={ds} onChanged={onChanged} />)
       )}
-    </SettingsSection>
+    </div>
   );
 }
