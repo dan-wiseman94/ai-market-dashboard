@@ -26,6 +26,7 @@ _TTL: dict[str, int] = {
     "context": 30,
     "events": 3600,
     "fundamentals": 86400,
+    "corporate_actions": 86400,
 }
 
 

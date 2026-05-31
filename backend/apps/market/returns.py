@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 
+from django.conf import settings
 from django.db.models import Count, Max, Min
 
 from apps.market.models import OHLCBar
@@ -19,6 +20,59 @@ def _pct_change(start_close: float | None, end_close: float | None) -> float | N
     if start_close is None or end_close is None or start_close == 0:
         return None
     return (end_close - start_close) / start_close * 100.0
+
+
+def _corporate_actions(ticker: str, start: datetime, end: datetime) -> list:
+    """Stored splits + dividends with ``start.date() < ex_date <= end.date()`` (lazy import
+    to keep the returns module free of a service-layer import cycle)."""
+    from apps.market.services.corporate_actions import corporate_actions_for
+
+    return corporate_actions_for(ticker, start, end)
+
+
+def split_factor(ticker: str, after: datetime, until: datetime) -> float:
+    """Product of split ratios (``shares_after/shares_before``) for ex-dates in
+    ``(after, until]``. ``1.0`` when there are no splits — the common path, leaving
+    returns identical to the pre-adjustment behaviour.
+
+    Multiplying an ``until``-basis close by this factor restores it to the
+    ``after``-basis, so a 3:1 split (ratio 3) no longer reads as a -66% crash.
+    """
+    factor = 1.0
+    for a in _corporate_actions(ticker, after, until):
+        if a.kind == "split" and a.ratio is not None:
+            factor *= float(a.ratio)
+    return factor
+
+
+def _adjusted_end_value(
+    ticker: str, start: datetime, end: datetime, end_close: float | None
+) -> tuple[float | None, float]:
+    """``(adjusted_end_value, split_factor)`` for ``end_close`` on the start-share basis.
+
+    Splits are always applied (a split is a non-event for the holder). Dividends
+    are added back — converting price-return to total-return — only when
+    ``RETURNS_ADJUST_DIVIDENDS`` is on; each is scaled onto the start-share basis
+    by the split ratios that precede its ex-date.
+    """
+    actions = _corporate_actions(ticker, start, end)
+    factor = 1.0
+    for a in actions:
+        if a.kind == "split" and a.ratio is not None:
+            factor *= float(a.ratio)
+    if end_close is None:
+        return None, factor
+    value = end_close * factor
+    if getattr(settings, "RETURNS_ADJUST_DIVIDENDS", False):
+        for a in actions:
+            if a.kind != "dividend" or a.amount is None:
+                continue
+            div_factor = 1.0
+            for s in actions:
+                if s.kind == "split" and s.ratio is not None and s.ex_date <= a.ex_date:
+                    div_factor *= float(s.ratio)
+            value += float(a.amount) * div_factor
+    return value, factor
 
 
 def nearest_bar_close(ticker: str, at: datetime) -> float | None:
@@ -39,12 +93,17 @@ def nearest_bar_close(ticker: str, at: datetime) -> float | None:
 
 
 def forward_return_pct(ticker: str, start: datetime, end: datetime) -> float | None:
-    """Percent change in *ticker*'s close price from *start* to *end*.
+    """Percent change in *ticker*'s close price from *start* to *end*, corrected
+    for corporate actions in the window.
 
-    Uses :func:`nearest_bar_close` at each endpoint. Returns ``None`` if
-    either endpoint has no bar or if the start close is zero (division guard).
+    Uses :func:`nearest_bar_close` at each endpoint. A stock split between *start*
+    and *end* would otherwise read as a crash (the end close is on a divided-price
+    basis); the end close is restored to the start basis via :func:`split_factor`.
+    Returns ``None`` if either endpoint has no bar or if the start close is zero.
     """
-    return _pct_change(nearest_bar_close(ticker, start), nearest_bar_close(ticker, end))
+    start_close = nearest_bar_close(ticker, start)
+    adjusted_end, _factor = _adjusted_end_value(ticker, start, end, nearest_bar_close(ticker, end))
+    return _pct_change(start_close, adjusted_end)
 
 
 def price_path_summary(ticker: str, start: datetime, end: datetime) -> dict:
@@ -65,6 +124,13 @@ def price_path_summary(ticker: str, start: datetime, end: datetime) -> dict:
     ``min_low``, and ``bars`` count only bars with ts in [start, end].
     A bar that falls in ``(end, end + 1h]`` therefore influences ``end_close``
     but is NOT counted in ``bars`` and does NOT affect ``max_high``/``min_low``.
+
+    Corporate-action note: the price fields (``start_close``, ``end_close``,
+    ``max_high``, ``min_low``) are the **raw observed** values — facts as
+    captured. Only ``return_pct`` is corrected for splits (and opt-in dividends).
+    ``split_factor`` (Π split ratios in the window; ``1.0`` if none) and
+    ``adjusted`` make a split visible, so a consumer seeing ``start_close=300``,
+    ``end_close=100``, ``return_pct≈0``, ``split_factor=3`` can read it correctly.
     """
     agg = OHLCBar.objects.filter(
         ticker=ticker,
@@ -81,14 +147,17 @@ def price_path_summary(ticker: str, start: datetime, end: datetime) -> dict:
 
     start_close = nearest_bar_close(ticker, start)
     end_close = nearest_bar_close(ticker, end)
+    adjusted_end, factor = _adjusted_end_value(ticker, start, end, end_close)
 
     return {
         "start_close": start_close,
         "end_close": end_close,
-        "return_pct": _pct_change(start_close, end_close),
+        "return_pct": _pct_change(start_close, adjusted_end),
         "max_high": max_high,
         "min_low": min_low,
         "bars": agg["bars"],
+        "split_factor": factor,
+        "adjusted": factor != 1.0,
     }
 
 
@@ -126,4 +195,5 @@ def trading_day_forward_return_pct(ticker: str, at: datetime, forward_hours: int
     target_close = session_close_on(market, target_day.date()) or target_day
     t0 = nearest_bar_close_within(ticker, at, tolerance_hours=12)
     t1 = nearest_bar_close_within(ticker, target_close, tolerance_hours=12)
-    return _pct_change(t0, t1)
+    adjusted_t1, _factor = _adjusted_end_value(ticker, at, target_close, t1)
+    return _pct_change(t0, adjusted_t1)
