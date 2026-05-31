@@ -90,3 +90,33 @@ export const fetchUpcomingEvents = (tickers: string[] = [], withinDays = 14, inc
   params.set("include_macro", String(includeMacro));
   return apiGet<UpcomingEvents>(`/api/market/events/?${params.toString()}`);
 };
+
+// --- Free data dimensions (FRED macro / SEC filings / US Treasury) -----------
+
+export interface MacroSeries {
+  label: string;
+  value: number | null;
+  date: string;
+  prev: number | null;
+  change: number | null;
+}
+export const fetchMacro = () => apiGet<Record<string, MacroSeries>>("/api/market/macro/");
+
+export interface Filing {
+  form: string;
+  filed: string;
+  report_date: string;
+  accession: string;
+  title: string;
+  url: string;
+}
+export const fetchFilings = (tickers: string[]) =>
+  apiGet<Record<string, Filing[]>>(
+    `/api/market/filings/?tickers=${encodeURIComponent(tickers.join(","))}`,
+  );
+
+export interface TreasuryData {
+  rates: { record_date?: string; rates?: Record<string, number> };
+  debt: { record_date?: string; total_public_debt?: number };
+}
+export const fetchTreasury = () => apiGet<TreasuryData>("/api/market/treasury/");

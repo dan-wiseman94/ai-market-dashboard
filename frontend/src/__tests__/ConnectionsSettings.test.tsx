@@ -27,6 +27,10 @@ vi.mock("@/hooks/useCalendarOverrides", () => ({
   useCreateCalendarOverride: () => ({ mutate: vi.fn() }),
   useDeleteCalendarOverride: () => ({ mutate: vi.fn() }),
 }));
+// ConnectionsSettings now embeds the DataSourcesPanel; stub its hook so it doesn't fetch.
+vi.mock("@/hooks/useDataSources", () => ({
+  useDataSources: () => ({ data: { data_sources: [] }, isLoading: false }),
+}));
 
 // useToast() / useQueryClient() throw without their providers; AppLayout supplies both in prod.
 function renderWithProviders() {
