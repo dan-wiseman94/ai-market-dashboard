@@ -660,3 +660,58 @@ def test_command_persists_eval_run(profile):
     rows = EvalRun.objects.filter(label="persisted")
     assert rows.count() == 1
     assert rows.first().source == "manual"
+
+
+# --------------------------------------------------------------------------- #
+# Task 5 — opt-in cost-capped scheduled beat task
+# --------------------------------------------------------------------------- #
+
+
+from apps.aieval.tasks import run_scheduled  # noqa: E402
+
+
+def test_scheduled_skips_when_disabled(profile, settings):
+    settings.AIEVAL_SCHEDULED_ENABLED = False
+    _postmortem(_thesis(profile, snapshot=_snapshot(profile)), verdict="correct", fwd=5.0)
+    assert run_scheduled() == {"skipped": "disabled"}
+    from apps.aieval.models import EvalRun
+
+    assert EvalRun.objects.count() == 0
+
+
+def test_scheduled_runs_and_persists_when_enabled(profile, settings):
+    settings.AIEVAL_SCHEDULED_ENABLED = True
+    settings.AIEVAL_SCHEDULED_MODEL = "claude-sonnet-4-6"
+    settings.AIEVAL_SCHEDULED_LIMIT = None
+    settings.AIEVAL_SCHEDULED_HORIZON = None
+    _postmortem(
+        _thesis(profile, direction="bullish", snapshot=_snapshot(profile)),
+        verdict="correct",
+        fwd=5.0,
+    )
+    from apps.aieval.models import EvalRun
+
+    with patch.object(svc, "run_structured", return_value=_report("bullish")):
+        result = run_scheduled()
+    assert "ran" in result
+    row = EvalRun.objects.get(pk=result["ran"])
+    assert row.source == "scheduled"
+    assert row.model == "claude-sonnet-4-6"
+    assert row.label == "scheduled"
+
+
+def test_scheduled_skips_on_cost_cap(profile, settings):
+    from decimal import Decimal
+
+    from apps.secrets.models import ProviderConfig
+
+    settings.AIEVAL_SCHEDULED_ENABLED = True
+    ProviderConfig.objects.create(provider="claude", daily_cost_cap_usd=Decimal("1.00"))
+    _record_spend("claude", "2.00")
+    _postmortem(_thesis(profile, snapshot=_snapshot(profile)), verdict="correct", fwd=5.0)
+    assert run_scheduled() == {"skipped": "cost_cap"}
+
+
+def test_scheduled_skips_when_no_data(settings, db):
+    settings.AIEVAL_SCHEDULED_ENABLED = True
+    assert run_scheduled() == {"skipped": "no_data"}
