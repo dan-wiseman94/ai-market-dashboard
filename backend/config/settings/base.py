@@ -132,6 +132,12 @@ OBSERVER_RESPONSE_CACHE_TTL_SECONDS = env.int("OBSERVER_RESPONSE_CACHE_TTL_SECON
 # M11 — Thesis post-mortem horizons in days. Phase 2 will schedule AI replays at each.
 THESIS_POSTMORTEM_HORIZONS: list[int] = [7, 30, 90]
 
+# Corporate-action adjustment (C3): stock splits are ALWAYS adjusted in the returns
+# math (a split is a non-event for the holder, so an unadjusted return is wrong).
+# Dividends are different — adding them back converts price-return to total-return,
+# a semantic change — so they're opt-in here. OFF by default; see apps.market.returns.
+RETURNS_ADJUST_DIVIDENDS = env.bool("RETURNS_ADJUST_DIVIDENDS", default=False)
+
 # Auth / i18n / etc
 AUTH_PASSWORD_VALIDATORS: list[dict[str, str]] = []
 LANGUAGE_CODE = "en-us"

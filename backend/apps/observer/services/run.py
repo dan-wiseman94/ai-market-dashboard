@@ -7,11 +7,11 @@ import logging
 from datetime import timedelta
 from decimal import Decimal
 
-from django.conf import settings
 from django.utils import timezone
 
 from apps.ai.cost import CostCapExceededError, check_daily_cap, check_monthly_cap
 from apps.ai.providers.claude_structured import run_structured
+from apps.core.runtime_config import runtime_config
 from apps.market.calendar import any_market_open
 from apps.observer.models import ObserverSchedule
 from apps.observer.schemas import ObservationReport
@@ -119,9 +119,15 @@ def run_observer(schedule_id: int) -> int | None:
     elif sched.structured:
         _run_structured_and_record(sched, thread, coach + payload_text, provider_name, cfg)
     else:
+        rc = runtime_config()  # one row fetch; reused for the gate and the TTL below
         cached = (
-            _cached_observer_response(thread, prompt_hash, exclude_message_id=msg.id)
-            if getattr(settings, "OBSERVER_RESPONSE_CACHE_ENABLED", False)
+            _cached_observer_response(
+                thread,
+                prompt_hash,
+                exclude_message_id=msg.id,
+                ttl=rc.observer_response_cache_ttl_seconds,
+            )
+            if rc.observer_response_cache_enabled
             else None
         )
         if cached is not None:
@@ -185,15 +191,16 @@ def _prompt_hash(text: str, provider: str, model: str) -> str:
     return hashlib.sha256(f"{provider}|{model}|{text}".encode()).hexdigest()
 
 
-def _cached_observer_response(thread, prompt_hash: str, exclude_message_id: int) -> str | None:
+def _cached_observer_response(
+    thread, prompt_hash: str, exclude_message_id: int, ttl: int
+) -> str | None:
     """Text of a recent prior observation on this thread whose fire used a
-    byte-identical prompt (same hash), within the TTL — else None (C2).
+    byte-identical prompt (same hash), within ``ttl`` seconds — else None (C2).
 
     The observer thread is linear (user, assistant, user, …), so the response is
     the first ``done`` assistant message after that prior user turn. The current
     fire's own user message is excluded (it was just written with this hash).
     """
-    ttl = getattr(settings, "OBSERVER_RESPONSE_CACHE_TTL_SECONDS", 1800)
     cutoff = timezone.now() - timedelta(seconds=ttl)
     prior_user = (
         Message.objects.filter(

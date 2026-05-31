@@ -27,8 +27,8 @@ def test_upload_staged_image_persists_with_null_snapshot(api):
     assert img.snapshot is None
     assert img.kind == "client_capture"
     assert img.caption == "SPY 5m"
-    # Bytes may live in-DB (legacy) or on the /data volume (C7 offload, img.data is
-    # NULL); read_image_bytes resolves both.
+    # C7: bytes are offloaded to the /data volume (data=None on disk-write success),
+    # so read through the disk-first helper rather than the raw BinaryField.
     assert read_image_bytes(img).startswith(b"\x89PNG")
 
 
