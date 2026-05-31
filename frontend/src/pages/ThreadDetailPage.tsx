@@ -106,10 +106,14 @@ export default function ThreadDetailPage() {
           onDirectionChange={thesisJournal.setThesisDirection}
           conviction={thesisJournal.thesisConviction}
           onConvictionChange={thesisJournal.setThesisConviction}
+          rationale={thesisJournal.thesisRationale}
+          onRationaleChange={thesisJournal.setThesisRationale}
           target={thesisJournal.thesisTarget}
           onTargetChange={thesisJournal.setThesisTarget}
           invalidation={thesisJournal.thesisInvalidation}
           onInvalidationChange={thesisJournal.setThesisInvalidation}
+          invalidationNote={thesisJournal.thesisInvalidationNote}
+          onInvalidationNoteChange={thesisJournal.setThesisInvalidationNote}
           pending={thesisJournal.thesisPending}
           onSubmit={thesisJournal.handleCreateThesis}
           onCancel={() => {

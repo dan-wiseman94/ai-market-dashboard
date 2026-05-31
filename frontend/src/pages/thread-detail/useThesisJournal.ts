@@ -26,8 +26,10 @@ export function useThesisJournal(threadId: number | null, thread: Thread | undef
   const [thesisTicker, setThesisTicker] = useState("");
   const [thesisDirection, setThesisDirection] = useState<ThesisDirection>("bullish");
   const [thesisConviction, setThesisConviction] = useState(3);
+  const [thesisRationale, setThesisRationale] = useState("");
   const [thesisTarget, setThesisTarget] = useState("");
   const [thesisInvalidation, setThesisInvalidation] = useState("");
+  const [thesisInvalidationNote, setThesisInvalidationNote] = useState("");
 
   // Close & journal panel
   const [showJournalPanel, setShowJournalPanel] = useState(false);
@@ -41,8 +43,10 @@ export function useThesisJournal(threadId: number | null, thread: Thread | undef
     setThesisTicker("");
     setThesisDirection("bullish");
     setThesisConviction(3);
+    setThesisRationale("");
     setThesisTarget("");
     setThesisInvalidation("");
+    setThesisInvalidationNote("");
   }
 
   function handleCreateThesis(e: React.FormEvent) {
@@ -53,8 +57,10 @@ export function useThesisJournal(threadId: number | null, thread: Thread | undef
         ticker: thesisTicker,
         direction: thesisDirection,
         conviction: thesisConviction,
+        rationale: thesisRationale,
         target_price: thesisTarget || null,
         invalidation_price: thesisInvalidation || null,
+        invalidation_note: thesisInvalidationNote,
         thread_id: threadId,
         snapshot_id: thread?.pinned_snapshot_id ?? undefined,
         profile_id: thread?.profile?.id ?? undefined,
@@ -74,7 +80,10 @@ export function useThesisJournal(threadId: number | null, thread: Thread | undef
               },
               {
                 onError: () =>
-                  push({ kind: "error", text: "Thesis created, but journaling the decision failed." }),
+                  push({
+                    kind: "error",
+                    text: "Thesis created, but journaling the decision failed.",
+                  }),
               },
             );
           }
@@ -83,8 +92,7 @@ export function useThesisJournal(threadId: number | null, thread: Thread | undef
           resetThesisForm();
           navigate(`/theses/${thesis.id}`);
         },
-        onError: (err) =>
-          push({ kind: "error", text: (err as Error).message }),
+        onError: (err) => push({ kind: "error", text: (err as Error).message }),
       },
     );
   }
@@ -105,8 +113,7 @@ export function useThesisJournal(threadId: number | null, thread: Thread | undef
           setJournalNote("");
           setShowJournalPanel(false);
         },
-        onError: (err) =>
-          push({ kind: "error", text: (err as Error).message }),
+        onError: (err) => push({ kind: "error", text: (err as Error).message }),
       },
     );
   }
@@ -127,6 +134,10 @@ export function useThesisJournal(threadId: number | null, thread: Thread | undef
     setThesisTarget,
     thesisInvalidation,
     setThesisInvalidation,
+    thesisRationale,
+    setThesisRationale,
+    thesisInvalidationNote,
+    setThesisInvalidationNote,
     handleCreateThesis,
     thesisPending: createThesis.isPending,
     // journal panel
