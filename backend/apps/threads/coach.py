@@ -342,6 +342,58 @@ def _recall_block(snapshot, ticker: str) -> str:
     return _format_recall_hits(hits)
 
 
+# AI live track record: minimum decisive resolved predictions before it's worth showing.
+_MIN_AI_TRACK_RECORD = 3
+# Confidence-vs-realized gap beyond which we flag over/under-confidence (fraction).
+_AI_CONFIDENCE_GAP = 0.10
+
+
+def _ai_track_record_block(ticker: str, profile) -> str:
+    """The AI's OWN live track record on this ticker (M13 F4) — the deepest
+    self-correction: the model sees its real-world accuracy here at generation
+    time, the live counterpart to the offline-eval _calibration_block.
+
+    Reads RESOLVED predictions only (verdict known — no look-ahead leakage),
+    scoped to the model that will generate (``profile.default_model``). Lazy
+    cross-app import keeps the threads->predictions cycle discipline. "" until
+    there are at least ``_MIN_AI_TRACK_RECORD`` decisive calls.
+    """
+    model = getattr(profile, "default_model", None)
+    if not ticker or not model:
+        return ""
+    from apps.predictions.models import AIPrediction
+
+    decisive = list(
+        AIPrediction.objects.filter(
+            ticker=ticker.upper(),
+            model=model,
+            status="resolved",
+            verdict__in=["correct", "incorrect"],
+        ).values_list("confidence", "verdict")
+    )
+    if len(decisive) < _MIN_AI_TRACK_RECORD:
+        return ""
+    n = len(decisive)
+    correct = sum(1 for _c, v in decisive if v == "correct")
+    hit = correct / n
+    mean_conf = sum(c for c, _v in decisive) / n
+    lines = [
+        "### My own track record here",
+        f"- On {ticker.upper()}, my last {n} resolved calls: {correct}/{n} correct ({hit:.0%}).",
+    ]
+    gap = mean_conf - hit
+    if gap > _AI_CONFIDENCE_GAP:
+        lines.append(
+            f"  I've run OVER-confident here (stated ~{mean_conf:.0%}, realized {hit:.0%}) — "
+            "discount your confidence accordingly."
+        )
+    elif gap < -_AI_CONFIDENCE_GAP:
+        lines.append(
+            f"  I've run UNDER-confident here (stated ~{mean_conf:.0%}, realized {hit:.0%})."
+        )
+    return "\n".join(lines)
+
+
 def assemble_coach_context(snapshot, profile) -> str:
     """The visible "what you already know" block for a snapshot-bearing run.
 
@@ -360,6 +412,7 @@ def assemble_coach_context(snapshot, profile) -> str:
         _safe(lambda: _track_record_block(ticker)),
         _safe(lambda: _recall_block(snapshot, ticker)),
         _safe(lambda: _lessons_block(ticker)),
+        _safe(lambda: _ai_track_record_block(ticker, profile)),
         _safe(lambda: _calibration_block(profile)),
     ]
     body = "\n\n".join(s for s in sections if s)
@@ -416,6 +469,7 @@ def assemble_coach_context_for_message(text: str, profile) -> str:
     sections = [
         _safe(lambda: _recall_block_for_text(text, ticker)),
         _safe(lambda: _lessons_block(ticker)) if ticker else "",
+        _safe(lambda: _ai_track_record_block(ticker, profile)) if ticker else "",
         _safe(lambda: _calibration_block(profile)),
     ]
     body = "\n\n".join(s for s in sections if s)

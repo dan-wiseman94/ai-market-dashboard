@@ -22,6 +22,35 @@ def _pct_change(start_close: float | None, end_close: float | None) -> float | N
     return (end_close - start_close) / start_close * 100.0
 
 
+def direction_verdict(direction: str, fwd_pct: float | None, *, deadzone: float = 1.0) -> str:
+    """Deterministic ``correct|incorrect|mixed|inconclusive`` from a directional
+    call and the actual forward return (percent). No AI involved.
+
+    Shared by trader thesis post-mortems (``apps.thesis``) and AI predictions
+    (``apps.predictions``) so both score a directional call the same way.
+    ``direction`` is ``bullish|bearish|neutral``; ``deadzone`` is the symmetric
+    flat band around 0% within which a directional call is treated as neither
+    clearly right nor clearly wrong. ``None`` forward return → ``inconclusive``.
+    """
+    if fwd_pct is None:
+        return "inconclusive"
+    if direction == "neutral":
+        # A neutral call is "correct" when the move stayed inside the deadzone.
+        return "correct" if abs(fwd_pct) <= deadzone else "incorrect"
+    if direction == "bullish":
+        if fwd_pct >= deadzone:
+            return "correct"
+        if fwd_pct <= -deadzone:
+            return "incorrect"
+        return "mixed"
+    # bearish
+    if fwd_pct <= -deadzone:
+        return "correct"
+    if fwd_pct >= deadzone:
+        return "incorrect"
+    return "mixed"
+
+
 def _corporate_actions(ticker: str, start: datetime, end: datetime) -> list:
     """Stored splits + dividends with ``start.date() < ex_date <= end.date()`` (lazy import
     to keep the returns module free of a service-layer import cycle)."""

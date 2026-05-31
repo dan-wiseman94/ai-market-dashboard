@@ -30,6 +30,7 @@ app.autodiscover_tasks(
         "apps.briefing",
         "apps.recall",
         "apps.aieval",
+        "apps.predictions",
     ]
 )
 
@@ -59,6 +60,10 @@ app.conf.beat_schedule = {
     },
     "run-due-postmortems": {
         "task": "thesis.run_due_postmortems",
+        "schedule": 300.0,
+    },
+    "resolve-due-predictions": {
+        "task": "predictions.resolve_due",
         "schedule": 300.0,
     },
     "fire-close-relative-schedules": {
