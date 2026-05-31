@@ -28,9 +28,12 @@ def run_scheduled() -> dict:
     if not getattr(settings, "AIEVAL_SCHEDULED_ENABLED", False):
         return {"skipped": "disabled"}
 
+    # Fallbacks mirror the base.py defaults so a settings file that omits these
+    # degrades to a BOUNDED run (25 rows / 30d horizon), never an unbounded —
+    # and costly — replay. The settings are normally always defined.
     model = getattr(settings, "AIEVAL_SCHEDULED_MODEL", "claude-sonnet-4-6")
-    horizon = getattr(settings, "AIEVAL_SCHEDULED_HORIZON", None)
-    limit = getattr(settings, "AIEVAL_SCHEDULED_LIMIT", None)
+    horizon = getattr(settings, "AIEVAL_SCHEDULED_HORIZON", 30)
+    limit = getattr(settings, "AIEVAL_SCHEDULED_LIMIT", 25)
 
     try:
         preflight_cost_cap("claude")
