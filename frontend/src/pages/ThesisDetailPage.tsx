@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { useParams } from "react-router-dom";
 import { useThesis, useUpdateThesis } from "@/hooks/useTheses";
+import { usePortfolioPositions } from "@/hooks/usePortfolio";
 import { SkeletonRows } from "@/components/Skeleton";
 import { EmptyState } from "@/components/EmptyState";
 import { ThesisMasthead } from "./thesis-detail/ThesisMasthead";
