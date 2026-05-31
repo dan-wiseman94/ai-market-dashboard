@@ -15,7 +15,7 @@ from apps.ai.citations import news_to_search_result_blocks
 from apps.ai.types import ChatMessage, RoleType, RunRequest
 from apps.snapshots.models import SnapshotSection
 from apps.snapshots.serializer import build_image_blocks
-from apps.threads.coach import build_system_prompt
+from apps.threads.coach import assemble_coach_context_for_message, build_system_prompt
 from apps.threads.models import Message, Thread
 
 
@@ -89,6 +89,34 @@ def _history_messages(thread: Thread) -> list[Message]:
     )
 
 
+def _is_snapshot_free(history: list[Message], user_msg: Message) -> bool:
+    """True when no turn references a Snapshot — a bare chat thread.
+
+    Snapshot-bearing threads already get the create-time coach (prepended to the
+    synthetic pinned-snapshot turn by ThreadViewSet.create / observer / triggers),
+    so we must NOT double-inject; this gate confines the message-keyed coach to
+    threads the snapshot coach can't reach.
+    """
+    if getattr(user_msg, "snapshot_ref_id", None):
+        return False
+    return not any(getattr(m, "snapshot_ref_id", None) for m in history)
+
+
+def _snapshot_free_coach_suffix(thread: Thread, history: list[Message], user_msg: Message) -> str:
+    """A2: message-keyed coach for a snapshot-free thread, recomputed each turn.
+
+    Empty (no change) for snapshot-bearing threads, coach-disabled profiles, or
+    when no sub-block has content. Best-effort — never raises out of request build.
+    """
+    if not _is_snapshot_free(history, user_msg):
+        return ""
+    try:
+        block = assemble_coach_context_for_message(_extract_text(user_msg), thread.profile)
+    except Exception:
+        return ""
+    return f"\n\n{block.rstrip()}" if block else ""
+
+
 def _resolve_capabilities(
     thread: Thread,
     *,
@@ -134,6 +162,7 @@ def _build_request(
 ) -> RunRequest:
     system = build_system_prompt(thread.profile, now=timezone.now())
     history = _history_messages(thread)
+    system += _snapshot_free_coach_suffix(thread, history, user_msg)
     chat_messages: list[ChatMessage] = [
         ChatMessage(
             role=cast(RoleType, m.role),

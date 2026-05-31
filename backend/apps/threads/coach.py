@@ -22,17 +22,26 @@ place the enable_coach flag and the primary-ticker guard live — flag/ticker
 parity is structural, not duplicated. assemble_coach_context returns "" when the
 profile is None / coach-disabled, when there is no primary ticker, or when every
 sub-section is empty.
+
+* Snapshot-FREE chat (A2) — apps.threads._request._build_request appends
+  assemble_coach_context_for_message(latest_user_text, profile) to the SYSTEM
+  prompt, but ONLY for threads with no snapshot-bearing turn (so it never
+  double-injects on top of the create-time coach above). Because _build_request
+  runs every turn, this variant refreshes per follow-up — keyed off the message
+  text (free-text recall + $cashtag-scoped lessons + calibration) rather than a
+  snapshot's primary_ticker. Same enable_coach gate.
 """
 
 from __future__ import annotations
 
 import logging
+import re
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
 from django.conf import settings
 
-from apps.recall.services.search import related_to_situation
+from apps.recall.services.search import related_to_situation, search
 
 log = logging.getLogger(__name__)
 
@@ -41,6 +50,10 @@ log = logging.getLogger(__name__)
 _MAX_RECALL_ITEMS = 3
 _RECALL_QUERY_MAX_CHARS = 400
 _RECALL_KINDS = ("postmortem", "thesis", "observation")
+
+# Snapshot-free coach (A2): an explicit $cashtag in the message scopes the lessons
+# block; deliberately conservative (cashtag only) to avoid matching common words.
+_CASHTAG_RE = re.compile(r"\$([A-Za-z]{1,5})\b")
 
 # Lessons block: at most this many decisive post-mortems, each with <=2 bullets.
 _MAX_LESSONS = 2
@@ -307,11 +320,8 @@ def _situation_query(snapshot, ticker: str) -> str:
     return " ".join(parts)[:_RECALL_QUERY_MAX_CHARS]
 
 
-def _recall_block(snapshot, ticker: str) -> str:
-    if not ticker:
-        return ""
-    query = _situation_query(snapshot, ticker)
-    hits = related_to_situation(ticker, query, k=_MAX_RECALL_ITEMS, kinds=list(_RECALL_KINDS))
+def _format_recall_hits(hits: list[dict]) -> str:
+    """Render recall hits as the shared 'You've noted this before' block. "" if none."""
     if not hits:
         return ""
     lines = ["### You've noted this before"]
@@ -322,6 +332,14 @@ def _recall_block(snapshot, ticker: str) -> str:
             f'- {when_s} ({h.get("kind")}): "{h.get("snippet", "")}" → {h.get("link", "")}'
         )
     return "\n".join(lines)
+
+
+def _recall_block(snapshot, ticker: str) -> str:
+    if not ticker:
+        return ""
+    query = _situation_query(snapshot, ticker)
+    hits = related_to_situation(ticker, query, k=_MAX_RECALL_ITEMS, kinds=list(_RECALL_KINDS))
+    return _format_recall_hits(hits)
 
 
 def assemble_coach_context(snapshot, profile) -> str:
@@ -342,6 +360,62 @@ def assemble_coach_context(snapshot, profile) -> str:
         _safe(lambda: _track_record_block(ticker)),
         _safe(lambda: _recall_block(snapshot, ticker)),
         _safe(lambda: _lessons_block(ticker)),
+        _safe(lambda: _calibration_block(profile)),
+    ]
+    body = "\n\n".join(s for s in sections if s)
+    if not body:
+        return ""
+    header = "## 🧭 What you already know  (auto-assembled context — may be incomplete)"
+    return f"{header}\n\n{body}\n\n"
+
+
+def _ticker_from_text(text: str) -> str | None:
+    """First explicit ``$cashtag`` in the message, upper-cased; else ``None``.
+
+    Conservative on purpose — only a $-prefixed symbol, never bare words — so a
+    chat like "should I sell?" doesn't misfire the ticker-scoped lessons block.
+    """
+    if not text:
+        return None
+    m = _CASHTAG_RE.search(text)
+    return m.group(1).upper() if m else None
+
+
+def _recall_block_for_text(text: str, ticker: str | None) -> str:
+    """Semantic recall against free message text (snapshot-free coach, A2).
+
+    Uses ``search`` directly rather than ``related_to_situation`` (which requires
+    a ticker), optionally ticker-scoped when a $cashtag was found.
+    """
+    query = (text or "")[:_RECALL_QUERY_MAX_CHARS]
+    if not query:
+        return ""
+    hits = search(query, k=_MAX_RECALL_ITEMS, kinds=list(_RECALL_KINDS), ticker=ticker)
+    return _format_recall_hits(hits)
+
+
+def assemble_coach_context_for_message(text: str, profile) -> str:
+    """Coach block for a SNAPSHOT-FREE thread, keyed off the user's message (A2).
+
+    The snapshot-bearing coach (:func:`assemble_coach_context`) returns "" with no
+    ``primary_ticker``, so a bare chat thread is otherwise un-coached. This mirrors
+    it but sources the situation from the message text: free-text semantic recall
+    (+ ticker-scoped lessons when an explicit ``$cashtag`` is present) + the model's
+    measured calibration. Same per-profile ``enable_coach`` gate. Returns "" when
+    disabled, empty-text, or every sub-block is empty. NEVER raises.
+
+    Called from ``_build_request`` on every run, so it refreshes per follow-up turn
+    — unlike the create-time snapshot coach, which is frozen into the first message.
+    """
+    if profile is None or not getattr(profile, "enable_coach", False):
+        return ""
+    text = (text or "").strip()
+    if not text:
+        return ""
+    ticker = _ticker_from_text(text)
+    sections = [
+        _safe(lambda: _recall_block_for_text(text, ticker)),
+        _safe(lambda: _lessons_block(ticker)) if ticker else "",
         _safe(lambda: _calibration_block(profile)),
     ]
     body = "\n\n".join(s for s in sections if s)
