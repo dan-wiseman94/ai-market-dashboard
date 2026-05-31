@@ -183,6 +183,12 @@ SCHWAB_CALLBACK_URL = env(
 SCHWAB_AUTHORIZE_URL = "https://api.schwabapi.com/v1/oauth/authorize"
 SCHWAB_TOKEN_URL = "https://api.schwabapi.com/v1/oauth/token"
 
+# SEC EDGAR requires a descriptive User-Agent ("name email") on every request; this is
+# the keyless identifier the edgar service sends. Override with a real contact in prod.
+SEC_EDGAR_USER_AGENT = env(
+    "SEC_EDGAR_USER_AGENT", default="ai-dashboard research contact@example.com"
+)
+
 # Where the Schwab OAuth callback sends the browser after a successful connect.
 # Dev: the Vite SPA on :5173 (the callback itself arrives via the tls-proxy on :8000).
 # Prod: empty → same-origin relative redirect (SPA is served by web on :8000).
