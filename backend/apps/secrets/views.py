@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import logging
+
 import openai
 from asgiref.sync import async_to_sync
+from cryptography.fernet import InvalidToken
 from django.conf import settings
 from django.http import HttpRequest, HttpResponseRedirect, JsonResponse
 from django.utils import timezone
@@ -22,6 +25,8 @@ from apps.secrets.schwab_oauth import (
     persist_token,
 )
 from apps.secrets.serializers import ProviderConfigSerializer
+
+log = logging.getLogger(__name__)
 
 
 @require_GET
@@ -58,6 +63,17 @@ def schwab_status(_request: HttpRequest) -> JsonResponse:
     try:
         cred = ApiCredential.objects.get(provider="schwab")
     except ApiCredential.DoesNotExist:
+        return JsonResponse({"connected": False, "expires_at": None})
+    except InvalidToken:
+        # The stored token was encrypted under a key that no longer exists (DJANGO_SECRET_KEY
+        # rotated or /data salt reset). Decryption fires during the .get() row fetch via
+        # EncryptedJSONField.from_db_value, so this lands here rather than below. The token is
+        # unusable — report not-connected so the UI prompts a reconnect (which overwrites the
+        # dead row) instead of returning a 500 on every status poll.
+        log.warning(
+            "Schwab credential is undecryptable (encryption key rotated or salt reset); "
+            "reconnect Schwab to overwrite it."
+        )
         return JsonResponse({"connected": False, "expires_at": None})
     return JsonResponse(
         {

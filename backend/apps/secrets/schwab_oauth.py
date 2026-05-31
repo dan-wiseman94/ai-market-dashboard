@@ -9,13 +9,17 @@ schwab-py handles refresh automatically for runtime clients via
 
 from __future__ import annotations
 
+import logging
 import time
 from datetime import datetime
 from urllib.parse import urlencode
 
 import httpx
+from cryptography.fernet import InvalidToken
 from django.conf import settings
 from django.utils import timezone
+
+log = logging.getLogger(__name__)
 
 
 def build_authorize_url(*, state: str = "") -> str:
@@ -105,4 +109,13 @@ def load_token() -> dict | None:
     try:
         return ApiCredential.objects.get(provider="schwab").token
     except ApiCredential.DoesNotExist:
+        return None
+    except InvalidToken:
+        # Token encrypted under a now-gone key (DJANGO_SECRET_KEY rotated / salt reset);
+        # decryption fires in the .get() row fetch. Treat as not-connected so callers behave
+        # as unauthenticated instead of crashing. Reconnecting Schwab overwrites the dead row.
+        log.warning(
+            "Schwab credential is undecryptable (encryption key rotated or salt reset); "
+            "reconnect Schwab to overwrite it."
+        )
         return None
