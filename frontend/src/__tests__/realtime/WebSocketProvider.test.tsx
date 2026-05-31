@@ -265,4 +265,74 @@ describe("WebSocketProvider", () => {
       consoleSpy.mockRestore();
     }
   });
+
+  it("sends ?since=<lastSeq> on reconnect to replay events missed during the gap", () => {
+    vi.useFakeTimers();
+    try {
+      render(
+        <WebSocketProvider>
+          <TestConsumer channel="thread.1" onMsg={vi.fn()} />
+        </WebSocketProvider>,
+      );
+      const first = fake.find("/ws/threads/1/");
+      expect(first).toBeDefined();
+      // First connect carries no ?since=.
+      expect(first!.url).toMatch(/\/ws\/threads\/1\/$/);
+      act(() => first!.emitOpen());
+      // Server thread events carry a monotonic seq.
+      act(() => {
+        first!.emitMessage({ type: "tok", text: "a", seq: 3 });
+        first!.emitMessage({ type: "tok", text: "b", seq: 7 });
+      });
+      // Unexpected drop -> backoff -> reconnect.
+      act(() => first!.emitClose(1006));
+      act(() => void vi.runOnlyPendingTimers());
+      const all = fake.sockets.filter((s) => s.url.includes("/ws/threads/1/"));
+      expect(all.length).toBe(2);
+      // The replacement asks the server to replay everything after the last seq.
+      expect(all[all.length - 1].url).toMatch(/\/ws\/threads\/1\/\?since=7$/);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("does not send ?since= for channels whose events carry no seq (notifications)", () => {
+    vi.useFakeTimers();
+    try {
+      render(
+        <WebSocketProvider>
+          <TestConsumer channel="notifications" onMsg={vi.fn()} />
+        </WebSocketProvider>,
+      );
+      const first = fake.find("/ws/notifications/");
+      act(() => first!.emitOpen());
+      act(() => first!.emitMessage({ type: "notification.event", payload: {} })); // no seq
+      act(() => first!.emitClose(1006));
+      act(() => void vi.runOnlyPendingTimers());
+      const all = fake.sockets.filter((s) => s.url.includes("/ws/notifications/"));
+      expect(all[all.length - 1].url).toMatch(/\/ws\/notifications\/$/);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("resets the replay cursor on deliberate teardown (re-subscribe is a fresh first-connect)", () => {
+    const { unmount } = render(
+      <WebSocketProvider>
+        <TestConsumer channel="thread.3" onMsg={vi.fn()} />
+      </WebSocketProvider>,
+    );
+    const first = fake.find("/ws/threads/3/");
+    act(() => first!.emitOpen());
+    act(() => first!.emitMessage({ type: "tok", text: "x", seq: 9 }));
+    act(() => unmount()); // clears the per-channel replay cursor
+
+    render(
+      <WebSocketProvider>
+        <TestConsumer channel="thread.3" onMsg={vi.fn()} />
+      </WebSocketProvider>,
+    );
+    const fresh = fake.sockets.filter((s) => s.url.includes("/ws/threads/3/")).at(-1);
+    expect(fresh!.url).toMatch(/\/ws\/threads\/3\/$/); // no stale ?since=9
+  });
 });

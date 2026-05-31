@@ -45,6 +45,10 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
   // Pending reconnect timers and per-channel backoff attempt counts.
   const timers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
   const attempts = useRef(new Map<string, number>());
+  // Per-channel last-received server `seq` (thread.<id> events carry one). On a
+  // reconnect we send it as `?since=` so the server replays events emitted during
+  // the gap; without it, a drop silently loses those events.
+  const lastSeq = useRef(new Map<string, number>());
   // Set once the provider unmounts so in-flight close handlers / timers don't reopen.
   const disposed = useRef(false);
   // Empty VITE_WS_BASE_URL means same-origin: build the base from the current
@@ -56,10 +60,21 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
   const ctx = useMemo<Ctx>(() => {
     function openForChannel(channel: string): void {
       if (sockets.current.has(channel)) return;
-      const ws = new WebSocket(`${wsBase}${pathForChannel(channel)}`);
+      // First connect: no `?since=`. Reconnect: we have a last-seen seq, so ask the
+      // server to replay everything after it (ThreadConsumer keeps a capped tail).
+      // The presence of a seq is itself the first-connect-vs-reconnect signal.
+      const since = lastSeq.current.get(channel);
+      const path = pathForChannel(channel);
+      const url = since !== undefined ? `${wsBase}${path}?since=${since}` : `${wsBase}${path}`;
+      const ws = new WebSocket(url);
       ws.addEventListener("message", (ev) => {
         try {
-          broker.dispatch(channel, JSON.parse(ev.data));
+          const msg = JSON.parse(ev.data);
+          const seq = (msg as { seq?: unknown })?.seq;
+          if (typeof seq === "number" && seq > (lastSeq.current.get(channel) ?? -1)) {
+            lastSeq.current.set(channel, seq);
+          }
+          broker.dispatch(channel, msg);
         } catch {
           // ignore malformed payloads
         }
@@ -103,6 +118,9 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
         timers.current.delete(channel);
       }
       attempts.current.delete(channel);
+      // A deliberate teardown resets the replay cursor: a later re-subscribe is a
+      // fresh first-connect (live tail), not a replay of everything since you left.
+      lastSeq.current.delete(channel);
       if (ws) closeSocket(ws);
     }
 
@@ -123,6 +141,7 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
     const open = sockets.current;
     const pending = timers.current;
     const counts = attempts.current;
+    const seqs = lastSeq.current;
     return () => {
       disposed.current = true;
       pending.forEach((timer) => clearTimeout(timer));
@@ -130,6 +149,7 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
       open.forEach((ws) => closeSocket(ws));
       open.clear();
       counts.clear();
+      seqs.clear();
     };
   }, []);
 
