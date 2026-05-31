@@ -4,6 +4,7 @@ import Dashboard from "./pages/Dashboard";
 import SettingsLayout from "./pages/settings/SettingsLayout";
 import ProvidersSettings from "./pages/settings/ProvidersSettings";
 import ConnectionsSettings from "./pages/settings/ConnectionsSettings";
+import DataSourcesSettings from "./pages/settings/DataSourcesSettings";
 import SystemSettings from "./pages/settings/SystemSettings";
 import WatchlistsList from "./pages/WatchlistsList";
 import WatchlistDetail from "./pages/WatchlistDetail";
@@ -47,6 +48,11 @@ export const router = createBrowserRouter([
         children: [
           { index: true, element: <ProvidersSettings />, handle: { crumb: "AI Providers" } },
           { path: "connections", element: <ConnectionsSettings />, handle: { crumb: "Connections" } },
+          {
+            path: "data-sources",
+            element: <DataSourcesSettings />,
+            handle: { crumb: "Data sources" },
+          },
           { path: "system", element: <SystemSettings />, handle: { crumb: "System" } },
           { path: "backups", element: <BackupsPage />, handle: { crumb: "Backups" } },
           { path: "export", element: <ExportPage />, handle: { crumb: "Export" } },
