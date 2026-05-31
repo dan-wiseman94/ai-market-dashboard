@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 
 import openai
@@ -10,7 +11,7 @@ from cryptography.fernet import InvalidToken
 from django.conf import settings
 from django.http import HttpRequest, HttpResponseRedirect, JsonResponse
 from django.utils import timezone
-from django.views.decorators.http import require_GET
+from django.views.decorators.http import require_GET, require_http_methods
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -18,12 +19,13 @@ from rest_framework.response import Response
 from apps.ai.catalog import list_models as _list_catalog
 from apps.ai.cost import daily_spend_usd
 from apps.ai.providers import get_provider
-from apps.secrets.models import ApiCredential, ProviderConfig
+from apps.secrets.models import ApiCredential, ProviderConfig, SchwabAppConfig
 from apps.secrets.schwab_oauth import (
     SchwabNotConfigured,
     build_authorize_url,
     exchange_code_for_token,
     persist_token,
+    schwab_app_credentials,
 )
 from apps.secrets.serializers import ProviderConfigSerializer
 
@@ -87,6 +89,52 @@ def schwab_status(_request: HttpRequest) -> JsonResponse:
             "expires_at": cred.expires_at.isoformat() if cred.expires_at else None,
         }
     )
+
+
+def _load_app_config() -> SchwabAppConfig:
+    """Load the singleton, self-healing past an undecryptable row (key rotated/salt reset)
+    so the user can always re-enter credentials through the UI."""
+    try:
+        return SchwabAppConfig.load()
+    except InvalidToken:
+        SchwabAppConfig.objects.all().delete()  # fast delete — doesn't decrypt
+        return SchwabAppConfig.load()
+
+
+def _app_config_payload(cfg: SchwabAppConfig) -> dict:
+    client_id, client_secret = schwab_app_credentials()
+    return {
+        # DB-stored client_id (blank if Schwab is only configured via env).
+        "client_id": cfg.client_id,
+        "client_secret_present": bool(cfg.client_secret),
+        # Whether Schwab can actually connect (DB creds OR env fallback).
+        "configured": bool(client_id and client_secret),
+    }
+
+
+@require_http_methods(["GET", "PATCH"])
+def schwab_app_config(request: HttpRequest) -> JsonResponse:
+    """Read or update the Schwab app credentials (client_id + secret) from the UI.
+
+    GET  → {client_id, client_secret_present, configured}
+    PATCH {client_id?, client_secret_write?} → persists to the encrypted singleton.
+    The secret is write-only: a blank/absent client_secret_write leaves it unchanged.
+    """
+    cfg = _load_app_config()
+    if request.method == "PATCH":
+        try:
+            body = json.loads(request.body or "{}")
+        except json.JSONDecodeError:
+            return JsonResponse(
+                {"code": "invalid_json", "message": "Request body must be JSON."}, status=400
+            )
+        if "client_id" in body:
+            cfg.client_id = (body.get("client_id") or "").strip()
+        secret = body.get("client_secret_write")
+        if secret:  # only overwrite when a non-empty value is supplied
+            cfg.client_secret = secret.strip()
+        cfg.save()
+    return JsonResponse(_app_config_payload(cfg))
 
 
 class ProviderConfigViewSet(viewsets.ModelViewSet):
