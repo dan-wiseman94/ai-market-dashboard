@@ -18,6 +18,7 @@ from decimal import Decimal, InvalidOperation
 import requests  # type: ignore[import-untyped]
 
 from apps.market import cache
+from apps.market.services.safe_log import safe_err
 from apps.secrets.models import ApiCredential
 
 log = logging.getLogger(__name__)
@@ -239,7 +240,7 @@ def fetch_quotes(symbols: list[str]) -> dict[str, dict]:
             fetcher=lambda: _get("/quote", {"symbol": joined, "apikey": api_key}),
         )
     except Exception as exc:
-        log.warning("market.twelvedata.fetch_quotes failed: %s", exc)
+        log.warning("market.twelvedata.fetch_quotes failed: %s", safe_err(exc))
         return {}
 
     # Twelve Data returns the quote dict directly when a SINGLE symbol is requested
@@ -307,7 +308,9 @@ def fetch_time_series(
             ),
         )
     except Exception as exc:
-        log.warning("market.twelvedata.fetch_time_series failed %s/%s: %s", sym, interval, exc)
+        log.warning(
+            "market.twelvedata.fetch_time_series failed %s/%s: %s", sym, interval, safe_err(exc)
+        )
         return []
 
     values = body.get("values") if isinstance(body, dict) else None
