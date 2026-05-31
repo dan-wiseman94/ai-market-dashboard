@@ -156,6 +156,40 @@ export function useCalibration(days = 90, horizon = 30) {
   });
 }
 
+export interface CalibrationDrilldownRow {
+  thesis_id: number;
+  title: string;
+  ticker: string;
+  direction: string;
+  conviction: number;
+  verdict: string;
+  forward_return_pct: number;
+  horizon_days: number;
+  completed_at: string | null;
+  thread_id: number | null;
+}
+
+export interface CalibrationDrilldown {
+  start: string;
+  end: string;
+  horizon: number;
+  count: number;
+  filters: { conviction: number | null; direction: string | null; verdict: string | null };
+  rows: CalibrationDrilldownRow[];
+}
+
+/** Theses behind one calibration bucket. Disabled until a conviction is picked. */
+export function useCalibrationDrilldown(conviction: number | null, horizon = 30, days = 90) {
+  return useQuery({
+    queryKey: ["analytics/calibration/drilldown", conviction, horizon, days],
+    queryFn: () =>
+      apiGet<CalibrationDrilldown>(
+        `/api/analytics/calibration/drilldown/?conviction=${conviction}&horizon=${horizon}&start=${startISO(days)}`,
+      ),
+    enabled: conviction !== null,
+  });
+}
+
 export interface TrackRecord {
   ticker: string;
   closed_n: number;
