@@ -41,10 +41,33 @@ def _compute_indicator(
     return compute_ind_svc(indicator, closes, period=period)
 
 
-def _recall(*, query: str, k: int = 5) -> list[dict]:
+def _recall(
+    *,
+    query: str,
+    k: int = 5,
+    kinds: list[str] | None = None,
+    ticker: str | None = None,
+) -> list[dict]:
     from apps.recall.services.search import search
 
-    return search(query, k=k)
+    return search(query, k=k, kinds=kinds, ticker=ticker)
+
+
+def _track_record(
+    *, ticker: str, direction: str | None = None, conviction: int | None = None
+) -> str:
+    from apps.analytics.services.calibration import track_record_for_ticker
+
+    ticker = (ticker or "").upper()
+    if not ticker:
+        return "Provide a ticker."
+    tr = track_record_for_ticker(ticker, direction=direction, conviction=conviction)
+    if tr is None:
+        return f"No track record for {ticker} yet (need >= 3 closed theses)."
+    c = tr["counts"]
+    hr = tr["hit_rate"]
+    hr_s = f" ({hr:.0%})" if hr is not None else ""
+    return f"{ticker}: {tr['closed_n']} closed theses — {c['win']}W/{c['loss']}L{hr_s}."
 
 
 def default_toolset() -> Toolset:
@@ -159,10 +182,58 @@ def default_toolset() -> Toolset:
                 "properties": {
                     "query": {"type": "string"},
                     "k": {"type": "integer", "minimum": 1, "maximum": 20, "default": 5},
+                    "kinds": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "enum": [
+                                "message",
+                                "snapshot",
+                                "thesis",
+                                "journal",
+                                "postmortem",
+                                "observation",
+                            ],
+                        },
+                        "description": "Restrict results to these document kinds.",
+                    },
+                    "ticker": {
+                        "type": "string",
+                        "description": "Restrict results to documents mentioning this ticker.",
+                    },
                 },
                 "required": ["query"],
             },
             fn=_recall,
+        )
+    )
+    ts.register(
+        ToolSpec(
+            name="track_record",
+            description=(
+                "Look up your historical win/loss record for a ticker based on closed theses. "
+                "Optionally slice by direction and conviction level. "
+                "Returns count breakdown and hit-rate, or a 'not enough data' message."
+            ),
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "ticker": {"type": "string", "description": "Stock symbol, e.g. NVDA"},
+                    "direction": {
+                        "type": "string",
+                        "enum": ["bullish", "bearish"],
+                        "description": "Optional: filter the conviction slice to this direction.",
+                    },
+                    "conviction": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 5,
+                        "description": "Optional: filter the conviction slice to this level (1-5).",
+                    },
+                },
+                "required": ["ticker"],
+            },
+            fn=_track_record,
         )
     )
     return ts
