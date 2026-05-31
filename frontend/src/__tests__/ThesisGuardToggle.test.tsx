@@ -1,8 +1,15 @@
-import { describe, expect, it, afterEach } from "vitest";
+import { describe, expect, it, afterEach, vi } from "vitest";
 import { fireEvent, screen, waitFor } from "@testing-library/react";
 import ThesisDetailPage from "../pages/ThesisDetailPage";
 import { mockApi, renderWithProviders } from "./testUtils";
 import type { PostMortem } from "@/api/thesis";
+
+// Stub ThesisChart so these page-level tests don't need to mock the OHLC endpoint.
+vi.mock("@/components/ThesisChart", () => ({
+  default: ({ ticker }: { ticker: string }) => (
+    <div data-testid="thesis-chart-stub" data-ticker={ticker} />
+  ),
+}));
 
 const BASE_THESIS = {
   id: 1,

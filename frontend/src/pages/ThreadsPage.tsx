@@ -21,10 +21,10 @@ export default function ThreadsPage() {
     return (
       <ul className="space-y-1">
         {threads.map((t) => (
-          <li key={t.id} data-testid={`thread-row-${t.id}`} className="p-3 rounded border border-slate-800 flex justify-between">
+          <li key={t.id} data-testid={`thread-row-${t.id}`} className="p-3 rounded border border-rule flex justify-between">
             <Link to={`/threads/${t.id}`} className="hover:underline">
               <div className="font-medium">{t.title || `Thread #${t.id}`}</div>
-              <div className="text-xs text-slate-500">
+              <div className="text-xs text-ink-500">
                 {t.kind} · {t.profile?.name ?? "no profile"} · {formatDistanceToNow(new Date(t.created_at))} ago
               </div>
             </Link>
@@ -38,7 +38,7 @@ export default function ThreadsPage() {
     <main className="p-6 max-w-4xl mx-auto space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Threads</h1>
-        <Link to="/snapshot" className="px-3 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-sm">
+        <Link to="/snapshot" className="px-3 py-1 rounded bg-gain-500 hover:bg-gain-400 text-sm">
           + Snapshot
         </Link>
       </div>

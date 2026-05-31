@@ -24,9 +24,9 @@ export default function WatchlistsList() {
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="New watchlist name"
-          className="flex-1 px-3 py-1.5 rounded bg-slate-900 border border-slate-700"
+          className="flex-1 px-3 py-1.5 rounded bg-ink-900 border border-rule"
         />
-        <button className="px-3 py-1.5 rounded bg-emerald-600 hover:bg-emerald-500">Create</button>
+        <button className="px-3 py-1.5 rounded bg-gain-500 hover:bg-gain-400">Create</button>
       </form>
 
       {isLoading ? (
@@ -34,13 +34,13 @@ export default function WatchlistsList() {
       ) : (
         <ul className="space-y-1">
           {(data ?? []).map((w) => (
-            <li key={w.id} data-testid={`watchlist-row-${w.name}`} className="flex items-center justify-between p-3 rounded border border-slate-800">
+            <li key={w.id} data-testid={`watchlist-row-${w.name}`} className="flex items-center justify-between p-3 rounded border border-rule">
               <Link to={`/watchlists/${w.id}`} className="hover:underline">
-                {w.name} <span className="text-slate-500 text-sm">({w.symbols.length} symbols)</span>
+                {w.name} <span className="text-ink-500 text-sm">({w.symbols.length} symbols)</span>
               </Link>
               <button
                 onClick={() => del.mutate(w.id)}
-                className="text-rose-700 dark:text-rose-400 text-sm hover:underline"
+                className="text-loss-400 text-sm hover:underline"
               >
                 Delete
               </button>

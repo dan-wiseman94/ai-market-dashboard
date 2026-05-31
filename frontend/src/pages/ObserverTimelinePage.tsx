@@ -52,8 +52,8 @@ function TimelineRow({
   const skipped = isSkipped(message);
   return (
     <li
-      className={`rounded border ${skipped ? "border-slate-700 bg-slate-950/50 text-slate-500"
-        : "border-slate-700 bg-slate-900"}`}
+      className={`rounded border ${skipped ? "border-rule bg-ink-850/50 text-ink-500"
+        : "border-rule bg-ink-900"}`}
     >
       <button type="button" onClick={onToggle} className="w-full text-left px-3 py-2 text-sm">
         {skipped ? `🔒 ${message.content.text}` : messageHeadline(message)}
