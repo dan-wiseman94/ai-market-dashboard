@@ -15,6 +15,7 @@ import logging
 import requests  # type: ignore[import-untyped]
 
 from apps.market import cache
+from apps.market.services.safe_log import safe_err
 from apps.secrets.models import ApiCredential
 
 log = logging.getLogger(__name__)
@@ -163,6 +164,6 @@ def fetch_macro(series_ids: list[str] | None = None) -> dict:
             body = _fetch_series(sid, api_key)
             result[sid] = _normalize_series(sid, body)
         except Exception as exc:
-            log.warning("market.fred.fetch_series_failed sid=%s: %s", sid, exc)
+            log.warning("market.fred.fetch_series_failed sid=%s: %s", sid, safe_err(exc))
 
     return result

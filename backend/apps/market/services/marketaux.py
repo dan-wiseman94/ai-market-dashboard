@@ -17,6 +17,7 @@ from datetime import UTC, datetime
 import requests  # type: ignore[import-untyped]
 
 from apps.market import cache
+from apps.market.services.safe_log import safe_err
 from apps.secrets.models import ApiCredential
 
 log = logging.getLogger(__name__)
@@ -161,7 +162,7 @@ def fetch_news(tickers: list[str], *, limit: int = 15) -> list[dict]:
             )
             aggregated.extend(raw_items if isinstance(raw_items, list) else [])
     except Exception as exc:
-        log.warning("market.marketaux.fetch_failed: %s", exc)
+        log.warning("market.marketaux.fetch_failed: %s", safe_err(exc))
         return []
 
     # Normalize and deduplicate by uuid

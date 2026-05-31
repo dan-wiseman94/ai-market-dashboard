@@ -18,6 +18,7 @@ import requests  # type: ignore[import-untyped]
 
 from apps.market import cache
 from apps.market.models import OHLCBar
+from apps.market.services.safe_log import safe_err
 from apps.secrets.models import ApiCredential
 
 log = logging.getLogger(__name__)
@@ -189,7 +190,7 @@ def fetch_daily_bars(ticker: str, *, days: int = 120) -> list[dict]:
             fetcher=lambda: _get(path, params, api_key),
         )
     except Exception as exc:
-        log.warning("market.polygon.fetch_daily_bars ticker=%s: %s", ticker, exc)
+        log.warning("market.polygon.fetch_daily_bars ticker=%s: %s", ticker, safe_err(exc))
         return []
 
     results = body.get("results") or []
@@ -226,7 +227,7 @@ def fetch_prev_close(ticker: str) -> dict | None:
             fetcher=lambda: _get(path, params, api_key),
         )
     except Exception as exc:
-        log.warning("market.polygon.fetch_prev_close ticker=%s: %s", ticker, exc)
+        log.warning("market.polygon.fetch_prev_close ticker=%s: %s", ticker, safe_err(exc))
         return None
 
     return _normalize_prev_close(body)
