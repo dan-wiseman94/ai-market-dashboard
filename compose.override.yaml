@@ -12,6 +12,14 @@ services:
     # uvicorn watches its cwd (/app/backend, the WORKDIR) for *.py changes.
     command:
       ["uvicorn", "config.asgi:application", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+    # After the Schwab OAuth callback (which lands on the Caddy tls-proxy at
+    # https://127.0.0.1:8000) Django redirects to f"{FRONTEND_BASE_URL}/settings". In dev
+    # the SPA is the Vite server on :5173, NOT :8000 (Caddy proxies only the backend), so an
+    # empty base would resolve to 127.0.0.1:8000/settings and hit Django's prod-SPA catch-all
+    # → TemplateDoesNotExist (no frontend/dist in dev). Point it at the Vite origin. Prod
+    # leaves this empty (the SPA is served same-origin from dist).
+    environment:
+      FRONTEND_BASE_URL: "http://localhost:5173"
 
   frontend:
     # Force same-origin, relative API/WS URLs in dev so requests ride the Vite
