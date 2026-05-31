@@ -12,6 +12,7 @@ import { PostMortemsSection } from "./thesis-detail/PostMortemsSection";
 import Toggle from "@/components/ui/Toggle";
 import type { Thesis } from "@/api/thesis";
 import { TrackRecordHint } from "@/components/TrackRecordHint";
+import { AISecondOpinion } from "@/components/AISecondOpinion";
 import ThesisChart from "@/components/ThesisChart";
 
 function PriceGuardToggle({ thesis }: { thesis: Thesis }) {
@@ -180,6 +181,7 @@ export default function ThesisDetailPage() {
         direction={thesis.direction}
         conviction={thesis.conviction}
       />
+      <AISecondOpinion ticker={thesis.ticker} against={thesis.direction} />
       <ThesisChart
         ticker={thesis.ticker}
         entry={thesis.entry_price}
