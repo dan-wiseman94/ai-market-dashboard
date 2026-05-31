@@ -29,6 +29,7 @@ _TTL: dict[str, int] = {
     "macro": 21600,
     "filings": 3600,
     "treasury": 21600,
+    "corporate_actions": 86400,
 }
 
 
