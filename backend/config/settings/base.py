@@ -124,6 +124,11 @@ CELERY_TIMEZONE = "UTC"
 CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
 OBSERVER_BEAT_TIMEZONE = env("OBSERVER_BEAT_TIMEZONE", default="UTC")
 TRIGGER_TICK_SECONDS = env.int("TRIGGER_TICK_SECONDS", default=10)
+# Observer response cache (C2): reuse a recent prior observation when a fire's
+# assembled prompt is byte-identical (e.g. a quiet/closed market with mode=diff),
+# instead of paying for another AI call. OFF by default; opt-in cost lever.
+OBSERVER_RESPONSE_CACHE_ENABLED = env.bool("OBSERVER_RESPONSE_CACHE_ENABLED", default=False)
+OBSERVER_RESPONSE_CACHE_TTL_SECONDS = env.int("OBSERVER_RESPONSE_CACHE_TTL_SECONDS", default=1800)
 # M11 — Thesis post-mortem horizons in days. Phase 2 will schedule AI replays at each.
 THESIS_POSTMORTEM_HORIZONS: list[int] = [7, 30, 90]
 
