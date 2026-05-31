@@ -1,6 +1,8 @@
 from django.urls import path
 
 from apps.analytics.views import (
+    AICalibrationDrilldownView,
+    AICalibrationView,
     CalibrationDrilldownView,
     CalibrationView,
     CostPerInsightView,
@@ -28,4 +30,10 @@ urlpatterns = [
         name="analytics-unusual-options",
     ),
     path("track-record/", TrackRecordView.as_view(), name="analytics-track-record"),
+    path("ai-calibration/", AICalibrationView.as_view(), name="analytics-ai-calibration"),
+    path(
+        "ai-calibration/drilldown/",
+        AICalibrationDrilldownView.as_view(),
+        name="analytics-ai-calibration-drilldown",
+    ),
 ]
