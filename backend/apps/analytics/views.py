@@ -113,6 +113,37 @@ class CalibrationView(APIView):
         )
 
 
+class CalibrationDrilldownView(APIView):
+    """The theses behind a calibration bucket (scorecard drill-down)."""
+
+    def get(self, request: Request) -> Response:
+        from apps.analytics.services.calibration import calibration_drilldown
+
+        start, end = _parse_range(request, default_days=90)
+        try:
+            horizon = int(request.query_params.get("horizon", "30"))
+        except ValueError:
+            horizon = 30
+        raw_conviction = request.query_params.get("conviction")
+        conviction = int(raw_conviction) if raw_conviction and raw_conviction.isdigit() else None
+        direction = request.query_params.get("direction") or None
+        verdict = request.query_params.get("verdict") or None
+        return Response(
+            {
+                "start": start.isoformat(),
+                "end": end.isoformat(),
+                **calibration_drilldown(
+                    start=start,
+                    end=end,
+                    horizon=horizon,
+                    conviction=conviction,
+                    direction=direction,
+                    verdict=verdict,
+                ),
+            }
+        )
+
+
 class TrackRecordView(APIView):
     def get(self, request: Request) -> Response:
         from apps.analytics.services.calibration import track_record_for_ticker
