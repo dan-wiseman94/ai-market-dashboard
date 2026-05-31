@@ -1,5 +1,5 @@
-import { useCallback, useMemo, useState } from "react";
-import { Outlet, useNavigate } from "react-router-dom";
+import { useCallback, useMemo, useRef, useState } from "react";
+import { Outlet, useMatches, useNavigate, type UIMatch } from "react-router-dom";
 import TopNav from "./TopNav";
 import SideNav from "./SideNav";
 import {
@@ -13,10 +13,24 @@ import { Toasts } from "@/components/Toasts";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { CommandPalette, type Command } from "@/components/CommandPalette";
 import { useTheme } from "@/hooks/useTheme";
+import { useDocumentTitle } from "@/hooks/useDocumentTitle";
+import { useRunBriefing } from "@/hooks/useBriefing";
+import { useRecall } from "@/hooks/useRecall";
 
-function useDefaultCommands(): Command[] {
+type CrumbFn = (m: UIMatch) => string;
+type Handle = { crumb?: string | CrumbFn };
+
+function resolveCrumb(match: UIMatch): string | null {
+  const h = match.handle as Handle | undefined;
+  if (!h?.crumb) return null;
+  if (typeof h.crumb === "string") return h.crumb;
+  return h.crumb(match);
+}
+
+function useDefaultCommands(onShowHelp: () => void): Command[] {
   const nav = useNavigate();
   const { cycle } = useTheme();
+  const runBriefing = useRunBriefing();
   return useMemo(
     () => [
       { id: "go-dashboard", label: "Go to Dashboard", keywords: "home", run: () => nav("/") },
@@ -42,9 +56,41 @@ function useDefaultCommands(): Command[] {
         run: () => nav("/recall") },
       { id: "toggle-theme", label: "Toggle theme", keywords: "light dark system appearance mode",
         run: cycle },
+      // --- Action verbs ---
+      {
+        id: "action-run-briefing",
+        label: "Run morning briefing now",
+        keywords: "briefing digest run trigger now",
+        run: () => { runBriefing.mutate(undefined); },
+      },
+      {
+        id: "action-show-shortcuts",
+        label: "Show keyboard shortcuts",
+        keywords: "help shortcuts keys hotkeys",
+        run: onShowHelp,
+      },
     ],
-    [nav, cycle],
+    [nav, cycle, runBriefing, onShowHelp],
   );
+}
+
+/**
+ * Debounces a palette query and returns Recall search hits as Command objects.
+ * Only fires when query length >= 2. Results are appended as "Recall" section items.
+ */
+function useRecallCommands(query: string): Command[] {
+  const nav = useNavigate();
+  const { data } = useRecall(query.trim().length >= 2 ? query : "", { k: 5 });
+  return useMemo(() => {
+    if (!data?.results?.length) return [];
+    return data.results.map((hit) => ({
+      id: `recall:${hit.kind}:${hit.object_id}`,
+      label: hit.snippet.length > 80 ? hit.snippet.slice(0, 77) + "…" : hit.snippet,
+      section: "Recall",
+      keywords: hit.tickers?.join(" ") ?? "",
+      run: () => nav(hit.link),
+    }));
+  }, [data, nav]);
 }
 
 export default function AppLayout() {
@@ -54,7 +100,41 @@ export default function AppLayout() {
   const openPalette = useCallback(() => setPaletteOpen(true), []);
   useKeyboardShortcuts(handleHelp);
   useCommandPaletteTrigger(openPalette);
-  const commands = useDefaultCommands();
+
+  // Debounce the palette query for the recall search (200 ms).
+  // When the palette closes we reset the query in the render-phase guard below
+  // so that stale recall results don't appear when the palette reopens.
+  const [paletteQuery, setPaletteQuery] = useState("");
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const handleQueryChange = useCallback((q: string) => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => { setPaletteQuery(q); }, 200);
+  }, []);
+  // Render-phase reset: clear the debounced query when the palette closes.
+  // Uses the "adjust state when a prop changes" pattern (no effect, no ref reads
+  // during render) so react-hooks/set-state-in-effect is not triggered.
+  const [prevPaletteOpen, setPrevPaletteOpen] = useState(paletteOpen);
+  if (paletteOpen !== prevPaletteOpen) {
+    setPrevPaletteOpen(paletteOpen);
+    if (!paletteOpen) {
+      setPaletteQuery("");
+    }
+  }
+
+  const commands = useDefaultCommands(handleHelp);
+  const recallCommands = useRecallCommands(paletteQuery);
+
+  // Derive the leaf (deepest) crumb from the router matches and set it as the
+  // browser tab title. Reuses the same resolveCrumb logic as Breadcrumbs so
+  // every route that has a handle.crumb automatically gets a title.
+  const matches = useMatches();
+  const leafCrumb = useMemo(() => {
+    const crumbs = matches
+      .map((m) => resolveCrumb(m))
+      .filter((c): c is string => c !== null);
+    return crumbs.at(-1) ?? undefined;
+  }, [matches]);
+  useDocumentTitle(leafCrumb);
 
   return (
     <ToastProvider>
@@ -82,6 +162,8 @@ export default function AppLayout() {
           open={paletteOpen}
           onClose={() => setPaletteOpen(false)}
           commands={commands}
+          extraCommands={recallCommands}
+          onQueryChange={handleQueryChange}
         />
         <Toasts />
       </div>

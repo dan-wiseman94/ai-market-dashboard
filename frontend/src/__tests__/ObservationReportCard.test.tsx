@@ -1,6 +1,11 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import ObservationReportCard, { type ObservationReport } from "../components/ObservationReportCard";
+
+// Mock html2canvas so SaveCardButton renders without a real canvas
+vi.mock("html2canvas", () => ({
+  default: vi.fn(() => Promise.resolve({ toDataURL: () => "data:image/png;base64,x" })),
+}));
 
 const report: ObservationReport = {
   headline: "SPY grinds toward 525",
@@ -29,5 +34,10 @@ describe("ObservationReportCard", () => {
     render(<ObservationReportCard report={report} />);
     const badge = screen.getAllByText(/neutral/i)[0];
     expect(badge.className).toContain("text-slate-300");
+  });
+
+  it("renders a SaveCardButton in the card header", () => {
+    render(<ObservationReportCard report={report} />);
+    expect(screen.getByRole("button", { name: /save image/i })).toBeInTheDocument();
   });
 });

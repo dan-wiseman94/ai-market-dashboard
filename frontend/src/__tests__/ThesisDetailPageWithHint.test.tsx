@@ -6,6 +6,13 @@ import { mockApi, renderWithProviders } from "./testUtils";
 import type { TrackRecord } from "@/hooks/useAnalytics";
 import type { PostMortem } from "@/api/thesis";
 
+// Stub ThesisChart so these page-level tests don't need to mock the OHLC endpoint.
+vi.mock("@/components/ThesisChart", () => ({
+  default: ({ ticker }: { ticker: string }) => (
+    <div data-testid="thesis-chart-stub" data-ticker={ticker} />
+  ),
+}));
+
 const THESIS = {
   id: 5,
   title: "NVDA breakout",
