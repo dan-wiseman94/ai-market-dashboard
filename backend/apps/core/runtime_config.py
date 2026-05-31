@@ -28,21 +28,10 @@ _SPEC: list[tuple[str, str, object]] = [
     ("aieval_scheduled_limit", "AIEVAL_SCHEDULED_LIMIT", 25),
 ]
 
-# Fields the API/UI may write, with a coercer for incoming JSON values.
-EDITABLE_FIELDS: dict[str, type] = {
-    "retention_ohlc_days": int,
-    "retention_chain_days": int,
-    "retention_notification_days": int,
-    "retention_error_days": int,
-    "ai_failover_enabled": bool,
-    "ai_failover_provider": str,
-    "observer_response_cache_enabled": bool,
-    "observer_response_cache_ttl_seconds": int,
-    "aieval_scheduled_enabled": bool,
-    "aieval_scheduled_model": str,
-    "aieval_scheduled_horizon": int,
-    "aieval_scheduled_limit": int,
-}
+# Fields the API/UI may write, with a coercer per field — derived from _SPEC so the editable
+# set and its types stay in lockstep with the resolved fields (one source of truth). The
+# coercer is the Python type of the default (False→bool, 400→int, ""→str).
+EDITABLE_FIELDS: dict[str, type] = {field: type(default) for field, _, default in _SPEC}
 
 
 @dataclass(frozen=True)
