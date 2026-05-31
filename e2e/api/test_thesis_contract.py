@@ -44,6 +44,8 @@ def test_thesis_create_schedules_postmortems(api_client, threads) -> None:
         "direction": "bullish",
         "conviction": 5,
         "horizon_days": 30,
+        "rationale": "E2E rationale",
+        "invalidation_note": "breaks below support",
     }
     r = api_client.post("/api/theses/", json=payload)
     assert r.status_code == 201, r.text
@@ -60,7 +62,13 @@ def test_thesis_close_transitions_status(api_client, thesis) -> None:
     # Use the seeded create endpoint so we don't mutate the shared open fixture.
     created = api_client.post(
         "/api/theses/",
-        json={"title": "E2E closable thesis", "ticker": "MSFT", "direction": "neutral"},
+        json={
+            "title": "E2E closable thesis",
+            "ticker": "MSFT",
+            "direction": "neutral",
+            "rationale": "E2E rationale",
+            "invalidation_note": "breaks below support",
+        },
     ).json()
     r = api_client.post(
         f"/api/theses/{created['id']}/close/",

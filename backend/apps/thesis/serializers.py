@@ -37,6 +37,31 @@ class ThesisSerializer(serializers.ModelSerializer):
         g = obj.guard_triggers.first()
         return g.id if g else None
 
+    def validate(self, attrs: dict) -> dict:
+        """Pre-trade discipline (C4): a new thesis must state its rationale AND
+        what would invalidate it (a price level or a written note). Enforced on
+        CREATE only — existing theses can be edited freely (and ORM creates,
+        e.g. fixtures, bypass the serializer entirely)."""
+        if self.instance is None:
+            if not (attrs.get("rationale") or "").strip():
+                raise serializers.ValidationError(
+                    {"rationale": "State your rationale — why this thesis, and why now."}
+                )
+            has_invalidation = (
+                attrs.get("invalidation_price") is not None
+                or (attrs.get("invalidation_note") or "").strip()
+            )
+            if not has_invalidation:
+                raise serializers.ValidationError(
+                    {
+                        "invalidation_note": (
+                            "State what would invalidate this thesis "
+                            "(a price level in invalidation_price, or a note)."
+                        )
+                    }
+                )
+        return attrs
+
     class Meta:
         model = Thesis
         fields: ClassVar = [
@@ -49,6 +74,7 @@ class ThesisSerializer(serializers.ModelSerializer):
             "entry_price",
             "target_price",
             "invalidation_price",
+            "invalidation_note",
             "horizon_days",
             "status",
             # FK ids — DRF exposes these as plain integer PK fields by default

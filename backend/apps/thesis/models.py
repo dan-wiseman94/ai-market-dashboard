@@ -33,6 +33,10 @@ class Thesis(models.Model):
     entry_price = models.DecimalField(max_digits=14, decimal_places=4, null=True, blank=True)
     target_price = models.DecimalField(max_digits=14, decimal_places=4, null=True, blank=True)
     invalidation_price = models.DecimalField(max_digits=14, decimal_places=4, null=True, blank=True)
+    # Written "what would prove me wrong" — the pre-trade discipline field (C4).
+    # Optional at the model layer (existing rows / ORM creates); required on API
+    # create by ThesisSerializer.validate, alongside a non-empty rationale.
+    invalidation_note = models.TextField(blank=True, default="")
     horizon_days = models.IntegerField(default=30)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="open")
 
