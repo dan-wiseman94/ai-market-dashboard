@@ -24,13 +24,36 @@ The program is substantively complete. What remains splits into three tiers.
 > Still open: **A1**, **A2**, and all of **Tier C**. Plan:
 > `docs/superpowers/plans/2026-05-31-m7-eval-calibration-loop.md`.
 
+> **UPDATE 2026-05-31 (cont.) — M7 merged (#46) + 7 more items shipped.** After M7
+> merged (PR #46, with a CI fix: the `check` Postgres now uses `pgvector/pgvector`,
+> since `apps.recall`'s migration runs `CREATE EXTENSION vector`), the following
+> were built and PR'd:
+> - **C6** scorecard drill-down + a "Model eval calibration" card — merged (#47).
+> - **C4** pre-trade discipline: `rationale` + an invalidation (price OR new
+>   `invalidation_note`) now **required** on thesis create — merged (#48).
+> - **C5** watchlist "what changed since your last look" per-ticker expander — merged (#50).
+> - **C1** cross-provider failover before the first token, opt-in
+>   `AI_FAILOVER_ENABLED`/`AI_FAILOVER_PROVIDER` — open (#52).
+> - **A1** `?since=` WS reconnect-replay wired client-side in `WebSocketProvider` — open (#54).
+> - **C7** image-bytes offload to the `/data` volume (`SnapshotImage.file_path` +
+>   `apps.snapshots.image_store`, disk-first read, DB fallback) — open (#55).
+> - **C2** observer response-cache for byte-identical prompts, opt-in
+>   `OBSERVER_RESPONSE_CACHE_ENABLED` — open (#56).
+>
+> **Still genuinely open: A2** (coach on snapshot-free chat — needs a brainstorm
+> on the no-snapshot "situation" definition) and **C3** (news quality /
+> corporate-actions: splits & dividends distorting the returns math — needs a
+> data-source decision, e.g. Finnhub, and touches `apps/market/returns.py`, which
+> feeds post-mortems, the leaderboard, and the scorecard drill-down, so it wants
+> a careful, focused session).
+
 ---
 
 ## Tier A — Deliberately deferred during the program (flagged, not faked)
 
 Each was skipped because it needs a design decision, not just execution.
 
-### A1. `?since=` client-side reconnect replay  (M1 / W3)
+### A1. `?since=` client-side reconnect replay  (M1 / W3) — ✅ SHIPPED (#54)
 - **State:** server side fully built — every `thread.<id>` event carries a Redis
   `INCR` `seq`; `ThreadConsumer` parses `?since=<seq>` and replays a 256-event
   capped tail. **Client never sends `since=`** → a WS gap on reconnect still
