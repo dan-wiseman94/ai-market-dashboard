@@ -3,14 +3,22 @@ import { fetchSchwabAuthorizeUrl } from "@/api/schwab";
 import { formatDistanceToNow } from "date-fns";
 import SettingsSection from "@/components/settings/SettingsSection";
 import SymbolCalendarOverridesCard from "@/components/SymbolCalendarOverridesCard";
+import { useToast } from "@/hooks/useToast";
 
 export default function ConnectionsSettings() {
   const { data, isLoading } = useSchwabStatus();
+  const { push } = useToast();
   const connected = data?.connected ?? false;
 
   const onConnect = async () => {
-    const { url } = await fetchSchwabAuthorizeUrl();
-    window.location.href = url;
+    try {
+      const { url } = await fetchSchwabAuthorizeUrl();
+      window.location.href = url;
+    } catch (e) {
+      // e.g. schwab_not_configured — surface the backend message instead of silently
+      // failing or bouncing to Schwab's opaque 401 invalid_client page.
+      push({ kind: "error", text: (e as Error).message });
+    }
   };
 
   return (
