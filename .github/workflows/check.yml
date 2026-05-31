@@ -19,7 +19,11 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:17-alpine
+        # pgvector image (matches compose.yaml `db` + compose.e2e.yaml `db-e2e`):
+        # apps.recall's 0001 migration runs VectorExtension() (CREATE EXTENSION
+        # vector). On a bare postgres image that aborts the whole test-DB build,
+        # cascading to ~800 setup errors. Must ship the `vector` extension.
+        image: pgvector/pgvector:pg17
         env:
           POSTGRES_DB: ai_dashboard
           POSTGRES_USER: ai_dashboard
