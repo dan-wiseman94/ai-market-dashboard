@@ -7,6 +7,7 @@ from apps.secrets.models import ApiCredential
 from apps.secrets.schwab_oauth import (
     build_authorize_url,
     exchange_code_for_token,
+    load_token,
     persist_token,
     refresh_token,
 )
@@ -81,3 +82,23 @@ def test_persist_token_creates_or_updates_credential():
     persist_token(tok2)
     cred.refresh_from_db()
     assert cred.token["access_token"] == "A2"
+
+
+@pytest.mark.django_db
+def test_load_token_returns_none_when_undecryptable():
+    """An undecryptable stored token (key rotated / salt reset) must read as None so the
+    Schwab client behaves as not-connected instead of raising InvalidToken at call time."""
+    from cryptography.fernet import Fernet
+    from django.db import connection
+
+    cred = ApiCredential.objects.create(
+        provider="schwab", token={"access_token": "A", "refresh_token": "R"}
+    )
+    foreign = Fernet(Fernet.generate_key()).encrypt(b'{"refresh_token":"R"}')
+    with connection.cursor() as c:
+        c.execute(
+            "UPDATE secrets_apicredential SET token = %s WHERE id = %s",
+            [foreign, cred.id],
+        )
+
+    assert load_token() is None
