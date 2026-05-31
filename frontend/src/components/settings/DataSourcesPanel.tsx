@@ -9,6 +9,7 @@ import {
   type TestResult,
 } from "@/api/dataSources";
 import { useToast } from "@/hooks/useToast";
+import { SkeletonRows } from "@/components/Skeleton";
 
 function fieldLabel(field: string): string {
   return field === "api_secret" ? "API secret" : "API key";
@@ -31,50 +32,44 @@ function DataSourceCard({ ds, onChanged }: { ds: DataSource; onChanged: () => vo
   const [testResult, setTestResult] = useState<TestResult | null>(null);
   const keyed = ds.auth === "key" || ds.auth === "key_secret";
 
-  const save = async () => {
+  // Shared busy/error scaffolding so save/clear/test only carry their own body.
+  const withBusy = async (fn: () => Promise<void>) => {
     setBusy(true);
-    setTestResult(null);
     try {
+      await fn();
+    } catch (e) {
+      push({ kind: "error", text: (e as Error).message });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const save = () =>
+    withBusy(async () => {
+      setTestResult(null);
       const body: Record<string, string> = {};
       for (const f of ds.fields) if (values[f]) body[`${f}_write`] = values[f];
       await saveDataSourceKey(ds.provider, body);
       setValues({});
       onChanged();
       push({ kind: "success", text: `${ds.label} saved.` });
-    } catch (e) {
-      push({ kind: "error", text: (e as Error).message });
-    } finally {
-      setBusy(false);
-    }
-  };
+    });
 
-  const clear = async () => {
-    setBusy(true);
-    setTestResult(null);
-    try {
+  const clear = () =>
+    withBusy(async () => {
+      setTestResult(null);
       await clearDataSourceKey(ds.provider);
       setValues({});
       onChanged();
       push({ kind: "success", text: `${ds.label} cleared.` });
-    } catch (e) {
-      push({ kind: "error", text: (e as Error).message });
-    } finally {
-      setBusy(false);
-    }
-  };
+    });
 
-  const test = async () => {
-    setBusy(true);
-    try {
+  const test = () =>
+    withBusy(async () => {
       const res = await testDataSourceKey(ds.provider);
       setTestResult(res);
       push({ kind: res.ok ? "success" : "error", text: `${ds.label}: ${res.message}` });
-    } catch (e) {
-      push({ kind: "error", text: (e as Error).message });
-    } finally {
-      setBusy(false);
-    }
-  };
+    });
 
   return (
     <div className="ledger-surface p-5" data-testid={`ds-card-${ds.provider}`}>
@@ -110,24 +105,24 @@ function DataSourceCard({ ds, onChanged }: { ds: DataSource; onChanged: () => vo
               {busy ? "Saving…" : "Save"}
             </button>
             {ds.status.configured && (
-              <button
-                type="button"
-                onClick={test}
-                disabled={busy}
-                className="text-[12px] text-copper-300 hover:text-copper-200"
-              >
-                Test key
-              </button>
-            )}
-            {ds.status.configured && (
-              <button
-                type="button"
-                onClick={clear}
-                disabled={busy}
-                className="text-[12px] text-ink-400 hover:text-ink-200"
-              >
-                Clear
-              </button>
+              <>
+                <button
+                  type="button"
+                  onClick={test}
+                  disabled={busy}
+                  className="text-[12px] text-copper-300 hover:text-copper-200"
+                >
+                  Test key
+                </button>
+                <button
+                  type="button"
+                  onClick={clear}
+                  disabled={busy}
+                  className="text-[12px] text-ink-400 hover:text-ink-200"
+                >
+                  Clear
+                </button>
+              </>
             )}
             {testResult && (
               <span className="ledger-pill" data-tone={testResult.ok ? "gain" : "loss"}>
@@ -179,7 +174,7 @@ export default function DataSourcesPanel() {
         <span className="text-[12px] text-ink-400">Optional providers that run alongside Schwab.</span>
       </div>
       {isLoading ? (
-        <p className="text-ink-400 text-sm">Loading…</p>
+        <SkeletonRows rows={4} />
       ) : (
         sources.map((ds) => <DataSourceCard key={ds.provider} ds={ds} onChanged={onChanged} />)
       )}
