@@ -85,15 +85,15 @@ export default function SchedulesPage() {
 
       <ul className="space-y-2">
         {rows.map((s) => (
-          <li key={s.id} data-testid={`schedule-row-${s.id}`} className="p-4 rounded border border-slate-700 bg-slate-900 space-y-2">
+          <li key={s.id} data-testid={`schedule-row-${s.id}`} className="p-4 rounded border border-rule bg-ink-900 space-y-2">
             <div className="flex items-center justify-between">
               <div>
                 <div className="font-semibold">{s.name}</div>
-                <div className="text-xs text-slate-500">
+                <div className="text-xs text-ink-500">
                   {profileName(s.profile)} — {s.cron_display} ({explainCron(s.cron_display)})
                 </div>
                 {s.last_fired_at && (
-                  <div className="text-xs text-slate-500">
+                  <div className="text-xs text-ink-500">
                     Last fired {new Date(s.last_fired_at).toLocaleString()}
                   </div>
                 )}
@@ -108,10 +108,10 @@ export default function SchedulesPage() {
                   enabled
                 </label>
                 <button type="button" onClick={() => run.mutate(s.id)}
-                        className="px-2 py-1 text-xs rounded bg-emerald-700 hover:bg-emerald-600">Run now</button>
+                        className="px-2 py-1 text-xs rounded bg-gain-500 hover:bg-gain-400">Run now</button>
                 <button type="button" onClick={() => del.mutate(s.id)}
                         aria-label={`delete ${s.name}`}
-                        className="px-2 py-1 text-xs rounded bg-red-900 hover:bg-red-800">Delete</button>
+                        className="px-2 py-1 text-xs rounded bg-loss-500 hover:bg-loss-400">Delete</button>
               </div>
             </div>
           </li>
@@ -121,26 +121,26 @@ export default function SchedulesPage() {
       <button
         type="button"
         onClick={() => setShowForm((v) => !v)}
-        className="px-3 py-1 rounded bg-slate-700 hover:bg-slate-600"
+        className="px-3 py-1 rounded bg-ink-700 hover:bg-ink-600"
       >{showForm ? "Cancel" : "+ New schedule"}</button>
 
       {showForm && (
-        <form onSubmit={onCreate} className="p-4 rounded border border-slate-700 bg-slate-900 space-y-3">
+        <form onSubmit={onCreate} className="p-4 rounded border border-rule bg-ink-900 space-y-3">
           <div>
-            <label className="block text-xs text-slate-500 mb-1" htmlFor="sched-name">Name</label>
+            <label className="block text-xs text-ink-500 mb-1" htmlFor="sched-name">Name</label>
             <input
               id="sched-name"
               type="text" value={name} onChange={(e) => setName(e.target.value)} required
-              className="w-full px-2 py-1.5 rounded bg-slate-950 border border-slate-700"
+              className="w-full px-2 py-1.5 rounded bg-ink-850 border border-rule ledger-input"
             />
           </div>
 
           <div>
-            <label className="block text-xs text-slate-500 mb-1" htmlFor="sched-profile">Profile</label>
+            <label className="block text-xs text-ink-500 mb-1" htmlFor="sched-profile">Profile</label>
             <select
               id="sched-profile"
               value={profileId ?? ""} onChange={(e) => setProfileId(parseInt(e.target.value, 10))}
-              className="w-full px-2 py-1.5 rounded bg-slate-950 border border-slate-700"
+              className="w-full px-2 py-1.5 rounded bg-ink-850 border border-rule"
             >
               {(profiles ?? []).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
@@ -158,18 +158,18 @@ export default function SchedulesPage() {
           </div>
 
           <div>
-            <label className="block text-xs text-slate-500 mb-1" htmlFor="sched-fire-mode">Fire mode</label>
+            <label className="block text-xs text-ink-500 mb-1" htmlFor="sched-fire-mode">Fire mode</label>
             <select
               id="sched-fire-mode"
               value={fireMode}
               onChange={(e) => setFireMode(e.target.value as ObserverFireMode)}
-              className="w-full px-2 py-1.5 rounded bg-slate-950 border border-slate-700"
+              className="w-full px-2 py-1.5 rounded bg-ink-850 border border-rule"
             >
               <option value="cron">Cron schedule</option>
               <option value="relative_to_close">Relative to market close</option>
             </select>
             {fireMode === "relative_to_close" && (
-              <label className="block text-xs text-slate-500 mt-2" htmlFor="sched-close-offset">
+              <label className="block text-xs text-ink-500 mt-2" htmlFor="sched-close-offset">
                 Minutes before close
                 <input
                   id="sched-close-offset"
@@ -177,7 +177,7 @@ export default function SchedulesPage() {
                   min={0}
                   value={closeOffset}
                   onChange={(e) => setCloseOffset(parseInt(e.target.value, 10) || 0)}
-                  className="w-full px-2 py-1.5 rounded bg-slate-950 border border-slate-700 mt-1"
+                  className="w-full px-2 py-1.5 rounded bg-ink-850 border border-rule mt-1"
                 />
               </label>
             )}
@@ -187,41 +187,41 @@ export default function SchedulesPage() {
           <div>
             <div className="flex gap-2 mb-1">
               <button type="button" onClick={() => setCronMode("preset")}
-                      className={`px-2 py-1 text-xs rounded ${cronMode === "preset" ? "bg-slate-700" : "bg-slate-800"}`}>Preset</button>
+                      className={`px-2 py-1 text-xs rounded ${cronMode === "preset" ? "bg-ink-700" : "bg-ink-800"}`}>Preset</button>
               <button type="button" onClick={() => setCronMode("advanced")}
-                      className={`px-2 py-1 text-xs rounded ${cronMode === "advanced" ? "bg-slate-700" : "bg-slate-800"}`}>Advanced</button>
+                      className={`px-2 py-1 text-xs rounded ${cronMode === "advanced" ? "bg-ink-700" : "bg-ink-800"}`}>Advanced</button>
             </div>
             {cronMode === "preset" ? (
               <select value={presetIdx} onChange={(e) => setPresetIdx(parseInt(e.target.value, 10))}
-                      className="w-full px-2 py-1.5 rounded bg-slate-950 border border-slate-700">
+                      className="w-full px-2 py-1.5 rounded bg-ink-850 border border-rule">
                 {CRON_PRESETS.map((p, i) => <option key={p.cron} value={i}>{p.label}</option>)}
               </select>
             ) : (
               <input type="text" value={advancedCron} onChange={(e) => setAdvancedCron(e.target.value)}
-                     className="w-full px-2 py-1.5 rounded bg-slate-950 border border-slate-700 font-mono" />
+                     className="w-full px-2 py-1.5 rounded bg-ink-850 border border-rule font-mono" />
             )}
-            <div className="text-xs text-slate-500 mt-1">{cron} — {cronEnglish}</div>
+            <div className="text-xs text-ink-500 mt-1">{cron} — {cronEnglish}</div>
           </div>
           )}
 
           <div>
-            <label className="block text-xs text-slate-500 mb-1" htmlFor="sched-objective">Objective template (sent with every fire)</label>
+            <label className="block text-xs text-ink-500 mb-1" htmlFor="sched-objective">Objective template (sent with every fire)</label>
             <textarea
               id="sched-objective"
               rows={2} value={objective} onChange={(e) => setObjective(e.target.value)}
-              className="w-full px-2 py-1.5 rounded bg-slate-950 border border-slate-700"
+              className="w-full px-2 py-1.5 rounded bg-ink-850 border border-rule"
               placeholder="e.g. Flag any unusual options activity."
             />
           </div>
 
-          <fieldset className="grid grid-cols-2 gap-3 text-sm border border-slate-800 rounded p-3">
-            <legend className="px-1 text-xs text-slate-500 uppercase tracking-wide">AI mode</legend>
+          <fieldset className="grid grid-cols-2 gap-3 text-sm border border-rule rounded p-3">
+            <legend className="px-1 text-xs text-ink-500 uppercase tracking-wide">AI mode</legend>
             <label className="flex flex-col gap-1">
-              <span className="text-xs text-slate-500">Payload shape</span>
+              <span className="text-xs text-ink-500">Payload shape</span>
               <select
                 value={mode}
                 onChange={(e) => setMode(e.target.value as ObserverMode)}
-                className="px-2 py-1 rounded bg-slate-950 border border-slate-700"
+                className="px-2 py-1 rounded bg-ink-850 border border-rule"
               >
                 <option value="full">Full payload</option>
                 <option value="diff">Diff vs previous capture</option>
@@ -244,7 +244,7 @@ export default function SchedulesPage() {
           </fieldset>
 
           <button type="submit" disabled={create.isPending || !name || !profileId}
-                  className="px-3 py-1.5 rounded bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40">
+                  className="px-3 py-1.5 rounded bg-gain-500 hover:bg-gain-400 disabled:opacity-40">
             {create.isPending ? "Creating…" : "Create"}
           </button>
         </form>

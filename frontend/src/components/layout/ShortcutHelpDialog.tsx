@@ -12,26 +12,26 @@ export default function ShortcutHelpDialog({ open, onClose }: Props) {
       onClick={onClose}
     >
       <div
-        className="bg-slate-950 border border-slate-700 rounded p-4 w-96"
+        className="bg-ink-900 border border-rule rounded p-4 w-96"
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="text-lg font-medium mb-3">Keyboard shortcuts</h2>
         <table className="w-full text-sm">
           <tbody>
             {Object.entries(SHORTCUTS).map(([key, { label }]) => (
-              <tr key={key} className="border-t border-slate-800">
-                <td className="py-1 font-mono text-emerald-700 dark:text-emerald-300">g {key}</td>
-                <td className="py-1 text-slate-300">{label}</td>
+              <tr key={key} className="border-t border-rule">
+                <td className="py-1 font-mono text-gain-400">g {key}</td>
+                <td className="py-1 text-ink-300">{label}</td>
               </tr>
             ))}
-            <tr className="border-t border-slate-800">
-              <td className="py-1 font-mono text-emerald-700 dark:text-emerald-300">?</td>
-              <td className="py-1 text-slate-300">Show this dialog</td>
+            <tr className="border-t border-rule">
+              <td className="py-1 font-mono text-gain-400">?</td>
+              <td className="py-1 text-ink-300">Show this dialog</td>
             </tr>
           </tbody>
         </table>
         <button
-          className="mt-3 px-3 py-1 rounded bg-slate-700 hover:bg-slate-600 text-sm"
+          className="mt-3 px-3 py-1 rounded bg-ink-700 hover:bg-ink-600 text-sm"
           onClick={onClose}
         >Close</button>
       </div>

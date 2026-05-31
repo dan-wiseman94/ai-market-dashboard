@@ -13,7 +13,7 @@ function ListHeader() {
   return (
     <div className="flex justify-between items-center mb-4">
       <h1 className="text-xl font-semibold">Triggers</h1>
-      <Link to="/triggers/new" className="bg-indigo-600 px-3 py-1.5 rounded text-white">New trigger</Link>
+      <Link to="/triggers/new" className="bg-copper-600 px-3 py-1.5 rounded text-white">New trigger</Link>
     </div>
   );
 }
@@ -22,7 +22,7 @@ function ManagedBadge({ thesisId }: { thesisId: number }) {
   return (
     <Link
       to={`/theses/${thesisId}`}
-      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-mono bg-amber-900/40 text-amber-400 hover:text-amber-300 border border-amber-800/50"
+      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-mono bg-copper-900/40 text-copper-400 hover:text-copper-300 border border-copper-800/50"
       title={`Managed by thesis #${thesisId}`}
       data-testid={`managed-badge-${thesisId}`}
     >
@@ -95,7 +95,7 @@ export default function TriggersListPage() {
     <div className="max-w-5xl mx-auto p-6">
       <ListHeader />
       <table className="w-full text-sm">
-        <thead className="text-neutral-400 text-left">
+        <thead className="text-ink-400 text-left">
           <tr>
             <th className="py-2">Name</th>
             <th className="py-2">Condition</th>
@@ -109,17 +109,17 @@ export default function TriggersListPage() {
           {triggers.map((t) => {
             const isManaged = t.source_thesis_id != null;
             return (
-              <tr key={t.id} data-testid={`trigger-row-${t.id}`} className="border-t border-neutral-800">
+              <tr key={t.id} data-testid={`trigger-row-${t.id}`} className="border-t border-rule">
                 <td className="py-2 font-medium">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <Link to={`/triggers/${t.id}`} className="hover:text-indigo-700 dark:hover:text-indigo-400">{t.name}</Link>
+                    <Link to={`/triggers/${t.id}`} className="hover:text-copper-400">{t.name}</Link>
                     {isManaged && <ManagedBadge thesisId={t.source_thesis_id!} />}
                   </div>
                 </td>
-                <td className="py-2 text-neutral-400 max-w-md truncate">
+                <td className="py-2 text-ink-400 max-w-md truncate">
                   {describeCondition(t.condition)}
                 </td>
-                <td className="py-2 tabular-nums text-neutral-400">
+                <td className="py-2 tabular-nums text-ink-400">
                   {t.last_fired_at ? new Date(t.last_fired_at).toLocaleString() : "—"}
                 </td>
                 <td className="py-2 tabular-nums">{t.firings_count} firings</td>
@@ -133,7 +133,7 @@ export default function TriggersListPage() {
                 </td>
                 <td className="py-2 space-x-2">
                   <button
-                    className="text-amber-700 hover:text-amber-600 dark:text-amber-400 dark:hover:text-amber-300"
+                    className="text-copper-400 hover:text-copper-300"
                     onClick={() => {
                       if (window.confirm(`Fire "${t.name}" now? This will capture a snapshot and run the AI.`)) {
                         fire.mutate(t.id);
@@ -145,16 +145,16 @@ export default function TriggersListPage() {
                   {isManaged ? (
                     <Link
                       to={`/triggers/${t.id}`}
-                      className="text-neutral-500 hover:text-neutral-400"
+                      className="text-ink-500 hover:text-ink-400"
                       title="Condition is managed by the linked thesis"
                     >
                       View
                     </Link>
                   ) : (
-                    <Link to={`/triggers/${t.id}`} className="text-indigo-700 hover:text-indigo-600 dark:text-indigo-400 dark:hover:text-indigo-300">Edit</Link>
+                    <Link to={`/triggers/${t.id}`} className="text-copper-400 hover:text-copper-300">Edit</Link>
                   )}
                   <button
-                    className="text-rose-700 hover:text-rose-600 dark:text-rose-400 dark:hover:text-rose-300"
+                    className="text-loss-400 hover:text-loss-300"
                     onClick={() => {
                       if (window.confirm(`Delete "${t.name}"? Firings history will be removed.`)) {
                         remove.mutate(t.id);

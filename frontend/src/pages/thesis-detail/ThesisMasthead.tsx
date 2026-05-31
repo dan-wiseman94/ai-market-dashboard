@@ -1,13 +1,17 @@
+import { useRef } from "react";
 import { Link } from "react-router-dom";
 import { STATUS_BADGE, DIRECTION_LABEL } from "@/components/thesis/ThesisBadges";
+import { SaveCardButton } from "@/components/SaveCardButton";
 import type { Thesis } from "@/api/thesis";
 
 export function ThesisMasthead({ thesis }: { thesis: Thesis }) {
   const { label: statusLabel, className: statusClass } =
     STATUS_BADGE[thesis.status];
+  const mastheadRef = useRef<HTMLElement>(null);
+  const filename = `thesis-${thesis.ticker}-${thesis.id}.png`;
 
   return (
-    <header className="mb-8 pb-6 border-b border-rule">
+    <header ref={mastheadRef} className="mb-8 pb-6 border-b border-rule">
       <div className="flex items-center gap-3 mb-3">
         <span className="ledger-eyebrow">Thesis · #{thesis.id}</span>
         <span className="flex-1 h-px bg-rule-soft" />
@@ -30,6 +34,7 @@ export function ThesisMasthead({ thesis }: { thesis: Thesis }) {
         >
           {statusLabel}
         </span>
+        <SaveCardButton targetRef={mastheadRef} filename={filename} />
       </div>
       <div className="flex items-center gap-3 mt-2">
         <span className="font-mono text-[13px] text-copper-400 uppercase tracking-wide">
