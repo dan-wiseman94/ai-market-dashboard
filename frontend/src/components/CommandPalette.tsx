@@ -4,6 +4,8 @@ export interface Command {
   id: string;
   label: string;
   keywords?: string;
+  /** Optional section tag shown in the list (e.g. "Recall") */
+  section?: string;
   run: () => void;
 }
 
@@ -11,10 +13,16 @@ export function CommandPalette({
   open,
   onClose,
   commands,
+  extraCommands = [],
+  onQueryChange,
 }: {
   open: boolean;
   onClose: () => void;
   commands: Command[];
+  /** Dynamic commands appended after the static filtered list (e.g. recall hits). */
+  extraCommands?: Command[];
+  /** Called whenever the query input changes — lets the parent debounce async fetching. */
+  onQueryChange?: (q: string) => void;
 }) {
   const [q, setQ] = useState("");
   const [idx, setIdx] = useState(0);
@@ -31,7 +39,7 @@ export function CommandPalette({
     }
   }
 
-  const filtered = useMemo(() => {
+  const filteredStatic = useMemo(() => {
     const needle = q.toLowerCase().trim();
     if (!needle) return commands;
     return commands.filter(
@@ -40,6 +48,12 @@ export function CommandPalette({
         (c.keywords ?? "").toLowerCase().includes(needle),
     );
   }, [q, commands]);
+
+  // Merge static filtered + dynamic extra commands into a single list.
+  const filtered = useMemo(
+    () => [...filteredStatic, ...extraCommands],
+    [filteredStatic, extraCommands],
+  );
 
   if (!open) return null;
 
@@ -71,7 +85,7 @@ export function CommandPalette({
       data-testid="command-palette"
     >
       <div
-        className="w-[560px] max-w-[90vw] bg-slate-900 border border-slate-700 rounded-lg shadow-2xl overflow-hidden"
+        className="w-[560px] max-w-[90vw] bg-ink-900 border border-rule rounded-lg shadow-2xl overflow-hidden"
         onClick={(e) => e.stopPropagation()}
         onKeyDown={onKey}
       >
@@ -82,28 +96,32 @@ export function CommandPalette({
           onChange={(e) => {
             setQ(e.target.value);
             setIdx(0);
+            onQueryChange?.(e.target.value);
           }}
-          className="w-full px-4 py-3 bg-transparent text-slate-100 outline-none border-b border-slate-700"
+          className="w-full px-4 py-3 bg-transparent text-ink-100 outline-none border-b border-rule"
         />
         <ul className="max-h-[400px] overflow-y-auto">
           {filtered.map((c, i) => (
             <li
               key={c.id}
-              className={`px-4 py-2 cursor-pointer ${i === idx ? "bg-slate-800" : ""}`}
+              className={`px-4 py-2 cursor-pointer ${i === idx ? "bg-ink-800" : ""}`}
               onMouseEnter={() => setIdx(i)}
               onClick={() => {
                 c.run();
                 onClose();
               }}
             >
-              <span className="text-slate-100">{c.label}</span>
-              {c.keywords && (
-                <span className="ml-2 text-xs text-slate-500">{c.keywords}</span>
+              <span className="text-ink-100">{c.label}</span>
+              {c.section && (
+                <span className="ml-2 text-xs text-copper-400">{c.section}</span>
+              )}
+              {!c.section && c.keywords && (
+                <span className="ml-2 text-xs text-ink-500">{c.keywords}</span>
               )}
             </li>
           ))}
           {filtered.length === 0 && (
-            <li className="px-4 py-3 text-sm text-slate-500">No commands match.</li>
+            <li className="px-4 py-3 text-sm text-ink-500">No commands match.</li>
           )}
         </ul>
       </div>

@@ -131,25 +131,25 @@ export default function SnapshotComposerPage() {
       <h1 className="text-2xl font-semibold">New snapshot</h1>
 
       {closedMarkets.length > 0 && (
-        <div role="status" className="rounded border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-800 dark:border-amber-700/50 dark:bg-amber-950/40 dark:text-amber-200">
+        <div role="status" className="rounded border border-copper-500/40 bg-copper-500/10 px-3 py-2 text-sm text-copper-300">
           Market closed ({closedMarkets.join(", ")}) — this snapshot will be captured and labeled
           as-of the last session close.
         </div>
       )}
 
       {error && (
-        <div role="alert" className="rounded border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-800 dark:border-red-700/50 dark:bg-red-950/40 dark:text-red-200">
+        <div role="alert" className="rounded border border-loss-500/40 bg-loss-500/10 px-3 py-2 text-sm text-loss-400">
           {error}
         </div>
       )}
 
       <form onSubmit={onCapture} className="space-y-4">
         <div>
-          <label className="block text-xs text-slate-500 mb-1">Profile</label>
+          <label className="block text-xs text-ink-500 mb-1">Profile</label>
           <select
             value={profileId ?? ""}
             onChange={(e) => setProfileId(parseInt(e.target.value, 10) || null)}
-            className="w-full px-2 py-1.5 rounded bg-slate-900 border border-slate-700"
+            className="w-full px-2 py-1.5 rounded bg-ink-900 border border-rule"
           >
             <option value="" disabled>Select profile…</option>
             {(profiles ?? []).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
@@ -157,47 +157,47 @@ export default function SnapshotComposerPage() {
         </div>
 
         <div>
-          <label className="block text-xs text-slate-500 mb-1">
+          <label className="block text-xs text-ink-500 mb-1">
             Watchlist (provides tickers for quotes + OHLC)
           </label>
           <select
             value={watchlistId ?? ""}
             onChange={(e) => setWatchlistId(parseInt(e.target.value, 10) || null)}
-            className="w-full px-2 py-1.5 rounded bg-slate-900 border border-slate-700"
+            className="w-full px-2 py-1.5 rounded bg-ink-900 border border-rule"
           >
             <option value="" disabled>Select watchlist…</option>
             {(watchlists ?? []).map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
           </select>
-          <div className="text-xs text-slate-500 mt-1">
+          <div className="text-xs text-ink-500 mt-1">
             {watchlistTickers.join(", ") || "(no symbols)"}
           </div>
         </div>
 
         <div>
-          <label className="block text-xs text-slate-500 mb-1">Add tickers (optional)</label>
+          <label className="block text-xs text-ink-500 mb-1">Add tickers (optional)</label>
           <TickerChipsInput value={customTickers} onChange={setCustomTickers} />
-          <div className="text-xs text-slate-500 mt-1">
+          <div className="text-xs text-ink-500 mt-1">
             Using: {tickers.join(", ") || "(none — notes/market context only)"}
           </div>
         </div>
 
         <div>
-          <label className="block text-xs text-slate-500 mb-1">Sections</label>
+          <label className="block text-xs text-ink-500 mb-1">Sections</label>
           <SnapshotSectionPicker value={includes} onChange={setIncludes} />
         </div>
 
         <div>
-          <label className="flex items-center gap-2 text-sm text-slate-300">
+          <label className="flex items-center gap-2 text-sm text-ink-300">
             <input
               type="checkbox"
               checked={overnight}
               onChange={(e) => setOvernight(e.target.checked)}
-              className="accent-emerald-500"
+              className="accent-gain-500"
             />
             Overnight (pre-market)
           </label>
           {overnight && (
-            <p className="text-xs text-slate-500 mt-1">
+            <p className="text-xs text-ink-500 mt-1">
               OHLC, quotes, and news shift to extended hours; adds a futures + overseas board.
             </p>
           )}
@@ -205,7 +205,7 @@ export default function SnapshotComposerPage() {
 
         {(presets ?? []).filter((p) => p.active).length > 0 && (
           <div>
-            <label className="block text-xs text-slate-500 mb-1">Apply a preset</label>
+            <label className="block text-xs text-ink-500 mb-1">Apply a preset</label>
             <select
               defaultValue=""
               onChange={(e) => {
@@ -217,7 +217,7 @@ export default function SnapshotComposerPage() {
                 // Reset to placeholder so the user can re-apply the same preset
                 e.target.value = "";
               }}
-              className="w-full px-2 py-1.5 rounded bg-slate-900 border border-slate-700 text-slate-300"
+              className="w-full px-2 py-1.5 rounded bg-ink-900 border border-rule text-ink-300"
               aria-label="Apply a preset"
             >
               <option value="" disabled>Apply a preset…</option>
@@ -229,57 +229,57 @@ export default function SnapshotComposerPage() {
         )}
 
         <div>
-          <label className="block text-xs text-slate-500 mb-1">Thread title (optional)</label>
+          <label className="block text-xs text-ink-500 mb-1">Thread title (optional)</label>
           <input
             type="text" value={title} onChange={(e) => setTitle(e.target.value)}
             maxLength={200}
             placeholder="Defaults to the objective if left blank"
-            className="w-full px-2 py-1.5 rounded bg-slate-900 border border-slate-700"
+            className="w-full px-2 py-1.5 rounded bg-ink-900 border border-rule"
           />
         </div>
 
         <div>
-          <label className="block text-xs text-slate-500 mb-1">Objective</label>
+          <label className="block text-xs text-ink-500 mb-1">Objective</label>
           <textarea
             rows={3} value={objective} onChange={(e) => setObjective(e.target.value)}
             placeholder="What do you want the AI to consider right now?"
-            className="w-full px-2 py-1.5 rounded bg-slate-900 border border-slate-700"
+            className="w-full px-2 py-1.5 rounded bg-ink-900 border border-rule"
           />
         </div>
 
         <div>
-          <label className="block text-xs text-slate-500 mb-1">Notes (optional)</label>
+          <label className="block text-xs text-ink-500 mb-1">Notes (optional)</label>
           <textarea
             rows={2} value={notes} onChange={(e) => setNotes(e.target.value)}
-            className="w-full px-2 py-1.5 rounded bg-slate-900 border border-slate-700"
+            className="w-full px-2 py-1.5 rounded bg-ink-900 border border-rule"
           />
         </div>
 
         <div>
-          <label className="block text-xs text-slate-500 mb-1">Positions (optional, free text)</label>
+          <label className="block text-xs text-ink-500 mb-1">Positions (optional, free text)</label>
           <textarea
             rows={3} value={manualPositions} onChange={(e) => setManualPositions(e.target.value)}
             placeholder="Type or paste positions — the AI parses them, e.g. &#10;100 SPY @ 450&#10;2x AAPL 180c exp 6/20"
-            className="w-full px-2 py-1.5 rounded bg-slate-900 border border-slate-700 font-mono text-sm"
+            className="w-full px-2 py-1.5 rounded bg-ink-900 border border-rule font-mono text-sm"
           />
-          <div className="text-xs text-slate-500 mt-1">
+          <div className="text-xs text-ink-500 mt-1">
             Parsed by the AI — no broker connection needed.
           </div>
         </div>
 
         {stagedIds.length > 0 && (
           <div>
-            <label className="block text-xs text-slate-500 mb-1">Staged screenshots</label>
+            <label className="block text-xs text-ink-500 mb-1">Staged screenshots</label>
             <div className="flex gap-2 flex-wrap">
               {stagedIds.map((id) => (
-                <div key={id} className="relative border border-slate-700 rounded">
+                <div key={id} className="relative border border-rule rounded">
                   <img src={`/api/snapshots/images/${id}/`} alt={`staged ${id}`}
                        className="h-16 w-auto block" />
                   <button
                     type="button"
                     onClick={() => dropStaged(id)}
                     aria-label={`drop staged image ${id}`}
-                    className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-red-900 text-white text-xs leading-none border border-red-800 cursor-pointer p-0"
+                    className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-loss-500 text-white text-xs leading-none border border-loss-400 cursor-pointer p-0"
                   >×</button>
                 </div>
               ))}
@@ -296,7 +296,7 @@ export default function SnapshotComposerPage() {
         <button
           data-testid="capture-btn"
           disabled={!profileId || submitting}
-          className="px-4 py-2 rounded bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40"
+          className="px-4 py-2 rounded bg-gain-500 hover:bg-gain-400 disabled:opacity-40"
         >
           {submitting ? "Capturing…" : "Capture + ask"}
         </button>

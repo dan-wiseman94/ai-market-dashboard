@@ -1,8 +1,16 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { fireEvent, screen, waitFor } from "@testing-library/react";
 import ThesisDetailPage from "../pages/ThesisDetailPage";
 import { mockApi, renderWithProviders } from "./testUtils";
 import type { PostMortem } from "@/api/thesis";
+
+// ThesisChart renders an OHLC fetch — stub it at the boundary so page tests
+// stay focused on page-level behaviour, not the chart's data path.
+vi.mock("@/components/ThesisChart", () => ({
+  default: ({ ticker }: { ticker: string }) => (
+    <div data-testid="thesis-chart-stub" data-ticker={ticker} />
+  ),
+}));
 
 const BASE_THESIS = {
   id: 1,
@@ -400,6 +408,19 @@ describe("ThesisDetailPage", () => {
     );
 
     expect(screen.getByText("Analysis failed.")).toBeInTheDocument();
+  });
+
+  it("embeds ThesisChart on the page for an open thesis", async () => {
+    mockApi({ "GET /api/theses/1/": THESIS });
+    renderWithProviders(<ThesisDetailPage />, {
+      initialEntries: ["/theses/1"],
+      routePath: "/theses/:id",
+    });
+    await waitFor(() =>
+      expect(screen.getByTestId("thesis-chart-stub")).toBeInTheDocument(),
+    );
+    // The stub records the ticker via data-ticker — confirms the prop was passed through
+    expect(screen.getByTestId("thesis-chart-stub")).toHaveAttribute("data-ticker", "SPY");
   });
 
   it("renders 'Analysis in progress…' for a running PM with empty report", async () => {

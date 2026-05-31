@@ -3,7 +3,10 @@ import { afterEach, vi } from "vitest";
 
 vi.mock("lightweight-charts", () => ({
   createChart: vi.fn(() => ({
-    addCandlestickSeries: vi.fn(() => ({ setData: vi.fn() })),
+    addCandlestickSeries: vi.fn(() => ({
+      setData: vi.fn(),
+      createPriceLine: vi.fn(),
+    })),
     timeScale: vi.fn(() => ({ fitContent: vi.fn() })),
     applyOptions: vi.fn(),
     resize: vi.fn(),

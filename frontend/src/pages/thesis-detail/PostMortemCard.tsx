@@ -1,4 +1,6 @@
+import { useRef } from "react";
 import { VerdictBadge } from "@/components/thesis/ThesisBadges";
+import { SaveCardButton } from "@/components/SaveCardButton";
 import type { PostMortem, PostMortemReport } from "@/api/thesis";
 
 function formatReturn(pct: number | null): string {
@@ -97,9 +99,12 @@ function PostMortemBody({ pm }: { pm: PostMortem }) {
 
 export function PostMortemCard({ pm }: { pm: PostMortem }) {
   const isScheduled = pm.status === "scheduled";
+  const cardRef = useRef<HTMLDivElement>(null);
+  const filename = `postmortem-${pm.horizon_days}d.png`;
 
   return (
     <div
+      ref={cardRef}
       className="ledger-surface px-5 py-4 rounded"
       data-testid={`pm-card-${pm.horizon_days}`}
     >
@@ -112,6 +117,8 @@ export function PostMortemCard({ pm }: { pm: PostMortem }) {
         </span>
         {!isScheduled && <VerdictBadge verdict={pm.verdict} />}
         {!isScheduled && <ForwardReturn pm={pm} />}
+        <span className="flex-1" />
+        <SaveCardButton targetRef={cardRef} filename={filename} />
       </div>
 
       <PostMortemBody pm={pm} />

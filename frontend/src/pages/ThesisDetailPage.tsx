@@ -11,7 +11,7 @@ import { PostMortemsSection } from "./thesis-detail/PostMortemsSection";
 import Toggle from "@/components/ui/Toggle";
 import type { Thesis } from "@/api/thesis";
 import { TrackRecordHint } from "@/components/TrackRecordHint";
-import { usePortfolioPositions } from "@/hooks/usePortfolio";
+import ThesisChart from "@/components/ThesisChart";
 
 function PriceGuardToggle({ thesis }: { thesis: Thesis }) {
   const hasTargetOrInvalidation =
@@ -178,6 +178,12 @@ export default function ThesisDetailPage() {
         ticker={thesis.ticker}
         direction={thesis.direction}
         conviction={thesis.conviction}
+      />
+      <ThesisChart
+        ticker={thesis.ticker}
+        entry={thesis.entry_price}
+        target={thesis.target_price}
+        invalidation={thesis.invalidation_price}
       />
       <ThesisFields thesis={thesis} />
       <SourceLinks thesis={thesis} />

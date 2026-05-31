@@ -29,7 +29,7 @@ function TabButton({
   return (
     <button
       type="button"
-      className={`py-2 ${active ? "text-ink-900 border-b-2 border-indigo-500 dark:text-white" : "text-neutral-400"}`}
+      className={`py-2 ${active ? "border-b-2 border-copper-500 text-ink-100" : "text-ink-400"}`}
       onClick={onClick}
     >{label}</button>
   );
@@ -158,7 +158,7 @@ export default function TriggerEditorPage() {
       </h1>
 
       {!isNew && (
-        <div className="flex gap-4 border-b border-neutral-800 mb-4">
+        <div className="flex gap-4 border-b border-rule mb-4">
           <TabButton active={tab === "condition"} label="Condition" onClick={() => setTab("condition")} />
           <TabButton active={tab === "firings"} label={`Firings (${existing?.firings_count ?? 0})`} onClick={() => setTab("firings")} />
           <TabButton active={tab === "backtest"} label="Backtest" onClick={() => setTab("backtest")} />
