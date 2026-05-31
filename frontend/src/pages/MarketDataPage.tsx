@@ -1,6 +1,8 @@
 import { useState, type FormEvent } from "react";
 import { useMacro, useTreasury, useFilings } from "@/hooks/useMarketData";
 import type { MacroSeries, Filing } from "@/api/market";
+import { SkeletonRows } from "@/components/Skeleton";
+import { EmptyState } from "@/components/EmptyState";
 
 function fmt(n: number | null | undefined, digits = 2): string {
   if (n == null) return "—";
@@ -14,11 +16,12 @@ function MacroSection() {
     <section className="mb-10">
       <h2 className="font-display text-[1.15rem] text-ink-50 mb-3">Macro indicators · FRED</h2>
       {isLoading ? (
-        <p className="text-ink-400 text-sm">Loading…</p>
+        <SkeletonRows rows={2} />
       ) : entries.length === 0 ? (
-        <p className="text-[13px] text-ink-400">
-          No data yet — add a FRED key under Settings → Connections.
-        </p>
+        <EmptyState
+          title="No macro data yet"
+          body="Add a FRED key under Settings → Connections to load CPI, rates, and the yield curve."
+        />
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
           {entries.map(([sid, s]) => (
@@ -53,9 +56,9 @@ function TreasurySection() {
     <section className="mb-10">
       <h2 className="font-display text-[1.15rem] text-ink-50 mb-3">US Treasury</h2>
       {isLoading ? (
-        <p className="text-ink-400 text-sm">Loading…</p>
+        <SkeletonRows rows={2} />
       ) : !hasData ? (
-        <p className="text-[13px] text-ink-400">No Treasury data right now.</p>
+        <EmptyState title="No Treasury data right now" />
       ) : (
         <div className="ledger-surface p-5">
           {debt?.total_public_debt != null && (
@@ -117,7 +120,7 @@ function FilingsSection() {
       {tickers.length === 0 ? (
         <p className="text-[13px] text-ink-400">Enter one or more tickers to list recent filings.</p>
       ) : isLoading ? (
-        <p className="text-ink-400 text-sm">Loading…</p>
+        <SkeletonRows rows={3} />
       ) : (
         <div className="space-y-5">
           {Object.entries<Filing[]>(data ?? {}).map(([ticker, filings]) => (
