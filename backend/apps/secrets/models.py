@@ -18,6 +18,12 @@ class ApiCredential(models.Model):
         ("schwab", "Charles Schwab"),
         ("finnhub", "Finnhub"),
         ("marketaux", "Marketaux"),
+        ("alpaca", "Alpaca"),
+        ("tiingo", "Tiingo"),
+        ("twelvedata", "Twelve Data"),
+        ("polygon", "Polygon.io"),
+        ("tradier", "Tradier"),
+        ("fred", "FRED (St. Louis Fed)"),
     ]
 
     provider = models.CharField(max_length=32, choices=PROVIDER_CHOICES, unique=True)
