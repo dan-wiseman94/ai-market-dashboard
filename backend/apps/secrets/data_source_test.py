@@ -9,10 +9,15 @@ MOCK_EXTERNAL and never logs the credential.
 
 from __future__ import annotations
 
+import logging
+from types import SimpleNamespace
+
 import requests  # type: ignore[import-untyped]
 
+from apps.market.services.safe_log import safe_err
 from apps.secrets.models import ApiCredential
 
+log = logging.getLogger(__name__)
 _TIMEOUT = 8
 
 
@@ -45,11 +50,21 @@ def _probe_tiingo(t: dict):
 
 
 def _probe_twelvedata(t: dict):
-    return requests.get(
+    resp = requests.get(
         "https://api.twelvedata.com/quote",
         params={"symbol": "AAPL", "apikey": t.get("api_key", "")},
         timeout=_TIMEOUT,
     )
+    # Twelve Data answers HTTP 200 even for a bad key, with the error in the JSON body —
+    # normalise that to a 401 here so the classifier stays purely status-code-driven.
+    if resp.status_code == 200:
+        try:
+            body = resp.json()
+        except ValueError:
+            body = {}
+        if isinstance(body, dict) and str(body.get("status")) == "error":
+            return SimpleNamespace(status_code=401)
+    return resp
 
 
 def _probe_polygon(t: dict):
@@ -97,15 +112,7 @@ _PROBES = {
 }
 
 
-def _classify(provider: str, resp) -> dict:
-    # Twelve Data answers HTTP 200 even for a bad key, with the error in the JSON body.
-    if provider == "twelvedata" and resp.status_code == 200:
-        try:
-            body = resp.json()
-        except ValueError:
-            body = {}
-        if isinstance(body, dict) and str(body.get("status")) == "error":
-            return {"ok": False, "message": "Key rejected by Twelve Data."}
+def _classify(resp) -> dict:
     if resp.status_code == 200:
         return {"ok": True, "message": "Key works."}
     if resp.status_code in (400, 401, 402, 403):
@@ -128,6 +135,7 @@ def test_credential(provider: str) -> dict:
         return {"ok": False, "message": "No credential saved yet."}
     try:
         resp = probe(cred.token or {})
-    except Exception:
+    except Exception as exc:
+        log.warning("market.data_source_test.failed provider=%s: %s", provider, safe_err(exc))
         return {"ok": False, "message": "Couldn't reach the provider."}
-    return _classify(provider, resp)
+    return _classify(resp)

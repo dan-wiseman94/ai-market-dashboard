@@ -144,3 +144,12 @@ def test_test_credential_classifies_status_codes():
     assert rejected["ok"] is False
     assert "rejected" in rejected["message"].lower()
     assert ok["ok"] is True
+
+
+def test_probes_cover_every_keyed_provider():
+    """Every key-based catalog entry needs a probe, else 'Test key' silently no-ops."""
+    from apps.secrets import data_source_test as mod
+    from apps.secrets.data_sources import DATA_SOURCES
+
+    keyed = {ds["provider"] for ds in DATA_SOURCES if ds["auth"] in ("key", "key_secret")}
+    assert set(mod._PROBES) == keyed
