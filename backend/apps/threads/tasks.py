@@ -18,7 +18,6 @@ from decimal import Decimal
 from typing import Any
 
 from celery import shared_task
-from django.conf import settings
 from django.db import transaction
 
 from apps.ai.capabilities import unsupported_features
@@ -199,13 +198,16 @@ def _failover_target(primary_name: str) -> tuple[str, str, ProviderConfig] | Non
     """The secondary (provider, model, cfg) to retry on when the primary errors
     BEFORE emitting any token — or None when failover is unavailable.
 
-    Opt-in via AI_FAILOVER_ENABLED (default off). The configured secondary
-    (AI_FAILOVER_PROVIDER) must differ from the primary, have an enabled
-    ProviderConfig with a default_model, and be within its own cost caps.
+    Opt-in via the failover settings (default off; UI-tunable via SystemSettings). The
+    configured secondary must differ from the primary, have an enabled ProviderConfig with
+    a default_model, and be within its own cost caps.
     """
-    if not getattr(settings, "AI_FAILOVER_ENABLED", False):
+    from apps.core.runtime_config import runtime_config
+
+    rc = runtime_config()
+    if not rc.ai_failover_enabled:
         return None
-    name = (getattr(settings, "AI_FAILOVER_PROVIDER", "") or "").strip()
+    name = (rc.ai_failover_provider or "").strip()
     if not name or name == primary_name:
         return None
     try:
