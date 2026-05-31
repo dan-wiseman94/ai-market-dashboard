@@ -411,7 +411,14 @@ def test_run_postmortem_ai_path_uses_existing_review_thread(thesis, fake_report)
 def test_create_thesis_schedules_postmortems(api, profile):
     resp = api.post(
         "/api/theses/",
-        {"title": "Long NVDA", "ticker": "nvda", "direction": "bullish", "profile_id": profile.id},
+        {
+            "title": "Long NVDA",
+            "ticker": "nvda",
+            "direction": "bullish",
+            "profile_id": profile.id,
+            "rationale": "AI compute demand",
+            "invalidation_note": "breaks below 100",
+        },
         format="json",
     )
     assert resp.status_code == 201
@@ -424,7 +431,14 @@ def test_create_thesis_schedules_postmortems(api, profile):
 def test_create_thesis_response_nests_postmortems(api, profile):
     resp = api.post(
         "/api/theses/",
-        {"title": "Long MSFT", "ticker": "MSFT", "direction": "bullish", "profile_id": profile.id},
+        {
+            "title": "Long MSFT",
+            "ticker": "MSFT",
+            "direction": "bullish",
+            "profile_id": profile.id,
+            "rationale": "cloud growth",
+            "invalidation_note": "breaks below 380",
+        },
         format="json",
     )
     assert resp.status_code == 201

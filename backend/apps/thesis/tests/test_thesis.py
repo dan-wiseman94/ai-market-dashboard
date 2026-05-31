@@ -103,7 +103,14 @@ def test_str(profile):
 def test_create_minimal(api, profile):
     resp = api.post(
         "/api/theses/",
-        {"title": "Long NVDA", "ticker": "nvda", "direction": "bullish", "profile_id": profile.id},
+        {
+            "title": "Long NVDA",
+            "ticker": "nvda",
+            "direction": "bullish",
+            "profile_id": profile.id,
+            "rationale": "AI compute demand",
+            "invalidation_note": "breaks below 100",
+        },
         format="json",
     )
     assert resp.status_code == 201
@@ -112,6 +119,45 @@ def test_create_minimal(api, profile):
     assert body["status"] == "open"
     assert body["conviction"] == 3
     assert body["profile_id"] == profile.id
+
+
+@pytest.mark.django_db
+def test_create_requires_rationale_and_invalidation(api, profile):
+    """Pre-trade discipline (C4): a new thesis must state a rationale AND an
+    invalidation (a price level OR a written note), or the create is rejected."""
+    base = {
+        "title": "undisciplined",
+        "ticker": "NVDA",
+        "direction": "bullish",
+        "profile_id": profile.id,
+    }
+
+    # Missing both -> 400 on rationale.
+    r1 = api.post("/api/theses/", base, format="json")
+    assert r1.status_code == 400
+    assert "rationale" in r1.json()
+
+    # Rationale present, no invalidation (neither price nor note) -> 400.
+    r2 = api.post("/api/theses/", {**base, "rationale": "AI demand"}, format="json")
+    assert r2.status_code == 400
+    assert "invalidation_note" in r2.json()
+
+    # Rationale + a price-level invalidation -> accepted.
+    r3 = api.post(
+        "/api/theses/",
+        {**base, "rationale": "AI demand", "invalidation_price": "95.00"},
+        format="json",
+    )
+    assert r3.status_code == 201
+
+    # Rationale + a written invalidation note -> accepted.
+    r4 = api.post(
+        "/api/theses/",
+        {**base, "rationale": "AI demand", "invalidation_note": "breaks below 100"},
+        format="json",
+    )
+    assert r4.status_code == 201
+    assert r4.json()["invalidation_note"] == "breaks below 100"
 
 
 @pytest.mark.django_db
@@ -249,6 +295,8 @@ def test_create_with_snapshot_defaults_entry_price(api, profile, snapshot_with_q
         "/api/theses/",
         {
             "title": "AAPL long",
+            "rationale": "AAPL uptrend intact",
+            "invalidation_note": "loses 180 support",
             "ticker": "AAPL",
             "direction": "bullish",
             "profile_id": profile.id,
@@ -272,6 +320,8 @@ def test_create_with_snapshot_does_not_override_explicit_entry_price(
         "/api/theses/",
         {
             "title": "AAPL long explicit",
+            "rationale": "AAPL uptrend intact",
+            "invalidation_note": "loses 180 support",
             "ticker": "AAPL",
             "direction": "bullish",
             "profile_id": profile.id,
@@ -290,6 +340,8 @@ def test_create_with_thread_sets_thread_fk(api, profile, thread):
         "/api/theses/",
         {
             "title": "from thread",
+            "rationale": "thread analysis",
+            "invalidation_note": "thesis broken below support",
             "ticker": "AAPL",
             "direction": "bullish",
             "profile_id": profile.id,
@@ -308,6 +360,8 @@ def test_create_with_snapshot_no_quotes_section_leaves_entry_price_null(api, pro
         "/api/theses/",
         {
             "title": "AAPL long no quotes",
+            "rationale": "AAPL thesis",
+            "invalidation_note": "loses 180 support",
             "ticker": "AAPL",
             "direction": "bullish",
             "profile_id": profile.id,
@@ -335,6 +389,8 @@ def test_create_with_snapshot_ticker_not_in_quotes_leaves_entry_price_null(api, 
         "/api/theses/",
         {
             "title": "AAPL long missing ticker",
+            "rationale": "AAPL thesis",
+            "invalidation_note": "loses 180 support",
             "ticker": "AAPL",
             "direction": "bullish",
             "profile_id": profile.id,
@@ -387,6 +443,8 @@ def test_create_conviction_too_high_returns_400(api, profile):
             "ticker": "NVDA",
             "direction": "bullish",
             "profile_id": profile.id,
+            "rationale": "documented reasoning",
+            "invalidation_note": "thesis broken below support",
             "conviction": 99,
         },
         format="json",
@@ -404,6 +462,8 @@ def test_create_conviction_zero_returns_400(api, profile):
             "ticker": "TSLA",
             "direction": "bearish",
             "profile_id": profile.id,
+            "rationale": "documented reasoning",
+            "invalidation_note": "thesis broken below support",
             "conviction": 0,
         },
         format="json",
@@ -467,6 +527,8 @@ def test_create_lowercase_ticker_defaults_entry_price_from_uppercase_quotes_key(
         "/api/theses/",
         {
             "title": "AAPL long lowercase ticker",
+            "rationale": "AAPL uptrend intact",
+            "invalidation_note": "loses 180 support",
             "ticker": "aapl",
             "direction": "bullish",
             "profile_id": profile.id,
