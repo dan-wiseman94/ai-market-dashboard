@@ -147,6 +147,10 @@ STATICFILES_DIRS = (
 # response from the view rather than Django's bare 400 RequestDataTooBig.
 DATA_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024  # 5 MB
 
+# Snapshot image bytes are written here (on the persistent app_data:/data volume)
+# instead of into Postgres, keeping pg_dump small (C7). See apps.snapshots.image_store.
+SNAPSHOT_IMAGE_DIR = env.str("SNAPSHOT_IMAGE_DIR", default="/data/images")
+
 # DRF
 REST_FRAMEWORK = {
     "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],

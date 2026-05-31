@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from apps.snapshots.image_store import create_image
 from apps.snapshots.models import SnapshotImage
 
 PNG_MAGIC = b"\x89PNG\r\n\x1a\n"
@@ -25,7 +26,7 @@ def attach_client_image(
         raise InvalidPNGError("data does not start with PNG magic bytes")
     if len(png_bytes) > MAX_BYTES:
         raise ImageTooLargeError(f"image exceeds {MAX_BYTES} bytes")
-    return SnapshotImage.objects.create(
+    return create_image(
         snapshot_id=snapshot_id,
         kind="client_capture",
         data=png_bytes,
