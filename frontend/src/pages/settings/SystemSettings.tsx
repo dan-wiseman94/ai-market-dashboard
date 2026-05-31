@@ -5,14 +5,8 @@ import { updateSystemSettings, type SystemSettings as Settings } from "@/api/set
 import SettingsSection from "@/components/settings/SettingsSection";
 import { useToast } from "@/hooks/useToast";
 
-type NumericKey =
-  | "retention_ohlc_days"
-  | "retention_chain_days"
-  | "retention_notification_days"
-  | "retention_error_days"
-  | "observer_response_cache_ttl_seconds"
-  | "aieval_scheduled_horizon"
-  | "aieval_scheduled_limit";
+// The numeric-valued keys of Settings, derived from the interface so it can't drift.
+type NumericKey = { [K in keyof Settings]: Settings[K] extends number ? K : never }[keyof Settings];
 
 export default function SystemSettings() {
   const { data, isLoading } = useSystemSettings();
