@@ -52,8 +52,14 @@ around a complete, closing feedback loop:
 
 - **Point-in-time snapshots** of the whole picture, from opt-in sections: live
   **quotes**, **OHLC history**, **option chains**, **positions**, **market
-  breadth**, **news**, **rendered chart images** (real PNGs from a headless
-  browser), and a **forward earnings/macro calendar**.
+  breadth**, **news**, **macro indicators**, **SEC filings**, **Treasury rates**,
+  **rendered chart images** (real PNGs from a headless browser), and a
+  **forward earnings/macro calendar**.
+- **Free data sources, no brokerage required.** Add a free-tier key (Alpaca,
+  Tiingo, Twelve Data, Polygon, Tradier, FRED, Marketaux) under Settings and the
+  quotes / OHLC / option-chain / news pipeline transparently falls back to it when
+  Schwab isn't connected — plus keyless **SEC EDGAR** filings and **US Treasury**
+  rates. The whole dashboard runs without a Schwab login.
 - **Nothing is silently dropped.** If a section fails, it's flagged in the payload
   so the AI knows exactly what it couldn't see — partial captures are honest, not misleading.
 - **Overnight / pre-market mode** adds index, vol & rates **futures**, overseas
@@ -223,7 +229,7 @@ around a complete, closing feedback loop:
 | **Async** | Celery worker + beat · Redis |
 | **Data** | PostgreSQL 16 + `pgvector` (semantic recall) |
 | **AI** | Anthropic & OpenAI SDKs · local OpenAI-compatible endpoints · `fastembed` embeddings |
-| **Market** | Charles Schwab API · Finnhub · `pandas-market-calendars` · headless Chromium chart rendering |
+| **Market** | Charles Schwab API · Finnhub · Alpaca · Tiingo · Twelve Data · Polygon · Tradier · FRED · SEC EDGAR · Marketaux · US Treasury · `pandas-market-calendars` · headless Chromium chart rendering |
 | **Frontend** | React 19 + TypeScript · Vite · TanStack Query · lightweight-charts + Recharts |
 | **Security** | `django-cryptography` encrypted secrets at rest |
 
