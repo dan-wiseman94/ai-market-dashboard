@@ -85,4 +85,6 @@ class TestAITrackRecordBlock:
         p = _profile()
         for _ in range(3):
             _resolved("NVDA", "correct", 0.7)
-        assert "My own track record here" in assemble_coach_context_for_message("thoughts on $NVDA?", p)
+        assert "My own track record here" in assemble_coach_context_for_message(
+            "thoughts on $NVDA?", p
+        )

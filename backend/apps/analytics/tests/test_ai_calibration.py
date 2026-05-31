@@ -47,9 +47,18 @@ class TestAICalibration:
     def test_inconclusive_excluded(self):
         _resolved(0.8, "correct")
         AIPrediction.objects.create(
-            ticker="X", direction="bullish", horizon_days=7, confidence=0.9,
-            provider="claude", model="m", predicted_at=WIN_START, resolve_at=WIN_START,
-            status="resolved", verdict="inconclusive", forward_return_pct=None, resolved_at=_RESOLVED_AT,
+            ticker="X",
+            direction="bullish",
+            horizon_days=7,
+            confidence=0.9,
+            provider="claude",
+            model="m",
+            predicted_at=WIN_START,
+            resolve_at=WIN_START,
+            status="resolved",
+            verdict="inconclusive",
+            forward_return_pct=None,
+            resolved_at=_RESOLVED_AT,
         )
         assert ai_calibration(start=WIN_START, end=WIN_END)["overall"]["scored"] == 1
 
