@@ -5,6 +5,7 @@ from __future__ import annotations
 import base64
 from datetime import UTC, datetime
 
+from apps.snapshots.image_store import read_image_bytes
 from apps.snapshots.models import Snapshot, SnapshotImage
 from apps.snapshots.token_budget import prune_to_budget
 
@@ -464,7 +465,7 @@ def build_image_blocks(image_ids: list[int], *, provider_name: str) -> list[dict
     """Return provider-shaped image blocks for inline base64 attachment."""
     blocks: list[dict] = []
     for img in SnapshotImage.objects.filter(id__in=image_ids).order_by("id"):
-        b64 = base64.b64encode(bytes(img.data)).decode("ascii")
+        b64 = base64.b64encode(read_image_bytes(img)).decode("ascii")
         if provider_name == "claude":
             blocks.append(
                 {
