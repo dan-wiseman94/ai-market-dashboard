@@ -74,7 +74,9 @@ def ai_calibration(*, start: datetime, end: datetime, horizon: int | None = None
             tot[verdict] += 1
 
         bl = _band_for(conf)
-        b = bands.setdefault(bl, {"band": bl, "n": 0, "correct": 0, "incorrect": 0, "conf_sum": 0.0})
+        b = bands.setdefault(
+            bl, {"band": bl, "n": 0, "correct": 0, "incorrect": 0, "conf_sum": 0.0}
+        )
         b["n"] += 1
         b["conf_sum"] += conf
         if verdict in _DECISIVE:

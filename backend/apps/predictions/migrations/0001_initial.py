@@ -5,44 +5,122 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
     dependencies = [
-        ('profiles', '0007_tradingprofile_enable_coach'),
-        ('snapshots', '0012_alter_snapshotsection_kind'),
-        ('threads', '0006_alter_thread_kind'),
+        ("profiles", "0007_tradingprofile_enable_coach"),
+        ("snapshots", "0012_alter_snapshotsection_kind"),
+        ("threads", "0006_alter_thread_kind"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='AIPrediction',
+            name="AIPrediction",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('ticker', models.CharField(db_index=True, max_length=16)),
-                ('direction', models.CharField(choices=[('bullish', 'bullish'), ('bearish', 'bearish'), ('neutral', 'neutral')], max_length=8)),
-                ('horizon_days', models.PositiveIntegerField()),
-                ('confidence', models.FloatField()),
-                ('rationale', models.TextField(blank=True, default='')),
-                ('invalidation_price', models.DecimalField(blank=True, decimal_places=4, max_digits=14, null=True)),
-                ('invalidation_note', models.CharField(blank=True, default='', max_length=300)),
-                ('provider', models.CharField(db_index=True, max_length=32)),
-                ('model', models.CharField(db_index=True, max_length=64)),
-                ('predicted_at', models.DateTimeField(db_index=True)),
-                ('resolve_at', models.DateTimeField(db_index=True)),
-                ('status', models.CharField(choices=[('open', 'open'), ('resolving', 'resolving'), ('resolved', 'resolved'), ('invalidated', 'invalidated')], default='open', max_length=12)),
-                ('forward_return_pct', models.FloatField(blank=True, null=True)),
-                ('verdict', models.CharField(blank=True, choices=[('correct', 'correct'), ('incorrect', 'incorrect'), ('mixed', 'mixed'), ('inconclusive', 'inconclusive')], default='', max_length=12)),
-                ('resolved_at', models.DateTimeField(blank=True, null=True)),
-                ('invalidated_at', models.DateTimeField(blank=True, null=True)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('profile', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='+', to='profiles.tradingprofile')),
-                ('source_message', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='+', to='threads.message')),
-                ('source_snapshot', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='+', to='snapshots.snapshot')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True, primary_key=True, serialize=False, verbose_name="ID"
+                    ),
+                ),
+                ("ticker", models.CharField(db_index=True, max_length=16)),
+                (
+                    "direction",
+                    models.CharField(
+                        choices=[
+                            ("bullish", "bullish"),
+                            ("bearish", "bearish"),
+                            ("neutral", "neutral"),
+                        ],
+                        max_length=8,
+                    ),
+                ),
+                ("horizon_days", models.PositiveIntegerField()),
+                ("confidence", models.FloatField()),
+                ("rationale", models.TextField(blank=True, default="")),
+                (
+                    "invalidation_price",
+                    models.DecimalField(blank=True, decimal_places=4, max_digits=14, null=True),
+                ),
+                ("invalidation_note", models.CharField(blank=True, default="", max_length=300)),
+                ("provider", models.CharField(db_index=True, max_length=32)),
+                ("model", models.CharField(db_index=True, max_length=64)),
+                ("predicted_at", models.DateTimeField(db_index=True)),
+                ("resolve_at", models.DateTimeField(db_index=True)),
+                (
+                    "status",
+                    models.CharField(
+                        choices=[
+                            ("open", "open"),
+                            ("resolving", "resolving"),
+                            ("resolved", "resolved"),
+                            ("invalidated", "invalidated"),
+                        ],
+                        default="open",
+                        max_length=12,
+                    ),
+                ),
+                ("forward_return_pct", models.FloatField(blank=True, null=True)),
+                (
+                    "verdict",
+                    models.CharField(
+                        blank=True,
+                        choices=[
+                            ("correct", "correct"),
+                            ("incorrect", "incorrect"),
+                            ("mixed", "mixed"),
+                            ("inconclusive", "inconclusive"),
+                        ],
+                        default="",
+                        max_length=12,
+                    ),
+                ),
+                ("resolved_at", models.DateTimeField(blank=True, null=True)),
+                ("invalidated_at", models.DateTimeField(blank=True, null=True)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                (
+                    "profile",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name="+",
+                        to="profiles.tradingprofile",
+                    ),
+                ),
+                (
+                    "source_message",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name="+",
+                        to="threads.message",
+                    ),
+                ),
+                (
+                    "source_snapshot",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name="+",
+                        to="snapshots.snapshot",
+                    ),
+                ),
             ],
             options={
-                'indexes': [models.Index(fields=['ticker', 'status'], name='predictions_ticker_1d0072_idx'), models.Index(fields=['provider', 'model', 'status'], name='predictions_provide_889ac6_idx'), models.Index(fields=['status', 'resolve_at'], name='predictions_status_452c48_idx')],
+                "indexes": [
+                    models.Index(fields=["ticker", "status"], name="predictions_ticker_1d0072_idx"),
+                    models.Index(
+                        fields=["provider", "model", "status"],
+                        name="predictions_provide_889ac6_idx",
+                    ),
+                    models.Index(
+                        fields=["status", "resolve_at"], name="predictions_status_452c48_idx"
+                    ),
+                ],
             },
         ),
     ]
