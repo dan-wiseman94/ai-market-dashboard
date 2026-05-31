@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useParams } from "react-router-dom";
 import WatchlistTable from "@/components/WatchlistTable";
+import { TickerChanges } from "./watchlist/TickerChanges";
 import { useAddSymbol, useRemoveSymbol, useWatchlist } from "@/hooks/useWatchlist";
 
 export default function WatchlistDetail() {
@@ -41,6 +42,19 @@ export default function WatchlistDetail() {
       )}
 
       <WatchlistTable symbols={wl.symbols} onRemove={(sid) => remove.mutate(sid)} />
+
+      {wl.symbols.length > 0 && (
+        <section>
+          <h2 className="mb-1 text-sm font-semibold text-ink-300">
+            What changed since your last look
+          </h2>
+          <div className="ledger-surface px-4">
+            {wl.symbols.map((s) => (
+              <TickerChanges key={s.id} ticker={s.ticker} />
+            ))}
+          </div>
+        </section>
+      )}
     </main>
   );
 }
