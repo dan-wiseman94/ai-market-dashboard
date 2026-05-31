@@ -66,6 +66,10 @@ app.conf.beat_schedule = {
         "task": "predictions.resolve_due",
         "schedule": 300.0,
     },
+    "check-prediction-invalidations": {
+        "task": "predictions.check_invalidations",
+        "schedule": 300.0,
+    },
     "fire-close-relative-schedules": {
         "task": "observer.fire_close_relative_schedules",
         "schedule": crontab(minute="*"),

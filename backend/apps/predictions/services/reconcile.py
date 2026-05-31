@@ -30,6 +30,40 @@ def current_ai_view(ticker: str):
     )
 
 
+def open_divergences(*, include_partial: bool = True) -> list[dict]:
+    """Open theses whose direction conflicts with the AI's CURRENT live call on
+    the same ticker — a proactive risk surface (M13 F7 dashboard rollup).
+
+    ``diverge`` (opposite calls) is always included; ``partial`` (one side
+    neutral) is included unless ``include_partial`` is False. Theses with no
+    current AI view are skipped (nothing to reconcile). Highest-conviction first.
+    """
+    from apps.thesis.models import Thesis
+
+    out: list[dict] = []
+    for t in Thesis.objects.filter(status="open").order_by("-conviction", "-opened_at"):
+        ai = current_ai_view(t.ticker)
+        if ai is None:
+            continue
+        agreement = reconcile_directions(t.direction, ai.direction)
+        if agreement == "agree" or (agreement == "partial" and not include_partial):
+            continue
+        out.append(
+            {
+                "thesis_id": t.id,
+                "ticker": t.ticker,
+                "title": t.title,
+                "thesis_direction": t.direction,
+                "conviction": t.conviction,
+                "ai_direction": ai.direction,
+                "ai_confidence": round(ai.confidence, 4),
+                "ai_horizon_days": ai.horizon_days,
+                "agreement": agreement,
+            }
+        )
+    return out
+
+
 def ai_view_payload(ticker: str, against: str | None = None) -> dict:
     """JSON-ready current AI view for ``ticker``. ``against`` (a thesis direction)
     adds an ``agreement`` verdict; omitted ⇒ ``agreement`` is null."""
