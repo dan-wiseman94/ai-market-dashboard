@@ -32,8 +32,12 @@ const BASE_PROPS = {
   onConvictionChange: vi.fn(),
   target: "",
   onTargetChange: vi.fn(),
+  rationale: "",
+  onRationaleChange: vi.fn(),
   invalidation: "",
   onInvalidationChange: vi.fn(),
+  invalidationNote: "",
+  onInvalidationNoteChange: vi.fn(),
   pending: false,
   onSubmit: vi.fn(),
   onCancel: vi.fn(),
@@ -67,5 +71,18 @@ describe("ThesisForm with TrackRecordHint", () => {
     render(<ThesisForm {...BASE_PROPS} />, { wrapper });
 
     expect(screen.queryByTestId("track-record-hint")).toBeNull();
+  });
+
+  it("renders required rationale + invalidation-note fields (pre-trade discipline)", () => {
+    vi.spyOn(analytics, "useTrackRecord").mockReturnValue({
+      data: { ticker: "NVDA", available: false, record: null },
+      isLoading: false,
+      isSuccess: true,
+    } as ReturnType<typeof analytics.useTrackRecord>);
+
+    render(<ThesisForm {...BASE_PROPS} />, { wrapper });
+
+    expect(screen.getByLabelText(/Rationale/i)).toBeRequired();
+    expect(screen.getByLabelText(/What would invalidate/i)).toBeRequired();
   });
 });

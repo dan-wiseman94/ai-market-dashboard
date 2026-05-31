@@ -79,6 +79,7 @@ export interface CreateThesisBody {
   entry_price?: string | null;
   target_price?: string | null;
   invalidation_price?: string | null;
+  invalidation_note?: string;
   horizon_days?: number | null;
   profile_id?: number | null;
   thread_id?: number | null;
