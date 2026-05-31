@@ -13,6 +13,17 @@ recalled.
 
 The program is substantively complete. What remains splits into three tiers.
 
+> **UPDATE 2026-05-31 — "M7: Eval-driven calibration loop" is BUILT** (local branch
+> `feat/m7-eval-calibration-loop`, not yet pushed). Implemented in dependency order
+> B1 → B3 → B2 → schedule → A3: `predicted_confidence` on `ObservationReport`;
+> `EvalRun` model + migration + read-only `/api/aieval/runs/` (+ `/runs/latest/`);
+> `preflight_cost_cap` wired into the manual command (which now persists an
+> `EvalRun`); an opt-in, cost-capped `aieval.run_scheduled` beat task (default OFF
+> via `AIEVAL_SCHEDULED_ENABLED`); and `_calibration_block` injecting the latest
+> measured calibration into the live coach. Items marked **✅ DONE** below.
+> Still open: **A1**, **A2**, and all of **Tier C**. Plan:
+> `docs/superpowers/plans/2026-05-31-m7-eval-calibration-loop.md`.
+
 ---
 
 ## Tier A — Deliberately deferred during the program (flagged, not faked)
@@ -40,7 +51,12 @@ Each was skipped because it needs a design decision, not just execution.
   refresh. That's a brainstorm, not a clean build.
 - **Effort:** M. **Files:** `backend/apps/threads/coach.py`, `_request.py`.
 
-### A3. Live calibration/confidence injection into the coach  (M6-3 follow-on)
+### A3. Live calibration/confidence injection into the coach  (M6-3 follow-on) — ✅ DONE
+> `apps/threads/coach.py:_calibration_block(profile)` reads the latest `EvalRun`
+> for `profile.default_model` and injects a measured hit-rate/Brier + an
+> over/under/well-confident verdict; wired as the last section of
+> `assemble_coach_context` (rides the existing primary-ticker gate). Touches only
+> the live coach — the eval replay path stays look-ahead-safe.
 - **State:** M6 *measures* calibration (the `apps/aieval` harness +
   `confidence_calibration`) but the coach does NOT *read* it at generation time.
   (Verified: `coach.py` imports `track_record_for_ticker` but no calibration
@@ -53,7 +69,7 @@ Each was skipped because it needs a design decision, not just execution.
 
 ## Tier B — Altitude/robustness gaps the `/simplify` review surfaced (small, real)
 
-### B1. `predicted_confidence` on `ObservationReport`
+### B1. `predicted_confidence` on `ObservationReport` — ✅ DONE
 - M6-5 added `predicted_direction` + `predicted_horizon_days` (verified present
   in `observer/schemas.py`) but **no paired confidence**. The eval harness
   reconstructs confidence from `mean(signal.confidence)` — leaky: a report with
@@ -63,14 +79,14 @@ Each was skipped because it needs a design decision, not just execution.
   falls back to the signal mean. **Effort:** S. **Files:**
   `backend/apps/observer/schemas.py`, `backend/apps/aieval/services.py`.
 
-### B2. aieval cost-cap pre-flight
+### B2. aieval cost-cap pre-flight — ✅ DONE
 - Real `manage.py aieval` runs are guarded only by `--limit`, not
   `check_daily_cap`/`check_monthly_cap`. (Verified: no cap call in
   `apps/aieval/`.) The command docstring implies cap-respect → either wire a
   pre-loop `check_daily_cap("claude", ...)` in the command's `handle()`, or
   correct the docstring to say "use `--limit`". **Effort:** S.
 
-### B3. `EvalRun` persistence + read-only view
+### B3. `EvalRun` persistence + read-only view — ✅ DONE
 - The harness prints/returns results; nothing stores them. (Verified: no
   `EvalRun` model, no `apps/aieval/views.py`.) Needed before A3 (live injection)
   or any scorecard UI for eval results. **Effort:** S–M (model + migration +
@@ -108,7 +124,7 @@ unbuilt on 2026-05-31.
 
 ---
 
-## Recommended next milestone — "M7: Eval-driven calibration loop"
+## Recommended next milestone — "M7: Eval-driven calibration loop" — ✅ BUILT (local)
 
 The one thread where deferred pieces compound into a real capability (makes the
 AI not just measurable but self-correcting — M6's whole thesis):
@@ -116,8 +132,12 @@ AI not just measurable but self-correcting — M6's whole thesis):
 **B3 (persist EvalRun) → schedule the harness → A3 (feed measured calibration
 into the coach prompt) → B1 (predicted_confidence) → B2 (cap pre-flight).**
 
-All backend, ~M effort, builds directly on shipped M6. Everything else in Tier C
-is independent — cherry-pick by appetite.
+All backend, ~M effort, builds directly on shipped M6. **Implemented 2026-05-31**
+on `feat/m7-eval-calibration-loop` (7 commits, local only — not pushed). The
+schedule step landed as an **opt-in** beat task (`AIEVAL_SCHEDULED_ENABLED`,
+default OFF) because `run_structured` has no `MOCK_EXTERNAL` short-circuit, so an
+always-on schedule would hit the real model. Everything else in Tier C remains
+independent — cherry-pick by appetite.
 
 ## Execution notes for whoever picks this up
 - Branch per unit off `origin/main` (repo is `dan-wiseman94/ai-market-dashboard`;

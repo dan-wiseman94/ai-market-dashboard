@@ -13,9 +13,17 @@ from unittest.mock import patch
 import pytest
 from django.core.management import call_command
 from django.utils import timezone
+from rest_framework.test import APIClient
 
 from apps.aieval import services as svc
-from apps.aieval.services import confidence_calibration, evaluate, labeled_examples, replay_one
+from apps.aieval.services import (
+    _confidence_from_report,
+    confidence_calibration,
+    evaluate,
+    labeled_examples,
+    persist_eval_run,
+    replay_one,
+)
 from apps.observer.schemas import ObservationReport, Signal
 from apps.profiles.models import TradingProfile
 from apps.snapshots.models import Snapshot
@@ -427,3 +435,301 @@ def test_command_prints_calibration_table(profile):
     text = out.getvalue()
     assert "calibration" in text
     assert "conf [" in text
+
+
+# --------------------------------------------------------------------------- #
+# Task 1 — predicted_confidence on ObservationReport; harness prefers it
+# --------------------------------------------------------------------------- #
+
+
+def test_predicted_confidence_field_accepted():
+    """ObservationReport accepts an optional predicted_confidence in [0,1]."""
+    r = ObservationReport(
+        headline="h",
+        bias="bullish",
+        summary="s",
+        next_check_in="tomorrow",
+        predicted_confidence=0.73,
+    )
+    assert r.predicted_confidence == 0.73
+    # Default is None (additive / backward-compatible)
+    r2 = ObservationReport(headline="h", bias="bullish", summary="s", next_check_in="t")
+    assert r2.predicted_confidence is None
+
+
+def test_confidence_prefers_predicted_confidence_over_signal_mean():
+    """When predicted_confidence is set, it wins over the signal-mean fallback."""
+    r = _report("bullish", confs=(0.2, 0.4))  # signal mean would be 0.3
+    r.predicted_confidence = 0.9
+    assert _confidence_from_report(r) == 0.9
+
+
+def test_confidence_falls_back_to_signal_mean_when_unset():
+    """predicted_confidence=None -> mean of per-signal confidences (legacy behavior)."""
+    r = _report("bullish", confs=(0.6, 1.0))  # mean 0.8
+    assert r.predicted_confidence is None
+    assert _confidence_from_report(r) == 0.8
+
+
+def test_confidence_none_when_no_signals_and_no_predicted():
+    r = ObservationReport(headline="h", bias="bullish", summary="s", next_check_in="t")
+    assert _confidence_from_report(r) is None
+
+
+# --------------------------------------------------------------------------- #
+# Task 2 — EvalRun model + persist_eval_run helper
+# --------------------------------------------------------------------------- #
+
+
+def test_persist_eval_run_maps_result_to_row(db):
+    result = {
+        "label": "smoke",
+        "model": "claude-sonnet-4-6",
+        "horizon": 30,
+        "n": 5,
+        "skipped": 1,
+        "scored": 4,
+        "hit_rate": 0.75,
+        "brier": 0.21,
+        "avg_confidence": 0.68,
+        "calibration_error": 0.12,
+        "calibration": [
+            {
+                "bin_low": 0.7,
+                "bin_high": 0.9,
+                "n": 4,
+                "hits": 3,
+                "observed_hit_rate": 0.75,
+                "mean_confidence": 0.68,
+            }
+        ],
+        "examples": [{"predicted_direction": "bullish", "hit": True}],
+    }
+    from apps.aieval.models import EvalRun
+
+    run = persist_eval_run(result, source="scheduled")
+    assert isinstance(run, EvalRun)
+    assert run.pk is not None
+    assert run.source == "scheduled"
+    assert run.label == "smoke"
+    assert run.model == "claude-sonnet-4-6"
+    assert run.horizon == 30
+    assert run.n == 5 and run.skipped == 1 and run.scored == 4
+    assert run.hit_rate == 0.75 and run.brier == 0.21
+    assert run.avg_confidence == 0.68 and run.calibration_error == 0.12
+    assert run.calibration[0]["observed_hit_rate"] == 0.75
+    assert run.examples[0]["hit"] is True
+
+
+def test_persist_eval_run_defaults_source_manual(db):
+    run = persist_eval_run({"label": "x", "model": "m", "n": 0})
+    assert run.source == "manual"
+    assert run.horizon is None and run.hit_rate is None
+
+
+# --------------------------------------------------------------------------- #
+# Task 3 — read-only DRF views at /api/aieval/runs/
+# --------------------------------------------------------------------------- #
+
+
+def test_eval_runs_list_endpoint(db):
+    persist_eval_run(
+        {
+            "label": "a",
+            "model": "claude-sonnet-4-6",
+            "n": 3,
+            "scored": 3,
+            "hit_rate": 0.66,
+            "brier": 0.2,
+        },
+        source="manual",
+    )
+    persist_eval_run(
+        {
+            "label": "b",
+            "model": "claude-opus-4-8",
+            "n": 5,
+            "scored": 5,
+            "hit_rate": 0.8,
+            "brier": 0.15,
+        },
+        source="scheduled",
+    )
+    resp = APIClient().get("/api/aieval/runs/")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert len(data) == 2
+    # newest first (ordering = -created_at); both labels present
+    labels = {row["label"] for row in data}
+    assert labels == {"a", "b"}
+    assert "calibration" in data[0] and "hit_rate" in data[0]
+
+
+def test_eval_runs_latest_endpoint(db):
+    persist_eval_run({"label": "old", "model": "m", "n": 1}, source="manual")
+    newest = persist_eval_run(
+        {"label": "new", "model": "m", "n": 2, "hit_rate": 0.5}, source="scheduled"
+    )
+    resp = APIClient().get("/api/aieval/runs/latest/")
+    assert resp.status_code == 200
+    assert resp.json()["id"] == newest.id
+    assert resp.json()["label"] == "new"
+
+
+def test_eval_runs_latest_204_when_empty(db):
+    resp = APIClient().get("/api/aieval/runs/latest/")
+    assert resp.status_code == 204
+
+
+# --------------------------------------------------------------------------- #
+# Task 4 — cost-cap pre-flight + persist EvalRun on the manual command
+# --------------------------------------------------------------------------- #
+
+
+def _record_spend(provider="claude", cost="2.00"):
+    """Record `cost` USD of provider spend 'today' via a real AIRun row.
+
+    AIRun.message is a non-null OneToOneField, so build the minimal
+    Thread -> Message -> AIRun chain. created_at is auto_now_add (counts as today).
+    """
+    from decimal import Decimal
+
+    from apps.threads.models import AIRun, Message, Thread
+
+    t = Thread.objects.create()
+    m = Message.objects.create(thread=t, role="assistant")
+    return AIRun.objects.create(
+        message=m,
+        provider=provider,
+        model="claude-opus-4-8",
+        status="done",
+        cost_usd=Decimal(cost),
+    )
+
+
+def test_preflight_cost_cap_no_config_is_noop(db):
+    from apps.aieval.services import preflight_cost_cap
+
+    # No ProviderConfig row -> Infinity daily / None monthly -> never raises.
+    preflight_cost_cap("claude")  # must not raise
+
+
+def test_preflight_cost_cap_raises_when_over(db):
+    from decimal import Decimal
+
+    from apps.ai.cost import CostCapExceededError
+    from apps.aieval.services import preflight_cost_cap
+    from apps.secrets.models import ProviderConfig
+
+    ProviderConfig.objects.create(provider="claude", daily_cost_cap_usd=Decimal("1.00"))
+    _record_spend("claude", "2.00")  # $2 spent today, cap is $1
+    with pytest.raises(CostCapExceededError):
+        preflight_cost_cap("claude")
+
+
+def test_command_aborts_on_cost_cap(profile):
+    from decimal import Decimal
+
+    from django.core.management import CommandError
+
+    from apps.secrets.models import ProviderConfig
+
+    _postmortem(_thesis(profile, snapshot=_snapshot(profile)), verdict="correct", fwd=5.0)
+    ProviderConfig.objects.create(provider="claude", daily_cost_cap_usd=Decimal("1.00"))
+    _record_spend("claude", "2.00")
+    with pytest.raises(CommandError):
+        call_command("aieval", "--model", "claude-opus-4-8")
+
+
+def test_command_persists_eval_run(profile):
+    from apps.aieval.models import EvalRun
+
+    _postmortem(_thesis(profile, snapshot=_snapshot(profile)), verdict="correct", fwd=5.0)
+    out = StringIO()
+    with patch.object(svc, "run_structured", return_value=_report("bullish")):
+        call_command(
+            "aieval",
+            "--model",
+            "claude-opus-4-8",
+            "--limit",
+            "1",
+            "--label",
+            "persisted",
+            stdout=out,
+        )
+    rows = EvalRun.objects.filter(label="persisted")
+    assert rows.count() == 1
+    assert rows.first().source == "manual"
+
+
+# --------------------------------------------------------------------------- #
+# Task 5 — opt-in cost-capped scheduled beat task
+# --------------------------------------------------------------------------- #
+
+
+from apps.aieval.tasks import run_scheduled  # noqa: E402
+
+
+def test_scheduled_skips_when_disabled(profile, settings):
+    settings.AIEVAL_SCHEDULED_ENABLED = False
+    _postmortem(_thesis(profile, snapshot=_snapshot(profile)), verdict="correct", fwd=5.0)
+    assert run_scheduled() == {"skipped": "disabled"}
+    from apps.aieval.models import EvalRun
+
+    assert EvalRun.objects.count() == 0
+
+
+def test_scheduled_runs_and_persists_when_enabled(profile, settings):
+    settings.AIEVAL_SCHEDULED_ENABLED = True
+    settings.AIEVAL_SCHEDULED_MODEL = "claude-sonnet-4-6"
+    settings.AIEVAL_SCHEDULED_LIMIT = None
+    settings.AIEVAL_SCHEDULED_HORIZON = None
+    _postmortem(
+        _thesis(profile, direction="bullish", snapshot=_snapshot(profile)),
+        verdict="correct",
+        fwd=5.0,
+    )
+    from apps.aieval.models import EvalRun
+
+    with patch.object(svc, "run_structured", return_value=_report("bullish")):
+        result = run_scheduled()
+    assert "ran" in result
+    row = EvalRun.objects.get(pk=result["ran"])
+    assert row.source == "scheduled"
+    assert row.model == "claude-sonnet-4-6"
+    assert row.label == "scheduled"
+
+
+def test_scheduled_skips_on_cost_cap(profile, settings):
+    from decimal import Decimal
+
+    from apps.secrets.models import ProviderConfig
+
+    settings.AIEVAL_SCHEDULED_ENABLED = True
+    ProviderConfig.objects.create(provider="claude", daily_cost_cap_usd=Decimal("1.00"))
+    _record_spend("claude", "2.00")
+    _postmortem(_thesis(profile, snapshot=_snapshot(profile)), verdict="correct", fwd=5.0)
+    assert run_scheduled() == {"skipped": "cost_cap"}
+
+
+def test_scheduled_skips_when_no_data(settings, db):
+    settings.AIEVAL_SCHEDULED_ENABLED = True
+    assert run_scheduled() == {"skipped": "no_data"}
+
+
+# --------------------------------------------------------------------------- #
+# Task 6 — latest_eval_for_model helper
+# --------------------------------------------------------------------------- #
+
+
+def test_latest_eval_for_model(db):
+    from apps.aieval.services import latest_eval_for_model
+
+    assert latest_eval_for_model("claude-sonnet-4-6") is None
+    persist_eval_run({"label": "old", "model": "claude-sonnet-4-6", "n": 1}, source="manual")
+    newest = persist_eval_run(
+        {"label": "new", "model": "claude-sonnet-4-6", "n": 2}, source="scheduled"
+    )
+    persist_eval_run({"label": "other", "model": "claude-opus-4-8", "n": 9}, source="manual")
+    got = latest_eval_for_model("claude-sonnet-4-6")
+    assert got.id == newest.id  # newest for THAT model only

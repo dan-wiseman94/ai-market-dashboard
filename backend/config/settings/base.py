@@ -183,6 +183,13 @@ FRONTEND_BASE_URL = env("FRONTEND_BASE_URL", default="")
 AI_PROVIDER_MAX_RETRIES = env.int("AI_PROVIDER_MAX_RETRIES", default=2)
 AI_PROVIDER_TIMEOUT_SECONDS = env.float("AI_PROVIDER_TIMEOUT_SECONDS", default=60.0)
 
+# Offline eval harness — scheduled run. OFF by default: it calls the REAL model
+# ($) and run_structured has no MOCK_EXTERNAL short-circuit. Enable deliberately.
+AIEVAL_SCHEDULED_ENABLED = env.bool("AIEVAL_SCHEDULED_ENABLED", default=False)
+AIEVAL_SCHEDULED_MODEL = env.str("AIEVAL_SCHEDULED_MODEL", default="claude-sonnet-4-6")
+AIEVAL_SCHEDULED_HORIZON = env.int("AIEVAL_SCHEDULED_HORIZON", default=30)
+AIEVAL_SCHEDULED_LIMIT = env.int("AIEVAL_SCHEDULED_LIMIT", default=25)
+
 # Retention windows for the daily prune_retention beat task (core.prune_retention).
 # Generous defaults — these are standalone time-series / ephemera tables only.
 # Load-bearing tables (Snapshot, Message, Thesis, AIRun, PostMortem, …) are NEVER pruned.

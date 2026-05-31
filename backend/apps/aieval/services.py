@@ -28,6 +28,7 @@ import logging
 from typing import Any
 
 from apps.ai.providers.claude_structured import run_structured
+from apps.aieval.models import EvalRun
 from apps.analytics.services.calibration import _hit_rate, _prob_for_conviction
 from apps.observer.schemas import ObservationReport
 from apps.snapshots.serializer import serialize_for_ai
@@ -41,6 +42,11 @@ _OPPOSITE = {"bullish": "bearish", "bearish": "bullish", "neutral": "neutral"}
 
 # Reliability bins for stated-confidence calibration.
 _CONF_BINS = [(0.0, 0.5), (0.5, 0.7), (0.7, 0.9), (0.9, 1.01)]
+
+DEFAULT_EVAL_SYSTEM = (
+    "You are a trading analyst. Read the market snapshot and state a single "
+    "directional bias (bullish, bearish, or neutral) with your reasoning."
+)
 
 
 def confidence_calibration(results: list[dict]) -> list[dict]:
@@ -114,7 +120,11 @@ def _direction_from_report(report: ObservationReport) -> str | None:
 
 
 def _confidence_from_report(report: ObservationReport) -> float | None:
-    """Stated confidence = mean of the per-signal confidences, if any."""
+    """Stated confidence: the report's own predicted_confidence when set,
+    else the mean of the per-signal confidences (legacy fallback)."""
+    pc = getattr(report, "predicted_confidence", None)
+    if pc is not None:
+        return round(float(pc), 4)
     confs = [
         s.confidence
         for s in getattr(report, "signals", [])
@@ -263,3 +273,58 @@ def evaluate(
         "calibration": calibration,
         "calibration_error": calibration_error,
     }
+
+
+def preflight_cost_cap(provider: str = "claude") -> None:
+    """Raise CostCapExceededError if the provider's configured caps are already
+    breached, BEFORE spending on a real eval run.
+
+    Mirrors `apps.observer.services.run` cap resolution: no ProviderConfig row ->
+    Infinity daily / None monthly (no-op). Caps read AIRun spend only; they do
+    not call the model, so this is safe to call from the command and the task.
+    """
+    from decimal import Decimal
+
+    from apps.ai.cost import check_daily_cap, check_monthly_cap
+    from apps.secrets.models import ProviderConfig
+
+    cfg = ProviderConfig.objects.filter(provider=provider).first()
+    if cfg is None:
+        cap_usd: Decimal = Decimal("Infinity")
+        monthly_cap: Decimal | None = None
+    else:
+        cap_usd = cfg.daily_cost_cap_usd
+        monthly_cap = cfg.monthly_cost_cap_usd
+    check_daily_cap(provider, cap_usd=cap_usd)
+    check_monthly_cap(provider, cap_usd=monthly_cap)
+
+
+def latest_eval_for_model(model: str) -> EvalRun | None:
+    """Most recent persisted EvalRun for a given model id, or None."""
+    if not model:
+        return None
+    return EvalRun.objects.filter(model=model).order_by("-created_at").first()
+
+
+def persist_eval_run(result: dict[str, Any], *, source: str = "manual") -> EvalRun:
+    """Map an `evaluate()` result dict onto a stored `EvalRun` row.
+
+    `source` is 'manual' (the management command) or 'scheduled' (the beat task).
+    Tolerant of partial dicts (uses .get with sensible defaults) so a caller
+    never has to assemble a full result to persist a smoke run.
+    """
+    return EvalRun.objects.create(
+        source=source,
+        label=result.get("label", "baseline"),
+        model=result.get("model", ""),
+        horizon=result.get("horizon"),
+        n=result.get("n", 0),
+        skipped=result.get("skipped", 0),
+        scored=result.get("scored", 0),
+        hit_rate=result.get("hit_rate"),
+        brier=result.get("brier"),
+        avg_confidence=result.get("avg_confidence"),
+        calibration_error=result.get("calibration_error"),
+        calibration=result.get("calibration", []),
+        examples=result.get("examples", []),
+    )
