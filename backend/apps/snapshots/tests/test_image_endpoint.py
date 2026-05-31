@@ -1,6 +1,7 @@
 import pytest
 from rest_framework.test import APIClient
 
+from apps.snapshots.image_store import read_image_bytes
 from apps.snapshots.models import SnapshotImage
 
 PNG_BYTES = b"\x89PNG\r\n\x1a\n" + b"\x00" * 100
@@ -26,7 +27,9 @@ def test_upload_staged_image_persists_with_null_snapshot(api):
     assert img.snapshot is None
     assert img.kind == "client_capture"
     assert img.caption == "SPY 5m"
-    assert bytes(img.data).startswith(b"\x89PNG")
+    # Bytes may live in-DB (legacy) or on the /data volume (C7 offload, img.data is
+    # NULL); read_image_bytes resolves both.
+    assert read_image_bytes(img).startswith(b"\x89PNG")
 
 
 @pytest.mark.django_db
