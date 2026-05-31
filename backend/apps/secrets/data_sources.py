@@ -8,6 +8,7 @@ provider authenticates so the frontend can render the right card:
 - ``key_secret`` — key + secret (Alpaca) in ``ApiCredential.token``.
 - ``none``       — keyless (SEC EDGAR, US Treasury); always available, nothing to store.
 
+``signup_url`` is where the user gets the (free) key; ``docs_url`` is the API docs.
 Credentials live encrypted in ``apps.secrets.ApiCredential``; this module is metadata
 only and never holds a secret.
 """
@@ -22,6 +23,7 @@ DATA_SOURCES: list[dict] = [
         "auth": "oauth",
         "fields": [],
         "blurb": "Brokerage market data — quotes, OHLC, option chains, positions — via OAuth.",
+        "signup_url": "https://developer.schwab.com",
         "docs_url": "https://developer.schwab.com",
     },
     {
@@ -30,7 +32,8 @@ DATA_SOURCES: list[dict] = [
         "auth": "key_secret",
         "fields": ["api_key", "api_secret"],
         "blurb": "Real-time IEX quotes + historical bars. Free with an API key + secret.",
-        "docs_url": "https://alpaca.markets/",
+        "signup_url": "https://app.alpaca.markets/signup",
+        "docs_url": "https://docs.alpaca.markets/",
     },
     {
         "provider": "finnhub",
@@ -38,7 +41,8 @@ DATA_SOURCES: list[dict] = [
         "auth": "key",
         "fields": ["api_key"],
         "blurb": "News, fundamentals, and the earnings/macro calendar. Free 60 req/min.",
-        "docs_url": "https://finnhub.io/",
+        "signup_url": "https://finnhub.io/register",
+        "docs_url": "https://finnhub.io/docs/api",
     },
     {
         "provider": "tiingo",
@@ -46,7 +50,8 @@ DATA_SOURCES: list[dict] = [
         "auth": "key",
         "fields": ["api_key"],
         "blurb": "30+ years of daily EOD bars, plus news. Free with an API key.",
-        "docs_url": "https://www.tiingo.com/",
+        "signup_url": "https://www.tiingo.com/account/api/token",
+        "docs_url": "https://www.tiingo.com/documentation/general/overview",
     },
     {
         "provider": "twelvedata",
@@ -54,7 +59,8 @@ DATA_SOURCES: list[dict] = [
         "auth": "key",
         "fields": ["api_key"],
         "blurb": "Quotes, time-series, FX & crypto. Free 800 req/day.",
-        "docs_url": "https://twelvedata.com/",
+        "signup_url": "https://twelvedata.com/register",
+        "docs_url": "https://twelvedata.com/docs",
     },
     {
         "provider": "polygon",
@@ -62,7 +68,8 @@ DATA_SOURCES: list[dict] = [
         "auth": "key",
         "fields": ["api_key"],
         "blurb": "End-of-day price history. Free 5 req/min, ~2-year lookback.",
-        "docs_url": "https://polygon.io/",
+        "signup_url": "https://polygon.io/dashboard/signup",
+        "docs_url": "https://polygon.io/docs",
     },
     {
         "provider": "tradier",
@@ -70,6 +77,7 @@ DATA_SOURCES: list[dict] = [
         "auth": "key",
         "fields": ["api_key"],
         "blurb": "Delayed option chains via a free sandbox access token.",
+        "signup_url": "https://developer.tradier.com/user/sign_up",
         "docs_url": "https://documentation.tradier.com/",
     },
     {
@@ -78,7 +86,8 @@ DATA_SOURCES: list[dict] = [
         "auth": "key",
         "fields": ["api_key"],
         "blurb": "Macro indicators and the daily Treasury yield curve. Free API key.",
-        "docs_url": "https://fred.stlouisfed.org/docs/api/api_key.html",
+        "signup_url": "https://fredaccount.stlouisfed.org/apikeys",
+        "docs_url": "https://fred.stlouisfed.org/docs/api/fred/",
     },
     {
         "provider": "marketaux",
@@ -86,7 +95,8 @@ DATA_SOURCES: list[dict] = [
         "auth": "key",
         "fields": ["api_key"],
         "blurb": "Financial news with per-ticker sentiment. Free 100 req/day.",
-        "docs_url": "https://www.marketaux.com/",
+        "signup_url": "https://www.marketaux.com/register",
+        "docs_url": "https://www.marketaux.com/documentation",
     },
     {
         "provider": "edgar",
@@ -94,7 +104,8 @@ DATA_SOURCES: list[dict] = [
         "auth": "none",
         "fields": [],
         "blurb": "Company filings + Form 4 insider trades. No key required.",
-        "docs_url": "https://www.sec.gov/edgar",
+        "signup_url": "",
+        "docs_url": "https://www.sec.gov/edgar/sec-api-documentation",
     },
     {
         "provider": "treasury",
@@ -102,7 +113,8 @@ DATA_SOURCES: list[dict] = [
         "auth": "none",
         "fields": [],
         "blurb": "FiscalData average rates + debt to the penny. No key required.",
-        "docs_url": "https://fiscaldata.treasury.gov/",
+        "signup_url": "",
+        "docs_url": "https://fiscaldata.treasury.gov/api-documentation/",
     },
 ]
 

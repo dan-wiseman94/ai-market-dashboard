@@ -4,6 +4,7 @@ import { useSchwabStatus, useSchwabAppConfig } from "@/hooks/useSchwabStatus";
 import { fetchSchwabAuthorizeUrl, updateSchwabAppConfig } from "@/api/schwab";
 import { formatDistanceToNow } from "date-fns";
 import SettingsSection from "@/components/settings/SettingsSection";
+import DataSourcesPanel from "@/components/settings/DataSourcesPanel";
 import SymbolCalendarOverridesCard from "@/components/SymbolCalendarOverridesCard";
 import { useToast } from "@/hooks/useToast";
 
@@ -125,6 +126,9 @@ export default function ConnectionsSettings() {
             </button>
           </>
         )}
+      </div>
+      <div className="mt-6">
+        <DataSourcesPanel />
       </div>
       <div className="mt-4">
         <SymbolCalendarOverridesCard />

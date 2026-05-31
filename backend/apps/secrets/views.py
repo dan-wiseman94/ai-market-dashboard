@@ -19,6 +19,7 @@ from rest_framework.response import Response
 from apps.ai.catalog import list_models as _list_catalog
 from apps.ai.cost import daily_spend_usd
 from apps.ai.providers import get_provider
+from apps.secrets.data_source_test import test_credential
 from apps.secrets.data_sources import DATA_SOURCES, get_data_source
 from apps.secrets.models import ApiCredential, ProviderConfig, SchwabAppConfig
 from apps.secrets.schwab_oauth import (
@@ -265,7 +266,8 @@ def _credential_status(provider: str) -> dict:
 
 
 def _data_source_payload(ds: dict) -> dict:
-    entry = {k: ds[k] for k in ("provider", "label", "auth", "fields", "blurb", "docs_url")}
+    keys = ("provider", "label", "auth", "fields", "blurb", "signup_url", "docs_url")
+    entry = {k: ds[k] for k in keys}
     if ds["auth"] == "none":
         entry["status"] = {"configured": True, "fields_present": []}  # keyless → always on
     elif ds["auth"] == "oauth":
@@ -320,3 +322,14 @@ def data_source_detail(request: HttpRequest, provider: str) -> JsonResponse:
 
     ApiCredential.objects.update_or_create(provider=provider, defaults={"token": existing})
     return JsonResponse(_credential_status(provider))
+
+
+@require_http_methods(["POST"])
+def data_source_test(_request: HttpRequest, provider: str) -> JsonResponse:
+    """Probe the saved credential for one key-based source. Returns ``{ok, message}``."""
+    ds = get_data_source(provider)
+    if ds is None:
+        return _ds_err("unknown_provider", f"Unknown data source '{provider}'.", 404)
+    if ds["auth"] in ("none", "oauth"):
+        return _ds_err("not_key_managed", f"{ds['label']} has no key to test.", 400)
+    return JsonResponse(test_credential(provider))

@@ -4,11 +4,11 @@ import Dashboard from "./pages/Dashboard";
 import SettingsLayout from "./pages/settings/SettingsLayout";
 import ProvidersSettings from "./pages/settings/ProvidersSettings";
 import ConnectionsSettings from "./pages/settings/ConnectionsSettings";
-import DataSourcesSettings from "./pages/settings/DataSourcesSettings";
 import SystemSettings from "./pages/settings/SystemSettings";
 import WatchlistsList from "./pages/WatchlistsList";
 import WatchlistDetail from "./pages/WatchlistDetail";
 import MarketTicker from "./pages/MarketTickerPage";
+import MarketDataPage from "./pages/MarketDataPage";
 import ProfilesPage from "./pages/ProfilesPage";
 import SnapshotComposerPage from "./pages/SnapshotComposerPage";
 import ThreadDetailPage from "./pages/ThreadDetailPage";
@@ -48,11 +48,6 @@ export const router = createBrowserRouter([
         children: [
           { index: true, element: <ProvidersSettings />, handle: { crumb: "AI Providers" } },
           { path: "connections", element: <ConnectionsSettings />, handle: { crumb: "Connections" } },
-          {
-            path: "data-sources",
-            element: <DataSourcesSettings />,
-            handle: { crumb: "Data sources" },
-          },
           { path: "system", element: <SystemSettings />, handle: { crumb: "System" } },
           { path: "backups", element: <BackupsPage />, handle: { crumb: "Backups" } },
           { path: "export", element: <ExportPage />, handle: { crumb: "Export" } },
@@ -63,6 +58,7 @@ export const router = createBrowserRouter([
         handle: { crumb: ({ params }: { params: { id?: string } }) => `Watchlist ${params.id}` } },
       { path: "market/:ticker", element: <MarketTicker />,
         handle: { crumb: ({ params }: { params: { ticker?: string } }) => params.ticker?.toUpperCase() ?? "Market" } },
+      { path: "market-data", element: <MarketDataPage />, handle: { crumb: "Market data" } },
       { path: "profiles", element: <ProfilesPage />, handle: { crumb: "Profiles" } },
       { path: "snapshot", element: <SnapshotComposerPage />, handle: { crumb: "Snapshot" } },
       { path: "threads", element: <ThreadsPage />, handle: { crumb: "Threads" } },
