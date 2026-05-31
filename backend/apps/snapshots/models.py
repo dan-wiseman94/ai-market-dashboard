@@ -93,7 +93,11 @@ class SnapshotImage(models.Model):
         blank=True,
     )
     kind = models.CharField(max_length=16, choices=KIND_CHOICES)
-    data = models.BinaryField()
+    # Bytes live on the /data volume (file_path) for new images (C7) — keeping
+    # pg_dump small. NULL data + a file_path is the offloaded shape; legacy rows
+    # keep their in-DB bytes. Read via apps.snapshots.image_store.read_image_bytes.
+    data = models.BinaryField(null=True, blank=True)
+    file_path = models.CharField(max_length=512, blank=True, default="")
     mime_type = models.CharField(max_length=32, default="image/png")
     caption = models.CharField(max_length=256, blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)

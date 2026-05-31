@@ -10,6 +10,7 @@ from rest_framework.response import Response
 
 from apps.profiles.models import TradingProfile
 from apps.snapshots.diff import diff_sections
+from apps.snapshots.image_store import read_image_bytes
 from apps.snapshots.models import Snapshot, SnapshotImage
 from apps.snapshots.serializers import (
     SnapshotImageSerializer,
@@ -228,4 +229,4 @@ def images_collection(request):
 
 def serve_image(_request, image_id: int):
     img = get_object_or_404(SnapshotImage, id=image_id)
-    return HttpResponse(bytes(img.data), content_type=img.mime_type or "image/png")
+    return HttpResponse(read_image_bytes(img), content_type=img.mime_type or "image/png")

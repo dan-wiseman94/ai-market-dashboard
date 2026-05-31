@@ -7,6 +7,7 @@ from urllib.parse import urlencode
 from asgiref.sync import async_to_sync
 from django.conf import settings
 
+from apps.snapshots.image_store import create_image
 from apps.snapshots.models import SnapshotImage
 
 
@@ -43,7 +44,7 @@ def render_chart_png(
 ) -> SnapshotImage:
     url = _build_url(ticker, timeframe, bars)
     png = async_to_sync(_render_async)(url)
-    return SnapshotImage.objects.create(
+    return create_image(
         snapshot_id=snapshot_id,
         kind="server_render",
         data=png,
