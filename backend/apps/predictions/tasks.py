@@ -15,7 +15,7 @@ import logging
 from celery import shared_task
 from django.utils import timezone
 
-from apps.market.returns import direction_verdict, forward_return_pct
+from apps.market.returns import direction_verdict, forward_return_pct, nearest_bar_close
 from apps.predictions.models import AIPrediction
 
 log = logging.getLogger(__name__)
@@ -55,3 +55,61 @@ def resolve_due() -> dict:
         except Exception as exc:  # one bad row must not block the batch
             log.warning("predictions.resolve_due %s failed: %s", pid, exc)
     return {"due": len(due), "resolved": resolved}
+
+
+def _is_breached(direction: str, price: float, invalidation: float) -> bool:
+    """A bullish call is invalidated by trading at/below its support; a bearish
+    call at/above its resistance. Neutral calls carry no price (never breach)."""
+    if direction == "bullish":
+        return price <= invalidation
+    if direction == "bearish":
+        return price >= invalidation
+    return False
+
+
+@shared_task(name="predictions.check_invalidations")
+def check_invalidations() -> dict:
+    """Mark open predictions whose invalidation level has been breached BEFORE
+    their horizon, and notify (M13 F5). Only predictions carrying an
+    ``invalidation_price`` are checked, so this is low-noise by construction.
+    Early-warning: 'the AI's own call is being proven wrong before it resolves.'
+    """
+    now = timezone.now()
+    qs = AIPrediction.objects.filter(
+        status="open", invalidation_price__isnull=False, resolve_at__gt=now
+    )
+    invalidated = 0
+    for pred in qs:
+        try:
+            price = nearest_bar_close(pred.ticker, now)
+            if price is None or not _is_breached(
+                pred.direction, price, float(pred.invalidation_price)
+            ):
+                continue
+            pred.status = "invalidated"
+            pred.invalidated_at = now
+            pred.save(update_fields=["status", "invalidated_at", "updated_at"])
+            _notify_invalidated(pred, price)
+            invalidated += 1
+        except Exception as exc:  # one bad row must not block the batch
+            log.warning("predictions.check_invalidations %s failed: %s", pred.id, exc)
+    return {"invalidated": invalidated}
+
+
+def _notify_invalidated(pred, price: float) -> None:
+    """Best-effort notification — never raises out of the check loop."""
+    try:
+        from apps.observer.services.notifications import notify
+
+        notify(
+            user_id=None,
+            kind="prediction_invalidated",
+            title=f"AI {pred.direction} call on {pred.ticker} invalidated",
+            body=(
+                f"{pred.ticker} traded {price:g}, breaking the AI's invalidation level "
+                f"{float(pred.invalidation_price):g} before its {pred.horizon_days}d horizon."
+            ),
+            link="/scorecard",
+        )
+    except Exception as exc:
+        log.warning("predictions.notify_invalidated %s failed: %s", pred.id, exc)
