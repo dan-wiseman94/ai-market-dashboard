@@ -12,7 +12,9 @@ from apps.core.realtime import group_broadcast
 from apps.market.calendar import any_market_open, calendar_for, market_state
 from apps.market.services.chain import fetch_chain
 from apps.market.services.context import fetch_market_context
+from apps.market.services.edgar import fetch_filings as edgar_fetch_filings
 from apps.market.services.events import upcoming_events
+from apps.market.services.fred import fetch_macro as fred_fetch_macro
 from apps.market.services.fundamentals import fetch_fundamentals
 from apps.market.services.news import fetch_news
 from apps.market.services.ohlc import (
@@ -24,6 +26,7 @@ from apps.market.services.ohlc import (
 from apps.market.services.overnight import overnight_board
 from apps.market.services.positions import fetch_positions
 from apps.market.services.quotes import fetch_quotes
+from apps.market.services.treasury import fetch_treasury
 from apps.profiles.models import TradingProfile
 from apps.snapshots.models import Snapshot, SnapshotImage, SnapshotSection
 from apps.snapshots.primary import (
@@ -166,6 +169,11 @@ _FETCHERS = {
     "quotes": lambda *, watchlist_tickers, overnight=False, **_: {
         "data": fetch_quotes(watchlist_tickers, gap_context=overnight)
     },
+    "macro": lambda **_: {"data": fred_fetch_macro()},
+    "filings": lambda *, watchlist_tickers, **_: {
+        "data": {t: edgar_fetch_filings(t) for t in (list(watchlist_tickers) or [])[:6]},
+    },
+    "treasury": lambda **_: {"data": fetch_treasury()},
 }
 
 
