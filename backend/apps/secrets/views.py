@@ -265,11 +265,13 @@ def _credential_status(provider: str) -> dict:
     return {"configured": bool(present), "fields_present": present}
 
 
-def _data_source_payload(ds: dict) -> dict:
+def _data_source_payload(ds: dict, present: set[str]) -> dict:
     keys = ("provider", "label", "auth", "fields", "blurb", "signup_url", "docs_url")
     entry = {k: ds[k] for k in keys}
     if ds["auth"] == "none":
         entry["status"] = {"configured": True, "fields_present": []}  # keyless → always on
+    elif ds["provider"] not in present:
+        entry["status"] = {"configured": False, "fields_present": []}  # no row → skip the query
     elif ds["auth"] == "oauth":
         entry["status"] = {"configured": _schwab_connected(), "fields_present": []}
     else:
@@ -280,7 +282,12 @@ def _data_source_payload(ds: dict) -> dict:
 @require_GET
 def data_sources(_request: HttpRequest) -> JsonResponse:
     """List every market-data provider + whether it's configured (no secrets returned)."""
-    return JsonResponse({"data_sources": [_data_source_payload(ds) for ds in DATA_SOURCES]})
+    # One cheap query for which providers have a row (no token decryption); only the
+    # providers that actually have a credential pay for a per-row status lookup.
+    present = set(ApiCredential.objects.values_list("provider", flat=True))
+    return JsonResponse(
+        {"data_sources": [_data_source_payload(ds, present) for ds in DATA_SOURCES]}
+    )
 
 
 @require_http_methods(["PUT", "DELETE"])
