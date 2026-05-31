@@ -7,6 +7,9 @@ const SECTIONS = [
   { key: "chain", label: "Option chain" },
   { key: "news", label: "News" },
   { key: "events", label: "Upcoming events" },
+  { key: "macro", label: "Macro (FRED)" },
+  { key: "filings", label: "SEC filings" },
+  { key: "treasury", label: "Treasury rates" },
   { key: "image", label: "Charts (server-render)" },
 ];
 
