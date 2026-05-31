@@ -11,6 +11,7 @@ from apps.predictions.models import AIPrediction
 from apps.predictions.services.reconcile import (
     ai_view_payload,
     current_ai_view,
+    open_divergences,
     reconcile_directions,
 )
 
@@ -88,3 +89,53 @@ class TestPayloadAndEndpoint:
         resp = APIClient().get("/api/predictions/ai-view/")
         assert resp.status_code == 200
         assert resp.json()["has_view"] is False
+
+
+@pytest.mark.django_db
+class TestOpenDivergences:
+    def _thesis(self, *, ticker="NVDA", direction="bullish", status="open"):
+        from apps.thesis.models import Thesis
+
+        return Thesis.objects.create(
+            title=f"{direction} {ticker}",
+            ticker=ticker,
+            direction=direction,
+            conviction=4,
+            status=status,
+        )
+
+    def test_lists_diverging_theses(self):
+        self._thesis(direction="bullish")
+        _pred(ticker="NVDA", direction="bearish")  # AI disagrees
+        [row] = open_divergences()
+        assert row["ticker"] == "NVDA"
+        assert row["agreement"] == "diverge"
+        assert row["thesis_direction"] == "bullish"
+        assert row["ai_direction"] == "bearish"
+
+    def test_excludes_agreement(self):
+        self._thesis(direction="bullish")
+        _pred(ticker="NVDA", direction="bullish")
+        assert open_divergences() == []
+
+    def test_skips_theses_without_ai_view(self):
+        self._thesis(ticker="ZZZ", direction="bullish")
+        assert open_divergences() == []
+
+    def test_partial_toggle(self):
+        self._thesis(direction="bullish")
+        _pred(ticker="NVDA", direction="neutral")  # partial divergence
+        assert len(open_divergences(include_partial=True)) == 1
+        assert open_divergences(include_partial=False) == []
+
+    def test_excludes_closed_theses(self):
+        self._thesis(direction="bullish", status="closed_win")
+        _pred(ticker="NVDA", direction="bearish")
+        assert open_divergences() == []
+
+    def test_endpoint(self):
+        self._thesis(direction="bullish")
+        _pred(ticker="NVDA", direction="bearish")
+        resp = APIClient().get("/api/predictions/divergences/")
+        assert resp.status_code == 200
+        assert resp.json()["count"] == 1
