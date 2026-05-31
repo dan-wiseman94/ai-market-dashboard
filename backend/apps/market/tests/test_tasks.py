@@ -30,6 +30,31 @@ def test_refresh_noops_when_fresh():
 
 @pytest.mark.django_db
 @override_settings(CELERY_TASK_ALWAYS_EAGER=True, CELERY_TASK_EAGER_PROPAGATES=True)
+def test_refresh_noops_when_token_undecryptable():
+    """A credential encrypted under a now-gone key (secret rotated / salt reset) must
+    degrade to a clean no-op, not raise InvalidToken on every beat tick."""
+    from cryptography.fernet import Fernet
+    from django.db import connection
+
+    cred = ApiCredential.objects.create(
+        provider="schwab",
+        token={"access_token": "A", "refresh_token": "R"},
+        expires_at=timezone.now() + timedelta(minutes=2),
+    )
+    # Clobber the column with ciphertext from a foreign key the current Fernet can't read.
+    foreign = Fernet(Fernet.generate_key()).encrypt(b'{"refresh_token":"R"}')
+    with connection.cursor() as c:
+        c.execute(
+            "UPDATE secrets_apicredential SET token = %s WHERE id = %s",
+            [foreign, cred.id],
+        )
+
+    result = refresh_schwab_token.delay().get(timeout=2)
+    assert result == {"ok": False, "reason": "undecryptable"}
+
+
+@pytest.mark.django_db
+@override_settings(CELERY_TASK_ALWAYS_EAGER=True, CELERY_TASK_EAGER_PROPAGATES=True)
 def test_refresh_triggers_when_near_expiry():
     ApiCredential.objects.create(
         provider="schwab",
