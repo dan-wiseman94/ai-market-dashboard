@@ -29,6 +29,7 @@ app.autodiscover_tasks(
         "apps.thesis",
         "apps.briefing",
         "apps.recall",
+        "apps.aieval",
     ]
 )
 
@@ -83,5 +84,9 @@ app.conf.beat_schedule = {
     "prune-retention": {
         "task": "core.prune_retention",
         "schedule": crontab(hour=4, minute=0),  # daily 4am UTC, low-traffic window
+    },
+    "aieval-run-scheduled": {
+        "task": "aieval.run_scheduled",
+        "schedule": crontab(hour=5, minute=0, day_of_week=1),
     },
 }

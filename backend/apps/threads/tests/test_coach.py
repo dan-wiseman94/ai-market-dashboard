@@ -8,7 +8,12 @@ from django.utils import timezone
 from apps.profiles.models import TradingProfile
 from apps.snapshots.models import Snapshot, SnapshotSection
 from apps.thesis.models import Thesis
-from apps.threads.coach import assemble_coach_context, build_system_prompt
+from apps.threads.coach import (
+    _calibration_block,
+    _calibration_verdict,
+    assemble_coach_context,
+    build_system_prompt,
+)
 
 NOW = datetime(2026, 5, 29, 14, 30, tzinfo=UTC)
 
@@ -275,6 +280,95 @@ def test_lessons_block_empty_ticker():
     from apps.threads.coach import _lessons_block
 
     assert _lessons_block("") == ""
+
+
+# --------------------------------------------------------------------------- #
+# Task 6 — A3: calibration block + verdict injected into the coach
+# --------------------------------------------------------------------------- #
+
+
+def test_calibration_verdict_overconfident():
+    # observed < stated in both buckets -> overconfident
+    buckets = [
+        {"n": 2, "observed_hit_rate": 0.5, "mean_confidence": 0.9},
+        {"n": 1, "observed_hit_rate": 0.6, "mean_confidence": 0.8},
+    ]
+    assert "OVER-confident" in _calibration_verdict(buckets)
+
+
+def test_calibration_verdict_underconfident():
+    buckets = [{"n": 3, "observed_hit_rate": 0.9, "mean_confidence": 0.6}]
+    assert "UNDER-confident" in _calibration_verdict(buckets)
+
+
+def test_calibration_verdict_well_calibrated():
+    buckets = [{"n": 3, "observed_hit_rate": 0.72, "mean_confidence": 0.70}]
+    assert "well-calibrated" in _calibration_verdict(buckets)
+
+
+def test_calibration_verdict_none_when_no_usable_buckets():
+    assert (
+        _calibration_verdict([{"n": 0, "observed_hit_rate": None, "mean_confidence": None}]) is None
+    )
+
+
+@pytest.mark.django_db
+def test_calibration_block_renders_latest_run(coach_profile):
+    from apps.aieval.services import persist_eval_run
+
+    persist_eval_run(
+        {
+            "label": "scheduled",
+            "model": coach_profile.default_model,
+            "n": 10,
+            "scored": 8,
+            "hit_rate": 0.625,
+            "brier": 0.22,
+            "calibration": [{"n": 8, "observed_hit_rate": 0.5, "mean_confidence": 0.85}],
+        },
+        source="scheduled",
+    )
+    block = _calibration_block(coach_profile)
+    assert "Model calibration" in block
+    assert "62%" in block or "63%" in block  # 0.625 hit-rate as a percentage
+    assert "OVER-confident" in block
+
+
+@pytest.mark.django_db
+def test_calibration_block_empty_when_no_run(coach_profile):
+    assert _calibration_block(coach_profile) == ""
+
+
+@pytest.mark.django_db
+def test_calibration_block_empty_for_mismatched_model(coach_profile):
+    from apps.aieval.services import persist_eval_run
+
+    persist_eval_run(
+        {"label": "x", "model": "a-totally-different-model", "n": 5, "scored": 5, "hit_rate": 0.8},
+        source="manual",
+    )
+    # coach_profile.default_model differs from the only EvalRun's model -> no block
+    assert _calibration_block(coach_profile) == ""
+
+
+@pytest.mark.django_db
+def test_assemble_coach_context_includes_calibration(coach_profile):
+    from apps.aieval.services import persist_eval_run
+
+    persist_eval_run(
+        {
+            "label": "scheduled",
+            "model": coach_profile.default_model,
+            "n": 6,
+            "scored": 6,
+            "hit_rate": 0.66,
+            "brier": 0.2,
+            "calibration": [{"n": 6, "observed_hit_rate": 0.66, "mean_confidence": 0.66}],
+        },
+        source="scheduled",
+    )
+    ctx = assemble_coach_context(_snap(coach_profile), coach_profile)
+    assert "Model calibration" in ctx
 
 
 @pytest.mark.django_db

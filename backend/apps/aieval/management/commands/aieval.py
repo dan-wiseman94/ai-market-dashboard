@@ -5,9 +5,10 @@ of past theses whose outcome is known, and scores the model's directional call
 against the objective verdict (directional hit-rate + Brier).
 
 This calls the REAL model once per labeled row → real $$. It is therefore a
-MANUAL command (never a beat task / never auto-run): it respects the provider's
-configured daily + monthly cost caps and supports ``--limit`` for cheap smoke
-runs. In MOCK_EXTERNAL mode / under test the model call is mocked, so it is free.
+MANUAL command (never a beat task / never auto-run): respects the provider's
+configured daily + monthly cost caps via a pre-flight check (aborts with
+CommandError if already over) and supports ``--limit`` for cheap smoke runs.
+In MOCK_EXTERNAL mode / under test the model call is mocked, so it is free.
 
     manage.py aieval --model claude-opus-4-8 --system-file prompt.txt
     manage.py aieval --model claude-sonnet-4-6 --system-file - --horizon 30 --limit 5
@@ -19,11 +20,12 @@ import sys
 
 from django.core.management.base import BaseCommand, CommandError
 
-from apps.aieval.services import evaluate
-
-_DEFAULT_SYSTEM = (
-    "You are a trading analyst. Read the market snapshot and state a single "
-    "directional bias (bullish, bearish, or neutral) with your reasoning."
+from apps.ai.cost import CostCapExceededError
+from apps.aieval.services import (
+    DEFAULT_EVAL_SYSTEM,
+    evaluate,
+    persist_eval_run,
+    preflight_cost_cap,
 )
 
 
@@ -52,17 +54,23 @@ class Command(BaseCommand):
 
     def _read_system(self, system_file: str | None) -> str:
         if not system_file:
-            return _DEFAULT_SYSTEM
+            return DEFAULT_EVAL_SYSTEM
         if system_file == "-":
-            return sys.stdin.read().strip() or _DEFAULT_SYSTEM
+            return sys.stdin.read().strip() or DEFAULT_EVAL_SYSTEM
         try:
             with open(system_file, encoding="utf-8") as fh:
-                return fh.read().strip() or _DEFAULT_SYSTEM
+                return fh.read().strip() or DEFAULT_EVAL_SYSTEM
         except OSError as exc:
             raise CommandError(f"could not read --system-file {system_file!r}: {exc}") from exc
 
     def handle(self, *args, **options) -> None:
         system = self._read_system(options["system_file"])
+
+        try:
+            preflight_cost_cap("claude")
+        except CostCapExceededError as exc:
+            raise CommandError(str(exc)) from exc
+
         res = evaluate(
             system=system,
             model=options["model"],
@@ -79,6 +87,8 @@ class Command(BaseCommand):
                 )
             )
             return
+
+        persist_eval_run(res, source="manual")
 
         self.stdout.write(
             self.style.SUCCESS(
