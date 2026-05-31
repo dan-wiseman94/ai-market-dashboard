@@ -43,6 +43,47 @@ def _invalidation_for(report, ticker: str) -> str:
     return ""
 
 
+def _current_price(snapshot, ticker: str) -> float | None:
+    """Primary-ticker last from the snapshot's own quotes section (no fetch).
+    Best-effort — any odd shape / missing section yields None."""
+    try:
+        for sec in snapshot.sections.all():
+            if sec.kind == "quotes" and isinstance(sec.payload, dict):
+                row = sec.payload.get(ticker)
+                if isinstance(row, dict) and row.get("last") is not None:
+                    return float(row["last"])
+    except Exception:
+        return None
+    return None
+
+
+def _invalidation_price_from_levels(report, direction: str, current_price: float | None):
+    """Heuristic invalidation level from the report's ``key_levels`` (M13 F5):
+    a bullish call is invalidated by breaking the nearest **support below** the
+    current price; a bearish call by breaking the nearest **resistance above**.
+    Neutral calls get no price. ``None`` when no qualifying level exists. When the
+    current price is unknown the nearest-by-price filter is relaxed.
+    """
+    levels = getattr(report, "key_levels", []) or []
+    if direction == "bullish":
+        below = [
+            lvl.price
+            for lvl in levels
+            if getattr(lvl, "kind", "") == "support"
+            and (current_price is None or lvl.price < current_price)
+        ]
+        return max(below) if below else None
+    if direction == "bearish":
+        above = [
+            lvl.price
+            for lvl in levels
+            if getattr(lvl, "kind", "") == "resistance"
+            and (current_price is None or lvl.price > current_price)
+        ]
+        return min(above) if above else None
+    return None
+
+
 def _resolve_at(ticker: str, predicted_at, horizon_days: int):
     """predicted_at + horizon trading sessions on the ticker's calendar."""
     from apps.market.calendar import add_trading_days, calendar_for
@@ -82,6 +123,7 @@ def extract_from_observation(
 
     horizon = int(getattr(report, "predicted_horizon_days", None) or DEFAULT_HORIZON_DAYS)
     predicted_at = getattr(message, "created_at", None) or timezone.now()
+    inv_price = _invalidation_price_from_levels(report, direction, _current_price(snapshot, ticker))
 
     existing = AIPrediction.objects.filter(
         ticker=ticker, horizon_days=horizon, profile=profile, status="open"
@@ -101,6 +143,7 @@ def extract_from_observation(
         confidence=confidence,
         rationale=(getattr(report, "headline", "") or "")[:500],
         invalidation_note=_invalidation_for(report, ticker),
+        invalidation_price=inv_price,
         provider=provider,
         model=model,
         source_message=message,
