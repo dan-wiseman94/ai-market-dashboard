@@ -119,9 +119,15 @@ def run_observer(schedule_id: int) -> int | None:
     elif sched.structured:
         _run_structured_and_record(sched, thread, coach + payload_text, provider_name, cfg)
     else:
+        rc = runtime_config()  # one row fetch; reused for the gate and the TTL below
         cached = (
-            _cached_observer_response(thread, prompt_hash, exclude_message_id=msg.id)
-            if runtime_config().observer_response_cache_enabled
+            _cached_observer_response(
+                thread,
+                prompt_hash,
+                exclude_message_id=msg.id,
+                ttl=rc.observer_response_cache_ttl_seconds,
+            )
+            if rc.observer_response_cache_enabled
             else None
         )
         if cached is not None:
@@ -185,15 +191,16 @@ def _prompt_hash(text: str, provider: str, model: str) -> str:
     return hashlib.sha256(f"{provider}|{model}|{text}".encode()).hexdigest()
 
 
-def _cached_observer_response(thread, prompt_hash: str, exclude_message_id: int) -> str | None:
+def _cached_observer_response(
+    thread, prompt_hash: str, exclude_message_id: int, ttl: int
+) -> str | None:
     """Text of a recent prior observation on this thread whose fire used a
-    byte-identical prompt (same hash), within the TTL — else None (C2).
+    byte-identical prompt (same hash), within ``ttl`` seconds — else None (C2).
 
     The observer thread is linear (user, assistant, user, …), so the response is
     the first ``done`` assistant message after that prior user turn. The current
     fire's own user message is excluded (it was just written with this hash).
     """
-    ttl = runtime_config().observer_response_cache_ttl_seconds
     cutoff = timezone.now() - timedelta(seconds=ttl)
     prior_user = (
         Message.objects.filter(
