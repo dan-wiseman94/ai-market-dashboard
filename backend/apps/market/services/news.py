@@ -93,6 +93,11 @@ def fetch_news(
 
     api_key = _finnhub_api_key()
     if not api_key:
+        from apps.market.services import fallback
+
+        alt = fallback.alt_news(tickers, limit=limit)
+        if alt is not None:
+            return alt
         log.info("Finnhub credential not configured; returning empty news list")
         return []
 

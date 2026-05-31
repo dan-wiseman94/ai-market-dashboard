@@ -11,7 +11,11 @@ from django.utils import timezone
 from apps.market import cache
 from apps.market.calendar import calendar_for, get_market_calendar
 from apps.market.models import OHLCBar
-from apps.market.schwab_client import get_schwab_client, schwab_json
+from apps.market.schwab_client import (
+    SchwabNotConnectedError,
+    get_schwab_client,
+    schwab_json,
+)
 from apps.market.symbols import normalize_symbol
 
 log = logging.getLogger(__name__)
@@ -34,11 +38,19 @@ def fetch_ohlc(ticker: str, *, timeframe: str, bars: int = 60) -> list[dict]:
     if timeframe not in _METHOD_BY_TIMEFRAME:
         raise ValueError(f"Unsupported timeframe: {timeframe}")
     ticker = normalize_symbol(ticker)
-    return cache.get_or_fetch(
-        f"market:ohlc:{ticker}:{timeframe}:{bars}",
-        ttl_seconds=cache.ttl_for_kind(f"ohlc_{timeframe}"),
-        fetcher=lambda: _fetch_from_schwab(ticker, timeframe, bars),
-    )
+    try:
+        return cache.get_or_fetch(
+            f"market:ohlc:{ticker}:{timeframe}:{bars}",
+            ttl_seconds=cache.ttl_for_kind(f"ohlc_{timeframe}"),
+            fetcher=lambda: _fetch_from_schwab(ticker, timeframe, bars),
+        )
+    except SchwabNotConnectedError:
+        from apps.market.services import fallback
+
+        alt = fallback.alt_bars(ticker, timeframe, limit=bars)
+        if alt is None:
+            raise
+        return alt
 
 
 def fetch_ohlc_session(ticker: str, *, timeframe: str, premarket_minutes: int = 60) -> list[dict]:
@@ -51,11 +63,19 @@ def fetch_ohlc_session(ticker: str, *, timeframe: str, premarket_minutes: int = 
     if timeframe not in _METHOD_BY_TIMEFRAME:
         raise ValueError(f"Unsupported timeframe: {timeframe}")
     ticker = normalize_symbol(ticker)
-    return cache.get_or_fetch(
-        f"market:ohlc:{ticker}:{timeframe}:session",
-        ttl_seconds=cache.ttl_for_kind(f"ohlc_{timeframe}"),
-        fetcher=lambda: _fetch_session_from_schwab(ticker, timeframe, premarket_minutes),
-    )
+    try:
+        return cache.get_or_fetch(
+            f"market:ohlc:{ticker}:{timeframe}:session",
+            ttl_seconds=cache.ttl_for_kind(f"ohlc_{timeframe}"),
+            fetcher=lambda: _fetch_session_from_schwab(ticker, timeframe, premarket_minutes),
+        )
+    except SchwabNotConnectedError:
+        from apps.market.services import fallback
+
+        alt = fallback.alt_bars(ticker, timeframe, limit=120)
+        if alt is None:
+            raise
+        return alt
 
 
 def fetch_ohlc_overnight(ticker: str, *, timeframe: str) -> list[dict]:
@@ -69,11 +89,19 @@ def fetch_ohlc_overnight(ticker: str, *, timeframe: str) -> list[dict]:
     if timeframe not in _METHOD_BY_TIMEFRAME:
         raise ValueError(f"Unsupported timeframe: {timeframe}")
     ticker = normalize_symbol(ticker)
-    return cache.get_or_fetch(
-        f"market:ohlc:{ticker}:{timeframe}:overnight",
-        ttl_seconds=cache.ttl_for_kind(f"ohlc_{timeframe}"),
-        fetcher=lambda: _fetch_overnight_from_schwab(ticker, timeframe),
-    )
+    try:
+        return cache.get_or_fetch(
+            f"market:ohlc:{ticker}:{timeframe}:overnight",
+            ttl_seconds=cache.ttl_for_kind(f"ohlc_{timeframe}"),
+            fetcher=lambda: _fetch_overnight_from_schwab(ticker, timeframe),
+        )
+    except SchwabNotConnectedError:
+        from apps.market.services import fallback
+
+        alt = fallback.alt_bars(ticker, timeframe, limit=200)
+        if alt is None:
+            raise
+        return alt
 
 
 def _overnight_window(
