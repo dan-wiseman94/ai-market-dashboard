@@ -62,6 +62,23 @@ def refresh_events() -> dict:
     return {"earnings": n_earn, "macro": n_macro, "pruned": pruned}
 
 
+@shared_task(name="market.refresh_corporate_actions")
+def refresh_corporate_actions() -> dict:
+    """Daily refresh of splits + dividends for watchlist tickers; prune stale rows.
+
+    Keeps the returns-adjustment data warm for the tickers we watch. Cold,
+    non-watchlist tickers (e.g. a one-off thesis) self-fill on demand in
+    ``corporate_actions_for``, so this task only covers the standing universe.
+    """
+    from apps.market.services import corporate_actions as ca
+
+    tickers = list(WatchlistSymbol.objects.values_list("ticker", flat=True).distinct())
+    n_splits = len(ca.fetch_splits(tickers))
+    n_divs = len(ca.fetch_dividends(tickers))
+    pruned = ca.prune_old()
+    return {"splits": n_splits, "dividends": n_divs, "pruned": pruned}
+
+
 @shared_task(name="market.ingest_daily_bars")
 def ingest_daily_bars() -> dict:
     """Fetch + persist daily OHLCBar for a fixed universe (watchlist + sector ETFs +
