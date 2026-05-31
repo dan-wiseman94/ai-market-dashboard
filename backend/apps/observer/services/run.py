@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import hashlib
 import logging
+from datetime import timedelta
 from decimal import Decimal
 
+from django.conf import settings
 from django.utils import timezone
 
 from apps.ai.cost import CostCapExceededError, check_daily_cap, check_monthly_cap
@@ -98,11 +101,13 @@ def run_observer(schedule_id: int) -> int | None:
 
     payload_text = _build_payload_text(sched, snap, provider_name, model_name)
     coach = assemble_coach_context(snap, sched.profile)
+    user_text = coach + payload_text
+    prompt_hash = _prompt_hash(user_text, provider_name, model_name)
 
     msg = Message.objects.create(
         thread=thread,
         role="user",
-        content={"text": coach + payload_text},
+        content={"text": user_text, "prompt_hash": prompt_hash},
         snapshot_ref=snap,
         status="done",
     )
@@ -114,16 +119,31 @@ def run_observer(schedule_id: int) -> int | None:
     elif sched.structured:
         _run_structured_and_record(sched, thread, coach + payload_text, provider_name, cfg)
     else:
-        override: dict = {}
-        if sched.override_provider:
-            override["provider"] = sched.override_provider
-        if sched.override_model:
-            override["model"] = sched.override_model
-        run_ai_on_message.delay(
-            thread_id=thread.id,
-            user_message_id=msg.id,
-            override=override or None,
+        cached = (
+            _cached_observer_response(thread, prompt_hash, exclude_message_id=msg.id)
+            if getattr(settings, "OBSERVER_RESPONSE_CACHE_ENABLED", False)
+            else None
         )
+        if cached is not None:
+            # Byte-identical prompt within the TTL — reuse the prior observation
+            # instead of paying for another AI call (C2).
+            Message.objects.create(
+                thread=thread,
+                role="assistant",
+                content={"text": cached, "kind": "cached_observation"},
+                status="done",
+            )
+        else:
+            override: dict = {}
+            if sched.override_provider:
+                override["provider"] = sched.override_provider
+            if sched.override_model:
+                override["model"] = sched.override_model
+            run_ai_on_message.delay(
+                thread_id=thread.id,
+                user_message_id=msg.id,
+                override=override or None,
+            )
 
     _stamp_fired(sched)
 
@@ -159,6 +179,46 @@ def _build_payload_text(sched: ObserverSchedule, snap, provider_name: str, model
             )
 
     return serialize_for_ai(snap, provider=provider_name, model=model_name)
+
+
+def _prompt_hash(text: str, provider: str, model: str) -> str:
+    return hashlib.sha256(f"{provider}|{model}|{text}".encode()).hexdigest()
+
+
+def _cached_observer_response(thread, prompt_hash: str, exclude_message_id: int) -> str | None:
+    """Text of a recent prior observation on this thread whose fire used a
+    byte-identical prompt (same hash), within the TTL — else None (C2).
+
+    The observer thread is linear (user, assistant, user, …), so the response is
+    the first ``done`` assistant message after that prior user turn. The current
+    fire's own user message is excluded (it was just written with this hash).
+    """
+    ttl = getattr(settings, "OBSERVER_RESPONSE_CACHE_TTL_SECONDS", 1800)
+    cutoff = timezone.now() - timedelta(seconds=ttl)
+    prior_user = (
+        Message.objects.filter(
+            thread=thread,
+            role="user",
+            status="done",
+            content__prompt_hash=prompt_hash,
+            created_at__gte=cutoff,
+        )
+        .exclude(id=exclude_message_id)
+        .order_by("-created_at")
+        .first()
+    )
+    if prior_user is None:
+        return None
+    asst = (
+        Message.objects.filter(
+            thread=thread, role="assistant", status="done", created_at__gt=prior_user.created_at
+        )
+        .order_by("created_at")
+        .first()
+    )
+    if asst is None:
+        return None
+    return (asst.content or {}).get("text", "") or None
 
 
 def _run_structured_and_record(
