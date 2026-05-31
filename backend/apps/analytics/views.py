@@ -159,3 +159,54 @@ class TrackRecordView(APIView):
             conviction = None
         record = track_record_for_ticker(ticker, direction=direction, conviction=conviction)
         return Response({"ticker": ticker, "available": record is not None, "record": record})
+
+
+def _opt_horizon(request: Request) -> int | None:
+    raw = request.query_params.get("horizon")
+    if raw is None or raw == "":
+        return None
+    try:
+        return int(raw)
+    except ValueError:
+        return None
+
+
+class AICalibrationView(APIView):
+    """Live calibration of the AI's own resolved predictions (M13 F3)."""
+
+    def get(self, request: Request) -> Response:
+        from apps.analytics.services.ai_calibration import ai_calibration
+
+        start, end = _parse_range(request, default_days=90)
+        return Response(
+            {
+                "start": start.isoformat(),
+                "end": end.isoformat(),
+                **ai_calibration(start=start, end=end, horizon=_opt_horizon(request)),
+            }
+        )
+
+
+class AICalibrationDrilldownView(APIView):
+    """The resolved predictions behind an AI-calibration band/slice."""
+
+    def get(self, request: Request) -> Response:
+        from apps.analytics.services.ai_calibration import ai_calibration_drilldown
+
+        start, end = _parse_range(request, default_days=90)
+        return Response(
+            {
+                "start": start.isoformat(),
+                "end": end.isoformat(),
+                **ai_calibration_drilldown(
+                    start=start,
+                    end=end,
+                    horizon=_opt_horizon(request),
+                    band=request.query_params.get("band") or None,
+                    direction=request.query_params.get("direction") or None,
+                    verdict=request.query_params.get("verdict") or None,
+                    provider=request.query_params.get("provider") or None,
+                    model=request.query_params.get("model") or None,
+                ),
+            }
+        )
