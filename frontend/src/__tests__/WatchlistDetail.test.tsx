@@ -121,8 +121,10 @@ describe("WatchlistDetail", () => {
 
   it("renders WatchlistTable with symbols", () => {
     renderDetail();
-    expect(screen.getByText("AAPL")).toBeInTheDocument();
-    expect(screen.getByText("MSFT")).toBeInTheDocument();
+    // Scope to the table's market links (tickers also appear in the
+    // "what changed" section's expander buttons below the table).
+    expect(screen.getByRole("link", { name: "AAPL" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "MSFT" })).toBeInTheDocument();
   });
 
   it("WatchlistTable onRemove is wired to remove.mutate", async () => {
