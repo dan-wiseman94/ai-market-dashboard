@@ -24,6 +24,20 @@ def test_authorize_endpoint_returns_schwab_url():
 
 
 @pytest.mark.django_db
+@override_settings(SCHWAB_CLIENT_ID="")
+def test_authorize_returns_400_when_not_configured():
+    """With no SCHWAB_CLIENT_ID, don't emit an authorize URL with an empty client_id
+    (Schwab bounces it back as 401 invalid_client). Return a clear, structured error so
+    the UI can tell the user to set their credentials."""
+    client = Client()
+    response = client.get("/api/schwab/authorize/")
+    assert response.status_code == 400
+    body = response.json()
+    assert body["code"] == "schwab_not_configured"
+    assert "SCHWAB_CLIENT_ID" in body["message"]
+
+
+@pytest.mark.django_db
 def test_callback_without_code_returns_400():
     client = Client()
     response = client.get("/api/schwab/callback/")
