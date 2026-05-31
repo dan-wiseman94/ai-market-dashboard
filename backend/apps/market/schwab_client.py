@@ -10,10 +10,9 @@ import time
 from typing import Any
 
 import httpx
-from django.conf import settings
 from schwab.auth import client_from_access_functions
 
-from apps.secrets.schwab_oauth import load_token, persist_token
+from apps.secrets.schwab_oauth import load_token, persist_token, schwab_app_credentials
 
 
 class SchwabNotConnectedError(RuntimeError):
@@ -214,9 +213,10 @@ def get_schwab_client(*, asyncio: bool = False):
     if load_token() is None:
         raise SchwabNotConnectedError("No Schwab credential; connect at /settings first.")
 
+    api_key, app_secret = schwab_app_credentials()
     return client_from_access_functions(
-        api_key=settings.SCHWAB_CLIENT_ID,
-        app_secret=settings.SCHWAB_CLIENT_SECRET,
+        api_key=api_key,
+        app_secret=app_secret,
         token_read_func=_read_token,
         token_write_func=_write_token,
         asyncio=asyncio,
