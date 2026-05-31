@@ -1,6 +1,10 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { useCalibration, useCalibrationDrilldown } from "@/hooks/useAnalytics";
+import {
+  useCalibration,
+  useCalibrationDrilldown,
+  useLatestEvalRun,
+} from "@/hooks/useAnalytics";
 import { SkeletonRows } from "@/components/Skeleton";
 import { EmptyState } from "@/components/EmptyState";
 
@@ -15,6 +19,7 @@ export default function ScorecardPage() {
   const [selected, setSelected] = useState<number | null>(null);
   const { data, isLoading } = useCalibration(90, horizon);
   const { data: drill, isLoading: drillLoading } = useCalibrationDrilldown(selected, horizon, 90);
+  const { data: evalRun } = useLatestEvalRun();
 
   function pickHorizon(h: number) {
     setHorizon(h);
@@ -55,7 +60,9 @@ export default function ScorecardPage() {
               Hit-rate {pct(data.thesis.overall.hit_rate)} · Brier{" "}
               {data.thesis.brier ?? "—"} · {data.thesis.overall.scored} scored ({horizon}d)
             </p>
-            <p className="mb-2 text-xs text-ink-500">Select a conviction to see the theses behind it.</p>
+            <p className="mb-2 text-xs text-ink-500">
+              Select a conviction to see the theses behind it.
+            </p>
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-ink-400">
@@ -167,6 +174,48 @@ export default function ScorecardPage() {
             )}
           </section>
         </>
+      )}
+
+      {/* Measured model calibration from the offline eval harness (M7) — independent
+          of thesis post-mortems, so it renders whenever an eval run exists. */}
+      {evalRun && evalRun.scored > 0 && (
+        <section>
+          <h2 className="mb-2 font-semibold">Model eval calibration</h2>
+          <p className="mb-2 text-sm text-ink-400">
+            How often {evalRun.model}'s directional call was right on replayed past snapshots, vs how
+            confident it claimed to be.
+          </p>
+          <p className="mb-3 text-sm text-ink-400">
+            Hit-rate {pct(evalRun.hit_rate)} · Brier {evalRun.brier ?? "—"} · {evalRun.scored} scored
+            · avg confidence {pct(evalRun.avg_confidence)}
+          </p>
+          {evalRun.calibration.filter((b) => b.n > 0).length > 0 && (
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-ink-400">
+                  <th className="text-left">Stated confidence</th>
+                  <th>n</th>
+                  <th>Observed</th>
+                  <th>Stated</th>
+                </tr>
+              </thead>
+              <tbody>
+                {evalRun.calibration
+                  .filter((b) => b.n > 0)
+                  .map((b) => (
+                    <tr key={`${b.bin_low}-${b.bin_high}`} className="border-t border-rule">
+                      <td>
+                        {(b.bin_low * 100).toFixed(0)}–{(b.bin_high * 100).toFixed(0)}%
+                      </td>
+                      <td className="text-center">{b.n}</td>
+                      <td className="text-center">{pct(b.observed_hit_rate)}</td>
+                      <td className="text-center">{pct(b.mean_confidence)}</td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          )}
+        </section>
       )}
     </div>
   );
