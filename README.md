@@ -51,9 +51,10 @@ A single-user desktop dashboard that captures point-in-time **stock-market snaps
 
 ### Market data & snapshots
 
-- **Snapshots** — capture a point-in-time market picture from opt-in sections: real-time **quotes**, **OHLC** history, **option chains**, **positions**, **market breadth**, **news**, **rendered chart images** (headless-Chromium PNGs), and the **events** forward calendar. A section that fails is marked `failed` and explicitly flagged in the AI payload — partial captures are fine, never silently dropped.
+- **Snapshots** — capture a point-in-time market picture from opt-in sections: real-time **quotes**, **OHLC** history, **option chains**, **positions**, **market breadth**, **news**, **macro indicators** (FRED), **SEC filings** (EDGAR + Form 4 insider), **Treasury rates**, **rendered chart images** (headless-Chromium PNGs), and the **events** forward calendar. A section that fails is marked `failed` and explicitly flagged in the AI payload — partial captures are fine, never silently dropped.
 - **Overnight (pre-market) snapshots** — an opt-in capture mode that adds index/vol/rates **futures**, overseas quotes, extended-hours OHLC, and overnight news (since the prior close), with per-ticker `gap_pct` vs. `prior_close`. Toggle it with the *Overnight* checkbox in the snapshot composer.
 - **Forward calendar** — upcoming **earnings** (per-ticker, BMO/AMC hints + EPS estimates via Finnhub) and curated US **macro** events (FOMC / CPI / NFP / PCE / GDP). Surfaced three ways: the opt-in `events` snapshot section, the `days_to_earnings` trigger leaf, and `GET /api/market/events/?tickers=…&within_days=14`. Refreshed daily by the `market.refresh_events` beat task; macro degrades to a seeded list when Finnhub's economic calendar is unavailable.
+- **Free data sources alongside Schwab** — beyond the Schwab integration, the backend ships free-tier / keyless clients for **Alpaca** (real-time IEX quotes + bars), **Tiingo**, **Twelve Data**, **Polygon** (price history), **Tradier** (delayed option chains), **FRED** (macro + the daily Treasury yield curve), **SEC EDGAR** (filings + Form 4 insider), **Marketaux** (news + per-ticker sentiment), and **US Treasury** FiscalData. Drop a key into **Settings** and the quotes / OHLC / option-chain / news pipeline transparently falls back to a free provider when Schwab isn't connected — so the whole dashboard runs without a brokerage login. `macro`, `filings`, and `treasury` are new opt-in snapshot sections.
 - **Watchlists** — group tickers and drill into a per-ticker market page.
 - **Objective + profile framing** — every capture carries a free-text objective and a named trading-style profile, so the model knows *how* to look and *what* you're asking.
 - **Token budgeting** — the payload is trimmed to a per-model budget (from the model catalog) before it reaches the LLM; per-section token counts are recorded for the cost drill-down.
@@ -252,7 +253,7 @@ frontend  Vite dev server (React + TS)            :5173
 Backend code lives under `backend/apps/<name>/` (imported as `apps.<name>`):
 
 - `core` · health, base consumer, logging, `MOCK_EXTERNAL` flag
-- `market` · Schwab client, quotes/OHLC/chain/news, shared forward-return helpers (`returns.py`)
+- `market` · Schwab client + free fallback providers (Alpaca / Tiingo / Twelve Data / Polygon / Tradier / FRED / SEC EDGAR / Marketaux / US Treasury), quotes/OHLC/chain/news, shared forward-return helpers (`returns.py`)
 - `snapshots` · capture orchestration + token budget
 - `ai` · provider abstraction (Claude / OpenAI / Local), router, catalog, cost calc, tool/thinking/memory/citations support + capability-gap detection
 - `threads` · messages, streaming consumer, multi-provider compare, stop, file attach, Decision Coach context (`coach.py`)
