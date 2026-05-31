@@ -15,7 +15,13 @@ from django.core.management import call_command
 from django.utils import timezone
 
 from apps.aieval import services as svc
-from apps.aieval.services import confidence_calibration, evaluate, labeled_examples, replay_one
+from apps.aieval.services import (
+    _confidence_from_report,
+    confidence_calibration,
+    evaluate,
+    labeled_examples,
+    replay_one,
+)
 from apps.observer.schemas import ObservationReport, Signal
 from apps.profiles.models import TradingProfile
 from apps.snapshots.models import Snapshot
@@ -427,3 +433,42 @@ def test_command_prints_calibration_table(profile):
     text = out.getvalue()
     assert "calibration" in text
     assert "conf [" in text
+
+
+# --------------------------------------------------------------------------- #
+# Task 1 — predicted_confidence on ObservationReport; harness prefers it
+# --------------------------------------------------------------------------- #
+
+
+def test_predicted_confidence_field_accepted():
+    """ObservationReport accepts an optional predicted_confidence in [0,1]."""
+    r = ObservationReport(
+        headline="h",
+        bias="bullish",
+        summary="s",
+        next_check_in="tomorrow",
+        predicted_confidence=0.73,
+    )
+    assert r.predicted_confidence == 0.73
+    # Default is None (additive / backward-compatible)
+    r2 = ObservationReport(headline="h", bias="bullish", summary="s", next_check_in="t")
+    assert r2.predicted_confidence is None
+
+
+def test_confidence_prefers_predicted_confidence_over_signal_mean():
+    """When predicted_confidence is set, it wins over the signal-mean fallback."""
+    r = _report("bullish", confs=(0.2, 0.4))  # signal mean would be 0.3
+    r.predicted_confidence = 0.9
+    assert _confidence_from_report(r) == 0.9
+
+
+def test_confidence_falls_back_to_signal_mean_when_unset():
+    """predicted_confidence=None -> mean of per-signal confidences (legacy behavior)."""
+    r = _report("bullish", confs=(0.6, 1.0))  # mean 0.8
+    assert r.predicted_confidence is None
+    assert _confidence_from_report(r) == 0.8
+
+
+def test_confidence_none_when_no_signals_and_no_predicted():
+    r = ObservationReport(headline="h", bias="bullish", summary="s", next_check_in="t")
+    assert _confidence_from_report(r) is None

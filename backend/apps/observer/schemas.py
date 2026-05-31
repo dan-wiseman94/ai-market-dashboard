@@ -48,6 +48,13 @@ class ObservationReport(BaseModel):
         default=None,
         description="Horizon in trading days for predicted_direction.",
     )
+    predicted_confidence: float | None = Field(
+        default=None,
+        ge=0.0,
+        le=1.0,
+        description="Your confidence in predicted_direction over the horizon, 0..1. "
+        "Optional; falls back to the mean of per-signal confidences when unset.",
+    )
     grounding: list[str] = Field(
         default_factory=list,
         max_length=12,
