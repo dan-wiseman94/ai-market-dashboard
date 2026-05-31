@@ -7,8 +7,9 @@ def client_kwargs() -> dict:
     """Resilience kwargs for the Anthropic/OpenAI SDK clients: bounded retry + timeout.
 
     Both SDKs accept max_retries (exponential backoff on 408/409/429/5xx) and timeout.
-    Values are read from Django settings so they are configurable per-environment without
-    a code change.
+    Read from Django settings (env-configurable). NOT routed through SystemSettings/DB: this
+    runs at provider __init__, which can happen inside the async streaming loop, where a sync
+    ORM read would raise SynchronousOnlyOperation. Keep it env-only.
     """
     from django.conf import settings
 

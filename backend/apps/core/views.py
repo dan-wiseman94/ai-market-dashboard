@@ -139,3 +139,62 @@ class ErrorEventResolveView(APIView):
         ev.resolved = True
         ev.save(update_fields=["resolved"])
         return Response(_serialize_error_event(ev))
+
+
+class SystemSettingsView(APIView):
+    """GET/PATCH /api/settings/ — runtime-tunable knobs (retention, AI resilience/failover,
+    observer cache, scheduled eval). GET returns the resolved *effective* values (UI override
+    where set, else the env/settings default). PATCH writes explicit overrides; values take
+    effect on the next task run / request — no worker/beat restart.
+    """
+
+    def get(self, _request: Request) -> Response:
+        from dataclasses import asdict
+
+        from apps.core.runtime_config import runtime_config
+
+        return Response(asdict(runtime_config()))
+
+    def patch(self, request: Request) -> Response:
+        from dataclasses import asdict
+
+        from apps.core.models import SystemSettings
+        from apps.core.runtime_config import EDITABLE_FIELDS, runtime_config
+
+        cfg = SystemSettings.load()
+        changed: list[str] = []
+        for key, value in request.data.items():
+            if key not in EDITABLE_FIELDS:
+                return Response(
+                    {"code": "unknown_field", "message": f"Unknown field: {key}"}, status=400
+                )
+            coerced, err = _coerce_setting(key, value, EDITABLE_FIELDS[key])
+            if err is not None:
+                return Response({"code": "invalid_value", "message": err}, status=400)
+            setattr(cfg, key, coerced)
+            changed.append(key)
+        if changed:
+            cfg.save(update_fields=[*changed, "updated_at"])
+        return Response(asdict(runtime_config()))
+
+
+def _coerce_setting(key: str, value: object, typ: type) -> tuple[object, str | None]:
+    """Coerce/validate a single PATCH value. None clears the override (inherit default)."""
+    if value is None:
+        return None, None
+    try:
+        if typ is bool:
+            if not isinstance(value, bool):
+                return None, f"{key} must be a boolean"
+            return value, None
+        if typ is int:
+            coerced: object = int(value)  # type: ignore[arg-type]
+        elif typ is float:
+            coerced = float(value)  # type: ignore[arg-type]
+        else:
+            coerced = str(value)
+    except (TypeError, ValueError):
+        return None, f"{key} must be {typ.__name__}"
+    if typ in (int, float) and coerced < 0:  # type: ignore[operator]
+        return None, f"{key} must be >= 0"
+    return coerced, None

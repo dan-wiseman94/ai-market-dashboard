@@ -150,3 +150,41 @@ class CompanyFundamentals(models.Model):
 
     def __str__(self) -> str:
         return f"CompanyFundamentals({self.ticker})"
+
+
+class CorporateAction(models.Model):
+    """A stock split or dividend, keyed by ex-date. Deduped on (source, external_id).
+
+    Used by ``apps.market.returns`` to adjust forward-return math so a split
+    doesn't read as a crash. ``ratio`` is ``shares_after / shares_before`` for a
+    split (3:1 forward → 3.0; 1:10 reverse → 0.1); ``amount`` is cash-per-share
+    for a dividend. Each row uses exactly one of the two.
+    """
+
+    KINDS: ClassVar = [("split", "split"), ("dividend", "dividend")]
+
+    source = models.CharField(max_length=16)  # "finnhub" | "mock"
+    external_id = models.CharField(max_length=80, db_index=True)
+    kind = models.CharField(max_length=16, choices=KINDS)
+    ticker = models.CharField(max_length=16, db_index=True)
+    ex_date = models.DateField(db_index=True)
+    # Split ratio = shares_after / shares_before (price divides by this). Null for dividends.
+    ratio = models.DecimalField(max_digits=16, decimal_places=6, null=True, blank=True)
+    # Dividend cash per share. Null for splits.
+    amount = models.DecimalField(max_digits=14, decimal_places=6, null=True, blank=True)
+    detail = models.JSONField(default=dict)
+    fetched_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints: ClassVar = [
+            models.UniqueConstraint(
+                fields=["source", "external_id"], name="uniq_corpaction_source_id"
+            ),
+        ]
+        indexes: ClassVar = [
+            models.Index(fields=["ticker", "ex_date"]),
+            models.Index(fields=["kind", "ex_date"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"CorporateAction({self.kind}, {self.ticker}, {self.ex_date})"
