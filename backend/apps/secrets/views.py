@@ -20,6 +20,7 @@ from apps.ai.cost import daily_spend_usd
 from apps.ai.providers import get_provider
 from apps.secrets.models import ApiCredential, ProviderConfig
 from apps.secrets.schwab_oauth import (
+    SchwabNotConfigured,
     build_authorize_url,
     exchange_code_for_token,
     persist_token,
@@ -32,7 +33,12 @@ log = logging.getLogger(__name__)
 @require_GET
 def schwab_authorize(_request: HttpRequest) -> JsonResponse:
     """Returns the URL the frontend should open to begin Schwab OAuth."""
-    return JsonResponse({"url": build_authorize_url()})
+    try:
+        return JsonResponse({"url": build_authorize_url()})
+    except SchwabNotConfigured as exc:
+        # No client_id set — fail clearly instead of emitting an authorize URL with an
+        # empty client_id (which Schwab rejects with an opaque 401 invalid_client).
+        return JsonResponse({"code": "schwab_not_configured", "message": str(exc)}, status=400)
 
 
 @require_GET
