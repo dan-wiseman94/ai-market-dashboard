@@ -37,6 +37,49 @@ class ApiCredential(models.Model):
         return timezone.now() >= self.expires_at
 
 
+class SchwabAppConfig(models.Model):
+    """App-level Schwab OAuth credentials (client_id + secret), encrypted at rest.
+
+    Singleton (pk=1 via .load()). Lets the user configure Schwab through the UI instead of
+    editing .env and recreating containers. Distinct from ApiCredential, which holds the
+    per-user OAuth *token*; this holds the *app* registration credentials. Read via
+    apps.secrets.schwab_oauth.schwab_app_credentials(), which falls back to the
+    SCHWAB_CLIENT_ID / SCHWAB_CLIENT_SECRET env settings when this row is absent or blank.
+    """
+
+    # Stored as {"v": "<value>"} so the Fernet wrapper + JSON schema match ProviderConfig.
+    _client_id = EncryptedJSONField(null=True, blank=True, db_column="client_id")
+    _client_secret = EncryptedJSONField(null=True, blank=True, db_column="client_secret")
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "secrets_schwabappconfig"
+
+    def __str__(self) -> str:
+        return f"SchwabAppConfig (client_id {'set' if self.client_id else 'unset'})"
+
+    @classmethod
+    def load(cls) -> SchwabAppConfig:
+        obj, _ = cls.objects.get_or_create(pk=1)
+        return obj
+
+    @property
+    def client_id(self) -> str:
+        return (self._client_id or {}).get("v", "")
+
+    @client_id.setter
+    def client_id(self, value: str) -> None:
+        self._client_id = {"v": value} if value else None
+
+    @property
+    def client_secret(self) -> str:
+        return (self._client_secret or {}).get("v", "")
+
+    @client_secret.setter
+    def client_secret(self, value: str) -> None:
+        self._client_secret = {"v": value} if value else None
+
+
 class ProviderConfig(models.Model):
     """Knobs for a given AI provider. API key is Fernet-encrypted at rest.
 

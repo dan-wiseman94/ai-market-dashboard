@@ -12,6 +12,7 @@ urlpatterns = [
     path("authorize/", views.schwab_authorize, name="authorize"),
     path("callback/", views.schwab_callback, name="callback"),
     path("status/", views.schwab_status, name="status"),
+    path("app-config/", views.schwab_app_config, name="app-config"),
     path("models/", views.ai_models, name="ai-models"),
     path("usage/", views.ai_usage, name="ai-usage"),
     *router.urls,

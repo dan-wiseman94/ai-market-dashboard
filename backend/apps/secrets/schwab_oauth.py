@@ -17,18 +17,39 @@ from urllib.parse import urlencode
 import httpx
 from cryptography.fernet import InvalidToken
 from django.conf import settings
+from django.db import transaction
 from django.utils import timezone
 
 log = logging.getLogger(__name__)
 
 
 class SchwabNotConfigured(RuntimeError):
-    """Schwab OAuth was attempted without SCHWAB_CLIENT_ID set.
+    """Schwab OAuth was attempted without a client_id configured.
 
     Building an authorize URL with an empty client_id produces a request Schwab rejects
     with 401 invalid_client. Callers should surface this as a clear "set your credentials"
     message instead of bouncing the user to that opaque error.
     """
+
+
+def schwab_app_credentials() -> tuple[str, str]:
+    """Return (client_id, client_secret) for the registered Schwab app.
+
+    DB-first (set via Settings → Connections), falling back to the SCHWAB_CLIENT_ID /
+    SCHWAB_CLIENT_SECRET env settings so existing env-based and CI setups keep working.
+    A blank DB value falls through to env per-field. Undecryptable DB creds (key rotated)
+    degrade to the env values rather than raising.
+    """
+    from apps.secrets.models import SchwabAppConfig
+
+    try:
+        cfg = SchwabAppConfig.load()
+        client_id = cfg.client_id or settings.SCHWAB_CLIENT_ID
+        client_secret = cfg.client_secret or settings.SCHWAB_CLIENT_SECRET
+    except InvalidToken:
+        log.warning("Schwab app credentials undecryptable; falling back to env settings.")
+        return settings.SCHWAB_CLIENT_ID, settings.SCHWAB_CLIENT_SECRET
+    return client_id, client_secret
 
 
 def build_authorize_url(*, state: str = "") -> str:
@@ -42,14 +63,15 @@ def build_authorize_url(*, state: str = "") -> str:
             return flow["authorize_url"]
         return f"{settings.SCHWAB_CALLBACK_URL}?code=MOCK_OAUTH"
 
-    if not settings.SCHWAB_CLIENT_ID:
+    client_id, _ = schwab_app_credentials()
+    if not client_id:
         raise SchwabNotConfigured(
-            "Schwab is not configured. Set SCHWAB_CLIENT_ID and SCHWAB_CLIENT_SECRET in "
-            ".env, then recreate the web/worker/beat containers."
+            "Schwab is not configured. Add your Schwab API credentials in "
+            "Settings → Connections (or set SCHWAB_CLIENT_ID / SCHWAB_CLIENT_SECRET in .env)."
         )
 
     params = {
-        "client_id": settings.SCHWAB_CLIENT_ID,
+        "client_id": client_id,
         "redirect_uri": settings.SCHWAB_CALLBACK_URL,
         "response_type": "code",
     }
@@ -60,10 +82,11 @@ def build_authorize_url(*, state: str = "") -> str:
 
 def _post_token(data: dict) -> dict:
     """POST to Schwab's token endpoint and stamp the absolute expiry."""
+    client_id, client_secret = schwab_app_credentials()
     resp = httpx.post(
         settings.SCHWAB_TOKEN_URL,
         data=data,
-        auth=(settings.SCHWAB_CLIENT_ID, settings.SCHWAB_CLIENT_SECRET),
+        auth=(client_id, client_secret),
         timeout=15.0,
     )
     resp.raise_for_status()
@@ -111,10 +134,20 @@ def persist_token(token: dict) -> None:
     # off this). Set once; refresh writes carry the original value through.
     token.setdefault("creation_timestamp", int(time.time()))
     expires_at = datetime.fromtimestamp(token["expires_at"], tz=timezone.get_current_timezone())
-    ApiCredential.objects.update_or_create(
-        provider="schwab",
-        defaults={"token": token, "expires_at": expires_at},
-    )
+    try:
+        ApiCredential.objects.update_or_create(
+            provider="schwab",
+            defaults={"token": token, "expires_at": expires_at},
+        )
+    except InvalidToken:
+        # The existing row's token is undecryptable (key rotated / salt reset), so
+        # update_or_create's lookup SELECT can't read it via from_db_value — which would
+        # crash the OAuth callback right when the user is trying to reconnect. Overwrite
+        # with a fast delete (which doesn't decrypt) + create, making reconnect self-healing.
+        log.warning("Overwriting undecryptable Schwab credential on reconnect.")
+        with transaction.atomic():
+            ApiCredential.objects.filter(provider="schwab").delete()
+            ApiCredential.objects.create(provider="schwab", token=token, expires_at=expires_at)
 
 
 def load_token() -> dict | None:
