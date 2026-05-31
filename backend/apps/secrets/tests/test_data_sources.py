@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -153,3 +154,21 @@ def test_probes_cover_every_keyed_provider():
 
     keyed = {ds["provider"] for ds in DATA_SOURCES if ds["auth"] in ("key", "key_secret")}
     assert set(mod._PROBES) == keyed
+
+
+@pytest.mark.django_db
+def test_put_succeeds_without_csrf_token():
+    """The SPA sends no CSRF token, so these plain views must be csrf_exempt (this app has
+    no auth, so CSRF protects nothing — matching the DRF endpoints). Regression: PUT
+    returned 403 'CSRF cookie not set'. The APIClient-based tests hid this because they
+    disable CSRF by default; an enforcing client reproduces the real browser path."""
+    from django.test import Client
+
+    csrf_client = Client(enforce_csrf_checks=True)
+    r = csrf_client.put(
+        "/api/schwab/data-sources/fred/",
+        data=json.dumps({"api_key_write": "abc"}),
+        content_type="application/json",
+    )
+    assert r.status_code == 200, r.content
+    assert ApiCredential.objects.get(provider="fred").token["api_key"] == "abc"
