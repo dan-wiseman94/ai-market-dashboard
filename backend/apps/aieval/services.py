@@ -43,6 +43,11 @@ _OPPOSITE = {"bullish": "bearish", "bearish": "bullish", "neutral": "neutral"}
 # Reliability bins for stated-confidence calibration.
 _CONF_BINS = [(0.0, 0.5), (0.5, 0.7), (0.7, 0.9), (0.9, 1.01)]
 
+DEFAULT_EVAL_SYSTEM = (
+    "You are a trading analyst. Read the market snapshot and state a single "
+    "directional bias (bullish, bearish, or neutral) with your reasoning."
+)
+
 
 def confidence_calibration(results: list[dict]) -> list[dict]:
     """Reliability curve: bucket scored predictions by stated confidence, report observed hit-rate.
@@ -268,6 +273,30 @@ def evaluate(
         "calibration": calibration,
         "calibration_error": calibration_error,
     }
+
+
+def preflight_cost_cap(provider: str = "claude") -> None:
+    """Raise CostCapExceededError if the provider's configured caps are already
+    breached, BEFORE spending on a real eval run.
+
+    Mirrors `apps.observer.services.run` cap resolution: no ProviderConfig row ->
+    Infinity daily / None monthly (no-op). Caps read AIRun spend only; they do
+    not call the model, so this is safe to call from the command and the task.
+    """
+    from decimal import Decimal
+
+    from apps.ai.cost import check_daily_cap, check_monthly_cap
+    from apps.secrets.models import ProviderConfig
+
+    cfg = ProviderConfig.objects.filter(provider=provider).first()
+    if cfg is None:
+        cap_usd: Decimal = Decimal("Infinity")
+        monthly_cap: Decimal | None = None
+    else:
+        cap_usd = cfg.daily_cost_cap_usd
+        monthly_cap = cfg.monthly_cost_cap_usd
+    check_daily_cap(provider, cap_usd=cap_usd)
+    check_monthly_cap(provider, cap_usd=monthly_cap)
 
 
 def persist_eval_run(result: dict[str, Any], *, source: str = "manual") -> EvalRun:
