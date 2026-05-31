@@ -117,7 +117,9 @@ def run_observer(schedule_id: int) -> int | None:
         # it takes precedence over the plain structured path. Opt-in, ~Nx cost.
         _run_consensus_and_record(sched, thread, coach + payload_text)
     elif sched.structured:
-        _run_structured_and_record(sched, thread, coach + payload_text, provider_name, cfg)
+        _run_structured_and_record(
+            sched, thread, coach + payload_text, provider_name, cfg, snap=snap
+        )
     else:
         rc = runtime_config()  # one row fetch; reused for the gate and the TTL below
         cached = (
@@ -228,12 +230,32 @@ def _cached_observer_response(
     return (asst.content or {}).get("text", "") or None
 
 
+def _extract_prediction(report, *, snap, message, provider: str, model: str, profile) -> None:
+    """Best-effort: promote the structured call into an AIPrediction (M13 F1).
+
+    Isolated + suppressed — a failure here (or the model carrying no directional
+    call) must never break the observer fire that already produced the report.
+    """
+    try:
+        from apps.predictions.services.extract import extract_from_observation
+
+        extract_from_observation(
+            report, snapshot=snap, message=message, provider=provider, model=model, profile=profile
+        )
+    except Exception as exc:
+        log.warning(
+            "observer %s: prediction extraction failed: %s", getattr(profile, "id", "?"), exc
+        )
+
+
 def _run_structured_and_record(
     sched: ObserverSchedule,
     thread,
     payload_text: str,
     provider_name: str,
     cfg: ProviderConfig | None,
+    *,
+    snap=None,
 ) -> None:
     """Invoke messages.parse with ObservationReport and persist the result."""
     if cfg is None or not cfg.api_key:
@@ -264,11 +286,19 @@ def _run_structured_and_record(
             error=str(exc),
         )
         return
-    Message.objects.create(
+    msg = Message.objects.create(
         thread=thread,
         role="assistant",
         content={"kind": "structured_observation", "report": report.model_dump()},
         status="done",
+    )
+    _extract_prediction(
+        report,
+        snap=snap,
+        message=msg,
+        provider=provider_name,
+        model=model_id,
+        profile=sched.profile,
     )
 
 
