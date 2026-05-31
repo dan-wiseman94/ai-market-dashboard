@@ -20,6 +20,7 @@ from apps.aieval.services import (
     confidence_calibration,
     evaluate,
     labeled_examples,
+    persist_eval_run,
     replay_one,
 )
 from apps.observer.schemas import ObservationReport, Signal
@@ -472,3 +473,54 @@ def test_confidence_falls_back_to_signal_mean_when_unset():
 def test_confidence_none_when_no_signals_and_no_predicted():
     r = ObservationReport(headline="h", bias="bullish", summary="s", next_check_in="t")
     assert _confidence_from_report(r) is None
+
+
+# --------------------------------------------------------------------------- #
+# Task 2 — EvalRun model + persist_eval_run helper
+# --------------------------------------------------------------------------- #
+
+
+def test_persist_eval_run_maps_result_to_row(db):
+    result = {
+        "label": "smoke",
+        "model": "claude-sonnet-4-6",
+        "horizon": 30,
+        "n": 5,
+        "skipped": 1,
+        "scored": 4,
+        "hit_rate": 0.75,
+        "brier": 0.21,
+        "avg_confidence": 0.68,
+        "calibration_error": 0.12,
+        "calibration": [
+            {
+                "bin_low": 0.7,
+                "bin_high": 0.9,
+                "n": 4,
+                "hits": 3,
+                "observed_hit_rate": 0.75,
+                "mean_confidence": 0.68,
+            }
+        ],
+        "examples": [{"predicted_direction": "bullish", "hit": True}],
+    }
+    from apps.aieval.models import EvalRun
+
+    run = persist_eval_run(result, source="scheduled")
+    assert isinstance(run, EvalRun)
+    assert run.pk is not None
+    assert run.source == "scheduled"
+    assert run.label == "smoke"
+    assert run.model == "claude-sonnet-4-6"
+    assert run.horizon == 30
+    assert run.n == 5 and run.skipped == 1 and run.scored == 4
+    assert run.hit_rate == 0.75 and run.brier == 0.21
+    assert run.avg_confidence == 0.68 and run.calibration_error == 0.12
+    assert run.calibration[0]["observed_hit_rate"] == 0.75
+    assert run.examples[0]["hit"] is True
+
+
+def test_persist_eval_run_defaults_source_manual(db):
+    run = persist_eval_run({"label": "x", "model": "m", "n": 0})
+    assert run.source == "manual"
+    assert run.horizon is None and run.hit_rate is None

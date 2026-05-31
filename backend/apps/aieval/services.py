@@ -28,6 +28,7 @@ import logging
 from typing import Any
 
 from apps.ai.providers.claude_structured import run_structured
+from apps.aieval.models import EvalRun
 from apps.analytics.services.calibration import _hit_rate, _prob_for_conviction
 from apps.observer.schemas import ObservationReport
 from apps.snapshots.serializer import serialize_for_ai
@@ -267,3 +268,27 @@ def evaluate(
         "calibration": calibration,
         "calibration_error": calibration_error,
     }
+
+
+def persist_eval_run(result: dict[str, Any], *, source: str = "manual") -> EvalRun:
+    """Map an `evaluate()` result dict onto a stored `EvalRun` row.
+
+    `source` is 'manual' (the management command) or 'scheduled' (the beat task).
+    Tolerant of partial dicts (uses .get with sensible defaults) so a caller
+    never has to assemble a full result to persist a smoke run.
+    """
+    return EvalRun.objects.create(
+        source=source,
+        label=result.get("label", "baseline"),
+        model=result.get("model", ""),
+        horizon=result.get("horizon"),
+        n=result.get("n", 0),
+        skipped=result.get("skipped", 0),
+        scored=result.get("scored", 0),
+        hit_rate=result.get("hit_rate"),
+        brier=result.get("brier"),
+        avg_confidence=result.get("avg_confidence"),
+        calibration_error=result.get("calibration_error"),
+        calibration=result.get("calibration", []),
+        examples=result.get("examples", []),
+    )
