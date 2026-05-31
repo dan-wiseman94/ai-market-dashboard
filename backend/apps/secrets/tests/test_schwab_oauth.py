@@ -13,6 +13,7 @@ from apps.secrets.schwab_oauth import (
 )
 
 
+@pytest.mark.django_db
 @override_settings(
     SCHWAB_CLIENT_ID="cid",
     SCHWAB_CALLBACK_URL="https://127.0.0.1:8000/api/schwab/callback",
@@ -26,6 +27,7 @@ def test_build_authorize_url_includes_required_params():
     assert "redirect_uri=https%3A%2F%2F127.0.0.1%3A8000%2Fapi%2Fschwab%2Fcallback" in url
 
 
+@pytest.mark.django_db
 @override_settings(
     SCHWAB_CLIENT_ID="cid",
     SCHWAB_CLIENT_SECRET="csec",
@@ -54,6 +56,7 @@ def test_exchange_code_for_token_posts_correct_body():
     assert "expires_at" in tok  # our code adds this
 
 
+@pytest.mark.django_db
 @override_settings(SCHWAB_CLIENT_ID="cid", SCHWAB_CLIENT_SECRET="csec", SCHWAB_TOKEN_URL="u")
 def test_refresh_token_uses_refresh_grant():
     mock_resp = MagicMock()
@@ -102,3 +105,25 @@ def test_load_token_returns_none_when_undecryptable():
         )
 
     assert load_token() is None
+
+
+@pytest.mark.django_db
+def test_persist_token_overwrites_undecryptable_row():
+    """Reconnecting must self-heal a dead row: update_or_create's lookup SELECT can't decrypt
+    the old token (InvalidToken), so persist_token falls back to delete+create. This is the
+    OAuth-callback 500 that blocked reconnection."""
+    from cryptography.fernet import Fernet
+    from django.db import connection
+
+    cred = ApiCredential.objects.create(provider="schwab", token={"access_token": "OLD"})
+    foreign = Fernet(Fernet.generate_key()).encrypt(b'{"access_token":"OLD"}')
+    with connection.cursor() as c:
+        c.execute(
+            "UPDATE secrets_apicredential SET token = %s WHERE id = %s",
+            [foreign, cred.id],
+        )
+
+    persist_token({"access_token": "NEW", "refresh_token": "R", "expires_at": 1900000000})
+
+    refreshed = ApiCredential.objects.get(provider="schwab")
+    assert refreshed.token["access_token"] == "NEW"
