@@ -18,4 +18,7 @@ def test_render_chart_png_returns_real_png_bytes(settings):
     img = render_chart_png("SPY", "5m", 10, snapshot_id=None)
 
     assert isinstance(img, SnapshotImage)
-    assert bytes(img.data).startswith(b"\x89PNG")
+    # C7: render offloads bytes to the /data volume (data=None), so read via the helper.
+    from apps.snapshots.image_store import read_image_bytes
+
+    assert read_image_bytes(img).startswith(b"\x89PNG")
