@@ -13,6 +13,7 @@ from unittest.mock import patch
 import pytest
 from django.core.management import call_command
 from django.utils import timezone
+from rest_framework.test import APIClient
 
 from apps.aieval import services as svc
 from apps.aieval.services import (
@@ -524,3 +525,57 @@ def test_persist_eval_run_defaults_source_manual(db):
     run = persist_eval_run({"label": "x", "model": "m", "n": 0})
     assert run.source == "manual"
     assert run.horizon is None and run.hit_rate is None
+
+
+# --------------------------------------------------------------------------- #
+# Task 3 — read-only DRF views at /api/aieval/runs/
+# --------------------------------------------------------------------------- #
+
+
+def test_eval_runs_list_endpoint(db):
+    persist_eval_run(
+        {
+            "label": "a",
+            "model": "claude-sonnet-4-6",
+            "n": 3,
+            "scored": 3,
+            "hit_rate": 0.66,
+            "brier": 0.2,
+        },
+        source="manual",
+    )
+    persist_eval_run(
+        {
+            "label": "b",
+            "model": "claude-opus-4-8",
+            "n": 5,
+            "scored": 5,
+            "hit_rate": 0.8,
+            "brier": 0.15,
+        },
+        source="scheduled",
+    )
+    resp = APIClient().get("/api/aieval/runs/")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert len(data) == 2
+    # newest first (ordering = -created_at); both labels present
+    labels = {row["label"] for row in data}
+    assert labels == {"a", "b"}
+    assert "calibration" in data[0] and "hit_rate" in data[0]
+
+
+def test_eval_runs_latest_endpoint(db):
+    persist_eval_run({"label": "old", "model": "m", "n": 1}, source="manual")
+    newest = persist_eval_run(
+        {"label": "new", "model": "m", "n": 2, "hit_rate": 0.5}, source="scheduled"
+    )
+    resp = APIClient().get("/api/aieval/runs/latest/")
+    assert resp.status_code == 200
+    assert resp.json()["id"] == newest.id
+    assert resp.json()["label"] == "new"
+
+
+def test_eval_runs_latest_204_when_empty(db):
+    resp = APIClient().get("/api/aieval/runs/latest/")
+    assert resp.status_code == 204
