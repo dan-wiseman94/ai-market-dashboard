@@ -16,16 +16,14 @@ from __future__ import annotations
 
 from datetime import datetime
 
-_DECISIVE = ("correct", "incorrect")
+# Share the decisive-verdict set and hit-rate helper with the thesis scorecard
+# (same package) — aieval already imports _hit_rate from here too.
+from apps.analytics.services.calibration import _DECISIVE, _hit_rate
+
 _ALL_VERDICTS = ("correct", "incorrect", "mixed")
 # Reliability-table confidence bands. The last band's upper edge is open (>1.0)
 # so a stated confidence of exactly 1.0 lands in it.
 _BANDS = ((0.0, 0.6), (0.6, 0.7), (0.7, 0.8), (0.8, 0.9), (0.9, 1.01))
-
-
-def _hit_rate(correct: int, incorrect: int) -> float | None:
-    den = correct + incorrect
-    return round(correct / den, 4) if den else None
 
 
 def _band_label(lo: float, hi: float) -> str:
@@ -53,6 +51,16 @@ def _resolved_qs(start: datetime, end: datetime, horizon: int | None):
     return qs
 
 
+def _bump(store: dict, key, verdict: str, extra: dict | None = None) -> dict:
+    """Accumulate one scored row into a ``{n, correct, incorrect, …}`` bucket,
+    counting the decisive verdict. Returns the bucket for any extra in-place work."""
+    row = store.setdefault(key, {"n": 0, "correct": 0, "incorrect": 0, **(extra or {})})
+    row["n"] += 1
+    if verdict in _DECISIVE:
+        row[verdict] += 1
+    return row
+
+
 def ai_calibration(*, start: datetime, end: datetime, horizon: int | None = None) -> dict:
     """Reliability by confidence band (Brier from stated confidence) + per
     (provider, model) and per direction hit-rates, over resolved predictions."""
@@ -74,28 +82,13 @@ def ai_calibration(*, start: datetime, end: datetime, horizon: int | None = None
             tot[verdict] += 1
 
         bl = _band_for(conf)
-        b = bands.setdefault(
-            bl, {"band": bl, "n": 0, "correct": 0, "incorrect": 0, "conf_sum": 0.0}
-        )
-        b["n"] += 1
-        b["conf_sum"] += conf
+        band = _bump(bands, bl, verdict, {"band": bl, "conf_sum": 0.0})
+        band["conf_sum"] += conf
         if verdict in _DECISIVE:
-            b[verdict] += 1
-            outcome = 1.0 if verdict == "correct" else 0.0
-            brier_terms.append((conf - outcome) ** 2)
+            brier_terms.append((conf - (1.0 if verdict == "correct" else 0.0)) ** 2)
 
-        d = by_dir.setdefault(direction, {"n": 0, "correct": 0, "incorrect": 0})
-        d["n"] += 1
-        if verdict in _DECISIVE:
-            d[verdict] += 1
-
-        m = by_model.setdefault(
-            (provider, model),
-            {"provider": provider, "model": model, "n": 0, "correct": 0, "incorrect": 0},
-        )
-        m["n"] += 1
-        if verdict in _DECISIVE:
-            m[verdict] += 1
+        _bump(by_dir, direction, verdict)
+        _bump(by_model, (provider, model), verdict, {"provider": provider, "model": model})
 
     reliability = []
     for lo, hi in _BANDS:

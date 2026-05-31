@@ -139,3 +139,13 @@ class TestOpenDivergences:
         resp = APIClient().get("/api/predictions/divergences/")
         assert resp.status_code == 200
         assert resp.json()["count"] == 1
+
+    def test_no_n_plus_1_over_theses(self, django_assert_max_num_queries):
+        # N diverging theses on distinct tickers must not cost one AI-view query
+        # each — the AI views are bulk-fetched (1 Thesis + 1 AIPrediction query).
+        for tk in ("AAA", "BBB", "CCC"):
+            self._thesis(ticker=tk, direction="bullish")
+            _pred(ticker=tk, direction="bearish")
+        with django_assert_max_num_queries(3):  # a per-thesis loop would be 4+
+            rows = open_divergences()
+        assert len(rows) == 3
