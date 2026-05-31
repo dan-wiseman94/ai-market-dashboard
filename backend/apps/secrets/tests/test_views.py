@@ -67,3 +67,31 @@ def test_status_connected():
     body = response.json()
     assert body["connected"] is True
     assert body["expires_at"] is not None
+
+
+@pytest.mark.django_db
+def test_status_reports_not_connected_when_token_undecryptable():
+    """A credential encrypted under a now-gone key (DJANGO_SECRET_KEY rotated / salt reset)
+    must report not-connected, not 500. Decryption fires during the .get() row fetch via
+    EncryptedJSONField.from_db_value; the view has to catch InvalidToken. Reconnecting
+    Schwab overwrites the dead row."""
+    from cryptography.fernet import Fernet
+    from django.db import connection
+
+    cred = ApiCredential.objects.create(
+        provider="schwab",
+        token={"access_token": "A"},
+        expires_at=timezone.now() + timedelta(days=5),
+    )
+    # Clobber the column with ciphertext from a foreign key the current Fernet can't read.
+    foreign = Fernet(Fernet.generate_key()).encrypt(b'{"access_token":"A"}')
+    with connection.cursor() as c:
+        c.execute(
+            "UPDATE secrets_apicredential SET token = %s WHERE id = %s",
+            [foreign, cred.id],
+        )
+
+    client = Client()
+    response = client.get("/api/schwab/status/")
+    assert response.status_code == 200
+    assert response.json() == {"connected": False, "expires_at": None}
