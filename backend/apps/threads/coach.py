@@ -243,6 +243,57 @@ def _lessons_block(ticker: str) -> str:
     return "\n".join(lines)
 
 
+def _calibration_verdict(buckets: list) -> str | None:
+    """Over/under/well-confident verdict from the reliability buckets.
+
+    Signed mean of (observed_hit_rate - mean_confidence) over non-empty buckets:
+    negative => model's stated confidence outran realized accuracy (overconfident).
+    Returns None when no bucket has both numbers.
+    """
+    diffs = [
+        b["observed_hit_rate"] - b["mean_confidence"]
+        for b in buckets
+        if b.get("n")
+        and b.get("observed_hit_rate") is not None
+        and b.get("mean_confidence") is not None
+    ]
+    if not diffs:
+        return None
+    signed = sum(diffs) / len(diffs)
+    if signed < -0.05:
+        return "tends to be OVER-confident (stated confidence runs higher than realized accuracy)"
+    if signed > 0.05:
+        return "tends to be UNDER-confident (realized accuracy runs higher than stated confidence)"
+    return "is well-calibrated (stated confidence ≈ realized accuracy)"
+
+
+def _calibration_block(profile) -> str:
+    """Measured calibration of the profile's model, from the latest EvalRun (A3).
+
+    Lazy cross-app import (threads -> aieval) keeps the documented import-cycle
+    discipline. Empty when no eval exists for this model or it scored nothing.
+    """
+    model = getattr(profile, "default_model", None)
+    if not model:
+        return ""
+    from apps.aieval.services import latest_eval_for_model
+
+    run = latest_eval_for_model(model)
+    if run is None or not run.scored:
+        return ""
+    hr = f"{run.hit_rate:.0%}" if run.hit_rate is not None else "—"
+    brier = f"{run.brier:.2f}" if run.brier is not None else "—"
+    lines = [
+        "### Model calibration (measured on your own past calls)",
+        f"- {model} directional hit-rate over {run.scored} decisive past calls: "
+        f"{hr} (Brier {brier}).",
+    ]
+    verdict = _calibration_verdict(run.calibration or [])
+    if verdict:
+        lines.append(f"- This model {verdict}. Weight your stated confidence accordingly.")
+    return "\n".join(lines)
+
+
 def _situation_query(snapshot, ticker: str) -> str:
     """A short free-text query describing the current situation for recall.
 
@@ -291,6 +342,7 @@ def assemble_coach_context(snapshot, profile) -> str:
         _safe(lambda: _track_record_block(ticker)),
         _safe(lambda: _recall_block(snapshot, ticker)),
         _safe(lambda: _lessons_block(ticker)),
+        _safe(lambda: _calibration_block(profile)),
     ]
     body = "\n\n".join(s for s in sections if s)
     if not body:

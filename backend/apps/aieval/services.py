@@ -299,6 +299,13 @@ def preflight_cost_cap(provider: str = "claude") -> None:
     check_monthly_cap(provider, cap_usd=monthly_cap)
 
 
+def latest_eval_for_model(model: str) -> EvalRun | None:
+    """Most recent persisted EvalRun for a given model id, or None."""
+    if not model:
+        return None
+    return EvalRun.objects.filter(model=model).order_by("-created_at").first()
+
+
 def persist_eval_run(result: dict[str, Any], *, source: str = "manual") -> EvalRun:
     """Map an `evaluate()` result dict onto a stored `EvalRun` row.
 

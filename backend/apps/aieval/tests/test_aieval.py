@@ -715,3 +715,21 @@ def test_scheduled_skips_on_cost_cap(profile, settings):
 def test_scheduled_skips_when_no_data(settings, db):
     settings.AIEVAL_SCHEDULED_ENABLED = True
     assert run_scheduled() == {"skipped": "no_data"}
+
+
+# --------------------------------------------------------------------------- #
+# Task 6 — latest_eval_for_model helper
+# --------------------------------------------------------------------------- #
+
+
+def test_latest_eval_for_model(db):
+    from apps.aieval.services import latest_eval_for_model
+
+    assert latest_eval_for_model("claude-sonnet-4-6") is None
+    persist_eval_run({"label": "old", "model": "claude-sonnet-4-6", "n": 1}, source="manual")
+    newest = persist_eval_run(
+        {"label": "new", "model": "claude-sonnet-4-6", "n": 2}, source="scheduled"
+    )
+    persist_eval_run({"label": "other", "model": "claude-opus-4-8", "n": 9}, source="manual")
+    got = latest_eval_for_model("claude-sonnet-4-6")
+    assert got.id == newest.id  # newest for THAT model only
