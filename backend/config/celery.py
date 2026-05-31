@@ -80,4 +80,8 @@ app.conf.beat_schedule = {
         "task": "market.ingest_daily_bars",
         "schedule": crontab(hour=22, minute=30),
     },
+    "prune-retention": {
+        "task": "core.prune_retention",
+        "schedule": crontab(hour=4, minute=0),  # daily 4am UTC, low-traffic window
+    },
 }
