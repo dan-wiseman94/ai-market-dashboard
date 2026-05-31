@@ -11,7 +11,7 @@ export const useTreasury = () =>
 
 export const useFilings = (tickers: string[]) =>
   useQuery({
-    queryKey: ["market", "filings", tickers],
+    queryKey: ["market", "filings", [...tickers].sort().join(",")],
     queryFn: () => fetchFilings(tickers),
     enabled: tickers.length > 0,
     staleTime: FIVE_MIN,
