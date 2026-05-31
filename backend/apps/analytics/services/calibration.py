@@ -209,3 +209,64 @@ def calibration(*, start: datetime, end: datetime, horizon: int = 30) -> dict:
         "thesis": thesis,
         "provider": provider,
     }
+
+
+def calibration_drilldown(
+    *,
+    start: datetime,
+    end: datetime,
+    horizon: int = 30,
+    conviction: int | None = None,
+    direction: str | None = None,
+    verdict: str | None = None,
+) -> dict:
+    """The underlying theses behind a calibration bucket (scorecard drill-down).
+
+    Same PostMortem ⋈ Thesis population that builds the buckets in `calibration`
+    (decisive-or-mixed, non-null forward return, in window + horizon), narrowed
+    to one bucket by any of conviction / direction / verdict. Counts therefore
+    reconcile with the aggregate scorecard's bucket `n`. Returns flat, JSON-ready
+    rows ordered newest-first.
+    """
+    from apps.thesis.models import PostMortem
+
+    horizon = horizon if horizon in VALID_HORIZONS else 30
+    qs = (
+        PostMortem.objects.filter(
+            status="done",
+            horizon_days=horizon,
+            completed_at__gte=start,
+            completed_at__lt=end,
+            forward_return_pct__isnull=False,
+        )
+        .select_related("thesis")
+        .order_by("-completed_at")
+    )
+    if conviction is not None:
+        qs = qs.filter(thesis__conviction=conviction)
+    if direction is not None:
+        qs = qs.filter(thesis__direction=direction)
+    if verdict is not None:
+        qs = qs.filter(verdict=verdict)
+
+    rows = [
+        {
+            "thesis_id": pm.thesis_id,
+            "title": pm.thesis.title,
+            "ticker": pm.thesis.ticker,
+            "direction": pm.thesis.direction,
+            "conviction": pm.thesis.conviction,
+            "verdict": pm.verdict,
+            "forward_return_pct": float(pm.forward_return_pct),
+            "horizon_days": pm.horizon_days,
+            "completed_at": pm.completed_at.isoformat() if pm.completed_at else None,
+            "thread_id": pm.thesis.thread_id,
+        }
+        for pm in qs
+    ]
+    return {
+        "horizon": horizon,
+        "count": len(rows),
+        "filters": {"conviction": conviction, "direction": direction, "verdict": verdict},
+        "rows": rows,
+    }
