@@ -4,7 +4,11 @@ A single-user desktop dashboard that captures point-in-time **stock-market snaps
 
 **Observational only.** No broker write path — Ledger reads the market and reasons about it; it never places or modifies an order. Runs entirely in Docker Compose and binds to `127.0.0.1`.
 
-> Full design: [`docs/superpowers/specs/2026-04-16-ai-dashboard-design.md`](docs/superpowers/specs/2026-04-16-ai-dashboard-design.md) · Contributor guide: [`CLAUDE.md`](CLAUDE.md)
+- 🔁 **Closes the loop:** theses → deterministic post-mortems → a track record that's fed back into every new analysis via the Decision Coach.
+- 🧠 **Bring your own AI:** Claude, OpenAI, or any local OpenAI-compatible model — compare them side-by-side, and *measure* which is actually right with a look-ahead-safe eval harness.
+- 🔒 **Local & private:** runs in Docker on `127.0.0.1`, encrypted keys, no telemetry, no broker write path.
+
+> 📋 **[Full feature tour →](FEATURES.md)** · Full design: [`docs/superpowers/specs/2026-04-16-ai-dashboard-design.md`](docs/superpowers/specs/2026-04-16-ai-dashboard-design.md) · Contributor guide: [`CLAUDE.md`](CLAUDE.md)
 
 ## Screenshots
 
@@ -42,6 +46,8 @@ A single-user desktop dashboard that captures point-in-time **stock-market snaps
 > M11 merged via PR #51 without a release tag. Several features have shipped since the M12 tag and don't have milestone tags of their own: **provider tool parity** (tool use on all three providers, with visible capability warnings), a **Decision Coach** that feeds prior theses / snapshot diffs / your track record / semantic recall into the prompt, **semantic recall**, a daily **Morning Briefing**, a **forward earnings + macro calendar**, **overnight (pre-market) snapshots**, and a **calibration scorecard**.
 
 ## Features
+
+> Looking for the elevator pitch? See the **[feature tour in `FEATURES.md`](FEATURES.md)**. The sections below are the detailed technical breakdown.
 
 ### Market data & snapshots
 
