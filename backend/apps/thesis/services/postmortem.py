@@ -22,7 +22,7 @@ from django.utils import timezone
 
 from apps.ai.cost import CostCapExceededError, check_daily_cap, check_monthly_cap
 from apps.ai.providers.claude_structured import run_structured
-from apps.market.returns import forward_return_pct, price_path_summary
+from apps.market.returns import direction_verdict, forward_return_pct, price_path_summary
 from apps.observer.services.notifications import notify
 from apps.secrets.models import ProviderConfig
 from apps.threads.models import Message
@@ -52,28 +52,11 @@ def objective_verdict(thesis: Thesis, fwd_pct: float | None) -> str:
     """Deterministic verdict from the thesis direction + actual forward return.
 
     No AI involved — this is what closes the loop when no key is configured.
+    Thin wrapper over the shared ``apps.market.returns.direction_verdict`` (the
+    same scorer AI predictions use), so trader theses and AI calls are judged
+    identically.
     """
-    if fwd_pct is None:
-        return "inconclusive"
-
-    direction = thesis.direction
-    if direction == "neutral":
-        # A neutral call is "correct" when the move stayed inside the deadzone.
-        return "correct" if abs(fwd_pct) <= DEADZONE else "incorrect"
-
-    if direction == "bullish":
-        if fwd_pct >= DEADZONE:
-            return "correct"
-        if fwd_pct <= -DEADZONE:
-            return "incorrect"
-        return "mixed"
-
-    # bearish
-    if fwd_pct <= -DEADZONE:
-        return "correct"
-    if fwd_pct >= DEADZONE:
-        return "incorrect"
-    return "mixed"
+    return direction_verdict(thesis.direction, fwd_pct, deadzone=DEADZONE)
 
 
 def _fmt_fwd(fwd: float | None) -> str:
