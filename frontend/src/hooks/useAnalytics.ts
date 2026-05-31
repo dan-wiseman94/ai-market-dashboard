@@ -190,6 +190,40 @@ export function useCalibrationDrilldown(conviction: number | null, horizon = 30,
   });
 }
 
+export interface EvalReliabilityBucket {
+  bin_low: number;
+  bin_high: number;
+  n: number;
+  hits: number;
+  observed_hit_rate: number | null;
+  mean_confidence: number | null;
+}
+
+export interface EvalRunSummary {
+  id: number;
+  created_at: string;
+  source: string;
+  label: string;
+  model: string;
+  horizon: number | null;
+  n: number;
+  skipped: number;
+  scored: number;
+  hit_rate: number | null;
+  brier: number | null;
+  avg_confidence: number | null;
+  calibration_error: number | null;
+  calibration: EvalReliabilityBucket[];
+}
+
+/** Latest persisted offline eval run (M7). undefined when none has run yet (204). */
+export function useLatestEvalRun() {
+  return useQuery({
+    queryKey: ["aieval/latest"],
+    queryFn: () => apiGet<EvalRunSummary | null>("/api/aieval/runs/latest/"),
+  });
+}
+
 export interface TrackRecord {
   ticker: string;
   closed_n: number;
