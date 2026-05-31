@@ -22,6 +22,15 @@ from django.utils import timezone
 log = logging.getLogger(__name__)
 
 
+class SchwabNotConfigured(RuntimeError):
+    """Schwab OAuth was attempted without SCHWAB_CLIENT_ID set.
+
+    Building an authorize URL with an empty client_id produces a request Schwab rejects
+    with 401 invalid_client. Callers should surface this as a clear "set your credentials"
+    message instead of bouncing the user to that opaque error.
+    """
+
+
 def build_authorize_url(*, state: str = "") -> str:
     from apps.core.mocks import is_mock_mode, run_service_scenario
 
@@ -32,6 +41,12 @@ def build_authorize_url(*, state: str = "") -> str:
         if isinstance(flow, dict) and flow.get("authorize_url"):
             return flow["authorize_url"]
         return f"{settings.SCHWAB_CALLBACK_URL}?code=MOCK_OAUTH"
+
+    if not settings.SCHWAB_CLIENT_ID:
+        raise SchwabNotConfigured(
+            "Schwab is not configured. Set SCHWAB_CLIENT_ID and SCHWAB_CLIENT_SECRET in "
+            ".env, then recreate the web/worker/beat containers."
+        )
 
     params = {
         "client_id": settings.SCHWAB_CLIENT_ID,
