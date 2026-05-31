@@ -16,6 +16,10 @@ function mockEval(data: unknown = undefined, isLoading = false) {
   vi.spyOn(hooks, "useLatestEvalRun").mockReturnValue({ data, isLoading } as never);
 }
 
+function mockAICal(data: unknown = undefined, isLoading = false) {
+  vi.spyOn(hooks, "useAICalibration").mockReturnValue({ data, isLoading } as never);
+}
+
 const POPULATED = {
   horizon: 30,
   scored: 2,
@@ -61,8 +65,33 @@ const EVAL_RUN = {
   ],
 };
 
+const AI_CAL = {
+  start: "x",
+  end: "y",
+  horizon: 30,
+  overall: { scored: 5, hit_rate: 0.6, correct: 3, incorrect: 2, mixed: 0 },
+  brier: 0.18,
+  reliability: [
+    {
+      band: "0.7-0.8",
+      n: 5,
+      correct: 3,
+      incorrect: 2,
+      mean_confidence: 0.75,
+      observed_hit_rate: 0.6,
+    },
+  ],
+  by_provider_model: [
+    { provider: "openai", model: "gpt-5", n: 5, correct: 3, incorrect: 2, hit_rate: 0.6 },
+  ],
+  by_direction: {},
+};
+
 describe("ScorecardPage", () => {
-  beforeEach(() => vi.restoreAllMocks());
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    mockAICal(); // default: no resolved AI predictions; the AI-calibration test overrides
+  });
 
   it("shows empty state when nothing scored", () => {
     mock({
@@ -147,5 +176,25 @@ describe("ScorecardPage", () => {
     expect(screen.getByText(/Model eval calibration/i)).toBeInTheDocument();
     expect(screen.getByText(/claude-sonnet-4-6/)).toBeInTheDocument();
     expect(screen.getByText(/avg confidence 75%/)).toBeInTheDocument();
+  });
+
+  it("renders live AI prediction calibration when the AI has resolved calls", () => {
+    mock(POPULATED);
+    mockDrill();
+    mockEval();
+    mockAICal(AI_CAL);
+    render(<ScorecardPage />);
+    expect(screen.getByText(/Live AI prediction calibration/i)).toBeInTheDocument();
+    expect(screen.getByText("0.7-0.8")).toBeInTheDocument(); // a reliability band
+    expect(screen.getByText("gpt-5")).toBeInTheDocument(); // per-model row
+  });
+
+  it("hides the live AI calibration section when no predictions resolved", () => {
+    mock(POPULATED);
+    mockDrill();
+    mockEval();
+    mockAICal(); // undefined
+    render(<ScorecardPage />);
+    expect(screen.queryByText(/Live AI prediction calibration/i)).not.toBeInTheDocument();
   });
 });
