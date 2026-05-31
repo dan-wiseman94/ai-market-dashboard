@@ -105,6 +105,10 @@ services:
         condition: service_healthy
     volumes:
       - ./backend:/app/backend
+      # Share the same /data as web/worker so the Fernet salt (and any future
+      # beat-side credential decryption) uses the one shared key, not a stray
+      # salt minted into beat's ephemeral FS.
+      - app_data:/data
     command:
       [
         "uv",

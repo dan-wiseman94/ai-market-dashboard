@@ -6,6 +6,7 @@ import logging
 from datetime import timedelta
 
 from celery import shared_task
+from cryptography.fernet import InvalidToken
 from django.utils import timezone
 
 from apps.market.models import MarketEvent
@@ -27,6 +28,16 @@ def refresh_schwab_token() -> dict:
         cred = ApiCredential.objects.get(provider="schwab")
     except ApiCredential.DoesNotExist:
         return {"ok": False, "reason": "not_connected"}
+    except InvalidToken:
+        # The stored token was encrypted under a key that no longer exists (DJANGO_SECRET_KEY
+        # rotated or /data salt reset). It is unrecoverable — decryption fires during the .get()
+        # row fetch via EncryptedJSONField.from_db_value. Degrade to a no-op instead of raising
+        # an unhandled traceback every beat tick; reconnecting Schwab overwrites the row.
+        log.warning(
+            "Schwab credential is undecryptable (encryption key rotated or salt reset); "
+            "reconnect Schwab to overwrite it."
+        )
+        return {"ok": False, "reason": "undecryptable"}
 
     if cred.expires_at and cred.expires_at > timezone.now() + timedelta(minutes=5):
         return {"ok": False, "reason": "fresh"}
