@@ -10,7 +10,6 @@ from __future__ import annotations
 import logging
 
 from celery import shared_task
-from django.conf import settings
 
 from apps.ai.cost import CostCapExceededError
 from apps.aieval.services import (
@@ -25,15 +24,18 @@ log = logging.getLogger(__name__)
 
 @shared_task(name="aieval.run_scheduled")
 def run_scheduled() -> dict:
-    if not getattr(settings, "AIEVAL_SCHEDULED_ENABLED", False):
+    from apps.core.runtime_config import runtime_config
+
+    rc = runtime_config()
+    if not rc.aieval_scheduled_enabled:
         return {"skipped": "disabled"}
 
-    # Fallbacks mirror the base.py defaults so a settings file that omits these
-    # degrades to a BOUNDED run (25 rows / 30d horizon), never an unbounded —
-    # and costly — replay. The settings are normally always defined.
-    model = getattr(settings, "AIEVAL_SCHEDULED_MODEL", "claude-sonnet-4-6")
-    horizon = getattr(settings, "AIEVAL_SCHEDULED_HORIZON", 30)
-    limit = getattr(settings, "AIEVAL_SCHEDULED_LIMIT", 25)
+    # SystemSettings (UI) values override the base.py / env defaults; the resolver's
+    # fallbacks keep this a BOUNDED run (25 rows / 30d horizon), never an unbounded —
+    # and costly — replay.
+    model = rc.aieval_scheduled_model
+    horizon = rc.aieval_scheduled_horizon
+    limit = rc.aieval_scheduled_limit
 
     try:
         preflight_cost_cap("claude")

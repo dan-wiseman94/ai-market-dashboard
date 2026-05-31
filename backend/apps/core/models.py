@@ -10,6 +10,53 @@ from django.db import models
 logger = logging.getLogger(__name__)
 
 
+class SystemSettings(models.Model):
+    """Singleton (pk=1 via .load()) of runtime-tunable knobs, editable from the UI.
+
+    Every field is NULLABLE: NULL means "inherit the corresponding Django setting / env
+    default" (resolved by apps.core.runtime_config), so existing env-based and CI/test
+    `override_settings` setups keep working until a value is explicitly set in the UI.
+    These are all read at task-run / request time, so a change takes effect without a
+    worker/beat restart — unlike the .env values they override.
+    """
+
+    # Data retention (days) — apps.core.tasks reads these at run.
+    retention_ohlc_days = models.IntegerField(null=True, blank=True)
+    retention_chain_days = models.IntegerField(null=True, blank=True)
+    retention_notification_days = models.IntegerField(null=True, blank=True)
+    retention_error_days = models.IntegerField(null=True, blank=True)
+
+    # AI failover — apps.threads.tasks. (provider "" = explicit none; NULL = inherit.)
+    ai_failover_enabled = models.BooleanField(null=True, blank=True)
+    # null=True is intentional: NULL means "inherit the setting"; "" is an explicit
+    # "no failover provider". blank="" alone can't express that distinction.
+    ai_failover_provider = models.CharField(max_length=32, null=True, blank=True)  # noqa: DJ001
+
+    # Observer response cache — apps.observer.services.run.
+    observer_response_cache_enabled = models.BooleanField(null=True, blank=True)
+    observer_response_cache_ttl_seconds = models.IntegerField(null=True, blank=True)
+
+    # Scheduled eval harness (advanced) — apps.aieval.tasks.
+    aieval_scheduled_enabled = models.BooleanField(null=True, blank=True)
+    aieval_scheduled_model = models.CharField(max_length=100, null=True, blank=True)  # noqa: DJ001
+    aieval_scheduled_horizon = models.IntegerField(null=True, blank=True)
+    aieval_scheduled_limit = models.IntegerField(null=True, blank=True)
+
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "core_systemsettings"
+        verbose_name_plural = "system settings"
+
+    def __str__(self) -> str:
+        return "SystemSettings (singleton)"
+
+    @classmethod
+    def load(cls) -> SystemSettings:
+        obj, _ = cls.objects.get_or_create(pk=1)
+        return obj
+
+
 class ErrorEvent(models.Model):
     LEVELS: ClassVar[list[tuple[str, str]]] = [
         ("error", "Error"),
