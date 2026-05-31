@@ -190,6 +190,42 @@ export function useCalibrationDrilldown(conviction: number | null, horizon = 30,
   });
 }
 
+export interface AIReliabilityBand {
+  band: string;
+  n: number;
+  correct: number;
+  incorrect: number;
+  mean_confidence: number;
+  observed_hit_rate: number | null;
+}
+
+export interface AICalibration {
+  start: string;
+  end: string;
+  horizon: number | null;
+  overall: {
+    scored: number;
+    hit_rate: number | null;
+    correct: number;
+    incorrect: number;
+    mixed: number;
+  };
+  brier: number | null;
+  reliability: AIReliabilityBand[];
+  by_provider_model: ProviderCalibrationRow[];
+  by_direction: Record<string, { n: number; hit_rate: number | null }>;
+}
+
+/** Live calibration of the AI's OWN resolved predictions (M13). */
+export function useAICalibration(days = 90, horizon?: number) {
+  const h = horizon != null ? `&horizon=${horizon}` : "";
+  return useQuery({
+    queryKey: ["analytics/ai-calibration", days, horizon ?? null],
+    queryFn: () =>
+      apiGet<AICalibration>(`/api/analytics/ai-calibration/?start=${startISO(days)}${h}`),
+  });
+}
+
 export interface EvalReliabilityBucket {
   bin_low: number;
   bin_high: number;

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import {
+  useAICalibration,
   useCalibration,
   useCalibrationDrilldown,
   useLatestEvalRun,
@@ -20,6 +21,7 @@ export default function ScorecardPage() {
   const { data, isLoading } = useCalibration(90, horizon);
   const { data: drill, isLoading: drillLoading } = useCalibrationDrilldown(selected, horizon, 90);
   const { data: evalRun } = useLatestEvalRun();
+  const { data: aiCal } = useAICalibration(90, horizon);
 
   function pickHorizon(h: number) {
     setHorizon(h);
@@ -212,6 +214,66 @@ export default function ScorecardPage() {
                       <td className="text-center">{pct(b.mean_confidence)}</td>
                     </tr>
                   ))}
+              </tbody>
+            </table>
+          )}
+        </section>
+      )}
+
+      {/* The AI's OWN live track record (M13) — resolved predictions it actually made,
+          independent of theses and of the offline eval, so it renders on its own data. */}
+      {aiCal && aiCal.overall.scored > 0 && (
+        <section>
+          <h2 className="mb-2 font-semibold">Live AI prediction calibration</h2>
+          <p className="mb-2 text-sm text-ink-400">
+            How often the AI's own resolved calls were right, vs how confident it was — its live
+            track record, distinct from the replayed offline eval above.
+          </p>
+          <p className="mb-3 text-sm text-ink-400">
+            Hit-rate {pct(aiCal.overall.hit_rate)} · Brier {aiCal.brier ?? "—"} ·{" "}
+            {aiCal.overall.scored} resolved
+          </p>
+          {aiCal.reliability.length > 0 && (
+            <table className="mb-4 w-full text-sm">
+              <thead>
+                <tr className="text-ink-400">
+                  <th className="text-left">Stated confidence</th>
+                  <th>n</th>
+                  <th>Observed</th>
+                  <th>Stated</th>
+                </tr>
+              </thead>
+              <tbody>
+                {aiCal.reliability.map((b) => (
+                  <tr key={b.band} className="border-t border-rule">
+                    <td>{b.band}</td>
+                    <td className="text-center">{b.n}</td>
+                    <td className="text-center">{pct(b.observed_hit_rate)}</td>
+                    <td className="text-center">{pct(b.mean_confidence)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+          {aiCal.by_provider_model.length > 0 && (
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-ink-400">
+                  <th className="text-left">Provider</th>
+                  <th className="text-left">Model</th>
+                  <th>n</th>
+                  <th>Hit-rate</th>
+                </tr>
+              </thead>
+              <tbody>
+                {aiCal.by_provider_model.map((r) => (
+                  <tr key={`${r.provider}-${r.model}`} className="border-t border-rule">
+                    <td>{r.provider}</td>
+                    <td>{r.model}</td>
+                    <td className="text-center">{r.n}</td>
+                    <td className="text-center">{pct(r.hit_rate)}</td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           )}
