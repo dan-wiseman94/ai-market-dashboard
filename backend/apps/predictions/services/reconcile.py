@@ -38,11 +38,24 @@ def open_divergences(*, include_partial: bool = True) -> list[dict]:
     neutral) is included unless ``include_partial`` is False. Theses with no
     current AI view are skipped (nothing to reconcile). Highest-conviction first.
     """
+    from apps.predictions.models import AIPrediction
     from apps.thesis.models import Thesis
 
+    theses = list(Thesis.objects.filter(status="open").order_by("-conviction", "-opened_at"))
+    if not theses:
+        return []
+    # One query for every ticker's current (latest open) AI view — not one per
+    # thesis. This runs on every dashboard load, so the N+1 actually mattered.
+    tickers = {t.ticker.upper() for t in theses}
+    views: dict[str, AIPrediction] = {}
+    for p in AIPrediction.objects.filter(ticker__in=tickers, status="open").order_by(
+        "ticker", "-predicted_at"
+    ):
+        views.setdefault(p.ticker, p)  # first row per ticker = latest predicted_at
+
     out: list[dict] = []
-    for t in Thesis.objects.filter(status="open").order_by("-conviction", "-opened_at"):
-        ai = current_ai_view(t.ticker)
+    for t in theses:
+        ai = views.get(t.ticker.upper())
         if ai is None:
             continue
         agreement = reconcile_directions(t.direction, ai.direction)
