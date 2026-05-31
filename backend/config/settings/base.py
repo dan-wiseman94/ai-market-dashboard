@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     "apps.dashboard",
     "apps.aieval",
     "apps.portfolio",
+    "apps.predictions",
 ]
 
 MIDDLEWARE = [
