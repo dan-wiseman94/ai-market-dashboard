@@ -69,6 +69,10 @@ app.conf.beat_schedule = {
         "task": "market.refresh_events",
         "schedule": crontab(hour=9, minute=0),
     },
+    "refresh-corporate-actions-daily": {
+        "task": "market.refresh_corporate_actions",
+        "schedule": crontab(hour=8, minute=30),
+    },
     "briefing-run-scheduled": {
         "task": "briefing.run_scheduled",
         "schedule": crontab(minute="*/15"),
