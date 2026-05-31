@@ -19,6 +19,7 @@ from rest_framework.response import Response
 from apps.ai.catalog import list_models as _list_catalog
 from apps.ai.cost import daily_spend_usd
 from apps.ai.providers import get_provider
+from apps.secrets.data_sources import DATA_SOURCES, get_data_source
 from apps.secrets.models import ApiCredential, ProviderConfig, SchwabAppConfig
 from apps.secrets.schwab_oauth import (
     SchwabNotConfigured,
@@ -228,3 +229,94 @@ def ai_usage(_request: HttpRequest) -> JsonResponse:
             "today": {p: str(daily_spend_usd(p)) for p in ["claude", "openai", "local"]},
         }
     )
+
+
+# ---------------------------------------------------------------------------
+# Data-source credentials — the settings "Data sources" GUI
+# ---------------------------------------------------------------------------
+
+
+def _ds_err(code: str, message: str, status: int) -> JsonResponse:
+    return JsonResponse({"code": code, "message": message}, status=status)
+
+
+def _schwab_connected() -> bool:
+    """True when a Schwab OAuth credential row exists and decrypts (mirrors schwab_status)."""
+    try:
+        ApiCredential.objects.get(provider="schwab")
+    except (ApiCredential.DoesNotExist, InvalidToken):
+        return False
+    return True
+
+
+def _credential_status(provider: str) -> dict:
+    """Which credential fields are present for ``provider`` — never the values.
+
+    An undecryptable row (encryption key rotated / salt reset) reports as
+    not-configured so the UI lets the user re-enter the key (overwriting it).
+    """
+    try:
+        cred = ApiCredential.objects.get(provider=provider)
+    except (ApiCredential.DoesNotExist, InvalidToken):
+        return {"configured": False, "fields_present": []}
+    token = cred.token or {}
+    present = [k for k in ("api_key", "api_secret") if token.get(k)]
+    return {"configured": bool(present), "fields_present": present}
+
+
+def _data_source_payload(ds: dict) -> dict:
+    entry = {k: ds[k] for k in ("provider", "label", "auth", "fields", "blurb", "docs_url")}
+    if ds["auth"] == "none":
+        entry["status"] = {"configured": True, "fields_present": []}  # keyless → always on
+    elif ds["auth"] == "oauth":
+        entry["status"] = {"configured": _schwab_connected(), "fields_present": []}
+    else:
+        entry["status"] = _credential_status(ds["provider"])
+    return entry
+
+
+@require_GET
+def data_sources(_request: HttpRequest) -> JsonResponse:
+    """List every market-data provider + whether it's configured (no secrets returned)."""
+    return JsonResponse({"data_sources": [_data_source_payload(ds) for ds in DATA_SOURCES]})
+
+
+@require_http_methods(["PUT", "DELETE"])
+def data_source_detail(request: HttpRequest, provider: str) -> JsonResponse:
+    """Save (PUT) or clear (DELETE) the API key(s) for one key-based data source.
+
+    PUT body carries ``{"<field>_write": "..."}`` per the source's ``fields``. Values
+    are write-only; a blank/absent field leaves an existing value unchanged (so you can
+    rotate the key without re-entering the secret). Responses never echo a stored value.
+    """
+    ds = get_data_source(provider)
+    if ds is None:
+        return _ds_err("unknown_provider", f"Unknown data source '{provider}'.", 404)
+    if ds["auth"] in ("none", "oauth"):
+        return _ds_err("not_key_managed", f"{ds['label']} isn't configured with a key here.", 400)
+
+    if request.method == "DELETE":
+        ApiCredential.objects.filter(provider=provider).delete()
+        return JsonResponse(_credential_status(provider))
+
+    try:
+        body = json.loads(request.body or "{}")
+    except json.JSONDecodeError:
+        return _ds_err("invalid_json", "Request body must be JSON.", 400)
+
+    # Merge over any existing token so a partial PUT keeps untouched fields.
+    try:
+        existing = dict(ApiCredential.objects.get(provider=provider).token or {})
+    except (ApiCredential.DoesNotExist, InvalidToken):
+        existing = {}
+    for field in ds["fields"]:
+        value = (body.get(f"{field}_write") or "").strip()
+        if value:
+            existing[field] = value
+
+    primary = ds["fields"][0]
+    if not existing.get(primary):
+        return _ds_err("missing_key", f"{primary}_write is required.", 400)
+
+    ApiCredential.objects.update_or_create(provider=provider, defaults={"token": existing})
+    return JsonResponse(_credential_status(provider))
