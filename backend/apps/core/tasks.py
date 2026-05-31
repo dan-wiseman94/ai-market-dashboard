@@ -42,13 +42,14 @@ def prune_retention() -> dict:
     """
     from datetime import timedelta
 
-    from django.conf import settings
     from django.utils import timezone
 
     from apps.core.models import ErrorEvent
+    from apps.core.runtime_config import runtime_config
     from apps.market.models import OHLCBar, OptionChainSnapshot
     from apps.observer.models import Notification
 
+    rc = runtime_config()
     results: dict[str, int] = {}
 
     def _prune(label: str, qs_factory, days: int) -> None:
@@ -64,22 +65,22 @@ def prune_retention() -> dict:
     _prune(
         "ohlc",
         lambda c: OHLCBar.objects.filter(ts__lt=c),
-        settings.AI_RETENTION_OHLC_DAYS,
+        rc.retention_ohlc_days,
     )
     _prune(
         "chain",
         lambda c: OptionChainSnapshot.objects.filter(fetched_at__lt=c),
-        settings.AI_RETENTION_CHAIN_DAYS,
+        rc.retention_chain_days,
     )
     _prune(
         "notifications",
         lambda c: Notification.objects.filter(created_at__lt=c),
-        settings.AI_RETENTION_NOTIFICATION_DAYS,
+        rc.retention_notification_days,
     )
     _prune(
         "errors",
         lambda c: ErrorEvent.objects.filter(created_at__lt=c, resolved=True),
-        settings.AI_RETENTION_ERROR_DAYS,
+        rc.retention_error_days,
     )
 
     return results

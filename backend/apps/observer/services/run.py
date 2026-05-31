@@ -7,11 +7,11 @@ import logging
 from datetime import timedelta
 from decimal import Decimal
 
-from django.conf import settings
 from django.utils import timezone
 
 from apps.ai.cost import CostCapExceededError, check_daily_cap, check_monthly_cap
 from apps.ai.providers.claude_structured import run_structured
+from apps.core.runtime_config import runtime_config
 from apps.market.calendar import any_market_open
 from apps.observer.models import ObserverSchedule
 from apps.observer.schemas import ObservationReport
@@ -121,7 +121,7 @@ def run_observer(schedule_id: int) -> int | None:
     else:
         cached = (
             _cached_observer_response(thread, prompt_hash, exclude_message_id=msg.id)
-            if getattr(settings, "OBSERVER_RESPONSE_CACHE_ENABLED", False)
+            if runtime_config().observer_response_cache_enabled
             else None
         )
         if cached is not None:
@@ -193,7 +193,7 @@ def _cached_observer_response(thread, prompt_hash: str, exclude_message_id: int)
     the first ``done`` assistant message after that prior user turn. The current
     fire's own user message is excluded (it was just written with this hash).
     """
-    ttl = getattr(settings, "OBSERVER_RESPONSE_CACHE_TTL_SECONDS", 1800)
+    ttl = runtime_config().observer_response_cache_ttl_seconds
     cutoff = timezone.now() - timedelta(seconds=ttl)
     prior_user = (
         Message.objects.filter(
