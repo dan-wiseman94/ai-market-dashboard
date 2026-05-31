@@ -579,3 +579,84 @@ def test_eval_runs_latest_endpoint(db):
 def test_eval_runs_latest_204_when_empty(db):
     resp = APIClient().get("/api/aieval/runs/latest/")
     assert resp.status_code == 204
+
+
+# --------------------------------------------------------------------------- #
+# Task 4 — cost-cap pre-flight + persist EvalRun on the manual command
+# --------------------------------------------------------------------------- #
+
+
+def _record_spend(provider="claude", cost="2.00"):
+    """Record `cost` USD of provider spend 'today' via a real AIRun row.
+
+    AIRun.message is a non-null OneToOneField, so build the minimal
+    Thread -> Message -> AIRun chain. created_at is auto_now_add (counts as today).
+    """
+    from decimal import Decimal
+
+    from apps.threads.models import AIRun, Message, Thread
+
+    t = Thread.objects.create()
+    m = Message.objects.create(thread=t, role="assistant")
+    return AIRun.objects.create(
+        message=m,
+        provider=provider,
+        model="claude-opus-4-8",
+        status="done",
+        cost_usd=Decimal(cost),
+    )
+
+
+def test_preflight_cost_cap_no_config_is_noop(db):
+    from apps.aieval.services import preflight_cost_cap
+
+    # No ProviderConfig row -> Infinity daily / None monthly -> never raises.
+    preflight_cost_cap("claude")  # must not raise
+
+
+def test_preflight_cost_cap_raises_when_over(db):
+    from decimal import Decimal
+
+    from apps.ai.cost import CostCapExceededError
+    from apps.aieval.services import preflight_cost_cap
+    from apps.secrets.models import ProviderConfig
+
+    ProviderConfig.objects.create(provider="claude", daily_cost_cap_usd=Decimal("1.00"))
+    _record_spend("claude", "2.00")  # $2 spent today, cap is $1
+    with pytest.raises(CostCapExceededError):
+        preflight_cost_cap("claude")
+
+
+def test_command_aborts_on_cost_cap(profile):
+    from decimal import Decimal
+
+    from django.core.management import CommandError
+
+    from apps.secrets.models import ProviderConfig
+
+    _postmortem(_thesis(profile, snapshot=_snapshot(profile)), verdict="correct", fwd=5.0)
+    ProviderConfig.objects.create(provider="claude", daily_cost_cap_usd=Decimal("1.00"))
+    _record_spend("claude", "2.00")
+    with pytest.raises(CommandError):
+        call_command("aieval", "--model", "claude-opus-4-8")
+
+
+def test_command_persists_eval_run(profile):
+    from apps.aieval.models import EvalRun
+
+    _postmortem(_thesis(profile, snapshot=_snapshot(profile)), verdict="correct", fwd=5.0)
+    out = StringIO()
+    with patch.object(svc, "run_structured", return_value=_report("bullish")):
+        call_command(
+            "aieval",
+            "--model",
+            "claude-opus-4-8",
+            "--limit",
+            "1",
+            "--label",
+            "persisted",
+            stdout=out,
+        )
+    rows = EvalRun.objects.filter(label="persisted")
+    assert rows.count() == 1
+    assert rows.first().source == "manual"
