@@ -11,12 +11,14 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import logging
 import time
 from collections.abc import Callable, Coroutine
 from decimal import Decimal
 from typing import Any
 
 from celery import shared_task
+from django.conf import settings
 from django.db import transaction
 
 from apps.ai.capabilities import unsupported_features
@@ -31,6 +33,8 @@ from apps.threads._request import _build_request, _extract_text
 from apps.threads._stream import _build_stream_runner
 from apps.threads.models import AIRun, Message, Thread
 from apps.threads.stop import clear_stop, is_stop_requested
+
+log = logging.getLogger(__name__)
 
 # The sibling helpers are re-exported under `apps.threads.tasks.*` so existing
 # call sites and test patches keep resolving here. `__all__` also marks
@@ -191,6 +195,33 @@ def _resolve_run_config(
     return provider_name, model_id, cfg
 
 
+def _failover_target(primary_name: str) -> tuple[str, str, ProviderConfig] | None:
+    """The secondary (provider, model, cfg) to retry on when the primary errors
+    BEFORE emitting any token — or None when failover is unavailable.
+
+    Opt-in via AI_FAILOVER_ENABLED (default off). The configured secondary
+    (AI_FAILOVER_PROVIDER) must differ from the primary, have an enabled
+    ProviderConfig with a default_model, and be within its own cost caps.
+    """
+    if not getattr(settings, "AI_FAILOVER_ENABLED", False):
+        return None
+    name = (getattr(settings, "AI_FAILOVER_PROVIDER", "") or "").strip()
+    if not name or name == primary_name:
+        return None
+    try:
+        cfg = ProviderConfig.objects.get(provider=name)
+    except ProviderConfig.DoesNotExist:
+        return None
+    if not cfg.enabled or not cfg.default_model:
+        return None
+    try:
+        check_daily_cap(name, cap_usd=cfg.daily_cost_cap_usd)
+        check_monthly_cap(name, cap_usd=cfg.monthly_cost_cap_usd)
+    except CostCapExceededError:
+        return None
+    return name, cfg.default_model, cfg
+
+
 def _make_should_stop(assistant_id: int) -> Callable[[], bool]:
     """Throttled stop poll: hits Redis at most once per _STOP_POLL_SECONDS and
     latches True once a stop has been requested."""
@@ -293,26 +324,58 @@ def _run_ai_on_message(
         },
     )
 
-    provider = get_provider(provider_name, api_key=cfg.api_key, base_url=cfg.base_url or "")
     t0 = time.perf_counter()
     buffer: list[str] = []
     counts: dict[str, int] = {"input_tokens": 0, "output_tokens": 0, "cached_tokens": 0}
     err_container: list[str] = []
     tool_events: list[dict] = []
+    should_stop = _make_should_stop(assistant.id)
+    flush_partial = _make_flush_partial(assistant.id, buffer)
 
-    drive = _build_stream_runner(
-        buffer,
-        counts,
-        err_container,
-        tool_events,
-        provider,
-        req,
-        thread_id,
-        assistant.id,
-        _make_should_stop(assistant.id),
-        _make_flush_partial(assistant.id, buffer),
-    )
-    asyncio.run(drive())
+    def _run_attempt(p_name: str, p_cfg: ProviderConfig, attempt_req: Any) -> None:
+        provider = get_provider(p_name, api_key=p_cfg.api_key, base_url=p_cfg.base_url or "")
+        drive = _build_stream_runner(
+            buffer,
+            counts,
+            err_container,
+            tool_events,
+            provider,
+            attempt_req,
+            thread_id,
+            assistant.id,
+            should_stop,
+            flush_partial,
+        )
+        asyncio.run(drive())
+
+    _run_attempt(provider_name, cfg, req)
+
+    # Cross-provider failover (C1): the primary errored BEFORE any token streamed.
+    # Retry once on a configured secondary — never after a token (that would
+    # duplicate the response). Opt-in; _failover_target returns None when off.
+    secondary = _failover_target(provider_name) if (err_container and not buffer) else None
+    if secondary is not None and not should_stop():
+        sec_name, sec_model, sec_cfg = secondary
+        # Log the transition only — not the provider's raw error string, which
+        # could carry sensitive context (CWE-532 / the repo's no-secret-logging rule).
+        log.warning(
+            "ai failover: %s/%s -> %s/%s (primary errored before first token)",
+            provider_name,
+            model_id,
+            sec_name,
+            sec_model,
+        )
+        buffer.clear()
+        counts.update({"input_tokens": 0, "output_tokens": 0, "cached_tokens": 0})
+        err_container.clear()
+        tool_events.clear()
+        sec_req = _build_request(
+            thread, user_msg, provider_name=sec_name, supports_tools=sec_cfg.supports_tools
+        )
+        sec_req.model = sec_model
+        _run_attempt(sec_name, sec_cfg, sec_req)
+        provider_name, model_id = sec_name, sec_model
+
     clear_stop(assistant.id)
     latency_ms = int((time.perf_counter() - t0) * 1000)
     err: str | None = err_container[0] if err_container else None
