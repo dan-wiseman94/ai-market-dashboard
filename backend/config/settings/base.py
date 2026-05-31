@@ -183,6 +183,12 @@ FRONTEND_BASE_URL = env("FRONTEND_BASE_URL", default="")
 AI_PROVIDER_MAX_RETRIES = env.int("AI_PROVIDER_MAX_RETRIES", default=2)
 AI_PROVIDER_TIMEOUT_SECONDS = env.float("AI_PROVIDER_TIMEOUT_SECONDS", default=60.0)
 
+# Cross-provider failover: if the primary errors BEFORE emitting any token, retry
+# the run once on a secondary provider. OFF by default; never retries mid-stream
+# (after a token has streamed). The secondary uses its ProviderConfig.default_model.
+AI_FAILOVER_ENABLED = env.bool("AI_FAILOVER_ENABLED", default=False)
+AI_FAILOVER_PROVIDER = env.str("AI_FAILOVER_PROVIDER", default="")
+
 # Offline eval harness — scheduled run. OFF by default: it calls the REAL model
 # ($) and run_structured has no MOCK_EXTERNAL short-circuit. Enable deliberately.
 AIEVAL_SCHEDULED_ENABLED = env.bool("AIEVAL_SCHEDULED_ENABLED", default=False)
