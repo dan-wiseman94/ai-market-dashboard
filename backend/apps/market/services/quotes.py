@@ -5,7 +5,11 @@ from __future__ import annotations
 from collections.abc import Iterable
 
 from apps.market import cache
-from apps.market.schwab_client import get_schwab_client, schwab_json
+from apps.market.schwab_client import (
+    SchwabNotConnectedError,
+    get_schwab_client,
+    schwab_json,
+)
 from apps.market.symbols import normalize_symbol
 
 
@@ -20,11 +24,19 @@ def fetch_quotes(tickers: Iterable[str], *, gap_context: bool = False) -> dict[s
     if not ticker_list:
         return {}
     suffix = ":gap" if gap_context else ""
-    return cache.get_or_fetch(
-        f"market:quotes:{','.join(ticker_list)}{suffix}",
-        ttl_seconds=cache.ttl_for_kind("quotes"),
-        fetcher=lambda: _fetch_from_schwab(ticker_list, gap_context=gap_context),
-    )
+    try:
+        return cache.get_or_fetch(
+            f"market:quotes:{','.join(ticker_list)}{suffix}",
+            ttl_seconds=cache.ttl_for_kind("quotes"),
+            fetcher=lambda: _fetch_from_schwab(ticker_list, gap_context=gap_context),
+        )
+    except SchwabNotConnectedError:
+        from apps.market.services import fallback
+
+        alt = fallback.alt_quotes(ticker_list)
+        if alt is None:
+            raise
+        return alt
 
 
 def _fetch_from_schwab(tickers: list[str], *, gap_context: bool = False) -> dict[str, dict]:

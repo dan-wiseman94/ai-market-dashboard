@@ -7,7 +7,11 @@ import json
 
 from apps.market import cache
 from apps.market.models import OptionChainSnapshot
-from apps.market.schwab_client import get_schwab_client, schwab_json
+from apps.market.schwab_client import (
+    SchwabNotConnectedError,
+    get_schwab_client,
+    schwab_json,
+)
 from apps.market.symbols import normalize_symbol
 
 
@@ -98,8 +102,16 @@ def fetch_chain(
         )
         return payload
 
-    return cache.get_or_fetch(
-        cache_key,
-        ttl_seconds=cache.ttl_for_kind("chain"),
-        fetcher=_fetch_and_persist,
-    )
+    try:
+        return cache.get_or_fetch(
+            cache_key,
+            ttl_seconds=cache.ttl_for_kind("chain"),
+            fetcher=_fetch_and_persist,
+        )
+    except SchwabNotConnectedError:
+        from apps.market.services import fallback
+
+        alt = fallback.alt_chain(ticker)
+        if alt is None:
+            raise
+        return alt
