@@ -14,6 +14,7 @@ import { ObserverTodayTile } from "@/components/dashboard/ObserverTodayTile";
 import { ArmedTriggersTile } from "@/components/dashboard/ArmedTriggersTile";
 import { BriefingSummaryTile } from "@/components/dashboard/BriefingSummaryTile";
 import { UpcomingEventsRow } from "@/components/dashboard/UpcomingEventsRow";
+import { PositionsBookTile } from "@/components/dashboard/PositionsBookTile";
 
 const DATE_FMT = new Intl.DateTimeFormat(undefined, {
   weekday: "long", month: "long", day: "numeric", year: "numeric",
@@ -63,8 +64,8 @@ function SessionStatus({ kind }: { kind: SessionKind }) {
 
 function TilesLoading() {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
-      {[1, 2, 3, 4].map((i) => (
+    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5 gap-6">
+      {[1, 2, 3, 4, 5].map((i) => (
         <div key={i} className="ledger-surface p-5">
           <SkeletonRows rows={4} />
         </div>
@@ -148,11 +149,12 @@ export default function Dashboard() {
         {dashLoading ? (
           <TilesLoading />
         ) : dashboard ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5 gap-6">
             <OpenThesesTile theses={dashboard.theses} />
             <ObserverTodayTile observer={dashboard.observer} />
             <ArmedTriggersTile triggers={dashboard.triggers} />
             <BriefingSummaryTile briefing={dashboard.briefing} />
+            <PositionsBookTile />
           </div>
         ) : null}
       </section>
