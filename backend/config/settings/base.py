@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     "apps.recall",
     "apps.dashboard",
     "apps.aieval",
+    "apps.portfolio",
 ]
 
 MIDDLEWARE = [
