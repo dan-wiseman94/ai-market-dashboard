@@ -316,6 +316,8 @@ describe("ThreadDetailPage — Close & journal panel", () => {
     await user.type(titleInput, "SPY 600 Thesis");
     const tickerInput = await screen.findByLabelText(/ticker/i);
     await user.type(tickerInput, "SPY");
+    await user.type(await screen.findByLabelText(/rationale/i), "Breakout thesis");
+    await user.type(await screen.findByLabelText(/what would invalidate/i), "loses 590");
 
     // Submit the thesis form
     await user.click(screen.getByRole("button", { name: /create thesis/i }));
@@ -365,6 +367,8 @@ describe("ThreadDetailPage — Close & journal panel", () => {
     // Fill in required thesis fields
     await user.type(await screen.findByLabelText(/title/i), "Failing Journal Thesis");
     await user.type(await screen.findByLabelText(/ticker/i), "SPY");
+    await user.type(await screen.findByLabelText(/rationale/i), "Breakout thesis");
+    await user.type(await screen.findByLabelText(/what would invalidate/i), "loses 590");
 
     // Submit
     await user.click(screen.getByRole("button", { name: /create thesis/i }));
@@ -400,6 +404,8 @@ describe("ThreadDetailPage — Close & journal panel", () => {
     // Fill & submit
     await user.type(await screen.findByLabelText(/title/i), "Standalone Thesis");
     await user.type(await screen.findByLabelText(/ticker/i), "AAPL");
+    await user.type(await screen.findByLabelText(/rationale/i), "Breakout thesis");
+    await user.type(await screen.findByLabelText(/what would invalidate/i), "loses 180");
     await user.click(screen.getByRole("button", { name: /create thesis/i }));
 
     await waitFor(() => expect(mockThesisMutate).toHaveBeenCalled());

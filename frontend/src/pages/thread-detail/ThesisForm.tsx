@@ -14,10 +14,14 @@ type Props = {
   onDirectionChange: (v: ThesisDirection) => void;
   conviction: number;
   onConvictionChange: (v: number) => void;
+  rationale: string;
+  onRationaleChange: (v: string) => void;
   target: string;
   onTargetChange: (v: string) => void;
   invalidation: string;
   onInvalidationChange: (v: string) => void;
+  invalidationNote: string;
+  onInvalidationNoteChange: (v: string) => void;
   pending: boolean;
   onSubmit: (e: React.FormEvent) => void;
   onCancel: () => void;
@@ -33,10 +37,14 @@ export default function ThesisForm({
   onDirectionChange,
   conviction,
   onConvictionChange,
+  rationale,
+  onRationaleChange,
   target,
   onTargetChange,
   invalidation,
   onInvalidationChange,
+  invalidationNote,
+  onInvalidationNoteChange,
   pending,
   onSubmit,
   onCancel,
@@ -47,10 +55,14 @@ export default function ThesisForm({
       className="ledger-surface px-5 py-4 mb-8 space-y-4"
       data-testid="new-thesis-form"
     >
-      <div className="ledger-eyebrow mb-1">{promoteMode ? "Promote to thesis" : "New thesis from this thread"}</div>
+      <div className="ledger-eyebrow mb-1">
+        {promoteMode ? "Promote to thesis" : "New thesis from this thread"}
+      </div>
       <div className="grid grid-cols-2 gap-4">
         <div className="col-span-2">
-          <label htmlFor="thesis-title" className="block text-[12px] text-ink-400 mb-1">Title</label>
+          <label htmlFor="thesis-title" className="block text-[12px] text-ink-400 mb-1">
+            Title
+          </label>
           <input
             id="thesis-title"
             required
@@ -60,8 +72,24 @@ export default function ThesisForm({
             className={FIELD_CLASS}
           />
         </div>
+        <div className="col-span-2">
+          <label htmlFor="thesis-rationale" className="block text-[12px] text-ink-400 mb-1">
+            Rationale — why this, why now
+          </label>
+          <textarea
+            id="thesis-rationale"
+            required
+            rows={2}
+            value={rationale}
+            onChange={(e) => onRationaleChange(e.target.value)}
+            placeholder="The case for the trade, in your own words."
+            className={FIELD_CLASS}
+          />
+        </div>
         <div>
-          <label htmlFor="thesis-ticker" className="block text-[12px] text-ink-400 mb-1">Ticker</label>
+          <label htmlFor="thesis-ticker" className="block text-[12px] text-ink-400 mb-1">
+            Ticker
+          </label>
           <input
             id="thesis-ticker"
             required
@@ -72,7 +100,9 @@ export default function ThesisForm({
           />
         </div>
         <div>
-          <label htmlFor="thesis-direction" className="block text-[12px] text-ink-400 mb-1">Direction</label>
+          <label htmlFor="thesis-direction" className="block text-[12px] text-ink-400 mb-1">
+            Direction
+          </label>
           <select
             id="thesis-direction"
             value={direction}
@@ -85,7 +115,9 @@ export default function ThesisForm({
           </select>
         </div>
         <div>
-          <label htmlFor="thesis-conviction" className="block text-[12px] text-ink-400 mb-1">Conviction (1–5)</label>
+          <label htmlFor="thesis-conviction" className="block text-[12px] text-ink-400 mb-1">
+            Conviction (1–5)
+          </label>
           <input
             id="thesis-conviction"
             type="number"
@@ -97,7 +129,9 @@ export default function ThesisForm({
           />
         </div>
         <div>
-          <label htmlFor="thesis-target" className="block text-[12px] text-ink-400 mb-1">Target price (optional)</label>
+          <label htmlFor="thesis-target" className="block text-[12px] text-ink-400 mb-1">
+            Target price (optional)
+          </label>
           <input
             id="thesis-target"
             value={target}
@@ -107,7 +141,9 @@ export default function ThesisForm({
           />
         </div>
         <div>
-          <label htmlFor="thesis-invalidation" className="block text-[12px] text-ink-400 mb-1">Invalidation price (optional)</label>
+          <label htmlFor="thesis-invalidation" className="block text-[12px] text-ink-400 mb-1">
+            Invalidation price (optional)
+          </label>
           <input
             id="thesis-invalidation"
             value={invalidation}
@@ -116,21 +152,27 @@ export default function ThesisForm({
             className={FIELD_CLASS}
           />
         </div>
+        <div className="col-span-2">
+          <label htmlFor="thesis-invalidation-note" className="block text-[12px] text-ink-400 mb-1">
+            What would invalidate this thesis?
+          </label>
+          <textarea
+            id="thesis-invalidation-note"
+            required
+            rows={2}
+            value={invalidationNote}
+            onChange={(e) => onInvalidationNoteChange(e.target.value)}
+            placeholder="The signal that would prove you wrong (e.g. a daily close below support, a guidance cut)."
+            className={FIELD_CLASS}
+          />
+        </div>
       </div>
       <TrackRecordHint ticker={ticker} direction={direction} conviction={conviction} />
       <div className="flex gap-2 pt-1">
-        <button
-          type="submit"
-          disabled={pending}
-          className="ledger-cta px-4 py-1.5 text-[13px]"
-        >
+        <button type="submit" disabled={pending} className="ledger-cta px-4 py-1.5 text-[13px]">
           {pending ? "Creating…" : "Create thesis"}
         </button>
-        <button
-          type="button"
-          className="ledger-ghost px-4 py-1.5 text-[13px]"
-          onClick={onCancel}
-        >
+        <button type="button" className="ledger-ghost px-4 py-1.5 text-[13px]" onClick={onCancel}>
           Cancel
         </button>
       </div>
