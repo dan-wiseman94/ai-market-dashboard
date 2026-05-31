@@ -23,7 +23,7 @@ function toNum(v: number | string | null | undefined): number | null {
 }
 
 export default function ThesisChart({ ticker, entry, target, invalidation }: ThesisChartProps) {
-  const { data, isLoading, isError } = useOhlc(ticker, "1D", 90);
+  const { data, isLoading, isError } = useOhlc(ticker, "1d", 90);
 
   const priceLines = useMemo<PriceLineSpec[]>(() => {
     const lines: PriceLineSpec[] = [];
@@ -51,7 +51,7 @@ export default function ThesisChart({ ticker, entry, target, invalidation }: The
 
   return (
     <div data-testid="thesis-chart" style={{ height: 280, position: "relative" }}>
-      <Chart ticker={ticker} timeframe="1D" bars={90} priceLines={priceLines} />
+      <Chart ticker={ticker} timeframe="1d" bars={90} priceLines={priceLines} />
     </div>
   );
 }

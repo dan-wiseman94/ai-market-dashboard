@@ -44,6 +44,23 @@ describe("ThesisChart", () => {
     );
   });
 
+  it("requests OHLC with the backend's lowercase '1d' timeframe (not '1D')", async () => {
+    // The backend OHLC endpoint 400s on '1D' (only 1m/5m/15m/1h/1d are valid);
+    // an uppercase timeframe here used to fail the thesis-detail page's chart
+    // silently and trip the e2e console guard. Pin lowercase.
+    const mock = mockOhlc();
+    renderWithProviders(
+      <ThesisChart ticker="SPY" entry="540" target="600" invalidation="520" />,
+    );
+    await waitFor(() => expect(screen.getByTestId("thesis-chart")).toBeInTheDocument());
+    const ohlcCalls = mock.calls.filter((c) => c.url.includes("/api/market/ohlc/"));
+    expect(ohlcCalls.length).toBeGreaterThan(0);
+    for (const c of ohlcCalls) {
+      expect(c.url).toContain("timeframe=1d");
+      expect(c.url).not.toContain("timeframe=1D");
+    }
+  });
+
   it("shows a skeleton while OHLC data is loading", () => {
     // Never resolve the fetch — data stays loading
     vi.stubGlobal("fetch", vi.fn(() => new Promise(() => {})));
