@@ -222,6 +222,15 @@ AI_AUTONOMOUS_DAILY_CAP_USD = env.float("AI_AUTONOMOUS_DAILY_CAP_USD", default=0
 # Offline eval harness — scheduled run. OFF by default: it calls the REAL model
 # ($) and run_structured has no MOCK_EXTERNAL short-circuit. Enable deliberately.
 AIEVAL_SCHEDULED_ENABLED = env.bool("AIEVAL_SCHEDULED_ENABLED", default=False)
+
+# Calibration-weighted routing (M14 F2/F6, opt-in): when ON, the provider/model
+# FALLBACK (no per-send override, no profile pin) picks the best-MEASURED enabled
+# model from the eval harness instead of the first ProviderConfig by id. Per-send
+# overrides and profile pins still win. Gated by a min decisive-call floor + a
+# recency window so a stale or thin eval never pins routing.
+AI_CALIBRATION_ROUTING_ENABLED = env.bool("AI_CALIBRATION_ROUTING_ENABLED", default=False)
+AI_CALIBRATION_ROUTING_MIN_SCORED = env.int("AI_CALIBRATION_ROUTING_MIN_SCORED", default=5)
+AI_CALIBRATION_ROUTING_MAX_AGE_DAYS = env.int("AI_CALIBRATION_ROUTING_MAX_AGE_DAYS", default=30)
 AIEVAL_SCHEDULED_MODEL = env.str("AIEVAL_SCHEDULED_MODEL", default="claude-sonnet-4-6")
 AIEVAL_SCHEDULED_HORIZON = env.int("AIEVAL_SCHEDULED_HORIZON", default=30)
 AIEVAL_SCHEDULED_LIMIT = env.int("AIEVAL_SCHEDULED_LIMIT", default=25)
