@@ -24,6 +24,7 @@ import BackupsPage from "./pages/BackupsPage";
 import ExportPage from "./pages/ExportPage";
 import AnalyticsPage from "./pages/AnalyticsPage";
 import ScorecardPage from "./pages/ScorecardPage";
+import MirrorPage from "./pages/MirrorPage";
 import ThesesPage from "./pages/ThesesPage";
 import ThesisDetailPage from "./pages/ThesisDetailPage";
 import EventsPage from "./pages/EventsPage";
@@ -79,6 +80,7 @@ export const router = createBrowserRouter([
       { path: "snapshots", element: <SnapshotsPage />, handle: { crumb: "Snapshots" } },
       { path: "analytics", element: <AnalyticsPage />, handle: { crumb: "Analytics" } },
       { path: "scorecard", element: <ScorecardPage />, handle: { crumb: "Scorecard" } },
+      { path: "mirror", element: <MirrorPage />, handle: { crumb: "The Mirror" } },
       { path: "theses", element: <ThesesPage />, handle: { crumb: "Theses" } },
       { path: "recall", element: <RecallPage />, handle: { crumb: "Recall" } },
       { path: "errors", element: <ErrorsPage />, handle: { crumb: "Errors" } },
