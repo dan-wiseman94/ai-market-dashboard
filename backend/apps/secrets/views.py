@@ -146,6 +146,13 @@ class ProviderConfigViewSet(viewsets.ModelViewSet):
     serializer_class = ProviderConfigSerializer
     lookup_field = "provider"
 
+    def get_queryset(self):
+        # Defer the encrypted key so list/retrieve/get_object don't decrypt it during the
+        # row fetch. A key that can't be decrypted (DJANGO_SECRET_KEY / salt change) must
+        # not 500 the whole Settings page — presence is resolved (and the decrypt error
+        # caught) in the serializer, and PATCH can then overwrite the unusable key.
+        return ProviderConfig.objects.defer("_api_key")
+
     @action(detail=True, methods=["post"], url_path="probe")
     def probe(self, request, provider=None):
         """List models from the endpoint — also a reachability/compat test.
