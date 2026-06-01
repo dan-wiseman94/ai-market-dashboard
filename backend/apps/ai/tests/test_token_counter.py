@@ -6,6 +6,8 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
+import pytest
+
 from apps.ai.token_counter import estimate_tokens
 
 
@@ -39,4 +41,22 @@ def test_estimate_unicode_no_crash() -> None:
 
 def test_unknown_provider_falls_back_to_tiktoken() -> None:
     n = estimate_tokens("hello", provider="ollama", model="llama3")
+    assert n >= 1
+
+
+@pytest.mark.django_db
+def test_claude_count_falls_back_to_tiktoken_when_key_undecryptable() -> None:
+    """An undecryptable Claude key (key/salt rotation) must degrade to the tiktoken
+    estimate rather than raising InvalidToken mid-run."""
+    from django.db import connection
+
+    from apps.secrets.models import ProviderConfig
+
+    ProviderConfig.objects.create(provider="claude")
+    with connection.cursor() as c:
+        c.execute(
+            "UPDATE secrets_providerconfig SET api_key = %s WHERE provider = %s",
+            [b"not-valid-fernet", "claude"],
+        )
+    n = estimate_tokens("hello world", provider="claude", model="claude-opus-4-8")
     assert n >= 1
