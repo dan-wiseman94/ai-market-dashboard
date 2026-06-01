@@ -49,6 +49,7 @@ def run_sweep(top_k: int = C.TOP_K) -> int:
             evidence=cand.get("evidence", {}),
             finding=result["finding"],
             suggested_actions=result["suggested_actions"],
+            investigation_thread_id=result.get("investigation_thread_id"),
         )
         try:
             _notify(entry)
