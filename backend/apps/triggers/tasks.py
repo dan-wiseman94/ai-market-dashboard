@@ -192,7 +192,9 @@ def _do_fire(*, trigger_id: int, matched_values: dict) -> None:
         snapshot_ref=snap,
         status="done",
     )
-    run_ai_on_message.delay(thread_id=thread.id, user_message_id=user_msg.id)
+    run_ai_on_message.delay(
+        thread_id=thread.id, user_message_id=user_msg.id, investigate=trigger.investigate
+    )
 
     notify(
         user_id=None,
