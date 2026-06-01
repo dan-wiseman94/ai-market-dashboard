@@ -36,8 +36,8 @@ export default function BookPage() {
       <ul className="mt-2 list-disc pl-5">
         {book.clusters.length === 0 && <li className="text-ink/60">No clusters detected.</li>}
         {book.clusters.map((cl) => (
-          <li key={cl.members.join(",")} title={cl.members.join(", ")}>
-            {cl.members.length} ticker{cl.members.length !== 1 ? "s" : ""}{" "}
+          <li key={cl.members.join(",")}>
+            {cl.members.join(", ")}{" "}
             {cl.avg_corr != null && <span className="text-ink/60">(ρ≈{cl.avg_corr.toFixed(2)})</span>}
           </li>
         ))}
