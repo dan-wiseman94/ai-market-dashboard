@@ -131,33 +131,21 @@ def test_normalize_bars_maps_alpaca_keys():
 
 
 def test_credentials_returns_none_none_on_missing_row():
-    with patch.object(
-        alpaca_mod.ApiCredential.objects,
-        "get",
-        side_effect=alpaca_mod.ApiCredential.DoesNotExist,
-    ):
+    with patch.object(alpaca_mod, "decrypt_token", return_value=None):
         key, secret = alpaca_mod._credentials()
     assert key is None
     assert secret is None
 
 
 def test_credentials_returns_none_none_when_key_missing():
-    from unittest.mock import MagicMock
-
-    cred = MagicMock()
-    cred.token = {"api_secret": "s"}
-    with patch.object(alpaca_mod.ApiCredential.objects, "get", return_value=cred):
+    with patch.object(alpaca_mod, "decrypt_token", return_value={"api_secret": "s"}):
         key, secret = alpaca_mod._credentials()
     assert key is None
     assert secret is None
 
 
 def test_credentials_returns_none_none_when_secret_missing():
-    from unittest.mock import MagicMock
-
-    cred = MagicMock()
-    cred.token = {"api_key": "k"}
-    with patch.object(alpaca_mod.ApiCredential.objects, "get", return_value=cred):
+    with patch.object(alpaca_mod, "decrypt_token", return_value={"api_key": "k"}):
         key, secret = alpaca_mod._credentials()
     assert key is None
     assert secret is None

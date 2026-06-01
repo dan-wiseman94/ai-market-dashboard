@@ -19,7 +19,7 @@ import requests  # type: ignore[import-untyped]
 
 from apps.market import cache
 from apps.market.services.safe_log import safe_err
-from apps.secrets.models import ApiCredential
+from apps.secrets.credentials import decrypt_token
 
 log = logging.getLogger(__name__)
 
@@ -39,11 +39,7 @@ _TD_TO_TF: dict[str, str] = {v: k for k, v in _TF_TO_TD.items()}
 
 
 def _api_key() -> str | None:
-    try:
-        cred = ApiCredential.objects.get(provider="twelvedata")
-    except ApiCredential.DoesNotExist:
-        return None
-    return (cred.token or {}).get("api_key")
+    return (decrypt_token("twelvedata") or {}).get("api_key")
 
 
 def _get(path: str, params: dict) -> dict:

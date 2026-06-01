@@ -19,7 +19,7 @@ import requests  # type: ignore[import-untyped]
 from apps.market import cache
 from apps.market.models import OHLCBar
 from apps.market.services.safe_log import safe_err
-from apps.secrets.models import ApiCredential
+from apps.secrets.credentials import decrypt_token
 
 log = logging.getLogger(__name__)
 
@@ -27,11 +27,7 @@ POLYGON_BASE = "https://api.polygon.io"
 
 
 def _api_key() -> str | None:
-    try:
-        cred = ApiCredential.objects.get(provider="polygon")
-    except ApiCredential.DoesNotExist:
-        return None
-    return (cred.token or {}).get("api_key")
+    return (decrypt_token("polygon") or {}).get("api_key")
 
 
 def _get(path: str, params: dict, api_key: str) -> dict:
