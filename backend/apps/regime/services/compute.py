@@ -64,8 +64,12 @@ def compute_and_store() -> RegimeReading:
     narrative = regime_narrative(composite, axes, drivers)  # best-effort, "" on failure
 
     reading = RegimeReading.objects.create(
-        composite=composite, axes=axes, drivers=drivers,
-        inputs=inp, narrative=narrative, changed_axes=changed,
+        composite=composite,
+        axes=axes,
+        drivers=drivers,
+        inputs=inp,
+        narrative=narrative,
+        changed_axes=changed,
     )
     if prior is not None and prior.composite != reading.composite:
         try:

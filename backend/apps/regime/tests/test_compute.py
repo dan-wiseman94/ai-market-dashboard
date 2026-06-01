@@ -7,12 +7,24 @@ from apps.regime.services import compute
 pytestmark = pytest.mark.django_db
 
 RISK_OFF_INPUTS = {
-    "vix_last": 24.0, "vix_percentile": 0.8, "spx_ma_spread": -3.0, "spx_dist_50": -2.0,
-    "breadth": {"$ADVN": 700, "$DECN": 2000}, "sector_returns": {}, "t10y2y": -0.2, "tnx_change": 0.05,
+    "vix_last": 24.0,
+    "vix_percentile": 0.8,
+    "spx_ma_spread": -3.0,
+    "spx_dist_50": -2.0,
+    "breadth": {"$ADVN": 700, "$DECN": 2000},
+    "sector_returns": {},
+    "t10y2y": -0.2,
+    "tnx_change": 0.05,
 }
 RISK_ON_INPUTS = {
-    "vix_last": 12.0, "vix_percentile": 0.2, "spx_ma_spread": 4.0, "spx_dist_50": 3.0,
-    "breadth": {"$ADVN": 2200, "$DECN": 700}, "sector_returns": {}, "t10y2y": 0.5, "tnx_change": -0.03,
+    "vix_last": 12.0,
+    "vix_percentile": 0.2,
+    "spx_ma_spread": 4.0,
+    "spx_dist_50": 3.0,
+    "breadth": {"$ADVN": 2200, "$DECN": 700},
+    "sector_returns": {},
+    "t10y2y": 0.5,
+    "tnx_change": -0.03,
 }
 
 

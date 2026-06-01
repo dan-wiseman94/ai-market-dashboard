@@ -66,32 +66,57 @@ def test_classify_rates(t10y2y, tnx_change, expected):
 
 
 def test_fold_composite_risk_on():
-    axes = {"volatility": "Low", "trend": "Uptrend", "breadth": "Broad",
-            "leadership": "Offensive", "rates": "Easing"}
+    axes = {
+        "volatility": "Low",
+        "trend": "Uptrend",
+        "breadth": "Broad",
+        "leadership": "Offensive",
+        "rates": "Easing",
+    }
     assert c.fold_composite(axes) == "Risk-On"
 
 
 def test_fold_composite_risk_off():
-    axes = {"volatility": "Elevated", "trend": "Downtrend", "breadth": "Narrow",
-            "leadership": "Defensive", "rates": "Inverted"}
+    axes = {
+        "volatility": "Elevated",
+        "trend": "Downtrend",
+        "breadth": "Narrow",
+        "leadership": "Defensive",
+        "rates": "Inverted",
+    }
     assert c.fold_composite(axes) == "Risk-Off"
 
 
 def test_fold_composite_stress_short_circuit():
-    axes = {"volatility": "Stress", "trend": "Uptrend", "breadth": "Broad",
-            "leadership": "Offensive", "rates": "Easing"}
+    axes = {
+        "volatility": "Stress",
+        "trend": "Uptrend",
+        "breadth": "Broad",
+        "leadership": "Offensive",
+        "rates": "Easing",
+    }
     assert c.fold_composite(axes) == "Stress"
 
 
 def test_fold_composite_neutral_when_mixed_or_unknown():
-    axes = {"volatility": "Normal", "trend": "Range", "breadth": "Unknown",
-            "leadership": "Unknown", "rates": "Unknown"}
+    axes = {
+        "volatility": "Normal",
+        "trend": "Range",
+        "breadth": "Unknown",
+        "leadership": "Unknown",
+        "rates": "Unknown",
+    }
     assert c.fold_composite(axes) == "Neutral-Transitional"
 
 
 def test_build_drivers_skips_unknown():
-    axes = {"volatility": "Elevated", "trend": "Downtrend", "breadth": "Unknown",
-            "leadership": "Unknown", "rates": "Unknown"}
+    axes = {
+        "volatility": "Elevated",
+        "trend": "Downtrend",
+        "breadth": "Unknown",
+        "leadership": "Unknown",
+        "rates": "Unknown",
+    }
     inp = {"vix_last": 24.0, "vix_percentile": 0.82}
     drivers = c.build_drivers(axes, inp)
     assert any("VIX 24" in d for d in drivers)
