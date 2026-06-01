@@ -9,7 +9,15 @@ class DeskEntrySerializer(serializers.ModelSerializer):
     class Meta:
         model = DeskEntry
         fields: ClassVar = [
-            "id", "created_at", "anomaly_type", "ticker", "severity",
-            "evidence", "finding", "suggested_actions", "status", "warroom_run_id",
+            "id",
+            "created_at",
+            "anomaly_type",
+            "ticker",
+            "severity",
+            "evidence",
+            "finding",
+            "suggested_actions",
+            "status",
+            "warroom_run_id",
         ]
         read_only_fields: ClassVar = fields

@@ -1,10 +1,17 @@
+from typing import ClassVar
+
 import pytest
 
 from apps.desk.services import investigate as I
 
 pytestmark = pytest.mark.django_db
 
-CAND = {"anomaly_type": "price_move", "ticker": "NVDA", "severity": 8.0, "evidence": {"pct_change": 8.0}}
+CAND = {
+    "anomaly_type": "price_move",
+    "ticker": "NVDA",
+    "severity": 8.0,
+    "evidence": {"pct_change": 8.0},
+}
 
 
 def test_no_key_returns_none():
@@ -14,12 +21,14 @@ def test_no_key_returns_none():
 def test_investigate_returns_finding(monkeypatch):
     from apps.secrets.models import ProviderConfig
 
-    ProviderConfig.objects.create(provider="claude", _api_key={"k": "sk"}, default_model="claude-opus-4-8")
+    ProviderConfig.objects.create(
+        provider="claude", _api_key={"k": "sk"}, default_model="claude-opus-4-8"
+    )
 
     class _F:
         summary = "NVDA gapped on capex headlines."
         implication = "Watch the breakout retest."
-        suggested_actions = ["Convene a War Room on NVDA"]
+        suggested_actions: ClassVar = ["Convene a War Room on NVDA"]
 
     monkeypatch.setattr(I, "run_structured", lambda **kw: _F())
     monkeypatch.setattr(I, "check_daily_cap", lambda *a, **k: None)

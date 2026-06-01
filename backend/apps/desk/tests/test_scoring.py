@@ -7,8 +7,10 @@ pytestmark = pytest.mark.django_db
 
 
 def test_rank_orders_by_severity():
-    cands = [{"anomaly_type": "a", "ticker": "X", "severity": 1.0, "evidence": {}},
-             {"anomaly_type": "b", "ticker": "Y", "severity": 9.0, "evidence": {}}]
+    cands = [
+        {"anomaly_type": "a", "ticker": "X", "severity": 1.0, "evidence": {}},
+        {"anomaly_type": "b", "ticker": "Y", "severity": 9.0, "evidence": {}},
+    ]
     ranked = rank(cands)
     assert ranked[0]["ticker"] == "Y"
 

@@ -10,7 +10,9 @@ class DeskEntry(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     anomaly_type = models.CharField(max_length=32, db_index=True)
-    ticker = models.CharField(max_length=16, blank=True, default="", db_index=True)  # "" = book-wide
+    ticker = models.CharField(
+        max_length=16, blank=True, default="", db_index=True
+    )  # "" = book-wide
     severity = models.FloatField(default=0.0)
     evidence = models.JSONField(default=dict)
     finding = models.TextField(blank=True, default="")
