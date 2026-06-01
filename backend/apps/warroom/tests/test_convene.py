@@ -2,9 +2,8 @@ import pytest
 from django.test import override_settings
 
 from apps.threads.models import Message
-from apps.warroom.models import WarRoomRun
-from apps.warroom.services import convene as CV
 from apps.warroom import tasks as T
+from apps.warroom.services import convene as CV
 
 pytestmark = pytest.mark.django_db
 
