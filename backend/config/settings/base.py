@@ -239,6 +239,7 @@ AI_CALIBRATION_ROUTING_ENABLED = env.bool("AI_CALIBRATION_ROUTING_ENABLED", defa
 # Anomaly-sweep / Desk (M15 F4, opt-in): when ON, the beat-scheduled sweep
 # scans watched tickers for anomalies and auto-originates DeskEntry investigations.
 ANOMALY_SWEEP_ENABLED = env.bool("ANOMALY_SWEEP_ENABLED", default=False)
+AUTONOMY_AUTO_EXECUTE = env.bool("AUTONOMY_AUTO_EXECUTE", default=False)
 AI_CALIBRATION_ROUTING_MIN_SCORED = env.int("AI_CALIBRATION_ROUTING_MIN_SCORED", default=5)
 AI_CALIBRATION_ROUTING_MAX_AGE_DAYS = env.int("AI_CALIBRATION_ROUTING_MAX_AGE_DAYS", default=30)
 AIEVAL_SCHEDULED_MODEL = env.str("AIEVAL_SCHEDULED_MODEL", default="claude-sonnet-4-6")
