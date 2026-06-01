@@ -60,8 +60,14 @@ def serialize_for_ai(
         parts.append(f"**Notes:** {snapshot.notes.strip()}")
     if snapshot.manual_positions.strip():
         parts.append(
-            "## Positions (manually entered — parse and reason over these)\n"
+            "## Positions (current holdings — manually entered; parse and reason over these)\n"
             f"{snapshot.manual_positions.strip()}"
+        )
+    if snapshot.candidate_positions.strip():
+        parts.append(
+            "## Candidate positions (potential trades under consideration — "
+            "evaluate the entry case, do not assume these are held)\n"
+            f"{snapshot.candidate_positions.strip()}"
         )
 
     # Capture-freshness line — always emit when captured_at is available so the AI knows

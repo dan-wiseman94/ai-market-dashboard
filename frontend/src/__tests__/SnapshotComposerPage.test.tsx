@@ -251,6 +251,33 @@ describe("SnapshotComposerPage", () => {
     });
   });
 
+  it("posts current and potential positions as separate fields", async () => {
+    const user = userEvent.setup();
+    mockCreateSnap.mockResolvedValue({ id: 100, status: "ready", includes: [] });
+    mockCreateThread.mockResolvedValue({ id: 200, title: "Consult" });
+
+    renderComposer();
+
+    await waitFor(() => {
+      const [profileSelect] = screen.getAllByRole("combobox");
+      expect((profileSelect as HTMLSelectElement).value).toBe("1");
+    });
+
+    await user.type(screen.getByPlaceholderText(/Holdings you want the AI to manage/i), "100 SPY @ 450");
+    await user.type(screen.getByPlaceholderText(/Trades you're weighing/i), "long NVDA 6mo");
+
+    await user.click(screen.getByTestId("capture-btn"));
+
+    await waitFor(() => {
+      expect(mockCreateSnap).toHaveBeenCalledWith(
+        expect.objectContaining({
+          manual_positions: "100 SPY @ 450",
+          candidate_positions: "long NVDA 6mo",
+        }),
+      );
+    });
+  });
+
   it("unions ad-hoc typed tickers with the selected watchlist on submit", async () => {
     const user = userEvent.setup();
     mockCreateSnap.mockResolvedValue({ id: 100, status: "ready", includes: [] });

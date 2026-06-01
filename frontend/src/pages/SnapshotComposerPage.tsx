@@ -29,6 +29,7 @@ export default function SnapshotComposerPage() {
   const [objective, setObjective] = useState("");
   const [notes, setNotes] = useState("");
   const [manualPositions, setManualPositions] = useState("");
+  const [candidatePositions, setCandidatePositions] = useState("");
   const [title, setTitle] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -88,6 +89,7 @@ export default function SnapshotComposerPage() {
         profile_id: profileId,
         objective, notes, includes,
         manual_positions: manualPositions,
+        candidate_positions: candidatePositions,
         watchlist_tickers: tickers,
         ohlc_ticker: tickers[0],
         ohlc_timeframe: "1m",
@@ -256,14 +258,28 @@ export default function SnapshotComposerPage() {
         </div>
 
         <div>
-          <label className="block text-xs text-ink-500 mb-1">Positions (optional, free text)</label>
+          <label className="block text-xs text-ink-500 mb-1">Current positions (optional, free text)</label>
           <textarea
             rows={3} value={manualPositions} onChange={(e) => setManualPositions(e.target.value)}
-            placeholder="Type or paste positions — the AI parses them, e.g. &#10;100 SPY @ 450&#10;2x AAPL 180c exp 6/20"
+            placeholder="Holdings you want the AI to manage — e.g. &#10;100 SPY @ 450&#10;2x AAPL 180c exp 6/20"
             className="w-full px-2 py-1.5 rounded bg-ink-900 border border-rule font-mono text-sm"
           />
           <div className="text-xs text-ink-500 mt-1">
             Parsed by the AI — no broker connection needed.
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-xs text-ink-500 mb-1">
+            Potential positions to discuss (optional, free text)
+          </label>
+          <textarea
+            rows={3} value={candidatePositions} onChange={(e) => setCandidatePositions(e.target.value)}
+            placeholder="Trades you're weighing — the AI evaluates the entry case, e.g. &#10;long NVDA 6mo&#10;short QQQ hedge"
+            className="w-full px-2 py-1.5 rounded bg-ink-900 border border-rule font-mono text-sm"
+          />
+          <div className="text-xs text-ink-500 mt-1">
+            Candidates under consideration — not assumed to be held.
           </div>
         </div>
 

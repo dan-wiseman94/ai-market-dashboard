@@ -45,7 +45,7 @@ def test_manual_positions_rendered_for_ai_to_parse():
         manual_positions="100 SPY @ 450\n2x AAPL 180c exp 6/20",
     )
     out = serialize_for_ai(s)
-    assert "## Positions (manually entered" in out
+    assert "## Positions (current holdings" in out
     assert "100 SPY @ 450" in out
     assert "AAPL 180c" in out
 
@@ -54,7 +54,30 @@ def test_manual_positions_rendered_for_ai_to_parse():
 def test_blank_manual_positions_omitted():
     p = TradingProfile.objects.create(name="P", style="x")
     s = Snapshot.objects.create(profile=p, includes=[], source="manual", objective="o")
-    assert "manually entered" not in serialize_for_ai(s)
+    assert "current holdings" not in serialize_for_ai(s)
+
+
+@pytest.mark.django_db
+def test_candidate_positions_rendered_with_entry_framing():
+    p = TradingProfile.objects.create(name="P", style="x")
+    s = Snapshot.objects.create(
+        profile=p,
+        includes=[],
+        source="manual",
+        objective="what should I add?",
+        candidate_positions="long NVDA 6mo\nshort QQQ hedge",
+    )
+    out = serialize_for_ai(s)
+    assert "## Candidate positions (potential trades under consideration" in out
+    assert "long NVDA 6mo" in out
+    assert "short QQQ hedge" in out
+
+
+@pytest.mark.django_db
+def test_blank_candidate_positions_omitted():
+    p = TradingProfile.objects.create(name="P", style="x")
+    s = Snapshot.objects.create(profile=p, includes=[], source="manual", objective="o")
+    assert "Candidate positions" not in serialize_for_ai(s)
 
 
 @pytest.mark.django_db
