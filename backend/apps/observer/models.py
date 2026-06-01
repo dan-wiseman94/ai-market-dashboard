@@ -58,6 +58,11 @@ class ObserverSchedule(models.Model):
         "every structured-capable provider and record a cross-model agreement "
         "signal instead of a single structured report. ~Nx cost; opt-in only.",
     )
+    investigate = models.BooleanField(
+        default=False,
+        help_text="When True (plain mode only), the fire runs a bounded tool-using "
+        "investigation instead of a single observation.",
+    )
     last_batch_id = models.CharField(max_length=64, blank=True, default="")
     fire_mode = models.CharField(max_length=20, choices=FIRE_MODE_CHOICES, default="cron")
     close_offset_minutes = models.PositiveIntegerField(
