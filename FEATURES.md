@@ -169,6 +169,10 @@ The AI stops being a one-shot snapshot reader and starts behaving like an analys
   own decisions ("you pass on winners," "high conviction isn't actually more
   accurate"), each with the evidence — and an honest "insufficient history" when the
   sample is too thin to call.
+- **A living house view** — each ticker you cover gets one persistent, version-
+  controlled research note (stance, conviction, bull/bear case, key levels) that the
+  AI **revises with a reason** instead of re-deriving it every snapshot, with an
+  append-only history of *why* the view moved. Browse it at `/coverage/:ticker`.
 
 ### 📊 Calibration scorecard & analytics (on-demand)
 
@@ -278,7 +282,7 @@ the observer, event triggers, the full AI platform (tool use, thinking, memory,
 files, citations, batch), the second-brain (theses, post-mortems, journal), the
 Decision Coach, semantic recall, the eval-calibration loop, the morning briefing,
 the analytics suite, free data sources, the Prediction Ledger, and the Resident
-Analyst (autonomous investigation, calibration-weighted routing, The Mirror). The
-only unit still in flight is M14's per-ticker COVERAGE house view.
+Analyst (autonomous investigation, calibration-weighted routing, COVERAGE, and The
+Mirror). All fourteen milestones are shipped end to end.
 
 *One person. One machine. Every call on the record.*

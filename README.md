@@ -26,7 +26,7 @@ A single-user desktop dashboard that captures point-in-time **stock-market snaps
 
 ## Status
 
-**Feature-complete — fourteen milestones shipped (M1 → M14).** Only M14's final unit (F3 COVERAGE, a living per-ticker house view) is still in flight.
+**Feature-complete — fourteen milestones shipped (M1 → M14).** The newest additions are the Prediction Ledger (M13) and the Resident Analyst (M14, all five units shipped).
 
 | Milestone | Scope | Tag |
 |---|---|---|
@@ -43,9 +43,9 @@ A single-user desktop dashboard that captures point-in-time **stock-market snaps
 | M11 | Second brain (theses, post-mortems, decision journal) | — |
 | M12 | Analytics (leaderboard, heatmap, unusual options) | `m12-analytics` |
 | M13 | Prediction Ledger (the AI's own auto-graded forecasts) | — |
-| M14 | Resident Analyst (autonomous investigation, calibration routing, The Mirror) | — |
+| M14 | Resident Analyst (autonomous investigation, calibration routing, COVERAGE, The Mirror) | — |
 
-> M11–M14 merged without release tags. Several capabilities ship untagged: **free data sources** (run with no brokerage login), **provider tool parity** (tool use on all three providers, with visible capability warnings), a **Decision Coach** that feeds prior theses / snapshot diffs / your track record / setup-cohort base rates / distilled lessons / measured eval calibration / semantic recall into the prompt, the **Prediction Ledger** (the AI's own auto-graded calls), the **Resident Analyst** (autonomous investigations + calibration-weighted routing + The Mirror), **semantic recall**, a daily **Morning Briefing**, a **forward earnings + macro calendar**, **overnight (pre-market) snapshots**, and a **calibration scorecard**. The one unshipped unit is M14 **F3 COVERAGE** (a living, version-controlled per-ticker house view).
+> M11–M14 merged without release tags. Several capabilities ship untagged: **free data sources** (run with no brokerage login), **provider tool parity** (tool use on all three providers, with visible capability warnings), a **Decision Coach** that feeds prior theses / snapshot diffs / your track record / setup-cohort base rates / distilled lessons / measured eval calibration / semantic recall into the prompt, the **Prediction Ledger** (the AI's own auto-graded calls), the **Resident Analyst** (autonomous investigations + calibration-weighted routing + The Mirror), **semantic recall**, a daily **Morning Briefing**, a **forward earnings + macro calendar**, **overnight (pre-market) snapshots**, and a **calibration scorecard**. All of M14 has shipped, including **F3 COVERAGE** — a living, version-controlled per-ticker house view the AI revises with a reason.
 
 ## Features
 
@@ -121,12 +121,13 @@ Theses are *your* calls; predictions are the *AI's*. When the observer makes a s
 
 ### The Resident Analyst (M14)
 
-Four features that turn the AI from a one-shot snapshot reader into a resident analyst — one that investigates, routes itself by track record, learns recurring lessons, and grades *you*.
+Five features that turn the AI from a one-shot snapshot reader into a resident analyst — one that investigates, routes itself by track record, learns recurring lessons, keeps a living view on each name, and grades *you*.
 
 - **Autonomous investigation** *(opt-in per trigger / schedule)* — instead of emitting a single observation, a fire can run a **bounded agentic tool loop**, pulling data and following leads to a grounded conclusion, capped by an iteration ceiling (`AI_INVESTIGATION_MAX_ITERATIONS`) and a dedicated autonomous spend sub-cap (`AI_AUTONOMOUS_DAILY_CAP_USD`). Off by default.
 - **Calibration-weighted routing** *(opt-in — `AI_CALIBRATION_ROUTING_ENABLED`)* — when no provider/model is pinned, the router's fallback tier picks the best-*measured* model from your eval history (hit-rate, calibration error) instead of the first one configured, so the model that has proven more accurate handles more of your runs over time.
 - **Setup-cohort base rates + distilled lessons in the Coach** — the Coach injects the historical hit-rate of *past calls matching this setup* (same direction / sector — the outside view) and cross-ticker **distilled lessons** clustered from your post-mortems (`apps/lessons`), so a pattern from one ticker informs a brand-new one. Both read only decisive, completed post-mortems (look-ahead-safe).
 - **The Mirror** (`/mirror`) — the calibration engine turned inward: it grades *your* decision-making from your journal, theses, and outcomes ("you pass on winners," "high conviction isn't actually more accurate"), each signal drillable and hard-gated on sample size so thin history reads "insufficient," not a verdict.
+- **COVERAGE — a living house view** (`/coverage/:ticker`) — each covered ticker gets one persistent, version-controlled research note (stance, conviction, bull / bear case, key levels, what it's watching for) that the AI **revises with a reason** — behind a hysteresis gate, so a quiet day reaffirms rather than churns — instead of re-deriving it every snapshot. Every revision is an append-only audit row you can read to see *why* the view moved, and the observer auto-revises a name once you've started covering it.
 
 ### Observer — scheduled AI runs
 
@@ -290,6 +291,7 @@ Backend code lives under `backend/apps/<name>/` (imported as `apps.<name>`):
 - `thesis` · theses + post-mortems + decision journal (M11 "second brain")
 - `predictions` · the AI's own auto-extracted, auto-resolving forecasts + invalidation alerts + thesis reconciliation (M13)
 - `lessons` · recurring post-mortem lessons distilled into the Coach (M14)
+- `coverage` · living, version-controlled per-ticker "house view" the AI revises with a reason (M14)
 - `portfolio` · manual position tracking with realized / unrealized P&L, linked to the thesis behind each trade
 - `recall` · semantic + keyword search across all documents; pgvector embeddings index (feeds the Decision Coach)
 - `briefing` · daily Morning Briefing assembly + AI synthesis
