@@ -109,4 +109,13 @@ app.conf.beat_schedule = {
         "task": "lessons.distill",
         "schedule": crontab(hour=5, minute=30),  # daily, after new post-mortems resolve
     },
+    "regime-refresh-intraday": {
+        "task": "regime.refresh",
+        "schedule": crontab(minute="*/30"),  # market-hours guard is inside the task
+    },
+    "regime-refresh-preopen": {
+        "task": "regime.refresh",
+        "schedule": crontab(hour=13, minute=0),  # ~09:00 ET pre-open; forced
+        "kwargs": {"force": True},
+    },
 }
