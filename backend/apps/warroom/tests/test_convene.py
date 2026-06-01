@@ -10,8 +10,19 @@ pytestmark = pytest.mark.django_db
 
 
 def _patch(monkeypatch):
-    monkeypatch.setattr(T, "assign_voices", lambda mode: [(p, "claude", "claude-opus-4-8") for p in ("bull", "bear", "skeptic")])
-    monkeypatch.setattr(T, "run_one_persona", lambda thread, persona, ctx, prior, **kw: {"persona": persona, "argument": f"{persona} arg"})
+    monkeypatch.setattr(
+        T,
+        "assign_voices",
+        lambda mode: [(p, "claude", "claude-opus-4-8") for p in ("bull", "bear", "skeptic")],
+    )
+    monkeypatch.setattr(
+        T,
+        "run_one_persona",
+        lambda thread, persona, ctx, prior, **kw: {
+            "persona": persona,
+            "argument": f"{persona} arg",
+        },
+    )
 
     class _V:
         verdict = "balanced"
@@ -38,7 +49,9 @@ def test_convene_creates_run_and_dispatches_to_done(monkeypatch):
 @override_settings(CELERY_TASK_ALWAYS_EAGER=True, CELERY_TASK_EAGER_PROPAGATES=True)
 def test_convene_no_provider_errors(monkeypatch):
     monkeypatch.setattr(T, "_claude_cfg", lambda: None)
-    monkeypatch.setattr(T, "assign_voices", lambda mode: [(p, "", "") for p in ("bull", "bear", "skeptic")])
+    monkeypatch.setattr(
+        T, "assign_voices", lambda mode: [(p, "", "") for p in ("bull", "bear", "skeptic")]
+    )
     run = CV.convene(free_prompt="q")
     run.refresh_from_db()
     assert run.status == "error"
@@ -48,7 +61,12 @@ def test_convene_no_provider_errors(monkeypatch):
 def test_rebuttal_runs_extra_round(monkeypatch):
     _patch(monkeypatch)
     calls = []
-    monkeypatch.setattr(T, "run_one_persona",
-                        lambda thread, persona, ctx, prior, **kw: calls.append((persona, len(prior))) or {"persona": persona, "argument": "a"})
+    monkeypatch.setattr(
+        T,
+        "run_one_persona",
+        lambda thread, persona, ctx, prior, **kw: (
+            calls.append((persona, len(prior))) or {"persona": persona, "argument": "a"}
+        ),
+    )
     CV.convene(free_prompt="q", structure="rebuttal")
     assert any(n == 0 for _p, n in calls) and any(n > 0 for _p, n in calls)
