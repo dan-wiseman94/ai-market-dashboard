@@ -12,6 +12,7 @@ from __future__ import annotations
 import logging
 
 from anthropic import Anthropic
+from cryptography.fernet import InvalidToken
 
 from apps.observer.models import ObserverSchedule
 from apps.observer.services.threads import get_or_create_observer_thread
@@ -22,7 +23,15 @@ log = logging.getLogger(__name__)
 
 
 def _anthropic_client(provider: str = "claude") -> Anthropic:
-    cfg = ProviderConfig.objects.get(provider=provider)
+    try:
+        cfg = ProviderConfig.objects.get(provider=provider)
+    except InvalidToken as exc:
+        # Undecryptable key (key/salt rotation) — fail the batch with a clear message
+        # instead of an opaque InvalidToken bubbling out of the Celery task.
+        raise ValueError(
+            f"{provider} API key could not be decrypted (encryption key changed); "
+            "re-enter it in Settings → Providers."
+        ) from exc
     return Anthropic(api_key=cfg.api_key, base_url=cfg.base_url or None)
 
 
@@ -33,7 +42,9 @@ def submit_watchlist_batch(schedule_id: int) -> str:
         raise ValueError(f"schedule {schedule_id}: no watchlist tickers to batch")
 
     provider_name = sched.override_provider or sched.profile.default_provider
-    cfg = ProviderConfig.objects.get(provider=provider_name)
+    # defer the key here (only default_model is read); _anthropic_client below builds the
+    # client and is where an undecryptable key is reported.
+    cfg = ProviderConfig.objects.defer("_api_key").get(provider=provider_name)
     model = sched.override_model or cfg.default_model or "claude-opus-4-8"
 
     requests = [

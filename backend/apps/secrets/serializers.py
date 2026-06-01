@@ -1,5 +1,6 @@
 from typing import ClassVar
 
+from cryptography.fernet import InvalidToken
 from rest_framework import serializers
 
 from .models import ProviderConfig
@@ -28,7 +29,14 @@ class ProviderConfigSerializer(serializers.ModelSerializer):
         read_only_fields: ClassVar = ["discovered_models", "models_synced_at"]
 
     def get_api_key_present(self, obj) -> bool:
-        return bool(obj.api_key)
+        # A key that can't be decrypted (DJANGO_SECRET_KEY / salt rotation) is unusable,
+        # so report it as absent: avoids 500-ing the list/detail endpoint and prompts the
+        # user to re-enter it. Reachable because the viewset defers `_api_key`, so the
+        # decrypt is attempted lazily here rather than crashing the row fetch.
+        try:
+            return bool(obj.api_key)
+        except InvalidToken:
+            return False
 
     def update(self, instance, validated_data):
         key = validated_data.pop("api_key_write", None)
