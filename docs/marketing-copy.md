@@ -70,7 +70,7 @@ The part I'm most proud of is the offline eval harness: it replays a candidate (
 
 Deliberately observational: there is no broker write path. It cannot place a trade. It's a thinking and record-keeping tool, not an execution engine.
 
-Stack: Django 6 + DRF + Channels (websockets for streaming), Celery, Postgres + pgvector for semantic recall, React 19 + TS. Market data via Schwab; everything runs in Docker Compose.
+Stack: Django 6 + DRF + Channels (websockets for streaming), Celery, Postgres + pgvector for semantic recall, React 19 + TS. Market data via Schwab or free providers (Alpaca, Tiingo, FRED, SEC EDGAR, and more), so it runs with no brokerage login; everything runs in Docker Compose.
 
 Caveats: single-user, security is network isolation (no app-level auth — don't expose it publicly), and it's a personal project, not investment advice.
 
