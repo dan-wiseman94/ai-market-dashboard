@@ -18,8 +18,14 @@ log = logging.getLogger(__name__)
 def _notify(entry: DeskEntry) -> None:
     from apps.observer.services.notifications import notify
 
-    notify(user_id=None, kind="desk", title=f"Desk: {entry.anomaly_type} {entry.ticker or 'book'}",
-           body=entry.finding[:200], link="/desk", meta={"entry_id": entry.id})
+    notify(
+        user_id=None,
+        kind="desk",
+        title=f"Desk: {entry.anomaly_type} {entry.ticker or 'book'}",
+        body=entry.finding[:200],
+        link="/desk",
+        meta={"entry_id": entry.id},
+    )
 
 
 def run_sweep(top_k: int = C.TOP_K) -> int:
@@ -37,9 +43,12 @@ def run_sweep(top_k: int = C.TOP_K) -> int:
         if result is None:
             continue
         entry = DeskEntry.objects.create(
-            anomaly_type=cand["anomaly_type"], ticker=cand.get("ticker", "") or "",
-            severity=cand.get("severity", 0.0), evidence=cand.get("evidence", {}),
-            finding=result["finding"], suggested_actions=result["suggested_actions"],
+            anomaly_type=cand["anomaly_type"],
+            ticker=cand.get("ticker", "") or "",
+            severity=cand.get("severity", 0.0),
+            evidence=cand.get("evidence", {}),
+            finding=result["finding"],
+            suggested_actions=result["suggested_actions"],
         )
         try:
             _notify(entry)
@@ -47,5 +56,9 @@ def run_sweep(top_k: int = C.TOP_K) -> int:
             log.warning("desk.notify_failed", exc_info=True)
         created += 1
     if dropped:
-        log.info("desk.sweep dropped %d candidates beyond top_k=%d (no silent truncation)", dropped, top_k)
+        log.info(
+            "desk.sweep dropped %d candidates beyond top_k=%d (no silent truncation)",
+            dropped,
+            top_k,
+        )
     return created

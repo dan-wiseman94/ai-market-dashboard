@@ -34,8 +34,14 @@ def detect_price(universe: list[str]) -> list[dict]:
                 continue
             pct = (closes[-1] / closes[-2] - 1.0) * 100.0
             if abs(pct) >= C.PCT_CHANGE:
-                out.append({"anomaly_type": "price_move", "ticker": t.upper(),
-                            "severity": abs(pct), "evidence": {"pct_change": round(pct, 2)}})
+                out.append(
+                    {
+                        "anomaly_type": "price_move",
+                        "ticker": t.upper(),
+                        "severity": abs(pct),
+                        "evidence": {"pct_change": round(pct, 2)},
+                    }
+                )
         except Exception:
             log.warning("desk.detect_price.failed t=%s", t, exc_info=True)
     return out
@@ -51,8 +57,14 @@ def detect_options(universe: list[str]) -> list[dict]:
             lines = unusual_options(ticker=t.upper(), at=now, top_n=5)
             if lines:
                 top = max(lines, key=lambda x: x.get("score", 0))
-                out.append({"anomaly_type": "unusual_options", "ticker": t.upper(),
-                            "severity": float(top.get("score", 0)), "evidence": {"line": top}})
+                out.append(
+                    {
+                        "anomaly_type": "unusual_options",
+                        "ticker": t.upper(),
+                        "severity": float(top.get("score", 0)),
+                        "evidence": {"line": top},
+                    }
+                )
         except Exception:
             log.warning("desk.detect_options.failed t=%s", t, exc_info=True)
     return out
@@ -63,8 +75,14 @@ def detect_regime_change() -> list[dict]:
 
     last2 = list(RegimeReading.objects.order_by("-created_at")[:2])
     if len(last2) == 2 and last2[0].composite != last2[1].composite:
-        return [{"anomaly_type": "regime_change", "ticker": "", "severity": 10.0,
-                 "evidence": {"from": last2[1].composite, "to": last2[0].composite}}]
+        return [
+            {
+                "anomaly_type": "regime_change",
+                "ticker": "",
+                "severity": 10.0,
+                "evidence": {"from": last2[1].composite, "to": last2[0].composite},
+            }
+        ]
     return []
 
 
@@ -76,10 +94,18 @@ def detect_book() -> list[dict]:
         return []
     cur, prev = last2[0], last2[1]
     hhi_jump = (cur.concentration or {}).get("hhi", 0) - (prev.concentration or {}).get("hhi", 0)
-    newly_misaligned = (cur.regime_fit or {}).get("alignment") == "misaligned" and (prev.regime_fit or {}).get("alignment") != "misaligned"
+    newly_misaligned = (cur.regime_fit or {}).get("alignment") == "misaligned" and (
+        prev.regime_fit or {}
+    ).get("alignment") != "misaligned"
     if hhi_jump >= 0.1 or newly_misaligned:
-        return [{"anomaly_type": "book_deterioration", "ticker": "", "severity": 8.0,
-                 "evidence": {"hhi_jump": round(hhi_jump, 3), "newly_misaligned": newly_misaligned}}]
+        return [
+            {
+                "anomaly_type": "book_deterioration",
+                "ticker": "",
+                "severity": 8.0,
+                "evidence": {"hhi_jump": round(hhi_jump, 3), "newly_misaligned": newly_misaligned},
+            }
+        ]
     return []
 
 
@@ -93,8 +119,14 @@ def detect_coverage_stale(universe: list[str]) -> list[dict]:
         if len(closes) >= 11 and closes[0]:
             move = abs(closes[-1] / closes[0] - 1.0) * 100.0
             if move >= C.COVERAGE_MOVE_PCT:
-                out.append({"anomaly_type": "coverage_stale", "ticker": note.ticker.upper(),
-                            "severity": move, "evidence": {"move_pct": round(move, 1)}})
+                out.append(
+                    {
+                        "anomaly_type": "coverage_stale",
+                        "ticker": note.ticker.upper(),
+                        "severity": move,
+                        "evidence": {"move_pct": round(move, 1)},
+                    }
+                )
     return out
 
 

@@ -33,13 +33,25 @@ def test_act_convenes_warroom(monkeypatch):
     from apps.threads.models import Thread
     from apps.warroom.models import WarRoomRun
 
-    e = DeskEntry.objects.create(anomaly_type="price_move", ticker="NVDA", severity=9.0,
-                                 finding="big move",
-                                 suggested_actions=[{"type": "convene_warroom", "label": "Convene", "params": {"free_prompt": "Debate: big move"}}])
+    e = DeskEntry.objects.create(
+        anomaly_type="price_move",
+        ticker="NVDA",
+        severity=9.0,
+        finding="big move",
+        suggested_actions=[
+            {
+                "type": "convene_warroom",
+                "label": "Convene",
+                "params": {"free_prompt": "Debate: big move"},
+            }
+        ],
+    )
 
     def _fake_convene(**kwargs):
         th = Thread.objects.create(kind="warroom", title="t")
-        return WarRoomRun.objects.create(thread=th, subject_kind="free", subject_label="x", confidence=0.5)
+        return WarRoomRun.objects.create(
+            thread=th, subject_kind="free", subject_label="x", confidence=0.5
+        )
 
     monkeypatch.setattr(views, "convene", _fake_convene)
     resp = APIClient().post(f"/api/desk/{e.id}/act/", {"action": "convene_warroom"}, format="json")

@@ -17,7 +17,9 @@ log = logging.getLogger(__name__)
 class Finding(BaseModel):
     summary: str = Field(description="What the anomaly is, in one or two sentences.")
     implication: str = Field(description="What it implies for our view; observational only.")
-    suggested_actions: list[str] = Field(default_factory=list, description="1-3 concrete next steps.")
+    suggested_actions: list[str] = Field(
+        default_factory=list, description="1-3 concrete next steps."
+    )
 
 
 def _prompt(cand: dict) -> str:
@@ -40,14 +42,24 @@ def investigate(cand: dict) -> dict | None:
         check_daily_cap("claude", cap_usd=cfg.daily_cost_cap_usd)
         check_monthly_cap("claude", cap_usd=cfg.monthly_cost_cap_usd)
         f = run_structured(
-            api_key=cfg.api_key, model=cfg.default_model or "claude-opus-4-8",
-            system="", user=_prompt(cand), output_model=Finding, base_url=cfg.base_url or "",
+            api_key=cfg.api_key,
+            model=cfg.default_model or "claude-opus-4-8",
+            system="",
+            user=_prompt(cand),
+            output_model=Finding,
+            base_url=cfg.base_url or "",
         )
         finding = f"{f.summary} {f.implication}".strip()
         actions = [{"type": "suggestion", "label": s} for s in (f.suggested_actions or [])]
         subj = cand.get("ticker") or "the book"
-        actions.insert(0, {"type": "convene_warroom", "label": f"Convene War Room on {subj}",
-                           "params": {"free_prompt": f"Debate: {finding}"}})
+        actions.insert(
+            0,
+            {
+                "type": "convene_warroom",
+                "label": f"Convene War Room on {subj}",
+                "params": {"free_prompt": f"Debate: {finding}"},
+            },
+        )
         return {"finding": finding, "suggested_actions": actions}
     except CostCapExceededError as exc:
         log.warning("desk.investigate.cap_hit: %s", exc)
