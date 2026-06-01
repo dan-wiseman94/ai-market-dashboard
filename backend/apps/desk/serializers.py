@@ -19,5 +19,6 @@ class DeskEntrySerializer(serializers.ModelSerializer):
             "suggested_actions",
             "status",
             "warroom_run_id",
+            "investigation_thread_id",
         ]
         read_only_fields: ClassVar = fields
