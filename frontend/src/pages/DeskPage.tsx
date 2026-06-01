@@ -1,3 +1,5 @@
+import { Link } from "react-router-dom";
+
 import { EmptyState } from "@/components/EmptyState";
 import { Skeleton } from "@/components/Skeleton";
 import { useActDeskEntry, useDeskFeed, useDismissDeskEntry, useRunDeskSweep } from "@/hooks/useDesk";
@@ -34,7 +36,17 @@ export default function DeskPage() {
                 <span className="font-medium">{e.anomaly_type} · {e.ticker || "book"}</span>
                 <span className="text-ink/50">{e.status}</span>
               </div>
-              <p className="mt-1 text-sm text-ink/80">{e.finding}</p>
+              <div className="mt-1 flex items-center gap-2">
+                <p className="text-sm text-ink/80">{e.finding}</p>
+                {e.investigation_thread_id != null && (
+                  <Link
+                    to={`/threads/${e.investigation_thread_id}`}
+                    className="shrink-0 text-xs text-ink/60 hover:text-ink/90 underline"
+                  >
+                    View investigation
+                  </Link>
+                )}
+              </div>
               {e.status === "new" && (
                 <div className="mt-2 flex gap-2">
                   {e.suggested_actions.some((a) => a.type === "convene_warroom") && (
@@ -43,6 +55,14 @@ export default function DeskPage() {
                       onClick={async () => { await act.mutateAsync({ id: e.id, action: "convene_warroom" }); refetch(); }}
                     >
                       {e.suggested_actions.find((a) => a.type === "convene_warroom")?.label ?? "Convene War Room"}
+                    </button>
+                  )}
+                  {e.suggested_actions.some((a) => a.type === "revise_coverage") && (
+                    <button
+                      className="rounded border border-rule px-2 py-1 text-xs hover:bg-ink/5"
+                      onClick={async () => { await act.mutateAsync({ id: e.id, action: "revise_coverage" }); refetch(); }}
+                    >
+                      {e.suggested_actions.find((a) => a.type === "revise_coverage")?.label ?? "Revise Coverage"}
                     </button>
                   )}
                   <button
