@@ -284,6 +284,61 @@ def _lessons_block(ticker: str) -> str:
     return "\n".join(lines)
 
 
+# Distilled-lessons block (M14 F2): a lesson must recur (>= this many post-mortems)
+# to count as a pattern, and we surface at most this many, highest-support first.
+_MIN_LESSON_SUPPORT = 2
+_MAX_DISTILLED = 2
+
+
+def _sector_for_ticker(ticker: str) -> str:
+    """Sector for a ticker from CompanyFundamentals (best-effort), else ""."""
+    if not ticker:
+        return ""
+    from apps.market.models import CompanyFundamentals
+
+    sector = (
+        CompanyFundamentals.objects.filter(ticker=ticker.upper())
+        .exclude(sector="")
+        .values_list("sector", flat=True)
+        .first()
+    )
+    return sector or ""
+
+
+def _distilled_lessons_block(ticker: str) -> str:
+    """Distilled recurring lessons (M14 F2) matching the current situation's tags:
+    same direction (leading open thesis) and/or same sector. Cross-ticker by
+    design — surfaces "you've been too bullish on biotech into earnings" even on a
+    name with no prior theses on it. "" when nothing matches or no lesson recurs."""
+    from apps.lessons.models import Lesson
+    from apps.thesis.models import Thesis
+
+    top = (
+        Thesis.objects.filter(ticker=ticker, status="open")
+        .order_by("-conviction", "-opened_at")
+        .first()
+    )
+    direction = top.direction if top else None
+    sector = _sector_for_ticker(ticker)
+    if not direction and not sector:
+        return ""
+    matched = []
+    for lesson in Lesson.objects.filter(muted=False, support_n__gte=_MIN_LESSON_SUPPORT)[:50]:
+        tags = lesson.tags if isinstance(lesson.tags, dict) else {}
+        if (direction and direction in tags.get("directions", [])) or (
+            sector and sector in tags.get("sectors", [])
+        ):
+            matched.append(lesson)
+        if len(matched) >= _MAX_DISTILLED:
+            break
+    if not matched:
+        return ""
+    lines = ["### Recurring lessons for setups like this"]
+    for lesson in matched:
+        lines.append(f"- {lesson.text}  (seen across {lesson.support_n} past calls)")
+    return "\n".join(lines)
+
+
 def _calibration_verdict(buckets: list) -> str | None:
     """Over/under/well-confident verdict from the reliability buckets.
 
@@ -441,6 +496,7 @@ def assemble_coach_context(snapshot, profile) -> str:
         _safe(lambda: _cohort_block(ticker)),
         _safe(lambda: _recall_block(snapshot, ticker)),
         _safe(lambda: _lessons_block(ticker)),
+        _safe(lambda: _distilled_lessons_block(ticker)),
         _safe(lambda: _ai_track_record_block(ticker, profile)),
         _safe(lambda: _calibration_block(profile)),
     ]
