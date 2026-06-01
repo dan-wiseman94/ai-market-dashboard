@@ -151,6 +151,7 @@ def run_observer(schedule_id: int) -> int | None:
                 thread_id=thread.id,
                 user_message_id=msg.id,
                 override=override or None,
+                investigate=sched.investigate,
             )
 
     _stamp_fired(sched)
