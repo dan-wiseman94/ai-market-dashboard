@@ -23,6 +23,7 @@ urlpatterns = [
     path("api/lessons/", include("apps.lessons.urls")),
     path("api/coverage/", include("apps.coverage.urls")),
     path("api/regime/", include("apps.regime.urls")),
+    path("api/book/", include("apps.book.urls")),
     path("api/", include("apps.profiles.urls")),
     path("api/", include("apps.snapshots.urls")),
     path("api/", include("apps.threads.urls")),

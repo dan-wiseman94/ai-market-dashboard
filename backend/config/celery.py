@@ -34,6 +34,7 @@ app.autodiscover_tasks(
         "apps.lessons",
         "apps.coverage",
         "apps.regime",
+        "apps.book",
     ]
 )
 

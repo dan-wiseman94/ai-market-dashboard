@@ -53,6 +53,7 @@ INSTALLED_APPS = [
     "apps.lessons",
     "apps.coverage",
     "apps.regime",
+    "apps.book",
 ]
 
 MIDDLEWARE = [
