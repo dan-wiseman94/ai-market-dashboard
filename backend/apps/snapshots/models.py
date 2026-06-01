@@ -25,8 +25,10 @@ class Snapshot(models.Model):
     profile = models.ForeignKey(TradingProfile, on_delete=models.PROTECT, related_name="snapshots")
     objective = models.TextField(blank=True, default="")
     notes = models.TextField(blank=True, default="")
-    # Free-text positions the user types in; the AI parses them (no broker fetch).
+    # Free-text current holdings the user types in; the AI parses them (no broker fetch).
     manual_positions = models.TextField(blank=True, default="")
+    # Free-text candidate trades the user is weighing; the AI evaluates the entry case.
+    candidate_positions = models.TextField(blank=True, default="")
     status = models.CharField(max_length=16, choices=STATUS_CHOICES, default="pending")
     includes = models.JSONField(default=list)
     source = models.CharField(max_length=16, choices=SOURCE_CHOICES, default="manual")

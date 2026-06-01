@@ -10,6 +10,7 @@ const snapshotFixture: Snapshot = {
   objective: "Assess morning open",
   notes: "",
   manual_positions: "",
+  candidate_positions: "",
   status: "pending",
   includes: ["quotes"],
   source: "manual",
