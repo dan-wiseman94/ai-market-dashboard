@@ -210,3 +210,18 @@ class AICalibrationDrilldownView(APIView):
                 ),
             }
         )
+
+
+class TraderCalibrationView(APIView):
+    """M14 F4 "The Mirror" — grades the TRADER's own behavior from journal + thesis
+    + post-mortem data. `?horizon=` (7/30/90, default 30)."""
+
+    def get(self, request: Request) -> Response:
+        from apps.analytics.services.trader_calibration import trader_calibration
+
+        horizon_raw = request.query_params.get("horizon")
+        try:
+            horizon = int(horizon_raw) if horizon_raw else 30
+        except ValueError:
+            horizon = 30
+        return Response(trader_calibration(horizon_days=horizon))
