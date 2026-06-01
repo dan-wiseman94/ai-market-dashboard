@@ -97,6 +97,7 @@ class Notification(models.Model):
         ("briefing", "Briefing"),
         ("regime", "Regime"),
         ("book", "Book"),
+        ("desk", "Desk"),
     ]
 
     # Nullable for v1 (no user-auth surface yet). When auth lands, backfill or
