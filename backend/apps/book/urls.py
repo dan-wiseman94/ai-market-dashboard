@@ -1,5 +1,7 @@
 from rest_framework.routers import DefaultRouter
 
+from apps.book.views import BookViewSet
+
 router = DefaultRouter()
-# ViewSet registered in a later task.
+router.register("", BookViewSet, basename="book")
 urlpatterns = router.urls
