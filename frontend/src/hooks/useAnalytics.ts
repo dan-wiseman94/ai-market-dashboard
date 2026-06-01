@@ -304,3 +304,38 @@ export function useTrackRecord(
     enabled: Boolean(ticker),
   });
 }
+
+export interface TraderDecisionBucket {
+  decision: string;
+  n: number;
+  correct: number;
+  hit_rate: number;
+}
+
+export interface TraderConvictionBucket {
+  conviction: number;
+  n: number;
+  correct: number;
+  hit_rate: number;
+}
+
+export interface TraderCalibration {
+  horizon_days: number;
+  decision_outcomes: { status: string; buckets: TraderDecisionBucket[] };
+  conviction_reliability: {
+    status: string;
+    buckets: TraderConvictionBucket[];
+    verdict: string | null;
+  };
+}
+
+/** The Mirror (M14 F4): grades the trader's OWN behavior. */
+export function useTraderCalibration(horizon = 30) {
+  return useQuery({
+    queryKey: ["analytics/trader-calibration", horizon],
+    queryFn: () =>
+      apiGet<TraderCalibration>(
+        `/api/analytics/trader-calibration/?horizon=${horizon}`,
+      ),
+  });
+}
