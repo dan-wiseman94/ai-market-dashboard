@@ -48,9 +48,14 @@ class ClaudeProvider:
 
         total_in = total_out = total_cached = 0
         memory_handler = _make_memory_handler(req.memory_dir)
+        tool_rounds = 0
+        tools_enabled = True
 
         try:
             while True:
+                tools_list: list[dict] = list(req.tools) if tools_enabled else []
+                if req.memory_dir and tools_enabled:
+                    tools_list.append({"type": "memory_20250818", "name": "memory"})
                 stream_kwargs: dict = dict(
                     model=req.model,
                     system=system_blocks,
@@ -58,9 +63,6 @@ class ClaudeProvider:
                     max_tokens=req.max_tokens,
                     temperature=req.temperature,
                 )
-                tools_list: list[dict] = list(req.tools)
-                if req.memory_dir:
-                    tools_list.append({"type": "memory_20250818", "name": "memory"})
                 if tools_list:
                     stream_kwargs["tools"] = tools_list
                 if req.thinking_budget > 0:
@@ -140,6 +142,12 @@ class ClaudeProvider:
                     }
                 )
                 messages.append({"role": "user", "content": tool_results})
+
+                tool_rounds += 1
+                if req.max_tool_iterations and tool_rounds >= req.max_tool_iterations:
+                    # Ceiling reached: next pass runs tool-less so the model must
+                    # conclude (the `not tools_list` guard then breaks the loop).
+                    tools_enabled = False
 
             yield UsageEvent(
                 usage=TokenUsage(

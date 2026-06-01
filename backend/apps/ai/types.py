@@ -28,6 +28,7 @@ class RunRequest:
     tools: list[dict] = field(default_factory=list)
     thinking_budget: int = 0  # 0 disables extended thinking
     memory_dir: str = ""  # "" disables Memory tool
+    max_tool_iterations: int = 0  # 0 = unlimited (chat default); >0 bounds autonomous runs
 
 
 @dataclass

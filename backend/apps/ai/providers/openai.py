@@ -61,6 +61,8 @@ class OpenAIProvider:
             raw.append({"role": m.role, "content": _openai_content(m.content)})
 
         total_in = total_out = total_cached = 0
+        tool_rounds = 0
+        tools_enabled = True
 
         try:
             while True:
@@ -72,7 +74,7 @@ class OpenAIProvider:
                     stream=True,
                     stream_options={"include_usage": True},
                 )
-                if req.tools:
+                if req.tools and tools_enabled:
                     create_kwargs["tools"] = req.tools
 
                 stream = await self._client.chat.completions.create(**create_kwargs)
@@ -109,7 +111,9 @@ class OpenAIProvider:
                         total_out += getattr(u, "completion_tokens", 0) or 0
                         total_cached += _cached(u)
 
-                if finish_reason != "tool_calls" or not tool_acc:
+                if finish_reason != "tool_calls" or not tool_acc or not tools_enabled:
+                    # `not tools_enabled`: the cap withheld tools this round, so ignore
+                    # any tool_calls the model still emitted and take its text answer.
                     break
 
                 # Reconstruct the assistant tool_calls turn for the next request.
@@ -164,6 +168,10 @@ class OpenAIProvider:
                             ),
                         }
                     )
+
+                tool_rounds += 1
+                if req.max_tool_iterations and tool_rounds >= req.max_tool_iterations:
+                    tools_enabled = False
 
             yield UsageEvent(
                 usage=TokenUsage(

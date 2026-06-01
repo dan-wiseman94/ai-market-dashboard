@@ -19,6 +19,11 @@ class EventTrigger(models.Model):
     condition = models.JSONField()
     cooldown_seconds = models.PositiveIntegerField(default=1800)
     enabled = models.BooleanField(default=True)
+    investigate = models.BooleanField(
+        default=False,
+        help_text="When True, a fire runs a bounded tool-using investigation "
+        "instead of a single observation.",
+    )
     source_thesis = models.ForeignKey(
         "thesis.Thesis",
         null=True,
