@@ -49,7 +49,9 @@ def run_observer(schedule_id: int) -> int | None:
     model_name = sched.override_model or sched.profile.default_model
 
     # Resolve caps — Infinity daily / None monthly when no ProviderConfig row exists.
-    cfg = ProviderConfig.objects.filter(provider=provider_name).first()
+    # defer the encrypted key: only cap fields are read here (the AI call delegates to
+    # run_ai_on_message), so decrypting would needlessly raise on a key/salt rotation.
+    cfg = ProviderConfig.objects.filter(provider=provider_name).defer("_api_key").first()
     if cfg is None:
         log.warning(
             "observer %s: no ProviderConfig for %s, skipping cost-cap enforcement",
