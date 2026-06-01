@@ -36,6 +36,7 @@ app.autodiscover_tasks(
         "apps.regime",
         "apps.book",
         "apps.desk",
+        "apps.warroom",
     ]
 )
 
