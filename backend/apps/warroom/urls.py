@@ -1,5 +1,7 @@
 from rest_framework.routers import DefaultRouter
 
+from apps.warroom.views import WarRoomViewSet
+
 router = DefaultRouter()
-# registered in a later task
+router.register("runs", WarRoomViewSet, basename="warroom-run")
 urlpatterns = router.urls
