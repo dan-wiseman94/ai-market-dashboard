@@ -97,6 +97,14 @@ def _book_section() -> dict:
     }
 
 
+def _desk_section() -> dict:
+    from apps.desk.models import DeskEntry
+
+    new = DeskEntry.objects.filter(status="new").order_by("-created_at")
+    latest = new.first()
+    return {"unread": new.count(), "latest": latest.finding if latest else None}
+
+
 def _regime_section() -> dict:
     from apps.regime.services.compute import current_regime
 
@@ -143,5 +151,6 @@ class DashboardView(APIView):
                 "briefing": _safe(_latest_briefing_summary, None),
                 "regime": _safe(_regime_section, {"composite": None, "drivers": [], "as_of": None}),
                 "book": _safe(_book_section, {"hhi": None, "alignment": None, "as_of": None}),
+                "desk": _safe(_desk_section, {"unread": 0, "latest": None}),
             }
         )
