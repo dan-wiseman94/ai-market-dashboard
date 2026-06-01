@@ -1,5 +1,7 @@
 from rest_framework.routers import DefaultRouter
 
+from apps.regime.views import RegimeViewSet
+
 router = DefaultRouter()
-# ViewSets registered in a later task.
+router.register("", RegimeViewSet, basename="regime")
 urlpatterns = router.urls
