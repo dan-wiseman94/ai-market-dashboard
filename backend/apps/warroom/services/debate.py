@@ -13,18 +13,32 @@ from apps.warroom.services.personas import _FRAMING, _user_prompt
 log = logging.getLogger(__name__)
 
 
-def run_one_persona(thread: Thread, persona: str, subject_context: str, prior_args: list[dict],
-                    *, provider: str, model: str, grounding: bool) -> dict | None:
+def run_one_persona(
+    thread: Thread,
+    persona: str,
+    subject_context: str,
+    prior_args: list[dict],
+    *,
+    provider: str,
+    model: str,
+    grounding: bool,
+) -> dict | None:
     """Returns {"persona", "argument"} or None if the run produced nothing."""
     user_text = f"{_FRAMING[persona]}\n\n{_user_prompt(subject_context, prior_args)}"
-    um = Message.objects.create(thread=thread, role="user", status="done", content={"text": user_text})
+    um = Message.objects.create(
+        thread=thread, role="user", status="done", content={"text": user_text}
+    )
     override = {"provider": provider, "model": model} if provider and model else None
     try:
-        run_ai_on_message(thread_id=thread.id, user_message_id=um.id, override=override, investigate=grounding)
+        run_ai_on_message(
+            thread_id=thread.id, user_message_id=um.id, override=override, investigate=grounding
+        )
     except Exception:
         log.warning("warroom.persona_run_failed persona=%s", persona, exc_info=True)
     assistant = (
-        Message.objects.filter(thread=thread, role="assistant", status="done").order_by("-created_at").first()
+        Message.objects.filter(thread=thread, role="assistant", status="done")
+        .order_by("-created_at")
+        .first()
     )
     if assistant is None:
         return None

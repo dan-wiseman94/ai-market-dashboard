@@ -32,18 +32,36 @@ def _claude_cfg():
         return None
 
 
-def convene(*, thesis=None, coverage_note=None, book_snapshot=None, free_prompt="",
-            structure=C.DEFAULT_STRUCTURE, voice_mode="single", grounding=True) -> WarRoomRun:
+def convene(
+    *,
+    thesis=None,
+    coverage_note=None,
+    book_snapshot=None,
+    free_prompt="",
+    structure=C.DEFAULT_STRUCTURE,
+    voice_mode="single",
+    grounding=True,
+) -> WarRoomRun:
     from apps.threads.models import Thread
     from apps.warroom.tasks import run_debate
 
-    label, _ctx = subject_context(thesis=thesis, coverage_note=coverage_note,
-                                  book_snapshot=book_snapshot, free_prompt=free_prompt)
-    subject_kind = ("thesis" if thesis else "coverage" if coverage_note else "book" if book_snapshot else "free")
+    label, _ctx = subject_context(
+        thesis=thesis,
+        coverage_note=coverage_note,
+        book_snapshot=book_snapshot,
+        free_prompt=free_prompt,
+    )
+    subject_kind = (
+        "thesis" if thesis else "coverage" if coverage_note else "book" if book_snapshot else "free"
+    )
     thread = Thread.objects.create(kind="warroom", title=f"Debate: {label}"[:200])
     run = WarRoomRun.objects.create(
-        thread=thread, subject_kind=subject_kind, subject_label=label,
-        thesis=thesis, coverage_note=coverage_note, book_snapshot=book_snapshot,
+        thread=thread,
+        subject_kind=subject_kind,
+        subject_label=label,
+        thesis=thesis,
+        coverage_note=coverage_note,
+        book_snapshot=book_snapshot,
         free_prompt=free_prompt,
         params={"structure": structure, "voice_mode": voice_mode, "grounding": grounding},
         status="running",

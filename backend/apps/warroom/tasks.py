@@ -22,8 +22,10 @@ def run_debate(run_id: int) -> None:
     if run is None:
         return
     _label, ctx = subject_context(
-        thesis=run.thesis, coverage_note=run.coverage_note,
-        book_snapshot=run.book_snapshot, free_prompt=run.free_prompt,
+        thesis=run.thesis,
+        coverage_note=run.coverage_note,
+        book_snapshot=run.book_snapshot,
+        free_prompt=run.free_prompt,
     )
     voices = assign_voices(run.params.get("voice_mode", "single"))
     if all(not prov for _p, prov, _m in voices):
@@ -41,7 +43,9 @@ def run_debate(run_id: int) -> None:
         prior = list(persona_args) if r > 0 else []
         round_args = []
         for persona, provider, model in voices:
-            arg = run_one_persona(run.thread, persona, ctx, prior, provider=provider, model=model, grounding=grounding)
+            arg = run_one_persona(
+                run.thread, persona, ctx, prior, provider=provider, model=model, grounding=grounding
+            )
             if arg:
                 round_args.append(arg)
         if round_args:
@@ -56,11 +60,18 @@ def run_debate(run_id: int) -> None:
     api_key, model, base_url = cfg
     v = synthesize(ctx, persona_args, api_key=api_key, model=model, base_url=base_url)
     verdict = {
-        "verdict": v.verdict, "confidence": v.confidence, "strongest_bull": v.strongest_bull,
-        "strongest_bear": v.strongest_bear, "what_would_change_my_mind": v.what_would_change_my_mind,
+        "verdict": v.verdict,
+        "confidence": v.confidence,
+        "strongest_bull": v.strongest_bull,
+        "strongest_bear": v.strongest_bear,
+        "what_would_change_my_mind": v.what_would_change_my_mind,
     }
-    Message.objects.create(thread=run.thread, role="assistant", status="done",
-                           content={"kind": "warroom_verdict", **verdict})
+    Message.objects.create(
+        thread=run.thread,
+        role="assistant",
+        status="done",
+        content={"kind": "warroom_verdict", **verdict},
+    )
     run.verdict = verdict
     run.confidence = v.confidence
     run.status = "done"
