@@ -50,7 +50,6 @@ def resolve_provider_and_model(
         if choice is not None:
             return choice
 
-    cfg = ProviderConfig.objects.filter(enabled=True).order_by("id").first()
     cfg = ProviderConfig.objects.filter(enabled=True).defer("_api_key").order_by("id").first()
     if cfg and cfg.default_model:
         return cfg.provider, cfg.default_model
