@@ -9,14 +9,34 @@ pytestmark = pytest.mark.django_db
 
 def _seed(monkeypatch, severity):
     monkeypatch.setattr(S, "build_universe", lambda: ["NVDA"])
-    monkeypatch.setattr(S, "run_detectors", lambda uni: [{"anomaly_type": "price_move", "ticker": "NVDA", "severity": severity, "evidence": {}}])
-    monkeypatch.setattr(S, "investigate", lambda cand: {"finding": "f", "suggested_actions": [{"type": "convene_warroom", "label": "x", "params": {"free_prompt": "p"}}], "investigation_thread_id": None})
+    monkeypatch.setattr(
+        S,
+        "run_detectors",
+        lambda uni: [
+            {"anomaly_type": "price_move", "ticker": "NVDA", "severity": severity, "evidence": {}}
+        ],
+    )
+    monkeypatch.setattr(
+        S,
+        "investigate",
+        lambda cand: {
+            "finding": "f",
+            "suggested_actions": [
+                {"type": "convene_warroom", "label": "x", "params": {"free_prompt": "p"}}
+            ],
+            "investigation_thread_id": None,
+        },
+    )
 
 
 @override_settings(AUTONOMY_AUTO_EXECUTE=False)
 def test_no_autoexecute_by_default(monkeypatch):
     _seed(monkeypatch, 9.0)
-    monkeypatch.setattr(S, "_auto_execute", lambda entry: (_ for _ in ()).throw(AssertionError("should not be called")))
+    monkeypatch.setattr(
+        S,
+        "_auto_execute",
+        lambda entry: (_ for _ in ()).throw(AssertionError("should not be called")),
+    )
     S.run_sweep(top_k=1)
     assert DeskEntry.objects.first().status == "new"
 

@@ -53,10 +53,18 @@ def investigate(cand: dict) -> dict | None:
 
     subj = cand.get("ticker") or "the book"
     actions = [
-        {"type": "convene_warroom", "label": f"Convene War Room on {subj}",
-         "params": {"free_prompt": f"Debate: {finding[:500]}"}},
+        {
+            "type": "convene_warroom",
+            "label": f"Convene War Room on {subj}",
+            "params": {"free_prompt": f"Debate: {finding[:500]}"},
+        },
     ]
     if cand.get("ticker"):
-        actions.append({"type": "revise_coverage", "label": f"Revise coverage on {cand['ticker']}",
-                        "params": {"ticker": cand["ticker"]}})
+        actions.append(
+            {
+                "type": "revise_coverage",
+                "label": f"Revise coverage on {cand['ticker']}",
+                "params": {"ticker": cand["ticker"]},
+            }
+        )
     return {"finding": finding, "suggested_actions": actions, "investigation_thread_id": thread.id}

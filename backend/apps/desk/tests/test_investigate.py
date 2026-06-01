@@ -5,7 +5,12 @@ from apps.threads.models import Message, Thread
 
 pytestmark = pytest.mark.django_db
 
-CAND = {"anomaly_type": "price_move", "ticker": "NVDA", "severity": 8.0, "evidence": {"pct_change": 8.0}}
+CAND = {
+    "anomaly_type": "price_move",
+    "ticker": "NVDA",
+    "severity": 8.0,
+    "evidence": {"pct_change": 8.0},
+}
 
 
 def test_no_assistant_message_returns_none(monkeypatch):
@@ -20,8 +25,13 @@ def test_investigate_runs_bounded_investigation(monkeypatch):
     def _fake_run(**kw):
         captured.update(kw)
         Message.objects.create(
-            thread_id=kw["thread_id"], role="assistant", status="done",
-            content={"text": "NVDA gapped on capex; breakout retest in play.", "kind": "investigation"},
+            thread_id=kw["thread_id"],
+            role="assistant",
+            status="done",
+            content={
+                "text": "NVDA gapped on capex; breakout retest in play.",
+                "kind": "investigation",
+            },
         )
         return {"status": "done"}
 
