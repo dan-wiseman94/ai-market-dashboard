@@ -19,8 +19,10 @@ describe("BookPage", () => {
       return path.endsWith("/current/") ? snap : [snap];
     });
     renderWithProviders(<BookPage />);
-    await waitFor(() => expect(screen.getByText(/NVDA/)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getAllByText(/NVDA/).length).toBeGreaterThan(0));
     expect(screen.getByText(/misaligned/i)).toBeInTheDocument();
+    // cluster members are shown inline (the whole point of the cluster view)
+    expect(screen.getByText(/NVDA, AMD/)).toBeInTheDocument();
   });
 
   it("empty state when no book", async () => {
