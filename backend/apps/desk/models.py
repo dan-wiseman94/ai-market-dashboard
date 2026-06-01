@@ -25,6 +25,9 @@ class DeskEntry(models.Model):
         on_delete=models.SET_NULL,
         related_name="+",
     )
+    investigation_thread = models.ForeignKey(
+        "threads.Thread", null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
 
     class Meta:
         ordering: ClassVar = ["-created_at"]
