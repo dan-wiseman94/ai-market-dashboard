@@ -54,6 +54,7 @@ INSTALLED_APPS = [
     "apps.coverage",
     "apps.regime",
     "apps.book",
+    "apps.warroom",
 ]
 
 MIDDLEWARE = [
