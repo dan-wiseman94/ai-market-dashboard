@@ -90,6 +90,7 @@ const DASHBOARD_PAYLOAD = {
     as_of: "2026-05-30T12:00:00Z",
   },
   book: { hhi: 0.4, alignment: "aligned", as_of: "2026-06-01" },
+  desk: { unread: 0, latest: null },
 };
 
 let fake: FakeWebSocketController;

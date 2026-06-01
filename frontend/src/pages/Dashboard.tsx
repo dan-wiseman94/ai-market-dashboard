@@ -17,6 +17,7 @@ import { UpcomingEventsRow } from "@/components/dashboard/UpcomingEventsRow";
 import { PositionsBookTile } from "@/components/dashboard/PositionsBookTile";
 import { DivergenceTile } from "@/components/dashboard/DivergenceTile";
 import { BookTile } from "@/components/BookTile";
+import { DeskTile } from "@/components/DeskTile";
 import { RegimeTile } from "@/components/RegimeTile";
 
 const DATE_FMT = new Intl.DateTimeFormat(undefined, {
@@ -156,6 +157,7 @@ export default function Dashboard() {
             <OpenThesesTile theses={dashboard.theses} />
             <RegimeTile regime={dashboard.regime} />
             <BookTile book={dashboard.book} />
+            <DeskTile desk={dashboard.desk} />
             <DivergenceTile />
             <ObserverTodayTile observer={dashboard.observer} />
             <ArmedTriggersTile triggers={dashboard.triggers} />
