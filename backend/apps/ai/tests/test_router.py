@@ -56,3 +56,21 @@ def test_no_providers_configured_raises():
 
     with pytest.raises(ResolutionError):
         resolve_provider_and_model(thread=t, message=None, override=None)
+
+
+@pytest.mark.django_db
+def test_resolves_past_undecryptable_enabled_row():
+    """A ProviderConfig whose key can't be decrypted must not crash resolution — router
+    needs only provider/default_model, so it defers the encrypted column (key/salt change)."""
+    from django.db import connection
+
+    t = Thread.objects.create(kind="chat", profile=None, title="x")
+    ProviderConfig.objects.create(provider="claude", default_model="claude-opus-4-8", enabled=True)
+    with connection.cursor() as c:
+        c.execute(
+            "UPDATE secrets_providerconfig SET api_key = %s WHERE provider = %s",
+            [b"not-valid-fernet", "claude"],
+        )
+
+    resolved = resolve_provider_and_model(thread=t, message=None, override=None)
+    assert resolved == ("claude", "claude-opus-4-8")
