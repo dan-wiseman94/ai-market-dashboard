@@ -45,7 +45,7 @@ class WarRoomViewSet(ReadOnlyModelViewSet):
             "free_prompt": d.get("free_prompt", ""),
             "structure": d.get("structure", "rebuttal"),
             "voice_mode": d.get("voice_mode", "single"),
-            "grounding": bool(d.get("grounding", False)),
+            "grounding": bool(d.get("grounding", True)),
         }
         subject_models = _subject_models()
         for key, model in subject_models.items():
