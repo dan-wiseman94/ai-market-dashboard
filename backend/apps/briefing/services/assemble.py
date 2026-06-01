@@ -128,6 +128,19 @@ def _capture_market(profile, tickers: list[str]):
     return snap, (sec.payload if sec else {})
 
 
+def _book_section() -> dict:
+    from apps.book.services.compute import current_book
+
+    snap = current_book()
+    if snap is None:
+        return {"concentration": None, "regime_fit": None, "top_risk": None}
+    return {
+        "concentration": snap.concentration or None,
+        "regime_fit": snap.regime_fit or None,
+        "top_risk": snap.narrative or None,
+    }
+
+
 def _safe(fn, default):
     try:
         return fn()
@@ -151,5 +164,6 @@ def assemble(config) -> tuple[dict, object | None]:
         "news": _safe(lambda: _news_section(tickers, config.news_lookback_hours), []),
         "market": market,
         "since": since.isoformat(),
+        "book": _safe(_book_section, {"concentration": None, "regime_fit": None, "top_risk": None}),
     }
     return data, snapshot
