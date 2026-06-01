@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { apiGet } from "@/api/client";
+import type { DashboardBook } from "@/components/BookTile";
 import type { DashboardRegime } from "@/components/RegimeTile";
 
 // ---------------------------------------------------------------------------
@@ -68,9 +69,10 @@ export interface DashboardData {
   triggers: DashboardTriggers;
   briefing: DashboardBriefing | null;
   regime: DashboardRegime;
+  book: DashboardBook;
 }
 
-export type { DashboardRegime };
+export type { DashboardBook, DashboardRegime };
 
 // ---------------------------------------------------------------------------
 // Hook

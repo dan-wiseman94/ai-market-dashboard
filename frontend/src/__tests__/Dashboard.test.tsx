@@ -89,6 +89,7 @@ const DASHBOARD_PAYLOAD = {
     drivers: ["VIX 18 — Normal"],
     as_of: "2026-05-30T12:00:00Z",
   },
+  book: { hhi: 0.4, alignment: "aligned", as_of: "2026-06-01" },
 };
 
 let fake: FakeWebSocketController;
