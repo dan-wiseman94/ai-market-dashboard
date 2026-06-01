@@ -363,6 +363,23 @@ def _calibration_verdict(buckets: list) -> str | None:
     return "is well-calibrated (stated confidence ≈ realized accuracy)"
 
 
+def _regime_block() -> str:
+    """Current market regime — the only TICKER-INDEPENDENT coach block, so it
+    renders even on a snapshot-free / cashtag-free chat. Lazy import keeps the
+    threads -> regime boundary clean. "" when no reading exists."""
+    from apps.regime.services.compute import current_regime
+
+    reading = current_regime()
+    if reading is None:
+        return ""
+    lines = [f"### Market regime: {reading.composite}"]
+    for d in (reading.drivers or [])[:4]:
+        lines.append(f"- {d}")
+    if reading.narrative:
+        lines.append(reading.narrative)
+    return "\n".join(lines)
+
+
 def _calibration_block(profile) -> str:
     """Measured calibration of the profile's model, from the latest EvalRun (A3).
 
@@ -490,6 +507,7 @@ def assemble_coach_context(snapshot, profile) -> str:
     if not ticker:
         return ""
     sections = [
+        _safe(_regime_block),
         _safe(lambda: _theses_block(ticker, snapshot)),
         _safe(lambda: _diff_block(snapshot)),
         _safe(lambda: _track_record_block(ticker)),
@@ -552,6 +570,7 @@ def assemble_coach_context_for_message(text: str, profile) -> str:
         return ""
     ticker = _ticker_from_text(text)
     sections = [
+        _safe(_regime_block),
         _safe(lambda: _recall_block_for_text(text, ticker)),
         _safe(lambda: _lessons_block(ticker)) if ticker else "",
         _safe(lambda: _ai_track_record_block(ticker, profile)) if ticker else "",

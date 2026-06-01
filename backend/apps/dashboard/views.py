@@ -84,6 +84,40 @@ def _triggers_summary() -> dict:
     }
 
 
+def _book_section() -> dict:
+    from apps.book.services.compute import current_book
+
+    snap = current_book()
+    if snap is None:
+        return {"hhi": None, "alignment": None, "as_of": None}
+    return {
+        "hhi": (snap.concentration or {}).get("hhi"),
+        "alignment": (snap.regime_fit or {}).get("alignment"),
+        "as_of": snap.as_of_date.isoformat() if snap.as_of_date else None,
+    }
+
+
+def _desk_section() -> dict:
+    from apps.desk.models import DeskEntry
+
+    new = DeskEntry.objects.filter(status="new").order_by("-created_at")
+    latest = new.first()
+    return {"unread": new.count(), "latest": latest.finding if latest else None}
+
+
+def _regime_section() -> dict:
+    from apps.regime.services.compute import current_regime
+
+    reading = current_regime()
+    if reading is None:
+        return {"composite": None, "drivers": [], "as_of": None}
+    return {
+        "composite": reading.composite,
+        "drivers": reading.drivers or [],
+        "as_of": reading.created_at.isoformat(),
+    }
+
+
 def _latest_briefing_summary() -> dict | None:
     from apps.briefing.models import BriefingRun
 
@@ -115,5 +149,8 @@ class DashboardView(APIView):
                 "observer": _safe(_observer_summary, {"enabled_schedules": 0, "runs_today": 0}),
                 "triggers": _safe(_triggers_summary, {"armed_count": 0, "latest_firings": []}),
                 "briefing": _safe(_latest_briefing_summary, None),
+                "regime": _safe(_regime_section, {"composite": None, "drivers": [], "as_of": None}),
+                "book": _safe(_book_section, {"hhi": None, "alignment": None, "as_of": None}),
+                "desk": _safe(_desk_section, {"unread": 0, "latest": None}),
             }
         )

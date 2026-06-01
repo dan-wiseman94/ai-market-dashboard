@@ -16,6 +16,9 @@ import { BriefingSummaryTile } from "@/components/dashboard/BriefingSummaryTile"
 import { UpcomingEventsRow } from "@/components/dashboard/UpcomingEventsRow";
 import { PositionsBookTile } from "@/components/dashboard/PositionsBookTile";
 import { DivergenceTile } from "@/components/dashboard/DivergenceTile";
+import { BookTile } from "@/components/BookTile";
+import { DeskTile } from "@/components/DeskTile";
+import { RegimeTile } from "@/components/RegimeTile";
 
 const DATE_FMT = new Intl.DateTimeFormat(undefined, {
   weekday: "long", month: "long", day: "numeric", year: "numeric",
@@ -152,6 +155,9 @@ export default function Dashboard() {
         ) : dashboard ? (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5 gap-6">
             <OpenThesesTile theses={dashboard.theses} />
+            <RegimeTile regime={dashboard.regime} />
+            <BookTile book={dashboard.book} />
+            <DeskTile desk={dashboard.desk} />
             <DivergenceTile />
             <ObserverTodayTile observer={dashboard.observer} />
             <ArmedTriggersTile triggers={dashboard.triggers} />

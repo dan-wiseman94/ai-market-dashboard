@@ -1,6 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { apiGet } from "@/api/client";
+import type { DashboardBook } from "@/components/BookTile";
+import type { DashboardDesk } from "@/components/DeskTile";
+import type { DashboardRegime } from "@/components/RegimeTile";
 
 // ---------------------------------------------------------------------------
 // Types — match views.py DashboardView payload exactly
@@ -66,7 +69,12 @@ export interface DashboardData {
   observer: DashboardObserver;
   triggers: DashboardTriggers;
   briefing: DashboardBriefing | null;
+  regime: DashboardRegime;
+  book: DashboardBook;
+  desk: DashboardDesk;
 }
+
+export type { DashboardBook, DashboardDesk, DashboardRegime };
 
 // ---------------------------------------------------------------------------
 // Hook
