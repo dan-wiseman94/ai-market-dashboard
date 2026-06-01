@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 
 import { Skeleton } from "@/components/Skeleton";
 import { useConveneWarRoom, useWarRoomRuns } from "@/hooks/useWarroom";
@@ -71,7 +72,7 @@ export default function WarRoomPage() {
         <ul className="mt-2 divide-y divide-rule">
           {runs.map((r) => (
             <li key={r.id} className="py-3">
-              <div className="font-medium">{r.subject_label}</div>
+              <div className="font-medium"><Link to={`/warroom/${r.id}`}>{r.subject_label}</Link></div>
               {r.status === "error" ? (
                 <div className="text-sm text-copper-400">{r.error}</div>
               ) : (

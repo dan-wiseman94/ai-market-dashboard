@@ -36,6 +36,7 @@ import ErrorsPage from "./pages/ErrorsPage";
 import RegimePage from "./pages/RegimePage";
 import BookPage from "./pages/BookPage";
 import WarRoomPage from "@/pages/WarRoomPage";
+import WarRoomDetailPage from "@/pages/WarRoomDetailPage";
 import DeskPage from "@/pages/DeskPage";
 
 export const router = createBrowserRouter([
@@ -89,6 +90,7 @@ export const router = createBrowserRouter([
       { path: "regime", element: <RegimePage />, handle: { crumb: "Regime" } },
       { path: "book", element: <BookPage />, handle: { crumb: "Book" } },
       { path: "warroom", element: <WarRoomPage />, handle: { crumb: "War Room" } },
+      { path: "warroom/:id", element: <WarRoomDetailPage />, handle: { crumb: "Debate" } },
       { path: "desk", element: <DeskPage />, handle: { crumb: "Desk" } },
       { path: "coverage/:ticker", element: <CoveragePage />,
         handle: { crumb: ({ params }: { params: { ticker?: string } }) => params.ticker?.toUpperCase() ?? "Coverage" } },
