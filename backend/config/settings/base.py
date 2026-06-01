@@ -51,6 +51,7 @@ INSTALLED_APPS = [
     "apps.portfolio",
     "apps.predictions",
     "apps.lessons",
+    "apps.coverage",
 ]
 
 MIDDLEWARE = [
