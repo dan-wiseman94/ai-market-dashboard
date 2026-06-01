@@ -119,4 +119,8 @@ app.conf.beat_schedule = {
         "schedule": crontab(hour=13, minute=0),  # ~09:00 ET pre-open; forced
         "kwargs": {"force": True},
     },
+    "book-snapshot-daily": {
+        "task": "book.snapshot_daily",
+        "schedule": crontab(hour=22, minute=45),  # after ingest-daily-bars (22:30)
+    },
 }
