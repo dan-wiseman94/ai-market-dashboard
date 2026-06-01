@@ -26,7 +26,9 @@ def _auto_execute(entry: DeskEntry) -> None:
 
     for a in entry.suggested_actions or []:
         if a.get("type") == "convene_warroom":
-            run = convene(free_prompt=(a.get("params") or {}).get("free_prompt") or f"Debate: {entry.finding}")
+            run = convene(
+                free_prompt=(a.get("params") or {}).get("free_prompt") or f"Debate: {entry.finding}"
+            )
             entry.warroom_run = run
             entry.status = "acted"
             entry.save(update_fields=["warroom_run", "status"])
@@ -74,7 +76,10 @@ def run_sweep(top_k: int = C.TOP_K) -> int:
         except Exception:
             log.warning("desk.notify_failed", exc_info=True)
         created += 1
-        if getattr(settings, "AUTONOMY_AUTO_EXECUTE", False) and entry.severity >= AUTO_EXECUTE_MIN_SEVERITY:
+        if (
+            getattr(settings, "AUTONOMY_AUTO_EXECUTE", False)
+            and entry.severity >= AUTO_EXECUTE_MIN_SEVERITY
+        ):
             try:
                 _auto_execute(entry)
             except Exception:
