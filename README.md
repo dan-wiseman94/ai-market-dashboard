@@ -26,7 +26,7 @@ A single-user desktop dashboard that captures point-in-time **stock-market snaps
 
 ## Status
 
-**Feature-complete — all milestones shipped (M1 → M12).**
+**Feature-complete — fourteen milestones shipped (M1 → M14).** The newest additions are the Prediction Ledger (M13) and the Resident Analyst (M14, all five units shipped).
 
 | Milestone | Scope | Tag |
 |---|---|---|
@@ -42,8 +42,10 @@ A single-user desktop dashboard that captures point-in-time **stock-market snaps
 | M10 | AI platform v2.5 (files, citations, structured, batch) | `m10-ai-platform-v25` |
 | M11 | Second brain (theses, post-mortems, decision journal) | — |
 | M12 | Analytics (leaderboard, heatmap, unusual options) | `m12-analytics` |
+| M13 | Prediction Ledger (the AI's own auto-graded forecasts) | — |
+| M14 | Resident Analyst (autonomous investigation, calibration routing, COVERAGE, The Mirror) | — |
 
-> M11 merged via PR #51 without a release tag. Several features have shipped since the M12 tag and don't have milestone tags of their own: **provider tool parity** (tool use on all three providers, with visible capability warnings), a **Decision Coach** that feeds prior theses / snapshot diffs / your track record / semantic recall into the prompt, **semantic recall**, a daily **Morning Briefing**, a **forward earnings + macro calendar**, **overnight (pre-market) snapshots**, and a **calibration scorecard**.
+> M11–M14 merged without release tags. Several capabilities ship untagged: **free data sources** (run with no brokerage login), **provider tool parity** (tool use on all three providers, with visible capability warnings), a **Decision Coach** that feeds prior theses / snapshot diffs / your track record / setup-cohort base rates / distilled lessons / measured eval calibration / semantic recall into the prompt, the **Prediction Ledger** (the AI's own auto-graded calls), the **Resident Analyst** (autonomous investigations + calibration-weighted routing + The Mirror), **semantic recall**, a daily **Morning Briefing**, a **forward earnings + macro calendar**, **overnight (pre-market) snapshots**, and a **calibration scorecard**. All of M14 has shipped, including **F3 COVERAGE** — a living, version-controlled per-ticker house view the AI revises with a reason.
 
 ## Features
 
@@ -54,7 +56,7 @@ A single-user desktop dashboard that captures point-in-time **stock-market snaps
 - **Snapshots** — capture a point-in-time market picture from opt-in sections: real-time **quotes**, **OHLC** history, **option chains**, **positions**, **market breadth**, **news**, **macro indicators** (FRED), **SEC filings** (EDGAR + Form 4 insider), **Treasury rates**, **rendered chart images** (headless-Chromium PNGs), and the **events** forward calendar. A section that fails is marked `failed` and explicitly flagged in the AI payload — partial captures are fine, never silently dropped.
 - **Overnight (pre-market) snapshots** — an opt-in capture mode that adds index/vol/rates **futures**, overseas quotes, extended-hours OHLC, and overnight news (since the prior close), with per-ticker `gap_pct` vs. `prior_close`. Toggle it with the *Overnight* checkbox in the snapshot composer.
 - **Forward calendar** — upcoming **earnings** (per-ticker, BMO/AMC hints + EPS estimates via Finnhub) and curated US **macro** events (FOMC / CPI / NFP / PCE / GDP). Surfaced three ways: the opt-in `events` snapshot section, the `days_to_earnings` trigger leaf, and `GET /api/market/events/?tickers=…&within_days=14`. Refreshed daily by the `market.refresh_events` beat task; macro degrades to a seeded list when Finnhub's economic calendar is unavailable.
-- **Free data sources alongside Schwab** — beyond the Schwab integration, the backend ships free-tier / keyless clients for **Alpaca** (real-time IEX quotes + bars), **Tiingo**, **Twelve Data**, **Polygon** (price history), **Tradier** (delayed option chains), **FRED** (macro + the daily Treasury yield curve), **SEC EDGAR** (filings + Form 4 insider), **Marketaux** (news + per-ticker sentiment), and **US Treasury** FiscalData. Drop a key into **Settings** and the quotes / OHLC / option-chain / news pipeline transparently falls back to a free provider when Schwab isn't connected — so the whole dashboard runs without a brokerage login. `macro`, `filings`, and `treasury` are new opt-in snapshot sections.
+- **Free data sources alongside Schwab** — beyond the Schwab integration, the backend ships free-tier / keyless clients for **Alpaca** (real-time IEX quotes + bars), **Tiingo**, **Twelve Data**, **Polygon** (price history), **Tradier** (delayed option chains), **FRED** (macro + the daily Treasury yield curve), **SEC EDGAR** (filings + Form 4 insider), **Marketaux** (news + per-ticker sentiment), and **US Treasury** FiscalData. Drop a key into **Settings → Connections** and the quotes / OHLC / option-chain / news pipeline transparently falls back to a free provider when Schwab isn't connected — so the whole dashboard runs without a brokerage login. `macro`, `filings`, and `treasury` are new opt-in snapshot sections.
 - **Watchlists** — group tickers and drill into a per-ticker market page.
 - **Objective + profile framing** — every capture carries a free-text objective and a named trading-style profile, so the model knows *how* to look and *what* you're asking.
 - **Token budgeting** — the payload is trimmed to a per-model budget (from the model catalog) before it reaches the LLM; per-section token counts are recorded for the cost drill-down.
@@ -90,7 +92,7 @@ A single-user desktop dashboard that captures point-in-time **stock-market snaps
 
 This is what wires the "second brain" into the *generation* path — the model no longer reasons from a blank slate.
 
-- **Decision Coach** *(per profile, on by default — `TradingProfile.enable_coach`)* — pairs a base observational system prompt with an auto-assembled **"what you already know"** context block injected into snapshot and observer runs: open theses on the primary ticker (conviction, direction, entry / target / invalidation with % distance), the **diff vs. the prior snapshot**, your **per-ticker track record** (closed theses, win/loss, hit-rate by conviction), and the top semantic-recall hits. Off = legacy behavior (system prompt is just the style).
+- **Decision Coach** *(per profile, on by default — `TradingProfile.enable_coach`)* — pairs a base observational system prompt with an auto-assembled **"what you already know"** context block injected into snapshot and observer runs: open theses on the primary ticker (conviction, direction, entry / target / invalidation with % distance), the **diff vs. the prior snapshot**, your **per-ticker track record** (closed theses, win/loss, hit-rate by conviction), **setup-cohort base rates** (how calls like this one have resolved, the outside view), **distilled lessons** clustered from your post-mortems, the latest **measured eval calibration** for the model, and the top semantic-recall hits. Off = legacy behavior (system prompt is just the style).
 - **Semantic recall** — search across messages, snapshots, theses, journal entries, observations, and post-mortems. Embedding-based similarity when available (`BAAI/bge-small-en-v1.5` via fastembed + pgvector HNSW), with a keyword full-text fallback. `GET /api/recall/?q=…&k=&kind=&ticker=`, plus `/api/recall/related/` and `/api/recall/status/`; documents are indexed by the `recall.index_pending` beat task. Browse it at `/recall` (`g r`).
 
 ### Morning Briefing
@@ -107,6 +109,25 @@ The "decide → review" half of the loop: Ledger records what the market looked 
 - **Best-effort AI narrative** — if a Claude key and cost caps allow, a structured report (what worked, what was missed, lessons, would-you-repeat) is posted into a per-thesis review thread. It degrades silently to an empty report on any non-Claude provider, missing key, cap hit, or error — the objective verdict always persists.
 - **Decision journal** (`/api/journal/?thread=<id>`) — log what you actually did on a thread (acted / passed / watching / hedged) and why, optionally linked to a thesis.
 - **Agent presets** — four seeded built-ins (`earnings-prep`, `devils-advocate`, `pre-trade-bias-check`, `triage-pass`) that pre-fill the snapshot composer's objective and section includes.
+
+### Prediction Ledger — the AI's own calls, on the record
+
+Theses are *your* calls; predictions are the *AI's*. When the observer makes a structured directional call, it's recorded as a first-class, auto-resolving prediction — so you can measure whether the model is actually any good, separately from your own record.
+
+- **Auto-extracted, zero added cost** — every structured observation carrying a directional call (bullish / bearish / neutral + confidence) becomes an `AIPrediction` with an invalidation level and a horizon. No second AI call; an observation with no usable call records nothing and never breaks the fire. At most one open call per ticker/horizon/profile, frozen as-stated for honest scoring.
+- **Graded by the tape** — at horizon end a beat task computes the real forward return from stored `OHLCBar` data and assigns a deterministic verdict (correct / incorrect / mixed) — no AI, no hindsight. A second task fires an **invalidation alert** the moment an open call's level trades through, before the horizon is even up.
+- **AI calibration on the scorecard** — the AI's live hit-rate by confidence band, Brier score, and per-(provider, model) track record appear on `/scorecard` alongside your own thesis calibration; a gap between the two surfaces distribution shift.
+- **A second opinion at decision time** — open a thesis and the dashboard shows whether the AI currently agrees or diverges on the same ticker (`GET /api/predictions/ai-view/`, `/divergences/`).
+
+### The Resident Analyst (M14)
+
+Five features that turn the AI from a one-shot snapshot reader into a resident analyst — one that investigates, routes itself by track record, learns recurring lessons, keeps a living view on each name, and grades *you*.
+
+- **Autonomous investigation** *(opt-in per trigger / schedule)* — instead of emitting a single observation, a fire can run a **bounded agentic tool loop**, pulling data and following leads to a grounded conclusion, capped by an iteration ceiling (`AI_INVESTIGATION_MAX_ITERATIONS`) and a dedicated autonomous spend sub-cap (`AI_AUTONOMOUS_DAILY_CAP_USD`). Off by default.
+- **Calibration-weighted routing** *(opt-in — `AI_CALIBRATION_ROUTING_ENABLED`)* — when no provider/model is pinned, the router's fallback tier picks the best-*measured* model from your eval history (hit-rate, calibration error) instead of the first one configured, so the model that has proven more accurate handles more of your runs over time.
+- **Setup-cohort base rates + distilled lessons in the Coach** — the Coach injects the historical hit-rate of *past calls matching this setup* (same direction / sector — the outside view) and cross-ticker **distilled lessons** clustered from your post-mortems (`apps/lessons`), so a pattern from one ticker informs a brand-new one. Both read only decisive, completed post-mortems (look-ahead-safe).
+- **The Mirror** (`/mirror`) — the calibration engine turned inward: it grades *your* decision-making from your journal, theses, and outcomes ("you pass on winners," "high conviction isn't actually more accurate"), each signal drillable and hard-gated on sample size so thin history reads "insufficient," not a verdict.
+- **COVERAGE — a living house view** (`/coverage/:ticker`) — each covered ticker gets one persistent, version-controlled research note (stance, conviction, bull / bear case, key levels, what it's watching for) that the AI **revises with a reason** — behind a hysteresis gate, so a quiet day reaffirms rather than churns — instead of re-deriving it every snapshot. Every revision is an append-only audit row you can read to see *why* the view moved, and the observer auto-revises a name once you've started covering it.
 
 ### Observer — scheduled AI runs
 
@@ -133,15 +154,17 @@ The "decide → review" half of the loop: Ledger records what the market looked 
 - **Provider leaderboard** — correlates each run against the snapshot's primary ticker using stored OHLC at capture vs. capture + N hours, with an honest `coverage_pct` when price history is missing.
 - **Cost per insight**, **trigger heatmap**, and an **observer timeline** built from message history.
 - **Unusual-options detector** — flags chain lines on volume/OI or IV-z outliers, returning a per-line reason for *why* each was flagged.
-- **Calibration scorecard** — aggregates post-mortem'd theses into conviction calibration (hit-rate per conviction bucket + a Brier score over a documented conviction→probability map, by direction) and per-(provider, model) calibration. `GET /api/analytics/calibration/?horizon=` (7 / 30 / 90); on its own page at `/scorecard` (`g k`), separate from the `/analytics` card grid.
+- **Calibration scorecard** — aggregates post-mortem'd theses into conviction calibration (hit-rate per conviction bucket + a Brier score over a documented conviction→probability map, by direction) and per-(provider, model) calibration. `GET /api/analytics/calibration/?horizon=` (7 / 30 / 90); on its own page at `/scorecard` (`g k`), separate from the `/analytics` card grid. The page also surfaces the AI's **live prediction calibration** (from the Prediction Ledger) and the latest offline **eval** result, so measured and replayed accuracy sit side by side.
+- **The Mirror** — trader self-calibration (`/mirror`): are *you* more right when more confident, and do you pass on winners? `GET /api/analytics/trader-calibration/?horizon=`, hard-gated on sample size.
 
 ### Operations & UX
 
 - **Backups** — scheduled `pg_dump` with rotation; `make restore file=<name>` to roll back.
 - **Export** — async zip bundles of threads, snapshots, observations, triggers, profiles, and watchlists.
 - **App shell** — shared layout with top/side nav, breadcrumbs, a notification bell, and a live connection-status dot.
-- **Command palette** (`Cmd`/`Ctrl`-K) and `g <x>` keyboard shortcuts to every top-level route (e.g. `g r` recall, `g b` briefing, `g e` events, `g k` scorecard, `g a` analytics).
-- **Encrypted secrets** — Schwab OAuth tokens and provider API keys are stored encrypted at rest.
+- **Command palette** (`Cmd`/`Ctrl`-K, with live semantic-recall results) and `g <x>` keyboard shortcuts to the top-level routes — `g d` dashboard, `g s` snapshot, `g n` snapshots, `g h` threads, `g t` triggers, `g o` schedules, `g c` costs, `g e` events, `g b` briefing, `g j` theses, `g r` recall, `g k` scorecard, `g a` analytics.
+- **UI-configurable runtime settings** — data-retention windows, AI failover, the observer response cache, and the scheduled-eval harness are tunable live at **Settings → System** (`/settings/system`); changes take effect at the next request/task without restarting `worker`/`beat`.
+- **Encrypted secrets** — Schwab OAuth tokens, provider API keys, and free data-source keys are stored encrypted at rest.
 
 ## Tech stack
 
@@ -262,8 +285,14 @@ Backend code lives under `backend/apps/<name>/` (imported as `apps.<name>`):
 - `profiles` · trading-style profiles + agent presets
 - `secrets` · encrypted credentials (Schwab OAuth, provider API keys) + cost caps
 - `costs` · per-provider / per-model / per-thread aggregation, caps, CSV export, snapshot drill-down
-- `analytics` · on-demand aggregations (leaderboard, cost-per-insight, trigger heatmap, observer timeline, unusual options)
+- `analytics` · nine on-demand aggregations (leaderboard, cost-per-insight, trigger heatmap, observer timeline, unusual options, thesis + AI + trader calibration, setup cohorts)
+- `aieval` · offline, look-ahead-safe eval/calibration harness (`EvalRun`) replaying candidate models against frozen snapshots
+- `dashboard` · `GET /api/dashboard/` command-centre rollup (theses / events / observer / triggers / briefing), fault-isolated per section
 - `thesis` · theses + post-mortems + decision journal (M11 "second brain")
+- `predictions` · the AI's own auto-extracted, auto-resolving forecasts + invalidation alerts + thesis reconciliation (M13)
+- `lessons` · recurring post-mortem lessons distilled into the Coach (M14)
+- `coverage` · living, version-controlled per-ticker "house view" the AI revises with a reason (M14)
+- `portfolio` · manual position tracking with realized / unrealized P&L, linked to the thesis behind each trade
 - `recall` · semantic + keyword search across all documents; pgvector embeddings index (feeds the Decision Coach)
 - `briefing` · daily Morning Briefing assembly + AI synthesis
 - `files` · Anthropic Files API proxy (upload + attach to threads)
