@@ -84,6 +84,13 @@ const DASHBOARD_PAYLOAD = {
     created_at: "2026-05-30T08:00:00Z",
     scheduled_date: "2026-05-30",
   },
+  regime: {
+    composite: "Neutral-Transitional",
+    drivers: ["VIX 18 — Normal"],
+    as_of: "2026-05-30T12:00:00Z",
+  },
+  book: { hhi: 0.4, alignment: "aligned", as_of: "2026-06-01" },
+  desk: { unread: 0, latest: null },
 };
 
 let fake: FakeWebSocketController;
