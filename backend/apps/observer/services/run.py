@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import logging
 from datetime import timedelta
@@ -12,6 +13,7 @@ from django.utils import timezone
 from apps.ai.cost import CostCapExceededError, check_daily_cap, check_monthly_cap
 from apps.ai.providers.claude_structured import run_structured
 from apps.core.runtime_config import runtime_config
+from apps.coverage.hooks import maybe_revise_from_snapshot
 from apps.market.calendar import any_market_open
 from apps.observer.models import ObserverSchedule
 from apps.observer.schemas import ObservationReport
@@ -155,6 +157,10 @@ def run_observer(schedule_id: int) -> int | None:
                 override=override or None,
                 investigate=sched.investigate,
             )
+
+    # M14 F3: auto-revise the house view when this snapshot's ticker is covered.
+    with contextlib.suppress(Exception):
+        maybe_revise_from_snapshot(snap)
 
     _stamp_fired(sched)
 

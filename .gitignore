@@ -26,6 +26,8 @@ dist/
 .vite/
 .turbo/
 coverage/
+# ...but apps/coverage is the M14 COVERAGE Django app (source), not a report dir.
+!backend/apps/coverage/
 .pnpm-store/
 
 # uv
