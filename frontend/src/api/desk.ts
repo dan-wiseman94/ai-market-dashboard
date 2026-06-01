@@ -12,6 +12,7 @@ export interface DeskEntry {
   suggested_actions: DeskAction[];
   status: "new" | "acted" | "dismissed";
   warroom_run_id: number | null;
+  investigation_thread_id: number | null;
 }
 
 export const fetchDeskFeed = () => apiGet<DeskEntry[]>("/api/desk/");

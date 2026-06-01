@@ -1,0 +1,51 @@
+import { useParams } from "react-router-dom";
+
+import { Skeleton } from "@/components/Skeleton";
+import { useWarRoomRun } from "@/hooks/useWarroom";
+
+const PERSONA_LABEL: Record<string, string> = { bull: "Bull", bear: "Bear", skeptic: "Skeptic" };
+
+export default function WarRoomDetailPage() {
+  const { id } = useParams();
+  const { data: run, isLoading } = useWarRoomRun(Number(id));
+  if (isLoading || !run) return <Skeleton where="warroom-detail" />;
+
+  const personaMsgs = run.messages.filter((m) => (m.content as Record<string, unknown>)?.persona);
+  const byPersona: Record<string, string[]> = { bull: [], bear: [], skeptic: [] };
+  for (const m of personaMsgs) {
+    const c = m.content as Record<string, unknown>;
+    const p = String(c.persona);
+    if (byPersona[p]) byPersona[p].push(String(c.text ?? ""));
+  }
+  const v = run.verdict;
+
+  return (
+    <div className="px-8 py-8 max-w-5xl mx-auto ledger-fade-in">
+      <h1 className="text-2xl font-semibold">War Room — {run.subject_label}</h1>
+      <div className="mt-1 text-sm text-ink/60">{run.status}{run.status === "error" && run.error ? `: ${run.error}` : ""}</div>
+
+      <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3">
+        {(["bull", "bear", "skeptic"] as const).map((p) => (
+          <div key={p} className="rounded border border-rule p-3">
+            <div className="text-xs uppercase tracking-wide text-ink/60">{PERSONA_LABEL[p]}</div>
+            {byPersona[p].length === 0 ? (
+              <div className="mt-1 text-sm text-ink/40">—</div>
+            ) : (
+              byPersona[p].map((t, i) => <p key={i} className="mt-2 text-sm text-ink/80">{t}</p>)
+            )}
+          </div>
+        ))}
+      </div>
+
+      {v?.verdict && (
+        <div className="mt-6 rounded border border-copper/40 bg-copper/5 p-4">
+          <div className="text-xs uppercase tracking-wide text-ink/60">Verdict</div>
+          <div className="mt-1 text-lg font-semibold">{v.verdict}{v.confidence != null && <span className="text-ink/50"> ({(v.confidence * 100).toFixed(0)}% conf)</span>}</div>
+          {v.strongest_bull && <p className="mt-2 text-sm"><b>Strongest bull:</b> {v.strongest_bull}</p>}
+          {v.strongest_bear && <p className="mt-1 text-sm"><b>Strongest bear:</b> {v.strongest_bear}</p>}
+          {v.what_would_change_my_mind && <p className="mt-1 text-sm"><b>What would change my mind:</b> {v.what_would_change_my_mind}</p>}
+        </div>
+      )}
+    </div>
+  );
+}

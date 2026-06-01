@@ -6,7 +6,7 @@ from django.db import models
 
 
 class WarRoomRun(models.Model):
-    STATUS_CHOICES: ClassVar = [("done", "Done"), ("error", "Error")]
+    STATUS_CHOICES: ClassVar = [("running", "Running"), ("done", "Done"), ("error", "Error")]
 
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     thread = models.ForeignKey(

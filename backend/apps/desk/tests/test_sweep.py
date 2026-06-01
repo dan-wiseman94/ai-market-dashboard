@@ -36,3 +36,26 @@ def test_sweep_respects_cooldown(monkeypatch):
     monkeypatch.setattr(S, "investigate", lambda cand: {"finding": "f", "suggested_actions": []})
     n = S.run_sweep(top_k=3)
     assert n == 0
+
+
+def test_sweep_links_investigation_thread(monkeypatch):
+    from apps.threads.models import Thread
+
+    th = Thread.objects.create(kind="consult", title="t")
+    monkeypatch.setattr(S, "build_universe", lambda: ["NVDA"])
+    monkeypatch.setattr(
+        S,
+        "run_detectors",
+        lambda uni: [
+            {"anomaly_type": "price_move", "ticker": "NVDA", "severity": 9.0, "evidence": {}}
+        ],
+    )
+    monkeypatch.setattr(
+        S,
+        "investigate",
+        lambda cand: {"finding": "f", "suggested_actions": [], "investigation_thread_id": th.id},
+    )
+    S.run_sweep(top_k=1)
+    from apps.desk.models import DeskEntry
+
+    assert DeskEntry.objects.first().investigation_thread_id == th.id

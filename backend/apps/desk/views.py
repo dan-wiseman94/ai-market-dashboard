@@ -11,6 +11,24 @@ from apps.desk.services.sweep import run_sweep
 from apps.warroom.services.convene import convene
 
 
+def _revise_coverage_action(ticker: str) -> bool:
+    """Best-effort: revise the house view on `ticker` using its latest ready snapshot
+    + the first available profile. Returns True if a revision attempt ran."""
+    from apps.coverage.services.revise import revise_coverage
+    from apps.profiles.models import TradingProfile
+    from apps.snapshots.models import Snapshot
+
+    snap = (
+        Snapshot.objects.filter(primary_ticker=ticker.upper(), status="ready")
+        .order_by("-captured_at")
+        .first()
+    )
+    if snap is None:
+        return False
+    revise_coverage(ticker.upper(), snap, profile=TradingProfile.objects.first())
+    return True
+
+
 class DeskViewSet(ReadOnlyModelViewSet):
     queryset = DeskEntry.objects.all()
     serializer_class = DeskEntrySerializer
@@ -39,4 +57,14 @@ class DeskViewSet(ReadOnlyModelViewSet):
             entry.warroom_run = run
             entry.status = "acted"
             entry.save(update_fields=["warroom_run", "status"])
+        elif request.data.get("action") == "revise_coverage":
+            ticker = ""
+            for a in entry.suggested_actions or []:
+                if a.get("type") == "revise_coverage":
+                    ticker = (a.get("params") or {}).get("ticker", "")
+                    break
+            if ticker:
+                _revise_coverage_action(ticker)
+                entry.status = "acted"
+                entry.save(update_fields=["status"])
         return Response(DeskEntrySerializer(entry).data)
