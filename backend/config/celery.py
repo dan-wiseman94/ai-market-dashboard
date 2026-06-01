@@ -31,6 +31,7 @@ app.autodiscover_tasks(
         "apps.recall",
         "apps.aieval",
         "apps.predictions",
+        "apps.lessons",
     ]
 )
 
@@ -101,5 +102,9 @@ app.conf.beat_schedule = {
     "aieval-run-scheduled": {
         "task": "aieval.run_scheduled",
         "schedule": crontab(hour=5, minute=0, day_of_week=1),
+    },
+    "lessons-distill": {
+        "task": "lessons.distill",
+        "schedule": crontab(hour=5, minute=30),  # daily, after new post-mortems resolve
     },
 }

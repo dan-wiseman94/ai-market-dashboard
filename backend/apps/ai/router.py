@@ -76,7 +76,9 @@ def _calibration_choice() -> tuple[str, str] | None:
     cutoff = timezone.now() - timedelta(days=max_age_days)
 
     candidates: list[tuple[str, str, float, float]] = []
-    for cfg in ProviderConfig.objects.filter(enabled=True):
+    # defer the encrypted key — we read only provider/default_model; decrypting would
+    # raise InvalidToken on a key/salt change (the undecryptable-cred trap).
+    for cfg in ProviderConfig.objects.filter(enabled=True).defer("_api_key"):
         if not cfg.default_model:
             continue
         run = latest_eval_for_model(cfg.default_model)
