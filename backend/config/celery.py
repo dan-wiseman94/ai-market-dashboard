@@ -33,6 +33,7 @@ app.autodiscover_tasks(
         "apps.predictions",
         "apps.lessons",
         "apps.coverage",
+        "apps.regime",
     ]
 )
 
