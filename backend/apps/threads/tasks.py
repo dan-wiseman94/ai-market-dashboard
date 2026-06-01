@@ -145,6 +145,7 @@ def run_ai_on_message(
     override: dict | None = None,
     parent_message_id: int | None = None,
     scenario: str | None = None,
+    investigate: bool = False,
 ) -> dict:
     # E2E only: the mock scenario is captured from the request's X-E2E-Scenario
     # header into a web-process ContextVar, which does NOT cross into this worker
@@ -162,6 +163,7 @@ def run_ai_on_message(
             user_message_id=user_message_id,
             override=override,
             parent_message_id=parent_message_id,
+            investigate=investigate,
         )
     finally:
         if applied:
@@ -174,6 +176,7 @@ def _resolve_run_config(
     user_msg: Message,
     override: dict | None,
     parent_message_id: int | None,
+    investigate: bool = False,
 ) -> tuple[str, str, ProviderConfig] | dict:
     """Resolve provider/model and its ProviderConfig, enforcing enablement and
     cost caps. Returns (provider_name, model_id, cfg) on success, or a failure
@@ -211,6 +214,16 @@ def _resolve_run_config(
     try:
         check_daily_cap(provider_name, cap_usd=cfg.daily_cost_cap_usd)
         check_monthly_cap(provider_name, cap_usd=cfg.monthly_cost_cap_usd)
+        if investigate:
+            # Autonomous runs honor a separate, lower daily ceiling (when set) so
+            # background investigations can't drain the interactive budget.
+            from decimal import Decimal as _D
+
+            from django.conf import settings as _s
+
+            auto_cap = float(getattr(_s, "AI_AUTONOMOUS_DAILY_CAP_USD", 0.0) or 0.0)
+            if auto_cap > 0:
+                check_daily_cap(provider_name, cap_usd=_D(str(auto_cap)))
     except CostCapExceededError as exc:
         _fail(
             thread_id=thread.id,
@@ -310,6 +323,7 @@ def _run_ai_on_message(
     user_message_id: int,
     override: dict | None = None,
     parent_message_id: int | None = None,
+    investigate: bool = False,
 ) -> dict:
     thread = Thread.objects.select_related("profile").get(id=thread_id)
     user_msg = Message.objects.get(id=user_message_id)
@@ -319,6 +333,7 @@ def _run_ai_on_message(
         user_msg=user_msg,
         override=override,
         parent_message_id=parent_message_id,
+        investigate=investigate,
     )
     if isinstance(resolved, dict):
         return resolved
@@ -336,11 +351,13 @@ def _run_ai_on_message(
         thread, user_msg, provider_name=provider_name, supports_tools=cfg.supports_tools
     )
     req.model = model_id
+    if investigate:
+        _apply_investigation_mode(req, provider_name=provider_name, cfg=cfg)
 
     assistant = Message.objects.create(
         thread=thread,
         role="assistant",
-        content={"text": ""},
+        content={"text": "", "kind": "investigation"} if investigate else {"text": ""},
         status="streaming",
         parent_message_id=parent_message_id,
     )
