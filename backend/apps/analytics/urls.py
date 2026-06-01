@@ -9,6 +9,7 @@ from apps.analytics.views import (
     LeaderboardView,
     ObserverTimelineView,
     TrackRecordView,
+    TraderCalibrationView,
     TriggerHeatmapView,
     UnusualOptionsView,
 )
@@ -35,5 +36,10 @@ urlpatterns = [
         "ai-calibration/drilldown/",
         AICalibrationDrilldownView.as_view(),
         name="analytics-ai-calibration-drilldown",
+    ),
+    path(
+        "trader-calibration/",
+        TraderCalibrationView.as_view(),
+        name="analytics-trader-calibration",
     ),
 ]
