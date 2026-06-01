@@ -68,6 +68,7 @@ class SnapshotSerializer(serializers.ModelSerializer):
             "objective",
             "notes",
             "manual_positions",
+            "candidate_positions",
             "status",
             "includes",
             "source",

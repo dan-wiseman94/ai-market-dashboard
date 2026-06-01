@@ -8,6 +8,7 @@ export type SnapshotSection = {
 export type Snapshot = {
   id: number; profile_id: number; objective: string; notes: string;
   manual_positions: string;
+  candidate_positions: string;
   status: "pending" | "ready" | "failed";
   includes: string[]; source: string; captured_at: string;
   overnight: boolean;
@@ -19,6 +20,7 @@ export type CreateSnapshotBody = {
   objective?: string;
   notes?: string;
   manual_positions?: string;
+  candidate_positions?: string;
   includes?: string[];
   watchlist_tickers?: string[];
   ohlc_ticker?: string;
