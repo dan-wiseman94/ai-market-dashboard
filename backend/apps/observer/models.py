@@ -96,6 +96,7 @@ class Notification(models.Model):
         ("postmortem", "Post-mortem"),
         ("briefing", "Briefing"),
         ("regime", "Regime"),
+        ("book", "Book"),
     ]
 
     # Nullable for v1 (no user-auth surface yet). When auth lands, backfill or
