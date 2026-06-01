@@ -13,7 +13,8 @@ def test_regime_block_empty_when_no_reading():
 
 def test_regime_block_renders_latest():
     RegimeReading.objects.create(
-        composite="Risk-Off", axes={"volatility": "Elevated"},
+        composite="Risk-Off",
+        axes={"volatility": "Elevated"},
         drivers=["VIX 24 — Elevated", "SPX trend Downtrend"],
     )
     block = _regime_block()
