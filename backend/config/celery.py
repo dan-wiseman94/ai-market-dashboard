@@ -32,6 +32,7 @@ app.autodiscover_tasks(
         "apps.aieval",
         "apps.predictions",
         "apps.lessons",
+        "apps.coverage",
     ]
 )
 
