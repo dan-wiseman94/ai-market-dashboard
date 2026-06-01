@@ -84,6 +84,19 @@ def _triggers_summary() -> dict:
     }
 
 
+def _regime_section() -> dict:
+    from apps.regime.services.compute import current_regime
+
+    reading = current_regime()
+    if reading is None:
+        return {"composite": None, "drivers": [], "as_of": None}
+    return {
+        "composite": reading.composite,
+        "drivers": reading.drivers or [],
+        "as_of": reading.created_at.isoformat(),
+    }
+
+
 def _latest_briefing_summary() -> dict | None:
     from apps.briefing.models import BriefingRun
 
@@ -115,5 +128,6 @@ class DashboardView(APIView):
                 "observer": _safe(_observer_summary, {"enabled_schedules": 0, "runs_today": 0}),
                 "triggers": _safe(_triggers_summary, {"armed_count": 0, "latest_firings": []}),
                 "briefing": _safe(_latest_briefing_summary, None),
+                "regime": _safe(_regime_section, {"composite": None, "drivers": [], "as_of": None}),
             }
         )
