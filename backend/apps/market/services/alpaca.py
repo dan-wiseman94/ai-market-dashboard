@@ -17,7 +17,7 @@ from decimal import Decimal, InvalidOperation
 import requests  # type: ignore[import-untyped]
 
 from apps.market import cache
-from apps.secrets.models import ApiCredential
+from apps.secrets.credentials import decrypt_token
 
 log = logging.getLogger(__name__)
 
@@ -36,13 +36,9 @@ _ALPACA_TIMEFRAME: dict[str, str] = {
 def _credentials() -> tuple[str | None, str | None]:
     """Return (api_key, api_secret) from the stored credential row.
 
-    Returns (None, None) when the row is absent or either value is missing.
+    Returns (None, None) when the row is absent, undecryptable, or either value is missing.
     """
-    try:
-        cred = ApiCredential.objects.get(provider="alpaca")
-    except ApiCredential.DoesNotExist:
-        return None, None
-    token = cred.token or {}
+    token = decrypt_token("alpaca") or {}
     api_key = token.get("api_key")
     api_secret = token.get("api_secret")
     if not api_key or not api_secret:

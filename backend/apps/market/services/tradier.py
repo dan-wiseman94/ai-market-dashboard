@@ -17,7 +17,7 @@ import logging
 import requests  # type: ignore[import-untyped]
 
 from apps.market import cache
-from apps.secrets.models import ApiCredential
+from apps.secrets.credentials import decrypt_token
 
 log = logging.getLogger(__name__)
 
@@ -25,11 +25,7 @@ TRADIER_BASE = "https://sandbox.tradier.com/v1"
 
 
 def _api_key() -> str | None:
-    try:
-        cred = ApiCredential.objects.get(provider="tradier")
-    except ApiCredential.DoesNotExist:
-        return None
-    return (cred.token or {}).get("api_key")
+    return (decrypt_token("tradier") or {}).get("api_key")
 
 
 def _headers(api_key: str) -> dict:

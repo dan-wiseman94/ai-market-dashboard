@@ -18,7 +18,7 @@ from decimal import Decimal, InvalidOperation
 import requests  # type: ignore[import-untyped]
 
 from apps.market import cache
-from apps.secrets.models import ApiCredential
+from apps.secrets.credentials import decrypt_token
 
 log = logging.getLogger(__name__)
 
@@ -26,11 +26,7 @@ TIINGO_BASE = "https://api.tiingo.com"
 
 
 def _api_key() -> str | None:
-    try:
-        cred = ApiCredential.objects.get(provider="tiingo")
-    except ApiCredential.DoesNotExist:
-        return None
-    return (cred.token or {}).get("api_key")
+    return (decrypt_token("tiingo") or {}).get("api_key")
 
 
 def _auth_headers(api_key: str) -> dict[str, str]:
