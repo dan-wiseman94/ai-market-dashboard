@@ -124,4 +124,8 @@ app.conf.beat_schedule = {
         "task": "book.snapshot_daily",
         "schedule": crontab(hour=22, minute=45),  # after ingest-daily-bars (22:30)
     },
+    "desk-sweep": {
+        "task": "desk.sweep",
+        "schedule": crontab(minute="*/30"),  # opt-in gate is inside the task
+    },
 }
