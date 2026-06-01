@@ -17,7 +17,8 @@ def test_dashboard_includes_book_default_when_empty():
 def test_dashboard_book_populated():
     BookSnapshot.objects.create(
         as_of_date=dt.date(2026, 6, 1),
-        concentration={"hhi": 0.42}, regime_fit={"alignment": "misaligned"},
+        concentration={"hhi": 0.42},
+        regime_fit={"alignment": "misaligned"},
     )
     body = APIClient().get("/api/dashboard/").json()
     assert body["book"]["hhi"] == 0.42
