@@ -73,6 +73,7 @@ class SnapshotViewSet(
             objective=data.get("objective", ""),
             notes=data.get("notes", ""),
             manual_positions=data.get("manual_positions", ""),
+            candidate_positions=data.get("candidate_positions", ""),
             includes=data.get("includes") or profile.default_includes,
             source="manual",
             status="pending",
