@@ -56,8 +56,8 @@ around a complete, closing feedback loop:
   **rendered chart images** (real PNGs from a headless browser), and a
   **forward earnings/macro calendar**.
 - **Free data sources, no brokerage required.** Add a free-tier key (Alpaca,
-  Tiingo, Twelve Data, Polygon, Tradier, FRED, Marketaux) under Settings and the
-  quotes / OHLC / option-chain / news pipeline transparently falls back to it when
+  Tiingo, Twelve Data, Polygon, Tradier, FRED, Marketaux) under Settings →
+  Connections and the quotes / OHLC / option-chain / news pipeline falls back to it when
   Schwab isn't connected — plus keyless **SEC EDGAR** filings and **US Treasury**
   rates. The whole dashboard runs without a Schwab login.
 - **Nothing is silently dropped.** If a section fails, it's flagged in the payload
@@ -105,7 +105,9 @@ around a complete, closing feedback loop:
   know"* briefing and injects it into the prompt: your open theses on the ticker
   (conviction, entry/target/invalidation with % distance), the diff since the last
   snapshot, your **per-ticker track record** (win/loss, hit-rate by conviction),
-  and the most relevant things you've written before.
+  **setup-cohort base rates** (how calls like this one have resolved — the outside
+  view), **distilled lessons** from your past trades, and the most relevant things
+  you've written before.
 - **Semantic recall** — search across *everything* — messages, snapshots, theses,
   journal entries, observations, and post-mortems — with embedding-based similarity
   (pgvector) and a keyword fallback. Find that thing you noticed three months ago in seconds.
@@ -124,6 +126,20 @@ around a complete, closing feedback loop:
 - **Agent presets** — ready-made analysis modes (earnings prep, devil's advocate,
   pre-trade bias check, triage pass) that pre-fill the composer.
 
+### 🔮 Prediction Ledger — the AI's own calls, graded
+
+- **The AI goes on the record.** Every structured observation that carries a
+  directional call becomes a first-class **prediction** — direction, confidence, an
+  invalidation level, and a horizon — extracted automatically at no extra cost.
+- **Graded by the tape, not by vibes.** At horizon end the real forward return is
+  computed from stored history and the call is scored correct / incorrect / mixed,
+  deterministically and with no AI. You get an **invalidation alert** the moment a
+  live call is being proven wrong, before its horizon is even up.
+- **Is your AI actually any good?** The scorecard shows the AI's live hit-rate by
+  confidence band and Brier score, per provider and model — its own track record, measured.
+- **A second opinion at decision time.** Open a thesis and see whether the AI
+  currently agrees or diverges on that ticker.
+
 ### 🔬 Eval-driven calibration — *measure* whether the AI is good
 
 - **Offline evaluation harness** replays a candidate model + system prompt against
@@ -134,6 +150,29 @@ around a complete, closing feedback loop:
 - **Closes the loop in production** — the latest eval result (measured hit-rate,
   Brier score, and an over/under/well-confident verdict) is fed straight back into
   the live Decision Coach.
+
+### 🧭 The Resident Analyst
+
+The AI stops being a one-shot snapshot reader and starts behaving like an analyst on retainer.
+
+- **Autonomous investigation** — a trigger or schedule can set the AI loose on a
+  *bounded* tool-backed investigation — pulling data and following leads to a
+  grounded conclusion — instead of a single static observation. Iteration- and
+  spend-capped; opt-in per trigger/schedule.
+- **It routes itself by track record** — turn it on and the AI fallback picks the
+  best-*measured* model from your eval history rather than whichever was configured
+  first. The more accurate model earns more of your runs.
+- **It learns recurring lessons** — themes from your past trades are clustered and
+  labeled by sector and direction, then surfaced cross-ticker in the Coach ("you've
+  been too bullish on biotech"), so a lesson from one name informs a brand-new one.
+- **The Mirror** — the calibration engine turned on *you*: graded patterns in your
+  own decisions ("you pass on winners," "high conviction isn't actually more
+  accurate"), each with the evidence — and an honest "insufficient history" when the
+  sample is too thin to call.
+- **A living house view** — each ticker you cover gets one persistent, version-
+  controlled research note (stance, conviction, bull/bear case, key levels) that the
+  AI **revises with a reason** instead of re-deriving it every snapshot, with an
+  append-only history of *why* the view moved. Browse it at `/coverage/:ticker`.
 
 ### 📊 Calibration scorecard & analytics (on-demand)
 
@@ -237,11 +276,13 @@ around a complete, closing feedback loop:
 
 ## Status
 
-**Feature-complete.** Twelve milestones shipped (M1 → M12), from the Compose
+**Feature-complete.** Fourteen milestones shipped (M1 → M14), from the Compose
 skeleton through market data, snapshots, streaming threads, multi-model compare,
 the observer, event triggers, the full AI platform (tool use, thinking, memory,
 files, citations, batch), the second-brain (theses, post-mortems, journal), the
 Decision Coach, semantic recall, the eval-calibration loop, the morning briefing,
-and the analytics suite.
+the analytics suite, free data sources, the Prediction Ledger, and the Resident
+Analyst (autonomous investigation, calibration-weighted routing, COVERAGE, and The
+Mirror). All fourteen milestones are shipped end to end.
 
 *One person. One machine. Every call on the record.*
