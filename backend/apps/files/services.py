@@ -5,6 +5,7 @@ from __future__ import annotations
 import uuid
 
 from anthropic import Anthropic
+from cryptography.fernet import InvalidToken
 
 from apps.secrets.models import ProviderConfig
 
@@ -14,7 +15,10 @@ class NoKeyError(RuntimeError):
 
 
 def _anthropic_client() -> Anthropic:
-    cfg = ProviderConfig.objects.filter(provider="claude").first()
+    try:
+        cfg = ProviderConfig.objects.filter(provider="claude").first()
+    except InvalidToken:
+        cfg = None  # undecryptable key (key/salt rotation) → treat as not configured
     if cfg is None or not cfg.api_key:
         raise NoKeyError("No Claude API key configured")
     return Anthropic(api_key=cfg.api_key, base_url=cfg.base_url or None)

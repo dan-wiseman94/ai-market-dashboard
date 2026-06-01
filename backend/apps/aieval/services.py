@@ -27,6 +27,8 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+from cryptography.fernet import InvalidToken
+
 from apps.ai.providers.claude_structured import run_structured
 from apps.aieval.models import EvalRun
 from apps.analytics.services.calibration import _hit_rate, _prob_for_conviction
@@ -161,7 +163,10 @@ def replay_one(example: PostMortem, *, system: str, model: str) -> dict[str, Any
     # ONLY the frozen snapshot — deliberately no coach/recall context.
     payload_text = serialize_for_ai(snapshot, provider="claude", model=model)
 
-    cfg = ProviderConfig.objects.filter(provider="claude").first()
+    try:
+        cfg = ProviderConfig.objects.filter(provider="claude").first()
+    except InvalidToken:
+        cfg = None  # undecryptable key → empty key; run_structured fails cleanly downstream
     api_key = cfg.api_key if cfg else ""
     base_url = (cfg.base_url if cfg else "") or ""
 
@@ -288,7 +293,8 @@ def preflight_cost_cap(provider: str = "claude") -> None:
     from apps.ai.cost import check_daily_cap, check_monthly_cap
     from apps.secrets.models import ProviderConfig
 
-    cfg = ProviderConfig.objects.filter(provider=provider).first()
+    # defer the encrypted key — only cap fields are read here.
+    cfg = ProviderConfig.objects.filter(provider=provider).defer("_api_key").first()
     if cfg is None:
         cap_usd: Decimal = Decimal("Infinity")
         monthly_cap: Decimal | None = None

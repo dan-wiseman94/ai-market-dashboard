@@ -14,6 +14,7 @@ import logging
 from datetime import UTC, datetime
 
 import requests  # type: ignore[import-untyped]
+from cryptography.fernet import InvalidToken
 
 from apps.market import cache
 from apps.secrets.models import ApiCredential
@@ -26,7 +27,8 @@ FINNHUB_BASE = "https://finnhub.io/api/v1"
 def _finnhub_api_key() -> str | None:
     try:
         cred = ApiCredential.objects.get(provider="finnhub")
-    except ApiCredential.DoesNotExist:
+    except (ApiCredential.DoesNotExist, InvalidToken):
+        # No row, or a token that can't be decrypted (key/salt rotation) → treat as no key.
         return None
     return (cred.token or {}).get("api_key")
 

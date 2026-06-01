@@ -38,7 +38,10 @@ def resolve_provider_and_model(
         if p and m:
             return p, m
         if p:
-            cfg = ProviderConfig.objects.filter(provider=p, enabled=True).first()
+            # defer the encrypted key: resolution needs only provider/default_model, and
+            # decrypting here would raise InvalidToken on a key/salt change (see
+            # encrypted-cred undecryptable trap) and crash an otherwise-resolvable run.
+            cfg = ProviderConfig.objects.filter(provider=p, enabled=True).defer("_api_key").first()
             if cfg and cfg.default_model:
                 return p, cfg.default_model
 
@@ -48,6 +51,7 @@ def resolve_provider_and_model(
             return choice
 
     cfg = ProviderConfig.objects.filter(enabled=True).order_by("id").first()
+    cfg = ProviderConfig.objects.filter(enabled=True).defer("_api_key").order_by("id").first()
     if cfg and cfg.default_model:
         return cfg.provider, cfg.default_model
 
