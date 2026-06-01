@@ -53,6 +53,24 @@ def test_upload_without_provider_key_400(db) -> None:
     assert resp.json()["code"] == "no_key"
 
 
+def test_upload_with_undecryptable_key_400(db) -> None:
+    """An undecryptable Claude key (key/salt rotation) must surface as a clean no_key
+    400, not a 500 from InvalidToken leaking out of the client builder."""
+    from django.db import connection
+
+    ProviderConfig.objects.create(provider="claude", enabled=True)
+    with connection.cursor() as c:
+        c.execute(
+            "UPDATE secrets_providerconfig SET api_key = %s WHERE provider = %s",
+            [b"not-valid-fernet", "claude"],
+        )
+    upload = SimpleUploadedFile("x.txt", b"hi", content_type="text/plain")
+    client = APIClient()
+    resp = client.post("/api/files/", data={"file": upload}, format="multipart")
+    assert resp.status_code == 400, resp.content
+    assert resp.json()["code"] == "no_key"
+
+
 def test_list_returns_rows_filtered_by_kind(db, claude_cfg) -> None:
     from apps.files.models import UserFile
 
