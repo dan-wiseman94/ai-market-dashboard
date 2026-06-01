@@ -21,10 +21,17 @@ class WarRoomVerdict(BaseModel):
     what_would_change_my_mind: str = Field(description="The key falsifier.")
 
 
-def synthesize(subject_context: str, persona_args: list[dict], *, api_key: str, model: str, base_url: str) -> WarRoomVerdict:
+def synthesize(
+    subject_context: str, persona_args: list[dict], *, api_key: str, model: str, base_url: str
+) -> WarRoomVerdict:
     args = "\n".join(f"- [{a.get('persona')}] {a.get('argument')}" for a in persona_args)
     user = f"SUBJECT:\n{subject_context}\n\nARGUMENTS:\n{args}\n\nDeliver your verdict."
     return run_structured(
-        api_key=api_key, model=model, system=_SYSTEM, user=user,
-        output_model=WarRoomVerdict, max_tokens=C.VERDICT_MAX_TOKENS, base_url=base_url,
+        api_key=api_key,
+        model=model,
+        system=_SYSTEM,
+        user=user,
+        output_model=WarRoomVerdict,
+        max_tokens=C.VERDICT_MAX_TOKENS,
+        base_url=base_url,
     )

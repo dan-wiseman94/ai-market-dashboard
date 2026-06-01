@@ -15,6 +15,8 @@ def test_synthesize_calls_run_structured(monkeypatch):
 
     cap = {}
     monkeypatch.setattr(V, "run_structured", lambda **kw: cap.update(kw) or _V())
-    out = V.synthesize("ctx", [{"persona": "bull", "argument": "a"}], api_key="k", model="m", base_url="")
+    out = V.synthesize(
+        "ctx", [{"persona": "bull", "argument": "a"}], api_key="k", model="m", base_url=""
+    )
     assert out.confidence == 0.62
     assert "bull" in cap["user"].lower()

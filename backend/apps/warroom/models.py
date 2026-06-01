@@ -14,9 +14,15 @@ class WarRoomRun(models.Model):
     )
     subject_kind = models.CharField(max_length=16)  # thesis | coverage | book | free
     subject_label = models.CharField(max_length=200, blank=True, default="")
-    thesis = models.ForeignKey("thesis.Thesis", null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
-    coverage_note = models.ForeignKey("coverage.CoverageNote", null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
-    book_snapshot = models.ForeignKey("book.BookSnapshot", null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    thesis = models.ForeignKey(
+        "thesis.Thesis", null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+    coverage_note = models.ForeignKey(
+        "coverage.CoverageNote", null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+    book_snapshot = models.ForeignKey(
+        "book.BookSnapshot", null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
     free_prompt = models.TextField(blank=True, default="")
     params = models.JSONField(default=dict)
     verdict = models.JSONField(default=dict)

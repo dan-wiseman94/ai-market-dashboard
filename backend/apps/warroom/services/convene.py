@@ -37,17 +37,37 @@ def _claude_cfg():
 
 def _persist_persona(thread: Thread, persona: str, arg) -> dict:
     Message.objects.create(
-        thread=thread, role="assistant", status="done",
-        content={"persona": persona, "argument": arg.argument, "key_points": list(arg.key_points or [])},
+        thread=thread,
+        role="assistant",
+        status="done",
+        content={
+            "persona": persona,
+            "argument": arg.argument,
+            "key_points": list(arg.key_points or []),
+        },
     )
     return {"persona": persona, "argument": arg.argument}
 
 
-def convene(*, thesis=None, coverage_note=None, book_snapshot=None, free_prompt: str = "",
-            structure: str = C.DEFAULT_STRUCTURE, voice_mode: str = "single", grounding: bool = False) -> WarRoomRun:
-    label, ctx = subject_context(thesis=thesis, coverage_note=coverage_note,
-                                 book_snapshot=book_snapshot, free_prompt=free_prompt)
-    subject_kind = ("thesis" if thesis else "coverage" if coverage_note else "book" if book_snapshot else "free")
+def convene(
+    *,
+    thesis=None,
+    coverage_note=None,
+    book_snapshot=None,
+    free_prompt: str = "",
+    structure: str = C.DEFAULT_STRUCTURE,
+    voice_mode: str = "single",
+    grounding: bool = False,
+) -> WarRoomRun:
+    label, ctx = subject_context(
+        thesis=thesis,
+        coverage_note=coverage_note,
+        book_snapshot=book_snapshot,
+        free_prompt=free_prompt,
+    )
+    subject_kind = (
+        "thesis" if thesis else "coverage" if coverage_note else "book" if book_snapshot else "free"
+    )
     params = {"structure": structure, "voice_mode": voice_mode, "grounding": grounding}
 
     cfg = _claude_cfg()
@@ -56,9 +76,15 @@ def convene(*, thesis=None, coverage_note=None, book_snapshot=None, free_prompt:
 
     if cfg is None:
         return WarRoomRun.objects.create(
-            thread=thread, subject_kind=subject_kind, subject_label=label,
-            thesis=thesis, coverage_note=coverage_note, book_snapshot=book_snapshot,
-            free_prompt=free_prompt, params=params, status="error",
+            thread=thread,
+            subject_kind=subject_kind,
+            subject_label=label,
+            thesis=thesis,
+            coverage_note=coverage_note,
+            book_snapshot=book_snapshot,
+            free_prompt=free_prompt,
+            params=params,
+            status="error",
             error="No Claude provider configured or cost cap hit.",
         )
 
@@ -75,13 +101,28 @@ def convene(*, thesis=None, coverage_note=None, book_snapshot=None, free_prompt:
 
     v = synthesize(ctx, persona_args, api_key=api_key, model=model, base_url=base_url)
     verdict = {
-        "verdict": v.verdict, "confidence": v.confidence, "strongest_bull": v.strongest_bull,
-        "strongest_bear": v.strongest_bear, "what_would_change_my_mind": v.what_would_change_my_mind,
+        "verdict": v.verdict,
+        "confidence": v.confidence,
+        "strongest_bull": v.strongest_bull,
+        "strongest_bear": v.strongest_bear,
+        "what_would_change_my_mind": v.what_would_change_my_mind,
     }
-    Message.objects.create(thread=thread, role="assistant", status="done",
-                           content={"kind": "warroom_verdict", **verdict})
+    Message.objects.create(
+        thread=thread,
+        role="assistant",
+        status="done",
+        content={"kind": "warroom_verdict", **verdict},
+    )
     return WarRoomRun.objects.create(
-        thread=thread, subject_kind=subject_kind, subject_label=label,
-        thesis=thesis, coverage_note=coverage_note, book_snapshot=book_snapshot,
-        free_prompt=free_prompt, params=params, verdict=verdict, confidence=v.confidence, status="done",
+        thread=thread,
+        subject_kind=subject_kind,
+        subject_label=label,
+        thesis=thesis,
+        coverage_note=coverage_note,
+        book_snapshot=book_snapshot,
+        free_prompt=free_prompt,
+        params=params,
+        verdict=verdict,
+        confidence=v.confidence,
+        status="done",
     )

@@ -12,8 +12,14 @@ def test_free_prompt():
 
 
 def test_thesis_subject():
-    t = Thesis.objects.create(title="NVDA breakout", ticker="NVDA", direction="bullish",
-                              conviction=4, status="open", rationale="AI capex")
+    t = Thesis.objects.create(
+        title="NVDA breakout",
+        ticker="NVDA",
+        direction="bullish",
+        conviction=4,
+        status="open",
+        rationale="AI capex",
+    )
     label, ctx = subject_context(thesis=t)
     assert "NVDA" in ctx and "bullish" in ctx
     assert "NVDA" in label

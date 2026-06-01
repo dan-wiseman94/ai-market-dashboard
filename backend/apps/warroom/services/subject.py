@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 
-def subject_context(*, thesis=None, coverage_note=None, book_snapshot=None, free_prompt: str = "") -> tuple[str, str]:
+def subject_context(
+    *, thesis=None, coverage_note=None, book_snapshot=None, free_prompt: str = ""
+) -> tuple[str, str]:
     if thesis is not None:
         label = f"Thesis: {thesis.ticker} ({thesis.direction})"
         ctx = (
