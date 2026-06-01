@@ -84,6 +84,19 @@ def _triggers_summary() -> dict:
     }
 
 
+def _book_section() -> dict:
+    from apps.book.services.compute import current_book
+
+    snap = current_book()
+    if snap is None:
+        return {"hhi": None, "alignment": None, "as_of": None}
+    return {
+        "hhi": (snap.concentration or {}).get("hhi"),
+        "alignment": (snap.regime_fit or {}).get("alignment"),
+        "as_of": snap.as_of_date.isoformat() if snap.as_of_date else None,
+    }
+
+
 def _regime_section() -> dict:
     from apps.regime.services.compute import current_regime
 
@@ -129,5 +142,6 @@ class DashboardView(APIView):
                 "triggers": _safe(_triggers_summary, {"armed_count": 0, "latest_firings": []}),
                 "briefing": _safe(_latest_briefing_summary, None),
                 "regime": _safe(_regime_section, {"composite": None, "drivers": [], "as_of": None}),
+                "book": _safe(_book_section, {"hhi": None, "alignment": None, "as_of": None}),
             }
         )
