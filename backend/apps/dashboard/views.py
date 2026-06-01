@@ -109,8 +109,11 @@ class DashboardView(APIView):
             {
                 "theses": _safe(_theses_section, []),
                 "events": _safe(_events_section, {"earnings": [], "macro": []}),
-                "observer": _safe(_observer_summary, {}),
-                "triggers": _safe(_triggers_summary, {}),
+                # Defaults must match the frontend contract (DashboardObserver /
+                # DashboardTriggers) so a degraded section renders empty instead of
+                # crashing the SPA (e.g. triggers.latest_firings.length on undefined).
+                "observer": _safe(_observer_summary, {"enabled_schedules": 0, "runs_today": 0}),
+                "triggers": _safe(_triggers_summary, {"armed_count": 0, "latest_firings": []}),
                 "briefing": _safe(_latest_briefing_summary, None),
             }
         )

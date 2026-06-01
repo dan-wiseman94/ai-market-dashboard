@@ -133,8 +133,23 @@ def test_never_raise_swallows_section_error(api):
 
 
 @pytest.mark.django_db
+def test_never_raise_swallows_observer_error(api):
+    """Monkeypatch _observer_summary to raise; the observer default must match the frontend
+    DashboardObserver contract (not a bare {}) so the SPA renders empty instead of crashing."""
+    with patch(
+        "apps.dashboard.views._observer_summary",
+        side_effect=RuntimeError("observer exploded"),
+    ):
+        r = api.get("/api/dashboard/")
+
+    assert r.status_code == 200
+    assert r.json()["observer"] == {"enabled_schedules": 0, "runs_today": 0}
+
+
+@pytest.mark.django_db
 def test_never_raise_swallows_triggers_error(api):
-    """Monkeypatch _triggers_summary to raise; endpoint still 200 with triggers default."""
+    """Monkeypatch _triggers_summary to raise; endpoint still 200 and the triggers default
+    matches the frontend DashboardTriggers contract (was a bare {} that crashed the SPA)."""
     with patch(
         "apps.dashboard.views._triggers_summary",
         side_effect=RuntimeError("triggers exploded"),
@@ -143,4 +158,4 @@ def test_never_raise_swallows_triggers_error(api):
 
     assert r.status_code == 200
     body = r.json()
-    assert body["triggers"] == {}
+    assert body["triggers"] == {"armed_count": 0, "latest_firings": []}
