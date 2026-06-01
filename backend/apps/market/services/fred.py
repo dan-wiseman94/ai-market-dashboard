@@ -16,7 +16,7 @@ import requests  # type: ignore[import-untyped]
 
 from apps.market import cache
 from apps.market.services.safe_log import safe_err
-from apps.secrets.models import ApiCredential
+from apps.secrets.credentials import decrypt_token
 
 log = logging.getLogger(__name__)
 
@@ -45,11 +45,7 @@ SERIES: dict[str, str] = {
 
 
 def _api_key() -> str | None:
-    try:
-        cred = ApiCredential.objects.get(provider="fred")
-    except ApiCredential.DoesNotExist:
-        return None
-    return (cred.token or {}).get("api_key")
+    return (decrypt_token("fred") or {}).get("api_key")
 
 
 def _get(path: str, params: dict) -> dict:

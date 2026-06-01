@@ -6,12 +6,11 @@ import logging
 from datetime import UTC, datetime, timedelta
 
 import requests  # type: ignore[import-untyped]
-from cryptography.fernet import InvalidToken
 
 from apps.market import cache
 from apps.market.models import MarketEvent
 from apps.market.services.events_seed import SEED_MACRO_EVENTS
-from apps.secrets.models import ApiCredential
+from apps.secrets.credentials import decrypt_token
 
 log = logging.getLogger(__name__)
 
@@ -19,12 +18,7 @@ FINNHUB_BASE = "https://finnhub.io/api/v1"
 
 
 def _finnhub_api_key() -> str | None:
-    try:
-        cred = ApiCredential.objects.get(provider="finnhub")
-    except (ApiCredential.DoesNotExist, InvalidToken):
-        # No row, or a token that can't be decrypted (key/salt rotation) → treat as no key.
-        return None
-    return (cred.token or {}).get("api_key")
+    return (decrypt_token("finnhub") or {}).get("api_key")
 
 
 def _finnhub_get(path: str, params: dict, api_key: str) -> dict:
