@@ -17,12 +17,13 @@ def _subject_models() -> dict:
     The mapping is fixed — never derived from request data — so there
     is no dynamic-import / arbitrary-code-load risk.
     """
-    from apps.coverage.models import CoverageNote  # noqa: PLC0415
-    from apps.thesis.models import Thesis  # noqa: PLC0415
+    from apps.coverage.models import CoverageNote
+    from apps.thesis.models import Thesis
 
     # apps.book may not exist yet; degrade gracefully
     try:
-        from apps.book.models import BookSnapshot  # noqa: PLC0415
+        from apps.book.models import BookSnapshot
+
         book_cls = BookSnapshot
     except ImportError:
         book_cls = None

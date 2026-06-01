@@ -29,9 +29,21 @@ def _user_prompt(subject_context: str, prior_args: list[dict]) -> str:
     return "\n".join(parts)
 
 
-def run_persona(persona: str, subject_context: str, prior_args: list[dict], *, api_key: str, model: str, base_url: str) -> PersonaArgument:
+def run_persona(
+    persona: str,
+    subject_context: str,
+    prior_args: list[dict],
+    *,
+    api_key: str,
+    model: str,
+    base_url: str,
+) -> PersonaArgument:
     return run_structured(
-        api_key=api_key, model=model, system=_FRAMING[persona],
-        user=_user_prompt(subject_context, prior_args), output_model=PersonaArgument,
-        max_tokens=C.PERSONA_MAX_TOKENS, base_url=base_url,
+        api_key=api_key,
+        model=model,
+        system=_FRAMING[persona],
+        user=_user_prompt(subject_context, prior_args),
+        output_model=PersonaArgument,
+        max_tokens=C.PERSONA_MAX_TOKENS,
+        base_url=base_url,
     )

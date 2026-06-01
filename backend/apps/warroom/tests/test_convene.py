@@ -1,6 +1,6 @@
 import pytest
 
-from apps.threads.models import Message, Thread
+from apps.threads.models import Message
 from apps.warroom.models import WarRoomRun
 from apps.warroom.services import convene as CV
 
@@ -41,8 +41,14 @@ def test_convene_free_prompt_judge_panel(monkeypatch):
 def test_convene_rebuttal_runs_two_rounds(monkeypatch):
     calls = []
     _patch_ai(monkeypatch)
-    monkeypatch.setattr(CV, "run_persona",
-                        lambda persona, ctx, prior, **k: calls.append((persona, len(prior))) or type("A", (), {"argument": persona, "key_points": []})())
+    monkeypatch.setattr(
+        CV,
+        "run_persona",
+        lambda persona, ctx, prior, **k: (
+            calls.append((persona, len(prior)))
+            or type("A", (), {"argument": persona, "key_points": []})()
+        ),
+    )
     CV.convene(free_prompt="q", structure="rebuttal")
     assert any(n == 0 for _p, n in calls) and any(n > 0 for _p, n in calls)
 

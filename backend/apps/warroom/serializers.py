@@ -11,8 +11,17 @@ class WarRoomRunSerializer(serializers.ModelSerializer):
     class Meta:
         model = WarRoomRun
         fields: ClassVar = [
-            "id", "created_at", "subject_kind", "subject_label", "params",
-            "verdict", "confidence", "status", "error", "thread_id", "messages",
+            "id",
+            "created_at",
+            "subject_kind",
+            "subject_label",
+            "params",
+            "verdict",
+            "confidence",
+            "status",
+            "error",
+            "thread_id",
+            "messages",
         ]
         read_only_fields: ClassVar = fields
 
