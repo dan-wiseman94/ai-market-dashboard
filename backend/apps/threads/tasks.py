@@ -18,6 +18,7 @@ from decimal import Decimal
 from typing import Any
 
 from celery import shared_task
+from cryptography.fernet import InvalidToken
 from django.db import transaction
 
 from apps.ai.capabilities import unsupported_features
@@ -167,6 +168,20 @@ def _resolve_run_config(
             error=f"No ProviderConfig row for '{provider_name}'. Visit /settings.",
         )
         return {"ok": False, "error": "no_key"}
+    except InvalidToken:
+        # The stored key can't be decrypted (DJANGO_SECRET_KEY / salt changed since it
+        # was saved). Decryption happens lazily in EncryptedJSONField.from_db_value, so
+        # the .get() above raises here. Fail the run with an actionable message instead
+        # of crashing the task and leaving the UI hung with no feedback.
+        _fail(
+            thread_id=thread.id,
+            parent_message_id=parent_message_id,
+            error=(
+                f"Provider '{provider_name}' API key could not be decrypted "
+                "(the encryption key may have changed). Re-enter it in Settings → Providers."
+            ),
+        )
+        return {"ok": False, "error": "undecryptable_key"}
 
     if not cfg.enabled:
         # A profile can pin a provider+model that resolve_provider_and_model returns
@@ -212,7 +227,8 @@ def _failover_target(primary_name: str) -> tuple[str, str, ProviderConfig] | Non
         return None
     try:
         cfg = ProviderConfig.objects.get(provider=name)
-    except ProviderConfig.DoesNotExist:
+    except (ProviderConfig.DoesNotExist, InvalidToken):
+        # No row, or a key that can't be decrypted → failover is simply unavailable.
         return None
     if not cfg.enabled or not cfg.default_model:
         return None

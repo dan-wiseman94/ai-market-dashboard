@@ -121,7 +121,9 @@ def caps() -> list[dict]:
     month_window_start = now - timedelta(days=30)
 
     out: list[dict] = []
-    for pc in ProviderConfig.objects.all():
+    # defer the encrypted key — this only reads cap fields; decrypting every row would
+    # let one undecryptable key (key/salt rotation) 500 the whole cost-cap status.
+    for pc in ProviderConfig.objects.defer("_api_key"):
         day_spent = _spend_since(pc.provider, day_start)
         daily = {
             "cap": pc.daily_cost_cap_usd,

@@ -145,7 +145,9 @@ def _do_fire(*, trigger_id: int, matched_values: dict) -> None:
     # Cost-cap check: expensive part is the AI run, not the snapshot.
     provider_name = trigger.profile.default_provider
     try:
-        cfg = ProviderConfig.objects.get(provider=provider_name)
+        # defer the encrypted key: only cap fields are read (the AI call delegates to
+        # run_ai_on_message), so an undecryptable key/salt rotation can't crash the fire.
+        cfg = ProviderConfig.objects.defer("_api_key").get(provider=provider_name)
         check_daily_cap(provider_name, cap_usd=cfg.daily_cost_cap_usd)
         check_monthly_cap(provider_name, cap_usd=cfg.monthly_cost_cap_usd)
     except ProviderConfig.DoesNotExist:
