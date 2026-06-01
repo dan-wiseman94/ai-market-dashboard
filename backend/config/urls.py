@@ -21,6 +21,7 @@ urlpatterns = [
     path("api/portfolio/", include("apps.portfolio.urls")),
     path("api/predictions/", include("apps.predictions.urls")),
     path("api/lessons/", include("apps.lessons.urls")),
+    path("api/coverage/", include("apps.coverage.urls")),
     path("api/", include("apps.profiles.urls")),
     path("api/", include("apps.snapshots.urls")),
     path("api/", include("apps.threads.urls")),
