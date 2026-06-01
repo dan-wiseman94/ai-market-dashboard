@@ -211,6 +211,14 @@ AI_PROVIDER_TIMEOUT_SECONDS = env.float("AI_PROVIDER_TIMEOUT_SECONDS", default=6
 AI_FAILOVER_ENABLED = env.bool("AI_FAILOVER_ENABLED", default=False)
 AI_FAILOVER_PROVIDER = env.str("AI_FAILOVER_PROVIDER", default="")
 
+# Autonomous investigation (M14 F1): a trigger/observer fire can run a BOUNDED
+# tool-using investigation instead of a single observation. Max tool rounds per
+# run, then one tool-less concluding turn. The autonomous daily cap is a separate,
+# lower ceiling that GATES autonomous runs against total provider spend today
+# (0.0 = no separate gate; the provider's own daily cap still applies).
+AI_INVESTIGATION_MAX_ITERATIONS = env.int("AI_INVESTIGATION_MAX_ITERATIONS", default=8)
+AI_AUTONOMOUS_DAILY_CAP_USD = env.float("AI_AUTONOMOUS_DAILY_CAP_USD", default=0.0)
+
 # Offline eval harness — scheduled run. OFF by default: it calls the REAL model
 # ($) and run_structured has no MOCK_EXTERNAL short-circuit. Enable deliberately.
 AIEVAL_SCHEDULED_ENABLED = env.bool("AIEVAL_SCHEDULED_ENABLED", default=False)

@@ -49,6 +49,35 @@ __all__ = [
 _STOP_POLL_SECONDS = 0.25  # how often the streaming loop checks the stop flag
 _PARTIAL_FLUSH_SECONDS = 0.75  # how often buffered text is persisted to the DB mid-stream
 
+_INVESTIGATION_DIRECTIVE = (
+    "## Investigation mode\n"
+    "You are running autonomously with tools and no human watching. Do not answer "
+    "from the given snapshot alone — INVESTIGATE: use your tools to pull what you "
+    "need (intraday prices, news, the option chain, your own past calls on this "
+    "name), follow the leads they open, and cross-check before you commit to a read. "
+    "You have a limited number of tool rounds; spend them, then write ONE conclusion "
+    "with exactly these sections:\n"
+    "**What I checked** — the tools/data you pulled and why.\n"
+    "**What I found** — the concrete findings, each tied to a tool result.\n"
+    "**What it means** — your read, with confidence and what would invalidate it.\n"
+    "**What to watch** — the specific levels/events that would change the picture."
+)
+
+
+def _apply_investigation_mode(req, *, provider_name: str, cfg) -> None:
+    """Turn a normal RunRequest into a bounded autonomous investigation: force the
+    toolset on (when the provider can run tools), cap the tool rounds, and append
+    the investigation directive to the system prompt. Mutates ``req`` in place."""
+    from django.conf import settings
+
+    req.max_tool_iterations = int(getattr(settings, "AI_INVESTIGATION_MAX_ITERATIONS", 8))
+    if provider_name == "claude" or getattr(cfg, "supports_tools", False):
+        from apps.ai.tools.registry import default_toolset
+
+        ts = default_toolset()
+        req.tools = ts.anthropic_tools() if provider_name == "claude" else ts.openai_tools()
+    req.system = f"{req.system}\n\n{_INVESTIGATION_DIRECTIVE}"
+
 
 def _broadcast(thread_id: int, payload: dict) -> None:
     from apps.threads.event_log import record
