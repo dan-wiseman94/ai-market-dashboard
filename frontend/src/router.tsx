@@ -34,6 +34,7 @@ import SnapshotsPage from "./pages/SnapshotsPage";
 import RecallPage from "./pages/RecallPage";
 import ErrorsPage from "./pages/ErrorsPage";
 import RegimePage from "./pages/RegimePage";
+import BookPage from "./pages/BookPage";
 
 export const router = createBrowserRouter([
   // Render route bypasses AppLayout — it's for headless-chromium PNG captures.
@@ -84,6 +85,7 @@ export const router = createBrowserRouter([
       { path: "scorecard", element: <ScorecardPage />, handle: { crumb: "Scorecard" } },
       { path: "mirror", element: <MirrorPage />, handle: { crumb: "The Mirror" } },
       { path: "regime", element: <RegimePage />, handle: { crumb: "Regime" } },
+      { path: "book", element: <BookPage />, handle: { crumb: "Book" } },
       { path: "coverage/:ticker", element: <CoveragePage />,
         handle: { crumb: ({ params }: { params: { ticker?: string } }) => params.ticker?.toUpperCase() ?? "Coverage" } },
       { path: "theses", element: <ThesesPage />, handle: { crumb: "Theses" } },
