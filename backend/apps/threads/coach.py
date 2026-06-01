@@ -217,6 +217,34 @@ def _track_record_block(ticker: str) -> str:
     return "\n".join(lines)
 
 
+def _cohort_block(ticker: str) -> str:
+    """Outside-view base rate (M14 F2): how calls LIKE this one (same direction,
+    same sector when known) have resolved across the book — the base rate the
+    per-ticker block doesn't show. Keyed off the leading open thesis's direction;
+    "" when there is no open thesis or not enough cohort history. Look-ahead-safe
+    (decisive post-mortems only)."""
+    from apps.analytics.services.cohorts import cohort_base_rate
+    from apps.thesis.models import Thesis
+
+    top = (
+        Thesis.objects.filter(ticker=ticker, status="open")
+        .order_by("-conviction", "-opened_at")
+        .first()
+    )
+    if top is None:
+        return ""
+    res = cohort_base_rate(direction=top.direction, ticker=ticker)
+    if res is None:
+        return ""
+    where = "" if res["scope"] == "all" else f" in {res['scope']}"
+    return (
+        "### Base rate for calls like this\n"
+        f"- Your {top.direction} calls{where} (excluding {ticker}): "
+        f"{res['correct']}/{res['n']} resolved correct ({res['hit_rate']:.0%}) — "
+        "an outside-view check on this direction."
+    )
+
+
 def _lessons_block(ticker: str) -> str:
     """Top decisive post-mortems for the ticker, newest first, with lessons.
 
@@ -410,6 +438,7 @@ def assemble_coach_context(snapshot, profile) -> str:
         _safe(lambda: _theses_block(ticker, snapshot)),
         _safe(lambda: _diff_block(snapshot)),
         _safe(lambda: _track_record_block(ticker)),
+        _safe(lambda: _cohort_block(ticker)),
         _safe(lambda: _recall_block(snapshot, ticker)),
         _safe(lambda: _lessons_block(ticker)),
         _safe(lambda: _ai_track_record_block(ticker, profile)),
