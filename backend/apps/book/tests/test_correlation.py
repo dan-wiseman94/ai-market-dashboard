@@ -10,8 +10,16 @@ pytestmark = pytest.mark.django_db
 def _seed(ticker, closes):
     base = timezone.now()
     for i, px in enumerate(closes):
-        OHLCBar.objects.create(ticker=ticker, timeframe="1d", open=px, high=px, low=px,
-                               close=px, volume=1, ts=base - timezone.timedelta(days=len(closes) - i))
+        OHLCBar.objects.create(
+            ticker=ticker,
+            timeframe="1d",
+            open=px,
+            high=px,
+            low=px,
+            close=px,
+            volume=1,
+            ts=base - timezone.timedelta(days=len(closes) - i),
+        )
 
 
 def test_perfectly_correlated_names_cluster():

@@ -42,8 +42,12 @@ def book_narrative(data: dict) -> str:
         check_daily_cap("claude", cap_usd=cfg.daily_cost_cap_usd)
         check_monthly_cap("claude", cap_usd=cfg.monthly_cost_cap_usd)
         report = run_structured(
-            api_key=cfg.api_key, model=cfg.default_model or "claude-opus-4-8",
-            system="", user=_prompt(data), output_model=BookNarrative, base_url=cfg.base_url or "",
+            api_key=cfg.api_key,
+            model=cfg.default_model or "claude-opus-4-8",
+            system="",
+            user=_prompt(data),
+            output_model=BookNarrative,
+            base_url=cfg.base_url or "",
         )
         return (getattr(report, "summary", "") or "").strip()
     except CostCapExceededError as exc:
