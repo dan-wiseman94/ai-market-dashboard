@@ -15,7 +15,9 @@ def test_no_claude_config_returns_empty():
 def test_returns_summary_when_provider_ok(monkeypatch):
     from apps.secrets.models import ProviderConfig
 
-    ProviderConfig.objects.create(provider="claude", _api_key={"k": "sk-test"}, default_model="claude-opus-4-8")
+    ProviderConfig.objects.create(
+        provider="claude", _api_key={"k": "sk-test"}, default_model="claude-opus-4-8"
+    )
 
     class _Report:
         summary = "Risk-off: volatility elevated, trend rolling over."
@@ -30,7 +32,9 @@ def test_returns_summary_when_provider_ok(monkeypatch):
 def test_provider_error_degrades_to_empty(monkeypatch):
     from apps.secrets.models import ProviderConfig
 
-    ProviderConfig.objects.create(provider="claude", _api_key={"k": "sk-test"}, default_model="claude-opus-4-8")
+    ProviderConfig.objects.create(
+        provider="claude", _api_key={"k": "sk-test"}, default_model="claude-opus-4-8"
+    )
 
     def _boom(**kw):
         raise RuntimeError("upstream 500")

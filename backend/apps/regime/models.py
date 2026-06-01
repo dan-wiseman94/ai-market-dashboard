@@ -10,7 +10,9 @@ class RegimeReading(models.Model):
     current regime (see services.compute.current_regime)."""
 
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
-    composite = models.CharField(max_length=20)  # "Risk-On" / "Neutral-Transitional" / "Risk-Off" / "Stress"
+    composite = models.CharField(
+        max_length=20
+    )  # "Risk-On" / "Neutral-Transitional" / "Risk-Off" / "Stress"
     axes = models.JSONField(default=dict)  # {"volatility": "Elevated", "trend": "Downtrend", ...}
     drivers = models.JSONField(default=list)  # ["VIX 24 (82%ile) — Elevated", ...]
     narrative = models.TextField(blank=True, default="")

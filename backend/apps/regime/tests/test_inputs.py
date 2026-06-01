@@ -11,13 +11,23 @@ def _seed_daily(ticker, closes):
     base = timezone.now()
     for i, px in enumerate(closes):
         OHLCBar.objects.create(
-            ticker=ticker, timeframe="1d", open=px, high=px, low=px, close=px,
-            volume=1, ts=base - timezone.timedelta(days=len(closes) - i),
+            ticker=ticker,
+            timeframe="1d",
+            open=px,
+            high=px,
+            low=px,
+            close=px,
+            volume=1,
+            ts=base - timezone.timedelta(days=len(closes) - i),
         )
 
 
 def test_gather_inputs_shape_and_degradation(monkeypatch):
-    monkeypatch.setattr(I, "fetch_market_context", lambda: {"vix_last": 22.0, "breadth": {"$ADVN": 1500, "$DECN": 900}})
+    monkeypatch.setattr(
+        I,
+        "fetch_market_context",
+        lambda: {"vix_last": 22.0, "breadth": {"$ADVN": 1500, "$DECN": 900}},
+    )
     monkeypatch.setattr(I, "fetch_macro", lambda ids: {})
     out = I.gather_inputs()
     assert out["vix_last"] == 22.0

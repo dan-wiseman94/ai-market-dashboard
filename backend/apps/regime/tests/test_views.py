@@ -13,7 +13,9 @@ def test_current_empty_returns_null():
 
 
 def test_current_returns_latest():
-    RegimeReading.objects.create(composite="Risk-On", axes={"volatility": "Low"}, drivers=["VIX 12 — Low"])
+    RegimeReading.objects.create(
+        composite="Risk-On", axes={"volatility": "Low"}, drivers=["VIX 12 — Low"]
+    )
     resp = APIClient().get("/api/regime/current/")
     body = resp.json()
     assert body["composite"] == "Risk-On"
@@ -34,7 +36,8 @@ def test_refresh_endpoint_invokes_compute(monkeypatch):
     from apps.regime import views
 
     monkeypatch.setattr(
-        views, "compute_and_store",
+        views,
+        "compute_and_store",
         lambda: RegimeReading.objects.create(composite="Stress", axes={}),
     )
     resp = APIClient().post("/api/regime/refresh/")

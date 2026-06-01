@@ -41,9 +41,14 @@ def _sector_returns() -> dict:
 
 def gather_inputs() -> dict:
     out: dict = {
-        "vix_last": None, "vix_percentile": None, "spx_ma_spread": None,
-        "spx_dist_50": None, "breadth": {}, "sector_returns": {},
-        "t10y2y": None, "tnx_change": None,
+        "vix_last": None,
+        "vix_percentile": None,
+        "spx_ma_spread": None,
+        "spx_dist_50": None,
+        "breadth": {},
+        "sector_returns": {},
+        "t10y2y": None,
+        "tnx_change": None,
     }
     try:
         ctx = fetch_market_context()
