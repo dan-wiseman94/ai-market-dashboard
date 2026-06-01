@@ -35,6 +35,7 @@ app.autodiscover_tasks(
         "apps.coverage",
         "apps.regime",
         "apps.book",
+        "apps.desk",
     ]
 )
 
