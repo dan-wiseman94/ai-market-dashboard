@@ -25,6 +25,8 @@ export interface ConveneBody {
   coverage_note_id?: number;
   book_snapshot_id?: number;
   structure?: "judge_panel" | "rebuttal" | "deep";
+  voice_mode?: "single" | "multi";
+  grounding?: boolean;
 }
 
 export const fetchWarRoomRuns = () => apiGet<WarRoomRun[]>("/api/warroom/runs/");

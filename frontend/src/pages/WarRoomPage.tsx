@@ -8,10 +8,12 @@ export default function WarRoomPage() {
   const convene = useConveneWarRoom();
   const [prompt, setPrompt] = useState("");
   const [structure, setStructure] = useState<"judge_panel" | "rebuttal" | "deep">("rebuttal");
+  const [voiceMode, setVoiceMode] = useState<"single" | "multi">("single");
+  const [grounded, setGrounded] = useState(true);
 
   const onConvene = async () => {
     if (!prompt.trim()) return;
-    await convene.mutateAsync({ free_prompt: prompt, structure });
+    await convene.mutateAsync({ free_prompt: prompt, structure, voice_mode: voiceMode, grounding: grounded });
     setPrompt("");
     refetch();
   };
@@ -37,6 +39,22 @@ export default function WarRoomPage() {
           <option value="rebuttal">Rebuttal</option>
           <option value="deep">Deep</option>
         </select>
+        <select
+          className="rounded border border-rule px-2 text-sm"
+          value={voiceMode}
+          onChange={(e) => setVoiceMode(e.target.value as "single" | "multi")}
+        >
+          <option value="single">Single provider</option>
+          <option value="multi">Multi-provider</option>
+        </select>
+        <label className="flex items-center gap-1 text-sm text-ink-300">
+          <input
+            type="checkbox"
+            checked={grounded}
+            onChange={(e) => setGrounded(e.target.checked)}
+          />
+          Grounded (use tools)
+        </label>
         <button
           className="rounded border border-rule px-4 py-1 text-sm text-ink-300 transition-colors hover:text-copper-300 disabled:opacity-50"
           onClick={onConvene}
