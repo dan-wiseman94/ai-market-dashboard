@@ -17,8 +17,11 @@ def concentration(exposures: list[dict]) -> dict:
     net_short = sum(e["net_signed"] for e in exposures if e["net_signed"] < 0)
     hhi = sum((e["abs_exposure"] / total) ** 2 for e in exposures)
     return {
-        "total_abs": total, "top_n_share": top_share,
-        "net_long": net_long, "net_short": net_short, "hhi": hhi,
+        "total_abs": total,
+        "top_n_share": top_share,
+        "net_long": net_long,
+        "net_short": net_short,
+        "hhi": hhi,
     }
 
 

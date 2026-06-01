@@ -28,8 +28,12 @@ def _build_payload() -> dict:
     near = near_invalidation()
     coverage = {"n_names": len(exposures), "n_clustered": sum(len(c["members"]) for c in clusters)}
     return {
-        "exposures": exposures, "concentration": conc, "clusters": clusters,
-        "regime_fit": fit, "near_invalidation": near, "coverage": coverage,
+        "exposures": exposures,
+        "concentration": conc,
+        "clusters": clusters,
+        "regime_fit": fit,
+        "near_invalidation": near,
+        "coverage": coverage,
     }
 
 
@@ -48,8 +52,12 @@ def _maybe_alert(prior: BookSnapshot, data: dict) -> None:
         if misaligned and prior_aligned:
             bits.append(data["regime_fit"].get("note", "regime misalignment"))
         notify(
-            user_id=None, kind="book", title="Book risk changed",
-            body="; ".join(bits), link="/book", meta={"hhi": new_hhi},
+            user_id=None,
+            kind="book",
+            title="Book risk changed",
+            body="; ".join(bits),
+            link="/book",
+            meta={"hhi": new_hhi},
         )
 
 

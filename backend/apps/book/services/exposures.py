@@ -58,7 +58,9 @@ def build_exposures() -> list[dict]:
 
         now = timezone.now()
         for p in Position.objects.filter(status="open"):
-            conv = (p.thesis.conviction if p.thesis_id and p.thesis else None) or C.DEFAULT_CONVICTION
+            conv = (
+                p.thesis.conviction if p.thesis_id and p.thesis else None
+            ) or C.DEFAULT_CONVICTION
             sign = _POSITION_SIGN.get(p.direction, 0)
             last = nearest_bar_close(p.ticker.upper(), now)
             dollar = (float(p.quantity) * last * sign) if last is not None else None

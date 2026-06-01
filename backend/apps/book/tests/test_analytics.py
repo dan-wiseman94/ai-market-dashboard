@@ -5,9 +5,27 @@ from apps.book.services import analytics as A
 pytestmark = pytest.mark.django_db
 
 EXPOSURES = [
-    {"ticker": "NVDA", "net_signed": 7.0, "abs_exposure": 7.0, "dollar": None, "sources": ["thesis"]},
-    {"ticker": "AMD", "net_signed": 4.0, "abs_exposure": 4.0, "dollar": None, "sources": ["thesis"]},
-    {"ticker": "TLT", "net_signed": -2.0, "abs_exposure": 2.0, "dollar": None, "sources": ["thesis"]},
+    {
+        "ticker": "NVDA",
+        "net_signed": 7.0,
+        "abs_exposure": 7.0,
+        "dollar": None,
+        "sources": ["thesis"],
+    },
+    {
+        "ticker": "AMD",
+        "net_signed": 4.0,
+        "abs_exposure": 4.0,
+        "dollar": None,
+        "sources": ["thesis"],
+    },
+    {
+        "ticker": "TLT",
+        "net_signed": -2.0,
+        "abs_exposure": 2.0,
+        "dollar": None,
+        "sources": ["thesis"],
+    },
 ]
 
 
@@ -31,10 +49,24 @@ def test_near_invalidation_flags_close_stops():
     from apps.market.models import OHLCBar
     from apps.thesis.models import Thesis
 
-    Thesis.objects.create(title="x", ticker="NVDA", direction="bullish", conviction=4,
-                          status="open", invalidation_price=100)
-    OHLCBar.objects.create(ticker="NVDA", timeframe="1d", open=103, high=103, low=103,
-                           close=103, volume=1, ts=timezone.now())  # 3% above stop -> near
+    Thesis.objects.create(
+        title="x",
+        ticker="NVDA",
+        direction="bullish",
+        conviction=4,
+        status="open",
+        invalidation_price=100,
+    )
+    OHLCBar.objects.create(
+        ticker="NVDA",
+        timeframe="1d",
+        open=103,
+        high=103,
+        low=103,
+        close=103,
+        volume=1,
+        ts=timezone.now(),
+    )  # 3% above stop -> near
     near = A.near_invalidation()
     assert any(r["ticker"] == "NVDA" for r in near)
 

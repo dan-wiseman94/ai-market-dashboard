@@ -9,7 +9,15 @@ class BookSnapshotSerializer(serializers.ModelSerializer):
     class Meta:
         model = BookSnapshot
         fields: ClassVar = [
-            "id", "created_at", "as_of_date", "exposures", "concentration",
-            "clusters", "regime_fit", "near_invalidation", "narrative", "coverage",
+            "id",
+            "created_at",
+            "as_of_date",
+            "exposures",
+            "concentration",
+            "clusters",
+            "regime_fit",
+            "near_invalidation",
+            "narrative",
+            "coverage",
         ]
         read_only_fields: ClassVar = fields

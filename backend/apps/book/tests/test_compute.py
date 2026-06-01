@@ -9,7 +9,9 @@ pytestmark = pytest.mark.django_db
 
 
 def _seed_concentrated():
-    Thesis.objects.create(title="a", ticker="NVDA", direction="bullish", conviction=5, status="open")
+    Thesis.objects.create(
+        title="a", ticker="NVDA", direction="bullish", conviction=5, status="open"
+    )
 
 
 def test_compute_and_store_persists_one_per_day(monkeypatch):
