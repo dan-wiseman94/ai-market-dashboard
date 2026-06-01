@@ -58,3 +58,20 @@ def test_monthly_cap_populated_when_set() -> None:
     assert row["monthly"]["cap"] == Decimal("100.00")
     assert row["monthly"]["spent"] == Decimal("25.00")
     assert row["monthly"]["pct"] == 0.25
+
+
+@pytest.mark.django_db
+def test_caps_tolerates_undecryptable_key() -> None:
+    """caps() iterates every ProviderConfig row; an undecryptable key (key/salt rotation)
+    must not 500 the cost-cap status — it reads only cap fields, so it defers the key."""
+    from django.db import connection
+
+    ProviderConfig.objects.create(provider="claude", daily_cost_cap_usd=Decimal("10.00"))
+    with connection.cursor() as c:
+        c.execute(
+            "UPDATE secrets_providerconfig SET api_key = %s WHERE provider = %s",
+            [b"not-valid-fernet", "claude"],
+        )
+    out = caps()
+    row = next(r for r in out if r["provider"] == "claude")
+    assert row["daily"]["cap"] == Decimal("10.00")

@@ -17,6 +17,7 @@ from __future__ import annotations
 import logging
 from datetime import timedelta
 
+from cryptography.fernet import InvalidToken
 from django.conf import settings
 from django.utils import timezone
 
@@ -103,7 +104,10 @@ def _attempt_ai_narrative(
         if thesis.profile
         else (ProviderConfig.objects.values_list("provider", flat=True).first() or "")
     )
-    cfg = ProviderConfig.objects.filter(provider=provider_name).first()
+    try:
+        cfg = ProviderConfig.objects.filter(provider=provider_name).first()
+    except InvalidToken:
+        cfg = None  # undecryptable key (key/salt rotation) → handled as "no key" below
 
     if provider_name != "claude":
         log.warning(
