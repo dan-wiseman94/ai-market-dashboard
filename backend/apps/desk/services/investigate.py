@@ -24,6 +24,18 @@ def _prompt(cand: dict) -> str:
     )
 
 
+def _thesis_direction(cand: dict) -> str:
+    """A starting direction to prefill the thesis form. A price move points the way;
+    everything else defaults to neutral for the user to decide."""
+    if cand.get("anomaly_type") == "price_move":
+        pct = (cand.get("evidence") or {}).get("pct_change") or 0
+        if pct > 0:
+            return "bullish"
+        if pct < 0:
+            return "bearish"
+    return "neutral"
+
+
 def investigate(cand: dict) -> dict | None:
     thread = Thread.objects.create(
         kind="consult",
@@ -65,6 +77,19 @@ def investigate(cand: dict) -> dict | None:
                 "type": "revise_coverage",
                 "label": f"Revise coverage on {cand['ticker']}",
                 "params": {"ticker": cand["ticker"]},
+            }
+        )
+        actions.append(
+            {
+                "type": "open_thesis",
+                "label": f"Open thesis on {cand['ticker']}",
+                # A deep link prefills the new-thesis form; the user still supplies the
+                # invalidation (C4 pre-trade discipline) before it can be saved.
+                "params": {
+                    "ticker": cand["ticker"],
+                    "direction": _thesis_direction(cand),
+                    "rationale": finding[:500],
+                },
             }
         )
     return {"finding": finding, "suggested_actions": actions, "investigation_thread_id": thread.id}
