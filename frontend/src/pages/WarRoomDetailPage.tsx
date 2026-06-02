@@ -1,6 +1,7 @@
 import { useParams } from "react-router-dom";
 
 import { Skeleton } from "@/components/Skeleton";
+import { useWarRoomLive } from "@/hooks/useWarRoomLive";
 import { useWarRoomRun } from "@/hooks/useWarroom";
 
 const PERSONA_LABEL: Record<string, string> = { bull: "Bull", bear: "Bear", skeptic: "Skeptic" };
@@ -8,6 +9,8 @@ const PERSONA_LABEL: Record<string, string> = { bull: "Bull", bear: "Bear", skep
 export default function WarRoomDetailPage() {
   const { id } = useParams();
   const { data: run, isLoading } = useWarRoomRun(Number(id));
+  const isRunning = run?.status === "running";
+  const live = useWarRoomLive(run?.thread_id ?? null, isRunning);
   if (isLoading || !run) return <Skeleton where="warroom-detail" />;
 
   const personaMsgs = run.messages.filter((m) => (m.content as Record<string, unknown>)?.persona);
@@ -23,6 +26,24 @@ export default function WarRoomDetailPage() {
     <div className="px-8 py-8 max-w-5xl mx-auto ledger-fade-in">
       <h1 className="text-2xl font-semibold">War Room — {run.subject_label}</h1>
       <div className="mt-1 text-sm text-ink/60">{run.status}{run.status === "error" && run.error ? `: ${run.error}` : ""}</div>
+
+      {isRunning && (
+        <div className="mt-6 rounded border border-rule p-3" data-testid="warroom-live">
+          <div className="text-xs uppercase tracking-wide text-ink/60">
+            Live debate {live.streaming ? "· streaming…" : "· thinking…"}
+          </div>
+          {live.messages.length === 0 ? (
+            <div className="mt-1 text-sm text-ink/40">Waiting for the first argument…</div>
+          ) : (
+            live.messages.map((m) => (
+              <p key={m.id} className="mt-2 whitespace-pre-wrap text-sm text-ink/80">
+                {m.text}
+                {m.status === "streaming" && <span className="text-copper">▍</span>}
+              </p>
+            ))
+          )}
+        </div>
+      )}
 
       <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3">
         {(["bull", "bear", "skeptic"] as const).map((p) => (
