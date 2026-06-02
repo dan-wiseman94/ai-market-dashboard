@@ -8,6 +8,30 @@ export interface BookExposure {
   sources: string[];
 }
 export interface BookCluster { members: string[]; avg_corr: number | null }
+export interface BookVarPosition {
+  ticker: string;
+  dollar: number;
+  daily_vol_pct: number;
+  var_usd: number;
+  beta: number | null;
+}
+export interface BookVarBeta {
+  available: boolean;
+  method: string;
+  window: number;
+  positions: BookVarPosition[];
+  portfolio: {
+    gross_dollar?: number;
+    net_dollar?: number;
+    undiversified_var_usd?: number;
+    diversified_var_usd?: number;
+    diversification_benefit_usd?: number;
+    beta_adjusted_net_exposure_usd?: number;
+    n_positions?: number;
+  };
+  skipped?: number;
+  note?: string;
+}
 export interface BookSnapshot {
   id: number;
   created_at: string;
@@ -19,6 +43,7 @@ export interface BookSnapshot {
   near_invalidation: { ticker: string; pct_to_invalidation: number }[];
   narrative: string;
   coverage: Record<string, number>;
+  var_beta?: BookVarBeta;
 }
 
 export const fetchCurrentBook = () => apiGet<BookSnapshot | null>("/api/book/current/");

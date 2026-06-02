@@ -1,8 +1,22 @@
 import { Link } from "react-router-dom";
 
+import type { DeskEntry } from "@/api/desk";
 import { EmptyState } from "@/components/EmptyState";
 import { Skeleton } from "@/components/Skeleton";
 import { useActDeskEntry, useDeskFeed, useDismissDeskEntry, useRunDeskSweep } from "@/hooks/useDesk";
+
+/** Build the prefilled new-thesis deep-link query from an entry's open_thesis action. */
+function openThesisQuery(entry: DeskEntry): string {
+  const params = (entry.suggested_actions.find((a) => a.type === "open_thesis")?.params ?? {}) as Record<
+    string,
+    unknown
+  >;
+  return new URLSearchParams({
+    ticker: String(params.ticker ?? entry.ticker ?? ""),
+    direction: String(params.direction ?? "neutral"),
+    rationale: String(params.rationale ?? ""),
+  }).toString();
+}
 
 export default function DeskPage() {
   const { data: entries = [], isLoading, refetch } = useDeskFeed();
@@ -64,6 +78,14 @@ export default function DeskPage() {
                     >
                       {e.suggested_actions.find((a) => a.type === "revise_coverage")?.label ?? "Revise Coverage"}
                     </button>
+                  )}
+                  {e.suggested_actions.some((a) => a.type === "open_thesis") && (
+                    <Link
+                      to={`/theses/new?${openThesisQuery(e)}`}
+                      className="rounded border border-rule px-2 py-1 text-xs hover:bg-ink/5"
+                    >
+                      {e.suggested_actions.find((a) => a.type === "open_thesis")?.label ?? "Open thesis"}
+                    </Link>
                   )}
                   <button
                     className="rounded border border-rule px-2 py-1 text-xs text-ink/60 hover:bg-ink/5"

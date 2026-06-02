@@ -27,6 +27,7 @@ import ScorecardPage from "./pages/ScorecardPage";
 import MirrorPage from "./pages/MirrorPage";
 import CoveragePage from "./pages/CoveragePage";
 import ThesesPage from "./pages/ThesesPage";
+import NewThesisPage from "./pages/NewThesisPage";
 import ThesisDetailPage from "./pages/ThesisDetailPage";
 import EventsPage from "./pages/EventsPage";
 import BriefingPage from "./pages/BriefingPage";
@@ -95,6 +96,7 @@ export const router = createBrowserRouter([
       { path: "coverage/:ticker", element: <CoveragePage />,
         handle: { crumb: ({ params }: { params: { ticker?: string } }) => params.ticker?.toUpperCase() ?? "Coverage" } },
       { path: "theses", element: <ThesesPage />, handle: { crumb: "Theses" } },
+      { path: "theses/new", element: <NewThesisPage />, handle: { crumb: "New thesis" } },
       { path: "recall", element: <RecallPage />, handle: { crumb: "Recall" } },
       { path: "errors", element: <ErrorsPage />, handle: { crumb: "Errors" } },
       {

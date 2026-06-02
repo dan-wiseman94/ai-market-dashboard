@@ -17,3 +17,13 @@ def in_cooldown(anomaly_type: str, ticker: str) -> bool:
     return DeskEntry.objects.filter(
         anomaly_type=anomaly_type, ticker=(ticker or ""), created_at__gte=cutoff
     ).exists()
+
+
+def originated_today() -> int:
+    """How many DeskEntry rows were originated so far today (calendar day, active tz).
+
+    Backs the per-day origination cap — a hard cost backstop on autonomous spend that
+    resets at midnight, distinct from the per-(ticker, anomaly) cooldown window."""
+    from apps.desk.models import DeskEntry
+
+    return DeskEntry.objects.filter(created_at__date=timezone.localdate()).count()

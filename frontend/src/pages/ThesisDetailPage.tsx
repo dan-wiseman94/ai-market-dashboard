@@ -13,6 +13,7 @@ import Toggle from "@/components/ui/Toggle";
 import type { Thesis } from "@/api/thesis";
 import { TrackRecordHint } from "@/components/TrackRecordHint";
 import { AISecondOpinion } from "@/components/AISecondOpinion";
+import { ConveneWarRoomButton } from "@/components/ConveneWarRoomButton";
 import ThesisChart from "@/components/ThesisChart";
 
 function PriceGuardToggle({ thesis }: { thesis: Thesis }) {
@@ -176,6 +177,9 @@ export default function ThesisDetailPage() {
   return (
     <main className="max-w-3xl mx-auto p-6 ledger-fade-in">
       <ThesisMasthead thesis={thesis} />
+      <div className="mt-2">
+        <ConveneWarRoomButton subject={{ thesis_id: thesis.id }} />
+      </div>
       <TrackRecordHint
         ticker={thesis.ticker}
         direction={thesis.direction}

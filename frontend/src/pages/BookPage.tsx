@@ -1,6 +1,9 @@
+import { ConveneWarRoomButton } from "@/components/ConveneWarRoomButton";
 import { EmptyState } from "@/components/EmptyState";
 import { Skeleton } from "@/components/Skeleton";
 import { useCurrentBook } from "@/hooks/useBook";
+
+const usd = (n?: number) => (n == null ? "—" : `$${Math.round(n).toLocaleString()}`);
 
 export default function BookPage() {
   const { data: book, isLoading } = useCurrentBook();
@@ -15,7 +18,10 @@ export default function BookPage() {
   const c = book.concentration;
   return (
     <div className="px-8 py-8 max-w-5xl mx-auto ledger-fade-in">
-      <h1 className="text-2xl font-semibold">Book risk X-ray</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-semibold">Book risk X-ray</h1>
+        <ConveneWarRoomButton subject={{ book_snapshot_id: book.id }} />
+      </div>
       {book.narrative && <p className="mt-2 text-ink/80">{book.narrative}</p>}
 
       <h2 className="mt-6 text-lg font-medium">Concentration</h2>
@@ -23,6 +29,36 @@ export default function BookPage() {
         HHI {c.hhi?.toFixed(2)} · top-N share {c.top_n_share != null ? `${(c.top_n_share * 100).toFixed(0)}%` : "—"} ·
         net long {c.net_long} / net short {c.net_short}
       </p>
+
+      {book.var_beta?.available ? (
+        <>
+          <h2 className="mt-6 text-lg font-medium">Value-at-Risk &amp; factor beta</h2>
+          <p className="mt-1 text-sm text-ink/70" data-testid="book-var-summary">
+            1-day 95% VaR{" "}
+            <span className="font-medium">{usd(book.var_beta.portfolio.diversified_var_usd)}</span>{" "}
+            diversified vs {usd(book.var_beta.portfolio.undiversified_var_usd)} undiversified —{" "}
+            {usd(book.var_beta.portfolio.diversification_benefit_usd)} diversification benefit. Net
+            $SPX-equivalent exposure {usd(book.var_beta.portfolio.beta_adjusted_net_exposure_usd)}.
+            {book.var_beta.skipped ? ` (${book.var_beta.skipped} unpriced.)` : ""}
+          </p>
+          <ul className="mt-2 divide-y divide-rule">
+            {book.var_beta.positions.map((q) => (
+              <li key={q.ticker} className="flex justify-between py-2 text-sm">
+                <span>
+                  {q.ticker} <span className="text-ink/50">β {q.beta ?? "—"}</span>
+                </span>
+                <span className="text-ink/70">
+                  VaR {usd(q.var_usd)} · vol {q.daily_vol_pct}%
+                </span>
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : (
+        book.var_beta?.note && (
+          <p className="mt-6 text-sm text-ink/50">Value-at-Risk: {book.var_beta.note}</p>
+        )
+      )}
 
       <h2 className="mt-6 text-lg font-medium">Regime fit</h2>
       <p className="mt-1 text-sm">

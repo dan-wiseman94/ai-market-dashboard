@@ -11,7 +11,7 @@ from apps.desk import constants as C
 from apps.desk.models import DeskEntry
 from apps.desk.services.detectors import run_detectors
 from apps.desk.services.investigate import investigate
-from apps.desk.services.scoring import in_cooldown, rank
+from apps.desk.services.scoring import in_cooldown, originated_today, rank
 from apps.desk.services.universe import build_universe
 
 log = logging.getLogger(__name__)
@@ -51,9 +51,14 @@ def _notify(entry: DeskEntry) -> None:
 def run_sweep(top_k: int = C.TOP_K) -> int:
     universe = build_universe()
     candidates = rank(run_detectors(universe))
+    already_today = originated_today()
     created = 0
     dropped = 0
+    capped = 0
     for cand in candidates:
+        if already_today + created >= C.DAILY_ORIGINATION_CAP:
+            capped += 1
+            continue
         if created >= top_k:
             dropped += 1
             continue
@@ -89,5 +94,12 @@ def run_sweep(top_k: int = C.TOP_K) -> int:
             "desk.sweep dropped %d candidates beyond top_k=%d (no silent truncation)",
             dropped,
             top_k,
+        )
+    if capped:
+        log.info(
+            "desk.sweep dropped %d candidates at daily origination cap=%d (%d already today)",
+            capped,
+            C.DAILY_ORIGINATION_CAP,
+            already_today,
         )
     return created
