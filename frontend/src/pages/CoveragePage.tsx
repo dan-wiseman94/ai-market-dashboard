@@ -1,5 +1,6 @@
 import { useParams } from "react-router-dom";
 
+import { ConveneWarRoomButton } from "@/components/ConveneWarRoomButton";
 import { EmptyState } from "@/components/EmptyState";
 import { SkeletonRows } from "@/components/Skeleton";
 import {
@@ -55,13 +56,21 @@ export default function CoveragePage() {
             reason, not one it re-derives from scratch each snapshot.
           </p>
         </div>
-        <button
-          onClick={() => revise.mutate()}
-          disabled={revise.isPending}
-          className="shrink-0 rounded border border-rule px-3 py-1 text-sm text-ink-300 transition-colors hover:text-copper-300 disabled:opacity-50"
-        >
-          {revise.isPending ? "Revising…" : "Revise now"}
-        </button>
+        <div className="flex shrink-0 gap-2">
+          {note && (
+            <ConveneWarRoomButton
+              subject={{ coverage_note_id: note.id }}
+              className="rounded border border-rule px-3 py-1 text-sm text-ink-300 transition-colors hover:text-copper-300 disabled:opacity-50"
+            />
+          )}
+          <button
+            onClick={() => revise.mutate()}
+            disabled={revise.isPending}
+            className="rounded border border-rule px-3 py-1 text-sm text-ink-300 transition-colors hover:text-copper-300 disabled:opacity-50"
+          >
+            {revise.isPending ? "Revising…" : "Revise now"}
+          </button>
+        </div>
       </div>
 
       {isLoading ? (

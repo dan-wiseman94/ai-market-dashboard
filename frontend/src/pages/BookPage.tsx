@@ -1,3 +1,4 @@
+import { ConveneWarRoomButton } from "@/components/ConveneWarRoomButton";
 import { EmptyState } from "@/components/EmptyState";
 import { Skeleton } from "@/components/Skeleton";
 import { useCurrentBook } from "@/hooks/useBook";
@@ -17,7 +18,10 @@ export default function BookPage() {
   const c = book.concentration;
   return (
     <div className="px-8 py-8 max-w-5xl mx-auto ledger-fade-in">
-      <h1 className="text-2xl font-semibold">Book risk X-ray</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-semibold">Book risk X-ray</h1>
+        <ConveneWarRoomButton subject={{ book_snapshot_id: book.id }} />
+      </div>
       {book.narrative && <p className="mt-2 text-ink/80">{book.narrative}</p>}
 
       <h2 className="mt-6 text-lg font-medium">Concentration</h2>
