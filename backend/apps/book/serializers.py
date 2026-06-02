@@ -19,5 +19,6 @@ class BookSnapshotSerializer(serializers.ModelSerializer):
             "near_invalidation",
             "narrative",
             "coverage",
+            "var_beta",
         ]
         read_only_fields: ClassVar = fields

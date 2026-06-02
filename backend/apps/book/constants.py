@@ -15,3 +15,8 @@ NEAR_INVALIDATION_PCT = 5.0
 
 # Deterioration alert (vs prior snapshot)
 HHI_ALERT_DELTA = 0.10
+
+# Dollar Value-at-Risk + factor beta
+VAR_WINDOW = 252  # trading days of daily returns used to size risk
+VAR_MIN_BARS = 30  # min returns to price a position / compute a beta
+VAR_Z_95 = 1.645  # one-sided 95% Gaussian quantile
