@@ -25,6 +25,39 @@ describe("BookPage", () => {
     expect(screen.getByText(/NVDA, AMD/)).toBeInTheDocument();
   });
 
+  it("renders the VaR / factor-beta lens when available", async () => {
+    vi.spyOn(client, "apiGet").mockImplementation(async (path: string) => {
+      const snap = {
+        id: 1, created_at: "x", as_of_date: "2026-06-01",
+        exposures: [{ ticker: "NVDA", net_signed: 3, abs_exposure: 3, dollar: 10000, sources: ["position"] }],
+        concentration: { hhi: 0.5, top_n_share: 1, net_long: 3, net_short: 0 },
+        clusters: [], regime_fit: { alignment: "aligned", note: "" },
+        near_invalidation: [], narrative: "", coverage: {},
+        var_beta: {
+          available: true,
+          method: "parametric_gaussian_1d_95",
+          window: 252,
+          positions: [{ ticker: "NVDA", dollar: 10000, daily_vol_pct: 2.5, var_usd: 411.25, beta: 1.4 }],
+          portfolio: {
+            gross_dollar: 10000, net_dollar: 10000,
+            undiversified_var_usd: 411.25, diversified_var_usd: 411.25,
+            diversification_benefit_usd: 0, beta_adjusted_net_exposure_usd: 14000, n_positions: 1,
+          },
+          skipped: 0, note: "",
+        },
+      };
+      return path.endsWith("/current/") ? snap : [snap];
+    });
+    renderWithProviders(<BookPage />);
+    await waitFor(() =>
+      expect(screen.getByText(/Value-at-Risk/i)).toBeInTheDocument(),
+    );
+    const summary = screen.getByTestId("book-var-summary");
+    expect(summary.textContent).toMatch(/411/); // diversified VaR dollars
+    // per-position beta is surfaced
+    expect(screen.getByText(/β\s*1\.4/)).toBeInTheDocument();
+  });
+
   it("empty state when no book", async () => {
     vi.spyOn(client, "apiGet").mockImplementation(async (path: string) =>
       path.endsWith("/current/") ? null : [],
