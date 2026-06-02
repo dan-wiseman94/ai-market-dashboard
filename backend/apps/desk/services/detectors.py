@@ -109,6 +109,59 @@ def detect_book() -> list[dict]:
     return []
 
 
+def detect_breadth_divergence() -> list[dict]:
+    """Bearish index-vs-breadth divergence: the tape is in an uptrend while
+    participation is narrow/deteriorating (fewer names carrying the rally).
+    Reads the latest F1 regime axes — book-wide, no per-ticker scan."""
+    from apps.regime.models import RegimeReading
+
+    latest = RegimeReading.objects.order_by("-created_at").first()
+    if not latest:
+        return []
+    axes = latest.axes or {}
+    trend = axes.get("trend")
+    breadth = axes.get("breadth")
+    if trend == "Uptrend" and breadth in {"Narrow", "Deteriorating"}:
+        return [
+            {
+                "anomaly_type": "breadth_divergence",
+                "ticker": "",
+                "severity": 7.0,
+                "evidence": {"trend": trend, "breadth": breadth},
+            }
+        ]
+    return []
+
+
+def detect_earnings_proximity(universe: list[str]) -> list[dict]:
+    """A name you watch reports within EARNINGS_WITHIN_DAYS — a heads-up that the
+    house view may be about to be tested. Reads the stored MarketEvent calendar
+    directly (no per-ticker network fill — detectors stay cheap/deterministic)."""
+    from apps.market.models import MarketEvent
+
+    now = timezone.now()
+    today = now.date()
+    horizon = now + timezone.timedelta(days=C.EARNINGS_WITHIN_DAYS)
+    tickers = [t.upper() for t in universe if t]
+    if not tickers:
+        return []
+    out = []
+    for e in MarketEvent.objects.filter(
+        kind="earnings", ticker__in=tickers, event_time__gte=now, event_time__lte=horizon
+    ).order_by("event_time"):
+        days = (e.event_time.date() - today).days
+        out.append(
+            {
+                "anomaly_type": "earnings_soon",
+                "ticker": e.ticker.upper(),
+                # Sooner earnings rank higher (a low-urgency surface overall).
+                "severity": float(C.EARNINGS_WITHIN_DAYS - days + 1),
+                "evidence": {"days_until": days, "title": e.title},
+            }
+        )
+    return out
+
+
 def detect_coverage_stale(universe: list[str]) -> list[dict]:
     from apps.coverage.models import CoverageNote
 
@@ -133,12 +186,17 @@ def detect_coverage_stale(universe: list[str]) -> list[dict]:
 def run_detectors(universe: list[str]) -> list[dict]:
     mod = sys.modules[__name__]
     out: list[dict] = []
-    for name in ("detect_price", "detect_options", "detect_coverage_stale"):
+    for name in (
+        "detect_price",
+        "detect_options",
+        "detect_coverage_stale",
+        "detect_earnings_proximity",
+    ):
         try:
             out.extend(getattr(mod, name)(universe))
         except Exception:
             log.warning("desk.detector_failed %s", name, exc_info=True)
-    for name in ("detect_regime_change", "detect_book"):
+    for name in ("detect_regime_change", "detect_book", "detect_breadth_divergence"):
         try:
             out.extend(getattr(mod, name)())
         except Exception:
