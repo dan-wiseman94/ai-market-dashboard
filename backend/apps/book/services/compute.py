@@ -11,6 +11,7 @@ from apps.book.services.analytics import concentration, near_invalidation, regim
 from apps.book.services.correlation import correlation_clusters
 from apps.book.services.exposures import build_exposures
 from apps.book.services.narrative import book_narrative
+from apps.book.services.var_beta import compute_var_beta
 
 log = logging.getLogger(__name__)
 
@@ -34,6 +35,7 @@ def _build_payload() -> dict:
         "regime_fit": fit,
         "near_invalidation": near,
         "coverage": coverage,
+        "var_beta": compute_var_beta(exposures),
     }
 
 
