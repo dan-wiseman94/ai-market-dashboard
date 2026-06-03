@@ -32,3 +32,19 @@ def test_reorder_with_non_object_body_returns_400():
     wl = Watchlist.objects.create(name="wl")
     r = APIClient().post(f"/api/watchlists/{wl.id}/reorder/", [1, 2, 3], format="json")
     assert r.status_code == 400
+
+
+@pytest.mark.django_db
+def test_missing_object_via_get_returns_404():
+    # observer.read does Notification.objects.get(id=pk) — a raw DoesNotExist must 404.
+    r = APIClient().post("/api/observer/notifications/999999/read/")
+    assert r.status_code == 404
+
+
+@pytest.mark.django_db
+def test_action_with_non_object_body_returns_400():
+    # threads.send → _user_text(request.data.get(...)) crashes on a non-dict body.
+    thread_resp = APIClient().post("/api/threads/", {}, format="json")
+    tid = thread_resp.json()["id"]
+    r = APIClient().post(f"/api/threads/{tid}/send/", [1, 2, 3], format="json")
+    assert r.status_code == 400

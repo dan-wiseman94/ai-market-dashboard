@@ -49,7 +49,12 @@ class ExportViewSet(viewsets.ModelViewSet):
 
     def destroy(self, request, *args, **kwargs):
         job: ExportJob = self.get_object()
-        (exports_dir() / job.filename).unlink(missing_ok=True)
+        # Guard empty/missing filename: `exports_dir() / ""` resolves to the directory, so
+        # unlink() would raise IsADirectoryError (500). Only remove an actual file.
+        if job.filename:
+            path = exports_dir() / job.filename
+            if path.is_file():
+                path.unlink(missing_ok=True)
         job.status = "deleted"
         job.save(update_fields=["status"])
         return Response(status=status.HTTP_204_NO_CONTENT)
