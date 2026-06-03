@@ -7,6 +7,6 @@ layer holds no cross-loop connection state, so the order-dependent flake goes
 away. The e2e stack (compose.e2e.yaml) still exercises the real Redis layer.
 """
 
-from .dev import *  # noqa: F401,F403
+from .dev import *
 
 CHANNEL_LAYERS = {"default": {"BACKEND": "channels.layers.InMemoryChannelLayer"}}
