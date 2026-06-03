@@ -34,6 +34,10 @@ migrate: ## Run Django migrations
 makemigrations: ## Create Django migrations
 	$(COMPOSE) exec web uv run python manage.py makemigrations
 
+.PHONY: check-migrations
+check-migrations: ## Fail if models changed without a migration
+	$(COMPOSE) exec web uv run python manage.py makemigrations --check --dry-run
+
 .PHONY: test
 test: test-backend test-frontend ## Run all tests
 

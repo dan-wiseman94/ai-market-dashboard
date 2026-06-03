@@ -66,6 +66,8 @@ jobs:
       - run: uv sync --frozen --dev
       - run: uv run ruff check .
       - run: uv run ruff format --check .
+      - name: makemigrations --check (model/migration drift)
+        run: uv run python backend/manage.py makemigrations --check --dry-run
       - name: ty (type-check) — advisory while ty is pre-1.0 / lacks Django ORM modeling
         continue-on-error: true
         run: uv run ty check backend
