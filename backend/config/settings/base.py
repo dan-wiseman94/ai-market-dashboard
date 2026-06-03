@@ -268,3 +268,23 @@ AI_RETENTION_ERROR_DAYS = env.int("AI_RETENTION_ERROR_DAYS", default=90)
 
 # Logging: handled by apps.core.logging.configure_structlog, called from dev/prod settings.
 # We intentionally leave LOGGING at Django's default and reconfigure structlog imperatively.
+
+# Error visibility (opt-in): initializes ONLY when SENTRY_DSN is set. An empty DSN
+# (the default) is a complete no-op — nothing is imported-and-run that phones home,
+# nothing transmits. Captures the warn-and-continue / _safe() swallow points (see
+# apps.dashboard, apps.thesis.services.postmortem) so silent degradation is visible
+# once a DSN is configured. sentry_sdk.capture_exception() at those sites is itself a
+# no-op while uninitialized.
+SENTRY_DSN = env.str("SENTRY_DSN", default="")
+if SENTRY_DSN:
+    import sentry_sdk
+    from sentry_sdk.integrations.celery import CeleryIntegration
+    from sentry_sdk.integrations.django import DjangoIntegration
+
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        integrations=[DjangoIntegration(), CeleryIntegration()],
+        traces_sample_rate=env.float("SENTRY_TRACES_SAMPLE_RATE", default=0.0),
+        send_default_pii=False,
+        environment=env.str("SENTRY_ENVIRONMENT", default="dev"),
+    )
