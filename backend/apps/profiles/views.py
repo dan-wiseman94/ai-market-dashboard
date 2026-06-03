@@ -23,7 +23,11 @@ class WatchlistViewSet(viewsets.ModelViewSet):
     def reorder(self, request, pk=None):
         """Body: {'order': [symbol_id, ...]}"""
         wl = self.get_object()
+        if not isinstance(request.data, dict):
+            return Response({"detail": "Request body must be a JSON object."}, status=400)
         ids = request.data.get("order", [])
+        if not isinstance(ids, list):
+            return Response({"detail": "'order' must be a list."}, status=400)
         with transaction.atomic():
             for idx, sid in enumerate(ids):
                 WatchlistSymbol.objects.filter(id=sid, watchlist=wl).update(sort_order=idx)
