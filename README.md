@@ -26,7 +26,7 @@ A single-user desktop dashboard that captures point-in-time **stock-market snaps
 
 ## Status
 
-**Feature-complete — fourteen milestones shipped (M1 → M14).** The newest additions are the Prediction Ledger (M13) and the Resident Analyst (M14, all five units shipped).
+**Feature-complete — fifteen milestones shipped (M1 → M15).** The newest addition is the **M15 Strategist** — an append-only market-regime read, a daily whole-book risk X-ray, a multi-agent war-room debate, and an agentic anomaly-sweep desk.
 
 | Milestone | Scope | Tag |
 |---|---|---|
@@ -44,8 +44,9 @@ A single-user desktop dashboard that captures point-in-time **stock-market snaps
 | M12 | Analytics (leaderboard, heatmap, unusual options) | `m12-analytics` |
 | M13 | Prediction Ledger (the AI's own auto-graded forecasts) | — |
 | M14 | Resident Analyst (autonomous investigation, calibration routing, COVERAGE, The Mirror) | — |
+| M15 | Strategist (market regime · book risk X-ray · war room · desk) | — |
 
-> M11–M14 merged without release tags. Several capabilities ship untagged: **free data sources** (run with no brokerage login), **provider tool parity** (tool use on all three providers, with visible capability warnings), a **Decision Coach** that feeds prior theses / snapshot diffs / your track record / setup-cohort base rates / distilled lessons / measured eval calibration / semantic recall into the prompt, the **Prediction Ledger** (the AI's own auto-graded calls), the **Resident Analyst** (autonomous investigations + calibration-weighted routing + The Mirror), **semantic recall**, a daily **Morning Briefing**, a **forward earnings + macro calendar**, **overnight (pre-market) snapshots**, and a **calibration scorecard**. All of M14 has shipped, including **F3 COVERAGE** — a living, version-controlled per-ticker house view the AI revises with a reason.
+> M11–M15 merged without release tags. Several capabilities ship untagged: **free data sources** (run with no brokerage login), **provider tool parity** (tool use on all three providers, with visible capability warnings), a **Decision Coach** that feeds prior theses / snapshot diffs / your track record / setup-cohort base rates / distilled lessons / measured eval calibration / semantic recall into the prompt, the **Prediction Ledger** (the AI's own auto-graded calls), the **Resident Analyst** (autonomous investigations + calibration-weighted routing + The Mirror), **semantic recall**, a daily **Morning Briefing**, a **forward earnings + macro calendar**, **overnight (pre-market) snapshots**, and a **calibration scorecard**. All of M14 has shipped, including **F3 COVERAGE** — a living, version-controlled per-ticker house view the AI revises with a reason. The **M15 Strategist** layer then adds an append-only market-regime reading, a daily whole-book risk X-ray, a multi-agent "war room" debate that streams over a thread, and an agentic anomaly-sweep desk.
 
 ## Features
 
@@ -128,6 +129,15 @@ Five features that turn the AI from a one-shot snapshot reader into a resident a
 - **Setup-cohort base rates + distilled lessons in the Coach** — the Coach injects the historical hit-rate of *past calls matching this setup* (same direction / sector — the outside view) and cross-ticker **distilled lessons** clustered from your post-mortems (`apps/lessons`), so a pattern from one ticker informs a brand-new one. Both read only decisive, completed post-mortems (look-ahead-safe).
 - **The Mirror** (`/mirror`) — the calibration engine turned inward: it grades *your* decision-making from your journal, theses, and outcomes ("you pass on winners," "high conviction isn't actually more accurate"), each signal drillable and hard-gated on sample size so thin history reads "insufficient," not a verdict.
 - **COVERAGE — a living house view** (`/coverage/:ticker`) — each covered ticker gets one persistent, version-controlled research note (stance, conviction, bull / bear case, key levels, what it's watching for) that the AI **revises with a reason** — behind a hysteresis gate, so a quiet day reaffirms rather than churns — instead of re-deriving it every snapshot. Every revision is an append-only audit row you can read to see *why* the view moved, and the observer auto-revises a name once you've started covering it.
+
+### The Strategist (M15)
+
+Where the Resident Analyst works one name at a time, the Strategist steps back to the **whole book and the market regime** — and convenes a structured debate before you commit.
+
+- **Market regime** (`/regime`) — an append-only series of market-regime readings (several axes collapsed into a composite), refreshed by the `regime.refresh` beat. The latest row is the current read that the Coach and the Desk key off.
+- **Book risk X-ray** (`/book`) — a daily whole-book risk reading: concentration (HHI), correlation clusters over stored OHLC, names near invalidation, regime fit, and a dollar **Value-at-Risk + factor-beta-to-`$SPX`** lens. Appended once a day by `book.snapshot_daily`.
+- **War Room** (`/warroom`) — convene a multi-agent "courtroom" debate (bull / bear / skeptic) on a thesis, coverage note, or book snapshot with one click; each persona streams live over its thread and the run resolves to a verdict.
+- **The Desk** (`/desk`) — an agentic anomaly sweep (`desk.sweep`) that runs detectors (price, options, breadth divergence, earnings proximity, regime change, book deterioration, stale coverage), investigates the top findings under a daily origination cap, and offers one-click follow-ups: convene a war room, revise coverage, or open a prefilled thesis.
 
 ### Observer — scheduled AI runs
 
@@ -292,6 +302,10 @@ Backend code lives under `backend/apps/<name>/` (imported as `apps.<name>`):
 - `predictions` · the AI's own auto-extracted, auto-resolving forecasts + invalidation alerts + thesis reconciliation (M13)
 - `lessons` · recurring post-mortem lessons distilled into the Coach (M14)
 - `coverage` · living, version-controlled per-ticker "house view" the AI revises with a reason (M14)
+- `regime` · append-only market-regime readings; the latest row is the current read (M15)
+- `book` · daily whole-book risk X-ray: concentration, correlation clusters, dollar VaR + factor-beta (M15)
+- `warroom` · multi-agent "courtroom" debate that spins up a thread and streams the personas (M15)
+- `desk` · agentic anomaly-sweep desk that can originate a finding into a thesis (M15)
 - `portfolio` · manual position tracking with realized / unrealized P&L, linked to the thesis behind each trade
 - `recall` · semantic + keyword search across all documents; pgvector embeddings index (feeds the Decision Coach)
 - `briefing` · daily Morning Briefing assembly + AI synthesis
