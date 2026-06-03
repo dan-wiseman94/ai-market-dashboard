@@ -67,13 +67,18 @@ fmt: ## Format backend (ruff) + frontend (prettier via eslint)
 	$(COMPOSE) exec -w /app web uv run ruff check --fix .
 
 .PHONY: lint
-lint: lint-backend lint-frontend ## Lint everything
+lint: lint-backend lint-imports lint-frontend ## Lint everything
 
 .PHONY: lint-backend
 lint-backend: ## ruff + ty (ruff scans repo root incl. e2e/, like CI)
 	$(COMPOSE) exec -w /app web uv run ruff check .
 	$(COMPOSE) exec -w /app web uv run ruff format --check .
 	$(COMPOSE) exec web uv run ty check .
+
+.PHONY: lint-imports
+lint-imports: ## Enforce architecture import contracts (import-linter)
+	# Runs from /app (where pyproject lives); PYTHONPATH=/app/backend keeps `apps` importable.
+	$(COMPOSE) exec -w /app web uv run lint-imports
 
 .PHONY: lint-frontend
 lint-frontend: ## eslint + tsc

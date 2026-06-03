@@ -45,6 +45,13 @@ pre-commit:
 
 pre-push:
   commands:
+    import-contracts:
+      run: |
+        if ! docker compose ps --status running --services | grep -qx web; then
+          echo "✗ 'web' container not running — start it with 'make dev' (or set LEFTHOOK=0 to skip)" >&2
+          exit 1
+        fi
+        docker compose exec -T -w /app web uv run lint-imports
     backend-tests:
       run: |
         if ! docker compose ps --status running --services | grep -qx web; then
