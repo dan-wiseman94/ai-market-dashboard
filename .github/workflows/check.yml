@@ -78,6 +78,11 @@ jobs:
         run: |
           set +o pipefail
           uv run mypy backend/apps backend/config | uv run mypy-baseline filter
+      - name: OpenAPI schema is current (drift gate)
+        # Regenerate and diff against the committed schema; any drift fails the build.
+        run: |
+          uv run python backend/manage.py spectacular --file /tmp/schema.yml --validate
+          diff -u backend/schema.yml /tmp/schema.yml
       - name: ty (type-check) — advisory while ty is pre-1.0 / lacks Django ORM modeling
         continue-on-error: true
         run: uv run ty check backend
