@@ -35,7 +35,9 @@ export default defineConfig({
         changeOrigin: true,
       },
       "/ws": {
-        target: "ws://web:8000",
+        // Internal Docker-network dev proxy (not exposed); the insecure-websocket rule
+        // is already excluded in .github/workflows/semgrep.yml.
+        target: "ws://web:8000", // nosemgrep
         ws: true,
         changeOrigin: true,
       },
@@ -49,7 +51,17 @@ export default defineConfig({
       provider: "v8",
       reporter: ["text", "html"],
       include: ["src/**/*.{ts,tsx}"],
-      exclude: ["src/__tests__/**", "src/main.tsx", "src/vite-env.d.ts", "src/router.tsx"],
+      exclude: [
+        "src/__tests__/**",
+        "src/main.tsx",
+        "src/vite-env.d.ts",
+        "src/router.tsx",
+        "src/api/schema.d.ts", // generated from the OpenAPI schema (gen:api)
+        "src/api/generated.ts", // type-only re-exports
+      ],
+      // Gate: floors set ~2% under measured (stmts 82 / branch 76 / funcs 80 / lines 84)
+      // on 2026-06-03; ratchet up over time.
+      thresholds: { statements: 80, branches: 74, functions: 77, lines: 82 },
     },
     projects: [
       {

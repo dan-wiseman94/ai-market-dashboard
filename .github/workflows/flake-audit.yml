@@ -74,3 +74,57 @@ jobs:
               body,
               labels: ['e2e', 'flake'],
             });
+
+  # Per-commit CI runs the unit suite in deterministic order (-p no:randomly). This
+  # nightly job runs it under pytest-randomly across several seeds to surface
+  # order-dependence (e.g. the residual run_ai async-streaming flake) without redding
+  # every commit. Informational (continue-on-error) — the order-dependent failures
+  # are tracked here, not gated per-commit.
+  unit-order-audit:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_DB: ai_dashboard
+          POSTGRES_USER: ai_dashboard
+          POSTGRES_PASSWORD: ci
+        options: >-
+          --health-cmd "pg_isready -U ai_dashboard"
+          --health-interval 3s --health-timeout 2s --health-retries 20
+        ports: ["5432:5432"]
+      redis:
+        image: redis:8-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 3s --health-timeout 2s --health-retries 10
+        ports: ["6379:6379"]
+    env:
+      DJANGO_SETTINGS_MODULE: config.settings.test
+      DJANGO_SECRET_KEY: ci-secret-key-not-used-in-prod
+      DJANGO_DEBUG: "1"
+      POSTGRES_DB: ai_dashboard
+      POSTGRES_USER: ai_dashboard
+      POSTGRES_PASSWORD: ci
+      POSTGRES_HOST: 127.0.0.1
+      POSTGRES_PORT: "5432"
+      REDIS_URL: redis://127.0.0.1:6379/0
+      CELERY_BROKER_URL: redis://127.0.0.1:6379/1
+      CELERY_RESULT_BACKEND: redis://127.0.0.1:6379/2
+      PYTHONPATH: backend
+    steps:
+      - uses: actions/checkout@v6
+      - run: sudo mkdir -p /data && sudo chmod 777 /data
+      - uses: astral-sh/setup-uv@v7
+        with:
+          version: "0.8"
+      - run: uv python install 3.13
+      - run: uv sync --frozen --dev
+      - name: Unit suite under randomized order (3 seeds, informational)
+        continue-on-error: true
+        run: |
+          for n in 1 2 3; do
+            echo "::group::randomized run $n"
+            uv run pytest -q -p randomly || echo "::warning::randomized run $n surfaced failures (order-dependence)"
+            echo "::endgroup::"
+          done

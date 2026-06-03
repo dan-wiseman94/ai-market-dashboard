@@ -175,6 +175,15 @@ forbidden_modules = [
 # fine even though it transitively pulls in fields/keys inside apps.secrets.
 allow_indirect_imports = true
 
+[tool.coverage.run]
+omit = ["*/migrations/*", "*/tests/*", "*/conftest.py"]
+
+[tool.coverage.report]
+# Gate: fail if total coverage drops below the floor. Measured 89.85% on 2026-06-03
+# (app code only — tests/migrations omitted); floor set ~2% under, to ratchet up over
+# time. Active whenever --cov runs from the repo root (CI), where this config is found.
+fail_under = 88
+
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "config.settings.test"
 python_files = ["test_*.py"]
