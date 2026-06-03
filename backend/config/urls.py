@@ -1,9 +1,14 @@
 from django.contrib import admin
 from django.urls import include, path, re_path
 from django.views.generic import TemplateView
+from drf_spectacular.views import SpectacularAPIView
 
 urlpatterns = [
     path("admin/", admin.site.urls),
+    # OpenAPI schema (drf-spectacular). Specific prefix BEFORE the generic api/ includes
+    # so it can't be swallowed (include-ordering landmine). Drives the schema drift gate
+    # + schemathesis fuzzing + generated frontend types.
+    path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path("api/", include("apps.core.urls")),
     path("api/schwab/", include("apps.secrets.urls")),
     path("api/market/", include("apps.market.urls")),

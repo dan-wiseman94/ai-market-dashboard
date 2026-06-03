@@ -25,6 +25,7 @@ INSTALLED_APPS = [
     # 3rd party
     "channels",
     "rest_framework",
+    "drf_spectacular",
     "corsheaders",
     "django_celery_beat",
     "django_structlog",
@@ -170,9 +171,20 @@ DATA_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024  # 5 MB
 SNAPSHOT_IMAGE_DIR = env.str("SNAPSHOT_IMAGE_DIR", default="/data/images")
 
 # DRF
-REST_FRAMEWORK = {
+# No throttling by design — single-user, 127.0.0.1-bound, AllowAny app (security model
+# is network isolation, not auth; see CLAUDE.md). Mirrors the csrf-exempt /
+# insecure-websocket rules already excluded in .github/workflows/semgrep.yml.
+REST_FRAMEWORK = {  # nosemgrep
     "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
     "DEFAULT_PARSER_CLASSES": ["rest_framework.parsers.JSONParser"],
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+}
+
+SPECTACULAR_SETTINGS = {
+    "TITLE": "Ledger API",
+    "DESCRIPTION": "Single-user AI trading dashboard — internal API.",
+    "VERSION": "0.4.0",
+    "SERVE_INCLUDE_SCHEMA": False,
 }
 
 # CORS (dev only — prod serves frontend same-origin)

@@ -38,6 +38,10 @@ makemigrations: ## Create Django migrations
 check-migrations: ## Fail if models changed without a migration
 	$(COMPOSE) exec web uv run python manage.py makemigrations --check --dry-run
 
+.PHONY: schema
+schema: ## Regenerate backend/schema.yml (OpenAPI) from the DRF views
+	$(COMPOSE) exec -w /app/backend web uv run python manage.py spectacular --file schema.yml --validate
+
 .PHONY: test
 test: test-backend test-frontend ## Run all tests
 

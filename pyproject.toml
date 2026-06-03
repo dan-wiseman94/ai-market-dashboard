@@ -31,6 +31,8 @@ dependencies = [
     "pandas-market-calendars>=4.4,<5.0",
     "pgvector>=0.3,<1.0",
     "fastembed>=0.4,<1.0",
+    "drf-spectacular>=0.28,<1.0",
+    "sentry-sdk[django,celery]>=2.0,<3.0",
 ]
 
 [dependency-groups]
@@ -55,6 +57,9 @@ dev = [
     "django-stubs[compatible-mypy]>=5.2",
     "djangorestframework-stubs[compatible-mypy]>=3.16",
     "mypy-baseline>=0.7,<1.0",
+    "schemathesis>=3.39,<5.0",
+    "nplusone>=1.0,<2.0",
+    "mutmut>=3.0,<4.0",
     "daphne>=4.2.1,<5.0",
 ]
 
