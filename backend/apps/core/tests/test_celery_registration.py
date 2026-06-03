@@ -16,7 +16,6 @@ silent failure these guards turn into a red test.  Failure modes covered:
 import importlib.util
 
 import pytest
-
 from config.celery import TASK_PACKAGES, app
 
 
