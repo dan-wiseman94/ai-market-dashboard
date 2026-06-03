@@ -1,14 +1,14 @@
 from django.core.exceptions import RequestDataTooBig
 from django.http import HttpResponse, JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_http_methods
+from rest_framework import mixins, viewsets
+from rest_framework.decorators import action
 
 # DRF's get_object_or_404 (not Django's) additionally maps TypeError/ValueError/
 # ValidationError to 404 — so a non-integer path id (e.g. /snapshots/null/diff/)
 # returns 404 instead of a 500 (caught by schemathesis fuzzing). See T7.
 from rest_framework.generics import get_object_or_404
-from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_http_methods
-from rest_framework import mixins, viewsets
-from rest_framework.decorators import action
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.response import Response
 
