@@ -53,6 +53,11 @@ jobs:
         # `-m 'not integration'` addopts. -n 2 is safe now that the seed ladder
         # serializes via a Postgres advisory lock (see e2e/conftest.py).
         run: docker compose -f compose.yaml -f compose.e2e.yaml exec -T --workdir /app web uv run pytest e2e/api/ -n 2 -m integration -v
+      - name: schemathesis — no endpoint 5xx-crashes under fuzzing
+        # MOCK_EXTERNAL is on in the e2e overlay, so fuzzing every method is safe.
+        # -c not_a_server_error: gate on crashes (real bugs), not strict response-schema
+        # conformance (noisy against drf-spectacular's graceful-fallback schemas).
+        run: docker compose -f compose.yaml -f compose.e2e.yaml exec -T --workdir /app web uv run schemathesis run http://localhost:8000/api/schema/ -u http://localhost:8000 -c not_a_server_error -n 6
       - name: Run e2e/ui suite
         # Must exec in `worker` (carries the chromium playwright build), with --workdir /app
         # so pytest sees the repo-root layout (web's WORKDIR is /app/backend), and -m integration
