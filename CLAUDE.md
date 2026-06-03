@@ -20,8 +20,13 @@ Everything runs through Docker; Make targets wrap Compose.
 | `make shell` | Bash in the `web` container. Useful for ad-hoc `manage.py` commands. |
 | `make migrate` / `make makemigrations` | Django migrations inside `web`. |
 | `make test` | `pytest` in `web` + `vitest --run` in `frontend`. |
-| `make lint` | `ruff check .` + `ruff format --check .` + `ty check .` in `web` + `pnpm run lint` in `frontend`. |
-| `make check` | `lint` + `test` (what CI runs). |
+| `make lint` | `ruff` + `ty` (advisory) + **`lint-imports`** (import-linter contracts) + **`typecheck`** (mypy, baseline-ratchet) in `web` + `pnpm run lint` in `frontend`. |
+| `make check` | `lint` + `test` (what CI runs; CI runs the test suite with `-p no:randomly` — see Testing). |
+| `make check-migrations` | Fail if a model changed without a migration (`makemigrations --check`). |
+| `make lint-imports` / `make typecheck` | import-linter architecture contracts / ORM-aware mypy gated against `mypy-baseline.txt`. |
+| `make schema` | Regenerate `backend/schema.yml` (OpenAPI, drf-spectacular). FE types: `pnpm gen:api`. |
+| `make e2e-schemathesis` | Fuzz every endpoint for 5xx crashes (under `MOCK_EXTERNAL`). |
+| `make mutate` | Mutation-test the money paths (mutmut; slow, nightly in CI). |
 | `make logs s=<service>` | Tail a service. Services: `web`, `worker`, `beat`, `redis`, `db`, `frontend`. |
 | `make down` | Stop and remove containers (volumes kept). |
 | `make prod` | Dev + prod compose overlay — frontend baked in, served by Django/Whitenoise on `:8000`. |
@@ -158,6 +163,16 @@ Grouped by area. The **landmines** (silent failures you'd otherwise miss) are th
 - **Integration**: real Postgres via testcontainers (or CI services), `fakeredis`, Celery eager (`CELERY_TASK_ALWAYS_EAGER=True`). External APIs mocked at the SDK boundary with `respx` or `vcrpy`.
 - **E2E**: six lanes under `e2e/` driving the full compose stack (overlay `MOCK_EXTERNAL=true`) — `ui` (Playwright journeys), `api` (httpx contract), `ws` (Channels events), `visual` (screenshot diffs), `a11y` (axe-core), `perf` (Lighthouse budgets, prod overlay). Design: `docs/superpowers/specs/2026-04-18-e2e-comprehensive-design.md`.
 - **Frontend**: `vitest` + `@testing-library/react`. Do not duplicate E2E there.
+
+### Quality gates (CI) — landmines
+
+- **Architecture contracts** (`import-linter`, `[tool.importlinter]`): concrete AI providers (`apps.ai.providers.{claude,openai,local}`) are private to `apps.ai` (use `get_provider`/router); low-level crypto (`apps.secrets.{fields,keys}`) is private to `apps.secrets`. A *direct* import from elsewhere fails CI.
+- **mypy is a real gate via a baseline ratchet** (`mypy` + `django-stubs`, `mypy-baseline.txt`): CI fails on any *new* error; the legacy backlog is baselined. `ty` stays as the fast advisory local checker. `strict_settings=false` (django-environ).
+- **OpenAPI contract**: `backend/schema.yml` (drf-spectacular) is committed + drift-gated; `frontend/src/api/schema.d.ts` is generated (`pnpm gen:api`) + drift-gated — the single source for the `*_id` contract. `schemathesis` fuzzes every endpoint for 5xx under `MOCK_EXTERNAL` (e2e lane).
+- **Coverage floors** (ratchet up): backend `[tool.coverage] fail_under=88`; frontend vitest thresholds 80/74/77/82. **mutation** (`mutmut`) runs nightly on the money paths (non-gate).
+- **Property tests** (`Hypothesis`) cover the DSL evaluator / token budget / cost calc / market-hours. **`gitleaks`** scans staged commits + CI history.
+- **Determinism + flakes** (landmine): `pytest-randomly` runs locally + nightly (`flake-audit.yml`), but the **per-commit gate (CI + pre-push) runs `-p no:randomly`** (definition order) so order-dependence can't red it. Tests use **`config.settings.test`** (InMemory channel layer) and **`backend/conftest.py`** autouse fixtures reset the calendar-resolution cache + channel-layer backends and set Hypothesis `deadline=None` — keep these; they fix real cross-test state leaks. **Known residual:** the `run_ai` async-streaming tests flake ~1/8 under random order (deep `asyncio.run()`/event-loop interaction) — tracked by the nightly audit, not yet root-fixed.
+- **Sentry** is opt-in (`SENTRY_DSN` empty → no-op).
 
 Tests are expected to pass before commit. `make check` gates CI.
 

@@ -1,0 +1,67 @@
+name: mutation
+
+# Mutation testing is slow, so it runs nightly (and on demand), never as a PR gate.
+# Surviving mutants on the money paths (ai/cost, ai/catalog, market/returns,
+# thesis/postmortem) flag weak test assertions to investigate. Informational only.
+on:
+  schedule:
+    - cron: "0 5 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  mutmut:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_DB: ai_dashboard
+          POSTGRES_USER: ai_dashboard
+          POSTGRES_PASSWORD: ci
+        options: >-
+          --health-cmd "pg_isready -U ai_dashboard"
+          --health-interval 3s --health-timeout 2s --health-retries 20
+        ports: ["5432:5432"]
+      redis:
+        image: redis:8-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 3s --health-timeout 2s --health-retries 10
+        ports: ["6379:6379"]
+    env:
+      DJANGO_SETTINGS_MODULE: config.settings.test
+      DJANGO_SECRET_KEY: ci-secret-key-not-used-in-prod
+      DJANGO_DEBUG: "1"
+      POSTGRES_DB: ai_dashboard
+      POSTGRES_USER: ai_dashboard
+      POSTGRES_PASSWORD: ci
+      POSTGRES_HOST: 127.0.0.1
+      POSTGRES_PORT: "5432"
+      REDIS_URL: redis://127.0.0.1:6379/0
+      CELERY_BROKER_URL: redis://127.0.0.1:6379/1
+      CELERY_RESULT_BACKEND: redis://127.0.0.1:6379/2
+      PYTHONPATH: backend
+    steps:
+      - uses: actions/checkout@v6
+      - run: sudo mkdir -p /data && sudo chmod 777 /data
+      - uses: astral-sh/setup-uv@v7
+        with:
+          version: "0.8"
+      - run: uv python install 3.13
+      - run: uv sync --frozen --dev
+      - name: mutmut run (money paths) — informational
+        run: uv run mutmut run || true
+      - name: mutmut results
+        if: always()
+        run: uv run mutmut results
+      - name: Archive mutmut state
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: mutmut-results
+          path: mutants/
+          retention-days: 14

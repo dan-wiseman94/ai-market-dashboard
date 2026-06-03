@@ -1,0 +1,17 @@
+title = "ledger gitleaks config"
+
+# Extend the built-in ruleset (AWS keys, GitHub/Slack tokens, private keys, etc.).
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Non-secret templates + test fixtures (no real credentials live here)"
+# Regexes matched against file paths. .env (real secrets) is NOT allowlisted — only
+# the committed template and the mock/fixture trees that intentionally carry fake keys.
+paths = [
+  '''\.env\.example$''',
+  '''(^|/)tests?/''',
+  '''(^|/)mocks?/''',
+  '''^e2e/''',
+  '''(^|/)__screenshots__/''',
+]

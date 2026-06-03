@@ -1,10 +1,14 @@
 from django.core.exceptions import RequestDataTooBig
 from django.http import HttpResponse, JsonResponse
-from django.shortcuts import get_object_or_404
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from rest_framework import mixins, viewsets
 from rest_framework.decorators import action
+
+# DRF's get_object_or_404 (not Django's) additionally maps TypeError/ValueError/
+# ValidationError to 404 — so a non-integer path id (e.g. /snapshots/null/diff/)
+# returns 404 instead of a 500 (caught by schemathesis fuzzing). See T7.
+from rest_framework.generics import get_object_or_404
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.response import Response
 
@@ -184,7 +188,9 @@ class SnapshotViewSet(
         if against_id:
             try:
                 prev = Snapshot.objects.prefetch_related("sections").get(id=against_id)
-            except Snapshot.DoesNotExist:
+            except (Snapshot.DoesNotExist, ValueError, TypeError):
+                # ValueError/TypeError: a non-integer `against` (e.g. "null") fails the
+                # PK cast — treat as not-found rather than letting it 500.
                 return Response({"code": "not_found"}, status=404)
         else:
             prev = previous_snapshot_for(curr)
@@ -196,7 +202,9 @@ class SnapshotViewSet(
         return Response({"delta": delta, "prev_id": prev.id, "curr_id": curr.id})
 
 
-@csrf_exempt
+# Intentional — image upload under the network-isolation model (CLAUDE.md); the
+# csrf-exempt rule is already excluded in .github/workflows/semgrep.yml.
+@csrf_exempt  # nosemgrep
 @require_http_methods(["GET", "POST"])
 def images_collection(request):
     if request.method == "POST":

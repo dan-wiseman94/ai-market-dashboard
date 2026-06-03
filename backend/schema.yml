@@ -1,0 +1,5829 @@
+openapi: 3.0.3
+info:
+  title: Ledger API
+  version: 0.4.0
+  description: Single-user AI trading dashboard — internal API.
+paths:
+  /api/aieval/runs/:
+    get:
+      operationId: aieval_runs_list
+      tags:
+      - aieval
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EvalRun'
+          description: ''
+  /api/aieval/runs/latest/:
+    get:
+      operationId: aieval_runs_latest_retrieve
+      tags:
+      - aieval
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /api/analytics/ai-calibration/:
+    get:
+      operationId: analytics_ai_calibration_retrieve
+      description: Live calibration of the AI's own resolved predictions (M13 F3).
+      tags:
+      - analytics
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /api/analytics/ai-calibration/drilldown/:
+    get:
+      operationId: analytics_ai_calibration_drilldown_retrieve
+      description: The resolved predictions behind an AI-calibration band/slice.
+      tags:
+      - analytics
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /api/analytics/calibration/:
+    get:
+      operationId: analytics_calibration_retrieve
+      tags:
+      - analytics
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /api/analytics/calibration/drilldown/:
+    get:
+      operationId: analytics_calibration_drilldown_retrieve
+      description: The theses behind a calibration bucket (scorecard drill-down).
+      tags:
+      - analytics
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /api/analytics/cost-per-insight/:
+    get:
+      operationId: analytics_cost_per_insight_retrieve
+      tags:
+      - analytics
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /api/analytics/leaderboard/:
+    get:
+      operationId: analytics_leaderboard_retrieve
+      tags:
+      - analytics
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /api/analytics/observer-timeline/:
+    get:
+      operationId: analytics_observer_timeline_retrieve
+      tags:
+      - analytics
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /api/analytics/track-record/:
+    get:
+      operationId: analytics_track_record_retrieve
+      tags:
+      - analytics
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /api/analytics/trader-calibration/:
+    get:
+      operationId: analytics_trader_calibration_retrieve
+      description: |-
+        M14 F4 "The Mirror" — grades the TRADER's own behavior from journal + thesis
+        + post-mortem data. `?horizon=` (7/30/90, default 30).
+      tags:
+      - analytics
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /api/analytics/trigger-heatmap/:
+    get:
+      operationId: analytics_trigger_heatmap_retrieve
+      tags:
+      - analytics
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /api/analytics/unusual-options/:
+    get:
+      operationId: analytics_unusual_options_retrieve
+      tags:
+      - analytics
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /api/backups/:
+    get:
+      operationId: backups_list
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - backups
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedBackupRecordList'
+          description: ''
+    post:
+      operationId: backups_create
+      tags:
+      - backups
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BackupRecord'
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BackupRecord'
+          description: ''
+  /api/backups/{id}/:
+    get:
+      operationId: backups_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this backup record.
+        required: true
+      tags:
+      - backups
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BackupRecord'
+          description: ''
+    delete:
+      operationId: backups_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this backup record.
+        required: true
+      tags:
+      - backups
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '204':
+          description: No response body
+  /api/backups/{id}/download/:
+    get:
+      operationId: backups_download_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this backup record.
+        required: true
+      tags:
+      - backups
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BackupRecord'
+          description: ''
+  /api/backups/run/:
+    post:
+      operationId: backups_run_create
+      tags:
+      - backups
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BackupRecord'
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BackupRecord'
+          description: ''
+  /api/book/:
+    get:
+      operationId: book_list
+      tags:
+      - book
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BookSnapshot'
+          description: ''
+  /api/book/{id}/:
+    get:
+      operationId: book_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this book snapshot.
+        required: true
+      tags:
+      - book
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookSnapshot'
+          description: ''
+  /api/book/current/:
+    get:
+      operationId: book_current_retrieve
+      tags:
+      - book
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookSnapshot'
+          description: ''
+  /api/book/recompute/:
+    post:
+      operationId: book_recompute_create
+      tags:
+      - book
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BookSnapshot'
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookSnapshot'
+          description: ''
+  /api/briefings/:
+    get:
+      operationId: briefings_list
+      tags:
+      - briefings
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BriefingRun'
+          description: ''
+  /api/briefings/config/:
+    get:
+      operationId: briefings_config_retrieve
+      tags:
+      - briefings
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BriefingConfig'
+          description: ''
+    patch:
+      operationId: briefings_config_partial_update
+      tags:
+      - briefings
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedBriefingConfig'
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BriefingConfig'
+          description: ''
+  /api/briefings/latest/:
+    get:
+      operationId: briefings_latest_retrieve
+      tags:
+      - briefings
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /api/briefings/run/:
+    post:
+      operationId: briefings_run_create
+      tags:
+      - briefings
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /api/coverage/:
+    get:
+      operationId: coverage_list
+      description: Read the per-ticker house views; trigger a manual revision.
+      tags:
+      - coverage
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CoverageNote'
+          description: ''
+  /api/coverage/{ticker}/:
+    get:
+      operationId: coverage_retrieve
+      description: Read the per-ticker house views; trigger a manual revision.
+      parameters:
+      - in: path
+        name: ticker
+        schema:
+          type: string
+        required: true
+      tags:
+      - coverage
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CoverageNoteDetail'
+          description: ''
+  /api/coverage/{ticker}/revise/:
+    post:
+      operationId: coverage_revise_create
+      description: Read the per-ticker house views; trigger a manual revision.
+      parameters:
+      - in: path
+        name: ticker
+        schema:
+          type: string
+        required: true
+      tags:
+      - coverage
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CoverageNote'
+        required: true
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CoverageNote'
+          description: ''
+  /api/dashboard/:
+    get:
+      operationId: dashboard_retrieve
+      tags:
+      - dashboard
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /api/desk/:
+    get:
+      operationId: desk_list
+      tags:
+      - desk
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DeskEntry'
+          description: ''
+  /api/desk/{id}/:
+    get:
+      operationId: desk_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this desk entry.
+        required: true
+      tags:
+      - desk
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeskEntry'
+          description: ''
+  /api/desk/{id}/act/:
+    post:
+      operationId: desk_act_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this desk entry.
+        required: true
+      tags:
+      - desk
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeskEntry'
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeskEntry'
+          description: ''
+  /api/desk/{id}/dismiss/:
+    post:
+      operationId: desk_dismiss_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this desk entry.
+        required: true
+      tags:
+      - desk
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeskEntry'
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeskEntry'
+          description: ''
+  /api/desk/sweep/:
+    post:
+      operationId: desk_sweep_create
+      tags:
+      - desk
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeskEntry'
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeskEntry'
+          description: ''
+  /api/errors/:
+    get:
+      operationId: errors_retrieve
+      description: |-
+        GET /api/errors/ — list recent ErrorEvents newest-first.
+
+        Query params:
+          ?unresolved=true   — filter to unresolved only
+          ?limit=N           — cap result count (default 50, max 200)
+      tags:
+      - errors
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /api/errors/{id}/resolve/:
+    post:
+      operationId: errors_resolve_create
+      description: POST /api/errors/<pk>/resolve/ — mark an ErrorEvent resolved.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - errors
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /api/export/:
+    get:
+      operationId: export_list
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - export
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedExportJobList'
+          description: ''
+    post:
+      operationId: export_create
+      tags:
+      - export
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExportJob'
+        required: true
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportJob'
+          description: ''
+  /api/export/{id}/:
+    get:
+      operationId: export_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this export job.
+        required: true
+      tags:
+      - export
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportJob'
+          description: ''
+    delete:
+      operationId: export_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this export job.
+        required: true
+      tags:
+      - export
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '204':
+          description: No response body
+  /api/export/{id}/download/:
+    get:
+      operationId: export_download_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this export job.
+        required: true
+      tags:
+      - export
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportJob'
+          description: ''
+  /api/export/thread/{thread_id}/:
+    post:
+      operationId: export_thread_create
+      parameters:
+      - in: path
+        name: thread_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - export
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /api/files/:
+    get:
+      operationId: files_list
+      tags:
+      - files
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserFile'
+          description: ''
+    post:
+      operationId: files_create
+      tags:
+      - files
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UserFile'
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserFile'
+          description: ''
+  /api/files/{id}/:
+    get:
+      operationId: files_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this user file.
+        required: true
+      tags:
+      - files
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserFile'
+          description: ''
+    delete:
+      operationId: files_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this user file.
+        required: true
+      tags:
+      - files
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '204':
+          description: No response body
+  /api/journal/:
+    get:
+      operationId: journal_list
+      description: |-
+        Create and list decision journal entries.
+
+        Create: POST /api/journal/  {thread_id, decision, note?, thesis_id?, snapshot_id?}
+        List:   GET  /api/journal/?thread=<id>   (filter by thread; omit for all entries)
+      tags:
+      - journal
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/JournalEntry'
+          description: ''
+    post:
+      operationId: journal_create
+      description: |-
+        Create and list decision journal entries.
+
+        Create: POST /api/journal/  {thread_id, decision, note?, thesis_id?, snapshot_id?}
+        List:   GET  /api/journal/?thread=<id>   (filter by thread; omit for all entries)
+      tags:
+      - journal
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/JournalEntry'
+        required: true
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JournalEntry'
+          description: ''
+  /api/lessons/:
+    get:
+      operationId: lessons_list
+      description: Read + prune/mute the distilled lessons — the hygiene surface for
+        M14 F2.
+      tags:
+      - lessons
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Lesson'
+          description: ''
+  /api/lessons/{id}/:
+    put:
+      operationId: lessons_update
+      description: Read + prune/mute the distilled lessons — the hygiene surface for
+        M14 F2.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this lesson.
+        required: true
+      tags:
+      - lessons
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Lesson'
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Lesson'
+          description: ''
+    patch:
+      operationId: lessons_partial_update
+      description: Read + prune/mute the distilled lessons — the hygiene surface for
+        M14 F2.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this lesson.
+        required: true
+      tags:
+      - lessons
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedLesson'
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Lesson'
+          description: ''
+    delete:
+      operationId: lessons_destroy
+      description: Read + prune/mute the distilled lessons — the hygiene surface for
+        M14 F2.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this lesson.
+        required: true
+      tags:
+      - lessons
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '204':
+          description: No response body
+  /api/market/calendar-overrides/:
+    get:
+      operationId: market_calendar_overrides_list
+      tags:
+      - market
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CalendarOverride'
+          description: ''
+    post:
+      operationId: market_calendar_overrides_create
+      tags:
+      - market
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CalendarOverride'
+        required: true
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CalendarOverride'
+          description: ''
+  /api/market/calendar-overrides/{id}/:
+    get:
+      operationId: market_calendar_overrides_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this calendar override.
+        required: true
+      tags:
+      - market
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CalendarOverride'
+          description: ''
+    put:
+      operationId: market_calendar_overrides_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this calendar override.
+        required: true
+      tags:
+      - market
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CalendarOverride'
+        required: true
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CalendarOverride'
+          description: ''
+    patch:
+      operationId: market_calendar_overrides_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this calendar override.
+        required: true
+      tags:
+      - market
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedCalendarOverride'
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CalendarOverride'
+          description: ''
+    delete:
+      operationId: market_calendar_overrides_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this calendar override.
+        required: true
+      tags:
+      - market
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '204':
+          description: No response body
+  /api/observer/notifications/:
+    get:
+      operationId: observer_notifications_list
+      tags:
+      - observer
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Notification'
+          description: ''
+  /api/observer/notifications/{id}/:
+    get:
+      operationId: observer_notifications_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this notification.
+        required: true
+      tags:
+      - observer
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Notification'
+          description: ''
+  /api/observer/notifications/{id}/read/:
+    post:
+      operationId: observer_notifications_read_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this notification.
+        required: true
+      tags:
+      - observer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Notification'
+        required: true
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Notification'
+          description: ''
+  /api/observer/notifications/mark-all-read/:
+    post:
+      operationId: observer_notifications_mark_all_read_create
+      tags:
+      - observer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Notification'
+        required: true
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Notification'
+          description: ''
+  /api/observer/schedules/:
+    get:
+      operationId: observer_schedules_list
+      tags:
+      - observer
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ObserverSchedule'
+          description: ''
+    post:
+      operationId: observer_schedules_create
+      tags:
+      - observer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ObserverSchedule'
+        required: true
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ObserverSchedule'
+          description: ''
+  /api/observer/schedules/{id}/:
+    get:
+      operationId: observer_schedules_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this observer schedule.
+        required: true
+      tags:
+      - observer
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ObserverSchedule'
+          description: ''
+    put:
+      operationId: observer_schedules_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this observer schedule.
+        required: true
+      tags:
+      - observer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ObserverSchedule'
+        required: true
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ObserverSchedule'
+          description: ''
+    patch:
+      operationId: observer_schedules_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this observer schedule.
+        required: true
+      tags:
+      - observer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedObserverSchedule'
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ObserverSchedule'
+          description: ''
+    delete:
+      operationId: observer_schedules_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this observer schedule.
+        required: true
+      tags:
+      - observer
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '204':
+          description: No response body
+  /api/observer/schedules/{id}/run-now/:
+    post:
+      operationId: observer_schedules_run_now_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this observer schedule.
+        required: true
+      tags:
+      - observer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ObserverSchedule'
+        required: true
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ObserverSchedule'
+          description: ''
+  /api/portfolio/positions/:
+    get:
+      operationId: portfolio_positions_list
+      description: |-
+        CRUD + close action for manually maintained positions.
+
+        Filters:
+          ?status=open|closed
+          ?ticker=NVDA
+          ?thesis=<id>
+      tags:
+      - portfolio
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Position'
+          description: ''
+    post:
+      operationId: portfolio_positions_create
+      description: |-
+        CRUD + close action for manually maintained positions.
+
+        Filters:
+          ?status=open|closed
+          ?ticker=NVDA
+          ?thesis=<id>
+      tags:
+      - portfolio
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Position'
+        required: true
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Position'
+          description: ''
+  /api/portfolio/positions/{id}/:
+    get:
+      operationId: portfolio_positions_retrieve
+      description: |-
+        CRUD + close action for manually maintained positions.
+
+        Filters:
+          ?status=open|closed
+          ?ticker=NVDA
+          ?thesis=<id>
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this position.
+        required: true
+      tags:
+      - portfolio
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Position'
+          description: ''
+    put:
+      operationId: portfolio_positions_update
+      description: |-
+        CRUD + close action for manually maintained positions.
+
+        Filters:
+          ?status=open|closed
+          ?ticker=NVDA
+          ?thesis=<id>
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this position.
+        required: true
+      tags:
+      - portfolio
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Position'
+        required: true
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Position'
+          description: ''
+    patch:
+      operationId: portfolio_positions_partial_update
+      description: |-
+        CRUD + close action for manually maintained positions.
+
+        Filters:
+          ?status=open|closed
+          ?ticker=NVDA
+          ?thesis=<id>
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this position.
+        required: true
+      tags:
+      - portfolio
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedPosition'
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Position'
+          description: ''
+    delete:
+      operationId: portfolio_positions_destroy
+      description: |-
+        CRUD + close action for manually maintained positions.
+
+        Filters:
+          ?status=open|closed
+          ?ticker=NVDA
+          ?thesis=<id>
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this position.
+        required: true
+      tags:
+      - portfolio
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '204':
+          description: No response body
+  /api/portfolio/positions/{id}/close/:
+    post:
+      operationId: portfolio_positions_close_create
+      description: |-
+        Close a position.
+
+        Body:
+          close_price  (required) — Decimal string or number
+          closed_at    (optional) — ISO 8601 datetime string; defaults to now
+
+        Sets status="closed", close_price, closed_at, realized_pnl (computed).
+        Returns the updated row.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this position.
+        required: true
+      tags:
+      - portfolio
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Position'
+        required: true
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Position'
+          description: ''
+  /api/predictions/ai-view/:
+    get:
+      operationId: predictions_ai_view_retrieve
+      description: |-
+        The AI's current live call on a ticker, optionally reconciled against a
+        thesis direction (``?against=bullish``). Powers the thesis-detail tile (F7).
+      tags:
+      - predictions
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /api/predictions/divergences/:
+    get:
+      operationId: predictions_divergences_retrieve
+      description: |-
+        Open theses that conflict with the AI's current call — the dashboard
+        divergence rollup (F7). ``?partial=false`` to show only hard diverges.
+      tags:
+      - predictions
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /api/presets/:
+    get:
+      operationId: presets_list
+      tags:
+      - presets
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AgentPreset'
+          description: ''
+    post:
+      operationId: presets_create
+      tags:
+      - presets
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AgentPreset'
+        required: true
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentPreset'
+          description: ''
+  /api/presets/{id}/:
+    get:
+      operationId: presets_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this agent preset.
+        required: true
+      tags:
+      - presets
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentPreset'
+          description: ''
+    put:
+      operationId: presets_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this agent preset.
+        required: true
+      tags:
+      - presets
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AgentPreset'
+        required: true
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentPreset'
+          description: ''
+    patch:
+      operationId: presets_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this agent preset.
+        required: true
+      tags:
+      - presets
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedAgentPreset'
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentPreset'
+          description: ''
+    delete:
+      operationId: presets_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this agent preset.
+        required: true
+      tags:
+      - presets
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '204':
+          description: No response body
+  /api/profiles/:
+    get:
+      operationId: profiles_list
+      tags:
+      - profiles
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TradingProfile'
+          description: ''
+    post:
+      operationId: profiles_create
+      tags:
+      - profiles
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TradingProfile'
+        required: true
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TradingProfile'
+          description: ''
+  /api/profiles/{id}/:
+    get:
+      operationId: profiles_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this trading profile.
+        required: true
+      tags:
+      - profiles
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TradingProfile'
+          description: ''
+    put:
+      operationId: profiles_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this trading profile.
+        required: true
+      tags:
+      - profiles
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TradingProfile'
+        required: true
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TradingProfile'
+          description: ''
+    patch:
+      operationId: profiles_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this trading profile.
+        required: true
+      tags:
+      - profiles
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedTradingProfile'
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TradingProfile'
+          description: ''
+    delete:
+      operationId: profiles_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this trading profile.
+        required: true
+      tags:
+      - profiles
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '204':
+          description: No response body
+  /api/recall/:
+    get:
+      operationId: recall_retrieve
+      tags:
+      - recall
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /api/recall/related/:
+    get:
+      operationId: recall_related_retrieve
+      tags:
+      - recall
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /api/recall/status/:
+    get:
+      operationId: recall_status_retrieve
+      tags:
+      - recall
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /api/regime/:
+    get:
+      operationId: regime_list
+      description: GET /api/regime/ (history), /current/ (latest or null), POST /refresh/.
+      tags:
+      - regime
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RegimeReading'
+          description: ''
+  /api/regime/{id}/:
+    get:
+      operationId: regime_retrieve
+      description: GET /api/regime/ (history), /current/ (latest or null), POST /refresh/.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this regime reading.
+        required: true
+      tags:
+      - regime
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegimeReading'
+          description: ''
+  /api/regime/current/:
+    get:
+      operationId: regime_current_retrieve
+      description: GET /api/regime/ (history), /current/ (latest or null), POST /refresh/.
+      tags:
+      - regime
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegimeReading'
+          description: ''
+  /api/regime/refresh/:
+    post:
+      operationId: regime_refresh_create
+      description: GET /api/regime/ (history), /current/ (latest or null), POST /refresh/.
+      tags:
+      - regime
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegimeReading'
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegimeReading'
+          description: ''
+  /api/schwab/providers/:
+    get:
+      operationId: schwab_providers_list
+      tags:
+      - schwab
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProviderConfig'
+          description: ''
+    post:
+      operationId: schwab_providers_create
+      tags:
+      - schwab
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProviderConfig'
+        required: true
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProviderConfig'
+          description: ''
+  /api/schwab/providers/{provider}/:
+    get:
+      operationId: schwab_providers_retrieve
+      parameters:
+      - in: path
+        name: provider
+        schema:
+          enum:
+          - claude
+          - openai
+          - local
+          type: string
+          description: |-
+            * `claude` - Anthropic Claude
+            * `openai` - OpenAI
+            * `local` - Local (OpenAI-compatible)
+        required: true
+      tags:
+      - schwab
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProviderConfig'
+          description: ''
+    put:
+      operationId: schwab_providers_update
+      parameters:
+      - in: path
+        name: provider
+        schema:
+          enum:
+          - claude
+          - openai
+          - local
+          type: string
+          description: |-
+            * `claude` - Anthropic Claude
+            * `openai` - OpenAI
+            * `local` - Local (OpenAI-compatible)
+        required: true
+      tags:
+      - schwab
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProviderConfig'
+        required: true
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProviderConfig'
+          description: ''
+    patch:
+      operationId: schwab_providers_partial_update
+      parameters:
+      - in: path
+        name: provider
+        schema:
+          enum:
+          - claude
+          - openai
+          - local
+          type: string
+          description: |-
+            * `claude` - Anthropic Claude
+            * `openai` - OpenAI
+            * `local` - Local (OpenAI-compatible)
+        required: true
+      tags:
+      - schwab
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedProviderConfig'
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProviderConfig'
+          description: ''
+    delete:
+      operationId: schwab_providers_destroy
+      parameters:
+      - in: path
+        name: provider
+        schema:
+          enum:
+          - claude
+          - openai
+          - local
+          type: string
+          description: |-
+            * `claude` - Anthropic Claude
+            * `openai` - OpenAI
+            * `local` - Local (OpenAI-compatible)
+        required: true
+      tags:
+      - schwab
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '204':
+          description: No response body
+  /api/schwab/providers/{provider}/probe/:
+    post:
+      operationId: schwab_providers_probe_create
+      description: |-
+        List models from the endpoint — also a reachability/compat test.
+
+        Persists any base_url/api_key in the body first, so the stored
+        model list always corresponds to the saved endpoint.
+      parameters:
+      - in: path
+        name: provider
+        schema:
+          enum:
+          - claude
+          - openai
+          - local
+          type: string
+          description: |-
+            * `claude` - Anthropic Claude
+            * `openai` - OpenAI
+            * `local` - Local (OpenAI-compatible)
+        required: true
+      tags:
+      - schwab
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProviderConfig'
+        required: true
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProviderConfig'
+          description: ''
+  /api/settings/:
+    get:
+      operationId: settings_retrieve
+      description: |-
+        GET/PATCH /api/settings/ — runtime-tunable knobs (retention, AI resilience/failover,
+        observer cache, scheduled eval). GET returns the resolved *effective* values (UI override
+        where set, else the env/settings default). PATCH writes explicit overrides; values take
+        effect on the next task run / request — no worker/beat restart.
+      tags:
+      - settings
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+    patch:
+      operationId: settings_partial_update
+      description: |-
+        GET/PATCH /api/settings/ — runtime-tunable knobs (retention, AI resilience/failover,
+        observer cache, scheduled eval). GET returns the resolved *effective* values (UI override
+        where set, else the env/settings default). PATCH writes explicit overrides; values take
+        effect on the next task run / request — no worker/beat restart.
+      tags:
+      - settings
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /api/snapshots/:
+    get:
+      operationId: snapshots_list
+      parameters:
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      tags:
+      - snapshots
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedSnapshotListList'
+          description: ''
+    post:
+      operationId: snapshots_create
+      tags:
+      - snapshots
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Snapshot'
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Snapshot'
+          description: ''
+  /api/snapshots/{id}/:
+    get:
+      operationId: snapshots_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this snapshot.
+        required: true
+      tags:
+      - snapshots
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Snapshot'
+          description: ''
+  /api/snapshots/{id}/diff/:
+    get:
+      operationId: snapshots_diff_retrieve
+      description: |-
+        GET /api/snapshots/<id>/diff/?against=<other_id>
+
+        Returns {delta: <markdown>, prev_id, curr_id}. When `against` is
+        omitted, auto-selects the most-recent prior ready snapshot sharing
+        the same primary_ticker. Returns {code: no_prior} 400 when none.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this snapshot.
+        required: true
+      tags:
+      - snapshots
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Snapshot'
+          description: ''
+  /api/snapshots/{id}/explain-diff/:
+    post:
+      operationId: snapshots_explain_diff_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this snapshot.
+        required: true
+      tags:
+      - snapshots
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Snapshot'
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Snapshot'
+          description: ''
+  /api/snapshots/timeline/:
+    get:
+      operationId: snapshots_timeline_retrieve
+      description: |-
+        GET /api/snapshots/timeline/?ticker=NVDA — ready snapshots for one ticker,
+        oldest->newest, each with headline_delta_pct (primary-ticker last % vs the prior node).
+      tags:
+      - snapshots
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Snapshot'
+          description: ''
+  /api/theses/:
+    get:
+      operationId: theses_list
+      tags:
+      - theses
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Thesis'
+          description: ''
+    post:
+      operationId: theses_create
+      tags:
+      - theses
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Thesis'
+        required: true
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Thesis'
+          description: ''
+  /api/theses/{id}/:
+    get:
+      operationId: theses_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this thesis.
+        required: true
+      tags:
+      - theses
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Thesis'
+          description: ''
+    put:
+      operationId: theses_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this thesis.
+        required: true
+      tags:
+      - theses
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Thesis'
+        required: true
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Thesis'
+          description: ''
+    patch:
+      operationId: theses_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this thesis.
+        required: true
+      tags:
+      - theses
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedThesis'
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Thesis'
+          description: ''
+    delete:
+      operationId: theses_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this thesis.
+        required: true
+      tags:
+      - theses
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '204':
+          description: No response body
+  /api/theses/{id}/close/:
+    post:
+      operationId: theses_close_create
+      description: |-
+        Close or invalidate the thesis.
+
+        Body: {status: "closed_win"|"closed_loss"|"closed_scratch"|"invalidated",
+               close_note?: str}
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this thesis.
+        required: true
+      tags:
+      - theses
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Thesis'
+        required: true
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Thesis'
+          description: ''
+  /api/theses/{id}/run-postmortem/:
+    post:
+      operationId: theses_run_postmortem_create
+      description: |-
+        Replay a post-mortem for this thesis now (out of band of the scheduler).
+
+        Picks which PostMortem to run:
+        1. If a *scheduled* PM is already due, run the earliest such one.
+        2. Otherwise create/get an ad-hoc PM for the smallest configured horizon
+           whose due window has elapsed; if none has elapsed yet, fall back to
+           the smallest horizon so the replay still works immediately.
+
+        Returns 202 with the chosen pm id; the actual run is dispatched async.
+        Run-now resets the chosen PM to "scheduled" before dispatch, so it
+        doubles as an explicit replay AND recovers a crashed/stuck "running"
+        row. The atomic claim in run_postmortem then ensures exactly one run
+        happens per click even if beat dispatches the same row concurrently.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this thesis.
+        required: true
+      tags:
+      - theses
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Thesis'
+        required: true
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Thesis'
+          description: ''
+  /api/threads/:
+    get:
+      operationId: threads_list
+      tags:
+      - threads
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Thread'
+          description: ''
+    post:
+      operationId: threads_create
+      tags:
+      - threads
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Thread'
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Thread'
+          description: ''
+  /api/threads/{id}/:
+    get:
+      operationId: threads_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this thread.
+        required: true
+      tags:
+      - threads
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Thread'
+          description: ''
+    put:
+      operationId: threads_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this thread.
+        required: true
+      tags:
+      - threads
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Thread'
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Thread'
+          description: ''
+    patch:
+      operationId: threads_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this thread.
+        required: true
+      tags:
+      - threads
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedThread'
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Thread'
+          description: ''
+  /api/threads/{id}/attach-file/:
+    post:
+      operationId: threads_attach_file_create
+      description: |-
+        Attach a previously uploaded UserFile to the thread as a user Message.
+
+        Body: {file_id: int, prompt?: str}. Creates a Message whose content is
+        a `blocks` list: one document block referencing the Anthropic file_id
+        + one text block carrying the prompt.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this thread.
+        required: true
+      tags:
+      - threads
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Thread'
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Thread'
+          description: ''
+  /api/threads/{id}/compare/:
+    post:
+      operationId: threads_compare_create
+      description: Send one user message and fan out to N provider/model branches
+        in parallel.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this thread.
+        required: true
+      tags:
+      - threads
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Thread'
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Thread'
+          description: ''
+  /api/threads/{id}/send/:
+    post:
+      operationId: threads_send_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this thread.
+        required: true
+      tags:
+      - threads
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Thread'
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Thread'
+          description: ''
+  /api/threads/{id}/stop/{message_id}/:
+    post:
+      operationId: threads_stop_create
+      description: Mark a streaming assistant message as cancelled; the running task
+        will skip its final write.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this thread.
+        required: true
+      - in: path
+        name: message_id
+        schema:
+          type: string
+          pattern: ^\d+$
+        required: true
+      tags:
+      - threads
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Thread'
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Thread'
+          description: ''
+  /api/triggers/:
+    get:
+      operationId: triggers_list
+      tags:
+      - triggers
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EventTrigger'
+          description: ''
+    post:
+      operationId: triggers_create
+      tags:
+      - triggers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EventTrigger'
+        required: true
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventTrigger'
+          description: ''
+  /api/triggers/{id}/:
+    get:
+      operationId: triggers_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this event trigger.
+        required: true
+      tags:
+      - triggers
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventTrigger'
+          description: ''
+    put:
+      operationId: triggers_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this event trigger.
+        required: true
+      tags:
+      - triggers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EventTrigger'
+        required: true
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventTrigger'
+          description: ''
+    patch:
+      operationId: triggers_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this event trigger.
+        required: true
+      tags:
+      - triggers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedEventTrigger'
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventTrigger'
+          description: ''
+    delete:
+      operationId: triggers_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this event trigger.
+        required: true
+      tags:
+      - triggers
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '204':
+          description: No response body
+  /api/triggers/{id}/fire/:
+    post:
+      operationId: triggers_fire_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this event trigger.
+        required: true
+      tags:
+      - triggers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EventTrigger'
+        required: true
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventTrigger'
+          description: ''
+  /api/triggers/{id}/firings/:
+    get:
+      operationId: triggers_firings_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this event trigger.
+        required: true
+      tags:
+      - triggers
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventTrigger'
+          description: ''
+  /api/triggers/backtest/:
+    post:
+      operationId: triggers_backtest_create
+      description: |-
+        Replay a DSL condition over stored OHLC bars for [start, end].
+
+        Body: {condition, start (ISO date), end (ISO date), timeframe?}
+        Returns {match_count, matches:[{ts, values}]}. Only price/pct_change
+        leaves are evaluated; other metrics are silently absent from the
+        per-bar snapshot.
+      tags:
+      - triggers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EventTrigger'
+        required: true
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventTrigger'
+          description: ''
+  /api/triggers/evaluate/:
+    post:
+      operationId: triggers_evaluate_create
+      description: |-
+        Dry-run: run the evaluator against a condition without firing.
+
+        Body: {condition: <DSL>, profile?: <id>} OR {trigger_id: <id>}.
+        Returns {matched, values, missing}.
+      tags:
+      - triggers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EventTrigger'
+        required: true
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventTrigger'
+          description: ''
+  /api/triggers/firings/recent/:
+    get:
+      operationId: triggers_firings_recent_retrieve
+      tags:
+      - triggers
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventTrigger'
+          description: ''
+  /api/warroom/runs/:
+    get:
+      operationId: warroom_runs_list
+      tags:
+      - warroom
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/WarRoomRun'
+          description: ''
+  /api/warroom/runs/{id}/:
+    get:
+      operationId: warroom_runs_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this war room run.
+        required: true
+      tags:
+      - warroom
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WarRoomRun'
+          description: ''
+  /api/warroom/runs/convene/:
+    post:
+      operationId: warroom_runs_convene_create
+      tags:
+      - warroom
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WarRoomRun'
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WarRoomRun'
+          description: ''
+  /api/watchlists/:
+    get:
+      operationId: watchlists_list
+      tags:
+      - watchlists
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Watchlist'
+          description: ''
+    post:
+      operationId: watchlists_create
+      tags:
+      - watchlists
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Watchlist'
+        required: true
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Watchlist'
+          description: ''
+  /api/watchlists/{id}/:
+    get:
+      operationId: watchlists_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this watchlist.
+        required: true
+      tags:
+      - watchlists
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Watchlist'
+          description: ''
+    put:
+      operationId: watchlists_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this watchlist.
+        required: true
+      tags:
+      - watchlists
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Watchlist'
+        required: true
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Watchlist'
+          description: ''
+    patch:
+      operationId: watchlists_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this watchlist.
+        required: true
+      tags:
+      - watchlists
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedWatchlist'
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Watchlist'
+          description: ''
+    delete:
+      operationId: watchlists_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this watchlist.
+        required: true
+      tags:
+      - watchlists
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '204':
+          description: No response body
+  /api/watchlists/{id}/reorder/:
+    post:
+      operationId: watchlists_reorder_create
+      description: 'Body: {''order'': [symbol_id, ...]}'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this watchlist.
+        required: true
+      tags:
+      - watchlists
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Watchlist'
+        required: true
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Watchlist'
+          description: ''
+  /api/watchlists/{watchlist_pk}/symbols/:
+    post:
+      operationId: watchlists_symbols_create
+      parameters:
+      - in: path
+        name: watchlist_pk
+        schema:
+          type: string
+        required: true
+      tags:
+      - watchlists
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WatchlistSymbol'
+        required: true
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WatchlistSymbol'
+          description: ''
+  /api/watchlists/{watchlist_pk}/symbols/{id}/:
+    delete:
+      operationId: watchlists_symbols_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: watchlist_pk
+        schema:
+          type: string
+        required: true
+      tags:
+      - watchlists
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '204':
+          description: No response body
+components:
+  schemas:
+    AIRun:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        provider:
+          type: string
+          maxLength: 32
+        model:
+          type: string
+          maxLength: 100
+        input_tokens:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+        output_tokens:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+        cached_tokens:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+        cost_usd:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,4}(?:\.\d{0,6})?$
+        latency_ms:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+        status:
+          $ref: '#/components/schemas/AIRunStatusEnum'
+        error:
+          type: string
+      required:
+      - id
+      - model
+      - provider
+    AIRunStatusEnum:
+      enum:
+      - pending
+      - streaming
+      - done
+      - failed
+      - cost_capped
+      type: string
+      description: |-
+        * `pending` - Pending
+        * `streaming` - Streaming
+        * `done` - Done
+        * `failed` - Failed
+        * `cost_capped` - Cost capped
+    AgentPreset:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 100
+        slug:
+          type: string
+          default: ''
+          pattern: ^[-a-zA-Z0-9_]+$
+        description:
+          type: string
+          maxLength: 300
+        objective_template:
+          type: string
+        default_includes: {}
+        structured:
+          type: boolean
+        builtin:
+          type: boolean
+          readOnly: true
+        active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - builtin
+      - created_at
+      - id
+      - name
+      - objective_template
+      - updated_at
+    BackupRecord:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        filename:
+          type: string
+          readOnly: true
+        size_bytes:
+          type: integer
+          readOnly: true
+        sha256:
+          type: string
+          readOnly: true
+        kind:
+          allOf:
+          - $ref: '#/components/schemas/KindC68Enum'
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/BackupRecordStatusEnum'
+          readOnly: true
+        error:
+          type: string
+          readOnly: true
+      required:
+      - created_at
+      - error
+      - filename
+      - id
+      - kind
+      - sha256
+      - size_bytes
+      - status
+    BackupRecordStatusEnum:
+      enum:
+      - ok
+      - failed
+      - rotated
+      - deleted
+      - missing
+      type: string
+      description: |-
+        * `ok` - OK
+        * `failed` - Failed
+        * `rotated` - Rotated
+        * `deleted` - Deleted
+        * `missing` - Missing
+    BlankEnum:
+      enum:
+      - ''
+    BookSnapshot:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        as_of_date:
+          type: string
+          format: date
+          readOnly: true
+        exposures:
+          readOnly: true
+        concentration:
+          readOnly: true
+        clusters:
+          readOnly: true
+        regime_fit:
+          readOnly: true
+        near_invalidation:
+          readOnly: true
+        narrative:
+          type: string
+          readOnly: true
+        coverage:
+          readOnly: true
+        var_beta:
+          readOnly: true
+      required:
+      - as_of_date
+      - clusters
+      - concentration
+      - coverage
+      - created_at
+      - exposures
+      - id
+      - narrative
+      - near_invalidation
+      - regime_fit
+      - var_beta
+    BriefingConfig:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+        send_at_local:
+          type: string
+          format: time
+        profile:
+          type: integer
+          nullable: true
+        news_lookback_hours:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+        events_within_days:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - updated_at
+    BriefingRun:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        status:
+          $ref: '#/components/schemas/BriefingRunStatusEnum'
+        data: {}
+        snapshot:
+          type: integer
+          nullable: true
+        scheduled_date:
+          type: string
+          format: date
+          nullable: true
+        synthesis_text:
+          type: string
+          readOnly: true
+        synthesis_status:
+          type: string
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - synthesis_status
+      - synthesis_text
+    BriefingRunStatusEnum:
+      enum:
+      - assembling
+      - ready
+      - failed
+      type: string
+      description: |-
+        * `assembling` - Assembling
+        * `ready` - Ready
+        * `failed` - Failed
+    CalendarOverride:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        symbol:
+          type: string
+          maxLength: 16
+        market_key:
+          $ref: '#/components/schemas/MarketKeyEnum'
+        note:
+          type: string
+          maxLength: 200
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - market_key
+      - symbol
+      - updated_at
+    CoverageNote:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        ticker:
+          type: string
+          maxLength: 16
+        stance:
+          $ref: '#/components/schemas/StanceEnum'
+        conviction:
+          type: integer
+          maximum: 32767
+          minimum: 0
+        bull_case:
+          type: string
+        bear_case:
+          type: string
+        key_levels: {}
+        watching_for:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - ticker
+      - updated_at
+    CoverageNoteDetail:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        ticker:
+          type: string
+          maxLength: 16
+        stance:
+          $ref: '#/components/schemas/StanceEnum'
+        conviction:
+          type: integer
+          maximum: 32767
+          minimum: 0
+        bull_case:
+          type: string
+        bear_case:
+          type: string
+        key_levels: {}
+        watching_for:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        revisions:
+          type: array
+          items:
+            $ref: '#/components/schemas/CoverageRevision'
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - revisions
+      - ticker
+      - updated_at
+    CoverageRevision:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        prior: {}
+        new: {}
+        reason:
+          type: string
+        source_snapshot_id:
+          type: integer
+          readOnly: true
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - reason
+      - source_snapshot_id
+    DecisionEnum:
+      enum:
+      - acted
+      - passed
+      - watching
+      - hedged
+      type: string
+      description: |-
+        * `acted` - Acted
+        * `passed` - Passed
+        * `watching` - Watching
+        * `hedged` - Hedged
+    DeskEntry:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        anomaly_type:
+          type: string
+          readOnly: true
+        ticker:
+          type: string
+          readOnly: true
+        severity:
+          type: number
+          format: double
+          readOnly: true
+        evidence:
+          readOnly: true
+        finding:
+          type: string
+          readOnly: true
+        suggested_actions:
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/DeskEntryStatusEnum'
+          readOnly: true
+        warroom_run_id:
+          type: integer
+          nullable: true
+          readOnly: true
+        investigation_thread_id:
+          type: integer
+          nullable: true
+          readOnly: true
+      required:
+      - anomaly_type
+      - created_at
+      - evidence
+      - finding
+      - id
+      - investigation_thread_id
+      - severity
+      - status
+      - suggested_actions
+      - ticker
+      - warroom_run_id
+    DeskEntryStatusEnum:
+      enum:
+      - new
+      - acted
+      - dismissed
+      type: string
+      description: |-
+        * `new` - New
+        * `acted` - Acted
+        * `dismissed` - Dismissed
+    EvalRun:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        source:
+          allOf:
+          - $ref: '#/components/schemas/SourceC68Enum'
+          readOnly: true
+        label:
+          type: string
+          readOnly: true
+        model:
+          type: string
+          readOnly: true
+        horizon:
+          type: integer
+          readOnly: true
+          nullable: true
+        n:
+          type: integer
+          readOnly: true
+        skipped:
+          type: integer
+          readOnly: true
+        scored:
+          type: integer
+          readOnly: true
+        hit_rate:
+          type: number
+          format: double
+          readOnly: true
+          nullable: true
+        brier:
+          type: number
+          format: double
+          readOnly: true
+          nullable: true
+        avg_confidence:
+          type: number
+          format: double
+          readOnly: true
+          nullable: true
+        calibration_error:
+          type: number
+          format: double
+          readOnly: true
+          nullable: true
+        calibration:
+          readOnly: true
+        examples:
+          readOnly: true
+      required:
+      - avg_confidence
+      - brier
+      - calibration
+      - calibration_error
+      - created_at
+      - examples
+      - hit_rate
+      - horizon
+      - id
+      - label
+      - model
+      - n
+      - scored
+      - skipped
+      - source
+    EventTrigger:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 100
+        profile:
+          type: integer
+        condition: {}
+        cooldown_seconds:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+        enabled:
+          type: boolean
+        last_fired_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        firings_count:
+          type: integer
+          readOnly: true
+          default: 0
+        source_thesis_id:
+          type: integer
+          readOnly: true
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - condition
+      - created_at
+      - firings_count
+      - id
+      - last_fired_at
+      - name
+      - profile
+      - source_thesis_id
+      - updated_at
+    ExportJob:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        completed_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        scope: {}
+        format:
+          allOf:
+          - $ref: '#/components/schemas/FormatEnum'
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/ExportJobStatusEnum'
+          readOnly: true
+        filename:
+          type: string
+          readOnly: true
+        size_bytes:
+          type: integer
+          readOnly: true
+          nullable: true
+        sha256:
+          type: string
+          readOnly: true
+        error:
+          type: string
+          readOnly: true
+      required:
+      - completed_at
+      - created_at
+      - error
+      - filename
+      - format
+      - id
+      - scope
+      - sha256
+      - size_bytes
+      - status
+    ExportJobStatusEnum:
+      enum:
+      - pending
+      - running
+      - done
+      - failed
+      - deleted
+      - missing
+      type: string
+      description: |-
+        * `pending` - Pending
+        * `running` - Running
+        * `done` - Done
+        * `failed` - Failed
+        * `deleted` - Deleted
+        * `missing` - Missing
+    FireModeEnum:
+      enum:
+      - cron
+      - relative_to_close
+      type: string
+      description: |-
+        * `cron` - Cron
+        * `relative_to_close` - Relative to close
+    FormatEnum:
+      enum:
+      - zip
+      type: string
+      description: '* `zip` - zip'
+    JournalEntry:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        thread_id:
+          type: integer
+        thesis_id:
+          type: integer
+          nullable: true
+        snapshot_id:
+          type: integer
+          nullable: true
+        decision:
+          $ref: '#/components/schemas/DecisionEnum'
+        note:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - decision
+      - id
+      - thread_id
+    KindC68Enum:
+      enum:
+      - scheduled
+      - manual
+      type: string
+      description: |-
+        * `scheduled` - Scheduled
+        * `manual` - Manual
+    Lesson:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        text:
+          type: string
+          readOnly: true
+          description: Representative bullet of the cluster.
+        tags:
+          readOnly: true
+        support_n:
+          type: integer
+          readOnly: true
+          description: Number of post-mortems supporting this lesson.
+        muted:
+          type: boolean
+          description: Hidden from the coach when True.
+        last_seen:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - last_seen
+      - support_n
+      - tags
+      - text
+    MarketKeyEnum:
+      enum:
+      - us_equity
+      - us_bond
+      - cme_futures
+      - cfe_futures
+      - crypto
+      - lse
+      - jpx
+      type: string
+      description: |-
+        * `us_equity` - US equities (NYSE/NASDAQ)
+        * `us_bond` - US bonds (SIFMA)
+        * `cme_futures` - CME futures
+        * `cfe_futures` - CFE / VIX futures
+        * `crypto` - Crypto (24/7)
+        * `lse` - London (LSE)
+        * `jpx` - Tokyo (JPX)
+    Message:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        role:
+          $ref: '#/components/schemas/RoleEnum'
+        content: {}
+        status:
+          $ref: '#/components/schemas/MessageStatusEnum'
+        error:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        ai_run:
+          allOf:
+          - $ref: '#/components/schemas/AIRun'
+          readOnly: true
+        parent_message_id:
+          type: integer
+          readOnly: true
+          nullable: true
+        snapshot_id:
+          type: integer
+          readOnly: true
+          nullable: true
+      required:
+      - ai_run
+      - created_at
+      - id
+      - parent_message_id
+      - role
+      - snapshot_id
+    MessageStatusEnum:
+      enum:
+      - done
+      - streaming
+      - failed
+      type: string
+      description: |-
+        * `done` - Done
+        * `streaming` - Streaming
+        * `failed` - Failed
+    ModeEnum:
+      enum:
+      - full
+      - diff
+      type: string
+      description: |-
+        * `full` - Full payload
+        * `diff` - Diff vs previous capture
+    Notification:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        kind:
+          $ref: '#/components/schemas/NotificationKindEnum'
+        title:
+          type: string
+          maxLength: 200
+        body:
+          type: string
+        link:
+          type: string
+          maxLength: 500
+        meta: {}
+        read_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - kind
+      - title
+    NotificationKindEnum:
+      enum:
+      - trigger
+      - observer_done
+      - error
+      - cost_limit
+      - backup
+      - postmortem
+      - briefing
+      - regime
+      - book
+      - desk
+      type: string
+      description: |-
+        * `trigger` - Trigger
+        * `observer_done` - Observer fired
+        * `error` - Error
+        * `cost_limit` - Cost limit
+        * `backup` - Backup
+        * `postmortem` - Post-mortem
+        * `briefing` - Briefing
+        * `regime` - Regime
+        * `book` - Book
+        * `desk` - Desk
+    ObserverSchedule:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 100
+        profile:
+          type: integer
+        enabled:
+          type: boolean
+        market_hours_only:
+          type: boolean
+        objective_template:
+          type: string
+        override_provider:
+          type: string
+          maxLength: 32
+        override_model:
+          type: string
+          maxLength: 100
+        default_includes: {}
+        default_watchlist_tickers: {}
+        mode:
+          allOf:
+          - $ref: '#/components/schemas/ModeEnum'
+          description: |-
+            diff: feed AI only the delta vs the last ready snapshot.
+
+            * `full` - Full payload
+            * `diff` - Diff vs previous capture
+        structured:
+          type: boolean
+          description: When True, observer runs use messages.parse with the ObservationReport
+            schema instead of streaming text.
+        use_batch:
+          type: boolean
+          description: When True, fires submit a Messages Batch per watchlist ticker
+            instead of streaming. 50% cheaper; not interactive.
+        last_batch_id:
+          type: string
+          readOnly: true
+        last_fired_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        fire_mode:
+          $ref: '#/components/schemas/FireModeEnum'
+        close_offset_minutes:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          description: Minutes before the actual session close to fire (relative_to_close).
+        cron:
+          type: string
+          writeOnly: true
+        cron_display:
+          type: string
+          readOnly: true
+      required:
+      - created_at
+      - cron_display
+      - id
+      - last_batch_id
+      - last_fired_at
+      - name
+      - profile
+      - updated_at
+    PaginatedBackupRecordList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/BackupRecord'
+    PaginatedExportJobList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExportJob'
+    PaginatedSnapshotListList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=400&limit=100
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=200&limit=100
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/SnapshotList'
+    PatchedAgentPreset:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 100
+        slug:
+          type: string
+          default: ''
+          pattern: ^[-a-zA-Z0-9_]+$
+        description:
+          type: string
+          maxLength: 300
+        objective_template:
+          type: string
+        default_includes: {}
+        structured:
+          type: boolean
+        builtin:
+          type: boolean
+          readOnly: true
+        active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+    PatchedBriefingConfig:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+        send_at_local:
+          type: string
+          format: time
+        profile:
+          type: integer
+          nullable: true
+        news_lookback_hours:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+        events_within_days:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+    PatchedCalendarOverride:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        symbol:
+          type: string
+          maxLength: 16
+        market_key:
+          $ref: '#/components/schemas/MarketKeyEnum'
+        note:
+          type: string
+          maxLength: 200
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+    PatchedEventTrigger:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 100
+        profile:
+          type: integer
+        condition: {}
+        cooldown_seconds:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+        enabled:
+          type: boolean
+        last_fired_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        firings_count:
+          type: integer
+          readOnly: true
+          default: 0
+        source_thesis_id:
+          type: integer
+          readOnly: true
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+    PatchedLesson:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        text:
+          type: string
+          readOnly: true
+          description: Representative bullet of the cluster.
+        tags:
+          readOnly: true
+        support_n:
+          type: integer
+          readOnly: true
+          description: Number of post-mortems supporting this lesson.
+        muted:
+          type: boolean
+          description: Hidden from the coach when True.
+        last_seen:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+    PatchedObserverSchedule:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 100
+        profile:
+          type: integer
+        enabled:
+          type: boolean
+        market_hours_only:
+          type: boolean
+        objective_template:
+          type: string
+        override_provider:
+          type: string
+          maxLength: 32
+        override_model:
+          type: string
+          maxLength: 100
+        default_includes: {}
+        default_watchlist_tickers: {}
+        mode:
+          allOf:
+          - $ref: '#/components/schemas/ModeEnum'
+          description: |-
+            diff: feed AI only the delta vs the last ready snapshot.
+
+            * `full` - Full payload
+            * `diff` - Diff vs previous capture
+        structured:
+          type: boolean
+          description: When True, observer runs use messages.parse with the ObservationReport
+            schema instead of streaming text.
+        use_batch:
+          type: boolean
+          description: When True, fires submit a Messages Batch per watchlist ticker
+            instead of streaming. 50% cheaper; not interactive.
+        last_batch_id:
+          type: string
+          readOnly: true
+        last_fired_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        fire_mode:
+          $ref: '#/components/schemas/FireModeEnum'
+        close_offset_minutes:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          description: Minutes before the actual session close to fire (relative_to_close).
+        cron:
+          type: string
+          writeOnly: true
+        cron_display:
+          type: string
+          readOnly: true
+    PatchedPosition:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        ticker:
+          type: string
+          maxLength: 16
+        direction:
+          $ref: '#/components/schemas/PositionDirectionEnum'
+        quantity:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,14}(?:\.\d{0,4})?$
+        avg_cost:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,4})?$
+        opened_at:
+          type: string
+          format: date-time
+        closed_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        close_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,4})?$
+          nullable: true
+        realized_pnl:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,14}(?:\.\d{0,4})?$
+          readOnly: true
+          nullable: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/PositionStatusEnum'
+          readOnly: true
+        note:
+          type: string
+        thesis_id:
+          type: integer
+          nullable: true
+        profile_id:
+          type: integer
+          nullable: true
+        unrealized:
+          type: object
+          additionalProperties: {}
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+    PatchedProviderConfig:
+      type: object
+      properties:
+        provider:
+          $ref: '#/components/schemas/ProviderEnum'
+        base_url:
+          type: string
+          maxLength: 255
+        default_model:
+          type: string
+          maxLength: 100
+        enabled:
+          type: boolean
+        supports_vision:
+          type: boolean
+        supports_tools:
+          type: boolean
+        daily_cost_cap_usd:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+        monthly_cost_cap_usd:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          nullable: true
+        api_key_present:
+          type: boolean
+          readOnly: true
+        api_key_write:
+          type: string
+          writeOnly: true
+        discovered_models:
+          readOnly: true
+        models_synced_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+    PatchedThesis:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        title:
+          type: string
+          maxLength: 200
+        ticker:
+          type: string
+          maxLength: 16
+        direction:
+          $ref: '#/components/schemas/ThesisDirectionEnum'
+        rationale:
+          type: string
+        conviction:
+          type: integer
+          maximum: 5
+          minimum: 1
+        entry_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,4})?$
+          nullable: true
+        target_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,4})?$
+          nullable: true
+        invalidation_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,4})?$
+          nullable: true
+        invalidation_note:
+          type: string
+        horizon_days:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+        status:
+          allOf:
+          - $ref: '#/components/schemas/ThesisStatusEnum'
+          readOnly: true
+        profile_id:
+          type: integer
+          nullable: true
+          readOnly: true
+        thread_id:
+          type: integer
+          nullable: true
+          description: Source thread from which this thesis was opened.
+          readOnly: true
+        snapshot_id:
+          type: integer
+          nullable: true
+          description: Market state at the time the thesis was opened.
+          readOnly: true
+        review_thread_id:
+          type: integer
+          nullable: true
+          description: Thread where post-mortems will be posted (Phase 2).
+          readOnly: true
+        guard_enabled:
+          type: boolean
+        guard_trigger_id:
+          type: string
+          readOnly: true
+        opened_at:
+          type: string
+          format: date-time
+        closed_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        close_note:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        postmortems:
+          type: array
+          items:
+            $ref: '#/components/schemas/PostMortem'
+          readOnly: true
+    PatchedThread:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        kind:
+          allOf:
+          - $ref: '#/components/schemas/ThreadKindEnum'
+          readOnly: true
+        title:
+          type: string
+          maxLength: 200
+        profile:
+          allOf:
+          - $ref: '#/components/schemas/ProfileInline'
+          readOnly: true
+        pinned_snapshot_id:
+          type: integer
+          nullable: true
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        messages:
+          type: array
+          items:
+            $ref: '#/components/schemas/Message'
+          readOnly: true
+    PatchedTradingProfile:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 100
+        style:
+          type: string
+          description: The trading style text. Prepended as system prompt.
+        default_includes: {}
+        default_provider:
+          type: string
+          maxLength: 32
+        default_model:
+          type: string
+          maxLength: 100
+        enable_tools:
+          type: boolean
+          description: Expose the default Toolset (get_quote, fetch_ohlc, search_news,
+            get_option_chain, compute_indicator) to Claude.
+        enable_thinking:
+          type: boolean
+          description: Turn on extended thinking on Claude.
+        thinking_budget:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          description: Thinking token budget when enable_thinking=True. Billed as
+            output.
+        enable_memory:
+          type: boolean
+          description: Expose the Memory tool with a per-profile namespace under /data/memory/<profile_id>/.
+        enable_coach:
+          type: boolean
+          description: Inject the Decision Coach context (prior theses, diff-vs-last
+            snapshot, per-ticker track record, recall) plus a base observational system
+            prompt. Off = legacy behavior (system prompt is just the style).
+        active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+    PatchedWatchlist:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 100
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        symbols:
+          type: array
+          items:
+            $ref: '#/components/schemas/WatchlistSymbol'
+          readOnly: true
+    Position:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        ticker:
+          type: string
+          maxLength: 16
+        direction:
+          $ref: '#/components/schemas/PositionDirectionEnum'
+        quantity:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,14}(?:\.\d{0,4})?$
+        avg_cost:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,4})?$
+        opened_at:
+          type: string
+          format: date-time
+        closed_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        close_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,4})?$
+          nullable: true
+        realized_pnl:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,14}(?:\.\d{0,4})?$
+          readOnly: true
+          nullable: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/PositionStatusEnum'
+          readOnly: true
+        note:
+          type: string
+        thesis_id:
+          type: integer
+          nullable: true
+        profile_id:
+          type: integer
+          nullable: true
+        unrealized:
+          type: object
+          additionalProperties: {}
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - avg_cost
+      - closed_at
+      - created_at
+      - id
+      - quantity
+      - realized_pnl
+      - status
+      - ticker
+      - unrealized
+      - updated_at
+    PositionDirectionEnum:
+      enum:
+      - long
+      - short
+      type: string
+      description: |-
+        * `long` - Long
+        * `short` - Short
+    PositionStatusEnum:
+      enum:
+      - open
+      - closed
+      type: string
+      description: |-
+        * `open` - Open
+        * `closed` - Closed
+    PostMortem:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        horizon_days:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+        due_at:
+          type: string
+          format: date-time
+        status:
+          $ref: '#/components/schemas/PostMortemStatusEnum'
+        forward_return_pct:
+          type: number
+          format: double
+          nullable: true
+        verdict:
+          oneOf:
+          - $ref: '#/components/schemas/VerdictEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+        report: {}
+        message_id:
+          type: integer
+          nullable: true
+          description: The assistant Message posted into the review thread, if any.
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        completed_at:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+      - created_at
+      - due_at
+      - horizon_days
+      - id
+      - message_id
+    PostMortemStatusEnum:
+      enum:
+      - scheduled
+      - running
+      - done
+      - failed
+      - skipped
+      type: string
+      description: |-
+        * `scheduled` - Scheduled
+        * `running` - Running
+        * `done` - Done
+        * `failed` - Failed
+        * `skipped` - Skipped
+    ProfileInline:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 100
+        default_provider:
+          type: string
+          maxLength: 32
+        default_model:
+          type: string
+          maxLength: 100
+      required:
+      - id
+      - name
+    ProviderConfig:
+      type: object
+      properties:
+        provider:
+          $ref: '#/components/schemas/ProviderEnum'
+        base_url:
+          type: string
+          maxLength: 255
+        default_model:
+          type: string
+          maxLength: 100
+        enabled:
+          type: boolean
+        supports_vision:
+          type: boolean
+        supports_tools:
+          type: boolean
+        daily_cost_cap_usd:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+        monthly_cost_cap_usd:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          nullable: true
+        api_key_present:
+          type: boolean
+          readOnly: true
+        api_key_write:
+          type: string
+          writeOnly: true
+        discovered_models:
+          readOnly: true
+        models_synced_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+      required:
+      - api_key_present
+      - discovered_models
+      - models_synced_at
+      - provider
+    ProviderEnum:
+      enum:
+      - claude
+      - openai
+      - local
+      type: string
+      description: |-
+        * `claude` - Anthropic Claude
+        * `openai` - OpenAI
+        * `local` - Local (OpenAI-compatible)
+    RegimeReading:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        composite:
+          type: string
+          readOnly: true
+        axes:
+          readOnly: true
+        drivers:
+          readOnly: true
+        narrative:
+          type: string
+          readOnly: true
+        changed_axes:
+          readOnly: true
+      required:
+      - axes
+      - changed_axes
+      - composite
+      - created_at
+      - drivers
+      - id
+      - narrative
+    RoleEnum:
+      enum:
+      - user
+      - assistant
+      - system
+      type: string
+      description: |-
+        * `user` - User
+        * `assistant` - Assistant
+        * `system` - System
+    Snapshot:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        profile_id:
+          type: integer
+          readOnly: true
+        objective:
+          type: string
+        notes:
+          type: string
+        manual_positions:
+          type: string
+        candidate_positions:
+          type: string
+        status:
+          allOf:
+          - $ref: '#/components/schemas/Status95aEnum'
+          readOnly: true
+        includes: {}
+        source:
+          $ref: '#/components/schemas/Source7c9Enum'
+        captured_at:
+          type: string
+          format: date-time
+          readOnly: true
+        primary_ticker:
+          type: string
+          nullable: true
+          maxLength: 16
+        overnight:
+          type: boolean
+        sections:
+          type: array
+          items:
+            $ref: '#/components/schemas/SnapshotSection'
+          readOnly: true
+      required:
+      - captured_at
+      - id
+      - profile_id
+      - sections
+      - status
+    SnapshotList:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        captured_at:
+          type: string
+          format: date-time
+          readOnly: true
+        profile_id:
+          type: integer
+          readOnly: true
+        profile_name:
+          type: string
+          readOnly: true
+        objective:
+          type: string
+        notes:
+          type: string
+        status:
+          $ref: '#/components/schemas/Status95aEnum'
+        source:
+          $ref: '#/components/schemas/Source7c9Enum'
+        primary_ticker:
+          type: string
+          nullable: true
+          maxLength: 16
+        overnight:
+          type: boolean
+        section_kinds:
+          type: string
+          readOnly: true
+        section_statuses:
+          type: string
+          readOnly: true
+        has_image:
+          type: string
+          readOnly: true
+        total_payload_tokens:
+          type: string
+          readOnly: true
+      required:
+      - captured_at
+      - has_image
+      - id
+      - profile_id
+      - profile_name
+      - section_kinds
+      - section_statuses
+      - total_payload_tokens
+    SnapshotSection:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        kind:
+          $ref: '#/components/schemas/SnapshotSectionKindEnum'
+        status:
+          $ref: '#/components/schemas/SnapshotSectionStatusEnum'
+        payload: {}
+        error:
+          type: string
+      required:
+      - id
+      - kind
+    SnapshotSectionKindEnum:
+      enum:
+      - quotes
+      - ohlc
+      - chain
+      - positions
+      - breadth
+      - news
+      - notes
+      - image
+      - overnight
+      - events
+      - fundamentals
+      - macro
+      - filings
+      - treasury
+      type: string
+      description: |-
+        * `quotes` - Quotes
+        * `ohlc` - OHLC
+        * `chain` - Option chain
+        * `positions` - Positions
+        * `breadth` - Market breadth
+        * `news` - News
+        * `notes` - User notes
+        * `image` - Chart image
+        * `overnight` - Overnight board
+        * `events` - Upcoming events
+        * `fundamentals` - Company fundamentals
+        * `macro` - Macro indicators
+        * `filings` - SEC filings
+        * `treasury` - Treasury rates
+    SnapshotSectionStatusEnum:
+      enum:
+      - pending
+      - done
+      - failed
+      type: string
+      description: |-
+        * `pending` - Pending
+        * `done` - Done
+        * `failed` - Failed
+    Source7c9Enum:
+      enum:
+      - manual
+      - observer
+      - trigger
+      - briefing
+      type: string
+      description: |-
+        * `manual` - Manual
+        * `observer` - Observer
+        * `trigger` - Trigger
+        * `briefing` - Briefing
+    SourceC68Enum:
+      enum:
+      - manual
+      - scheduled
+      type: string
+      description: |-
+        * `manual` - Manual
+        * `scheduled` - Scheduled
+    StanceEnum:
+      enum:
+      - bull
+      - bear
+      - neutral
+      type: string
+      description: |-
+        * `bull` - Bull
+        * `bear` - Bear
+        * `neutral` - Neutral
+    Status95aEnum:
+      enum:
+      - pending
+      - ready
+      - failed
+      type: string
+      description: |-
+        * `pending` - Pending
+        * `ready` - Ready
+        * `failed` - Failed
+    Thesis:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        title:
+          type: string
+          maxLength: 200
+        ticker:
+          type: string
+          maxLength: 16
+        direction:
+          $ref: '#/components/schemas/ThesisDirectionEnum'
+        rationale:
+          type: string
+        conviction:
+          type: integer
+          maximum: 5
+          minimum: 1
+        entry_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,4})?$
+          nullable: true
+        target_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,4})?$
+          nullable: true
+        invalidation_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,4})?$
+          nullable: true
+        invalidation_note:
+          type: string
+        horizon_days:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+        status:
+          allOf:
+          - $ref: '#/components/schemas/ThesisStatusEnum'
+          readOnly: true
+        profile_id:
+          type: integer
+          nullable: true
+          readOnly: true
+        thread_id:
+          type: integer
+          nullable: true
+          description: Source thread from which this thesis was opened.
+          readOnly: true
+        snapshot_id:
+          type: integer
+          nullable: true
+          description: Market state at the time the thesis was opened.
+          readOnly: true
+        review_thread_id:
+          type: integer
+          nullable: true
+          description: Thread where post-mortems will be posted (Phase 2).
+          readOnly: true
+        guard_enabled:
+          type: boolean
+        guard_trigger_id:
+          type: string
+          readOnly: true
+        opened_at:
+          type: string
+          format: date-time
+        closed_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        close_note:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        postmortems:
+          type: array
+          items:
+            $ref: '#/components/schemas/PostMortem'
+          readOnly: true
+      required:
+      - closed_at
+      - created_at
+      - direction
+      - guard_trigger_id
+      - id
+      - postmortems
+      - profile_id
+      - review_thread_id
+      - snapshot_id
+      - status
+      - thread_id
+      - ticker
+      - title
+      - updated_at
+    ThesisDirectionEnum:
+      enum:
+      - bullish
+      - bearish
+      - neutral
+      type: string
+      description: |-
+        * `bullish` - Bullish
+        * `bearish` - Bearish
+        * `neutral` - Neutral
+    ThesisStatusEnum:
+      enum:
+      - open
+      - closed_win
+      - closed_loss
+      - closed_scratch
+      - invalidated
+      type: string
+      description: |-
+        * `open` - Open
+        * `closed_win` - Closed — Win
+        * `closed_loss` - Closed — Loss
+        * `closed_scratch` - Closed — Scratch
+        * `invalidated` - Invalidated
+    Thread:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        kind:
+          allOf:
+          - $ref: '#/components/schemas/ThreadKindEnum'
+          readOnly: true
+        title:
+          type: string
+          maxLength: 200
+        profile:
+          allOf:
+          - $ref: '#/components/schemas/ProfileInline'
+          readOnly: true
+        pinned_snapshot_id:
+          type: integer
+          nullable: true
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        messages:
+          type: array
+          items:
+            $ref: '#/components/schemas/Message'
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - kind
+      - messages
+      - pinned_snapshot_id
+      - profile
+    ThreadKindEnum:
+      enum:
+      - consult
+      - chat
+      - observer
+      - briefing
+      - diff
+      - warroom
+      type: string
+      description: |-
+        * `consult` - One-shot consult
+        * `chat` - Ongoing chat
+        * `observer` - Observer timeline
+        * `briefing` - Morning briefing
+        * `diff` - Diff
+        * `warroom` - War Room
+    TradingProfile:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 100
+        style:
+          type: string
+          description: The trading style text. Prepended as system prompt.
+        default_includes: {}
+        default_provider:
+          type: string
+          maxLength: 32
+        default_model:
+          type: string
+          maxLength: 100
+        enable_tools:
+          type: boolean
+          description: Expose the default Toolset (get_quote, fetch_ohlc, search_news,
+            get_option_chain, compute_indicator) to Claude.
+        enable_thinking:
+          type: boolean
+          description: Turn on extended thinking on Claude.
+        thinking_budget:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          description: Thinking token budget when enable_thinking=True. Billed as
+            output.
+        enable_memory:
+          type: boolean
+          description: Expose the Memory tool with a per-profile namespace under /data/memory/<profile_id>/.
+        enable_coach:
+          type: boolean
+          description: Inject the Decision Coach context (prior theses, diff-vs-last
+            snapshot, per-ticker track record, recall) plus a base observational system
+            prompt. Off = legacy behavior (system prompt is just the style).
+        active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - name
+      - style
+      - updated_at
+    UserFile:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        anthropic_id:
+          type: string
+          readOnly: true
+        kind:
+          $ref: '#/components/schemas/UserFileKindEnum'
+        ticker:
+          type: string
+          maxLength: 16
+        mime:
+          type: string
+          readOnly: true
+        size:
+          type: integer
+          readOnly: true
+        filename:
+          type: string
+          maxLength: 200
+        uploaded_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - anthropic_id
+      - id
+      - mime
+      - size
+      - uploaded_at
+    UserFileKindEnum:
+      enum:
+      - filing
+      - transcript
+      - ohlc_csv
+      - research
+      - other
+      type: string
+      description: |-
+        * `filing` - SEC filing
+        * `transcript` - Earnings transcript
+        * `ohlc_csv` - Historical OHLC CSV
+        * `research` - Research PDF
+        * `other` - Other
+    VerdictEnum:
+      enum:
+      - correct
+      - incorrect
+      - mixed
+      - inconclusive
+      type: string
+      description: |-
+        * `correct` - Correct
+        * `incorrect` - Incorrect
+        * `mixed` - Mixed
+        * `inconclusive` - Inconclusive
+    WarRoomRun:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        subject_kind:
+          type: string
+          readOnly: true
+        subject_label:
+          type: string
+          readOnly: true
+        params:
+          readOnly: true
+        verdict:
+          readOnly: true
+        confidence:
+          type: number
+          format: double
+          readOnly: true
+          nullable: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/WarRoomRunStatusEnum'
+          readOnly: true
+        error:
+          type: string
+          readOnly: true
+        thread_id:
+          type: integer
+          readOnly: true
+        messages:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+          readOnly: true
+      required:
+      - confidence
+      - created_at
+      - error
+      - id
+      - messages
+      - params
+      - status
+      - subject_kind
+      - subject_label
+      - thread_id
+      - verdict
+    WarRoomRunStatusEnum:
+      enum:
+      - running
+      - done
+      - error
+      type: string
+      description: |-
+        * `running` - Running
+        * `done` - Done
+        * `error` - Error
+    Watchlist:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 100
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        symbols:
+          type: array
+          items:
+            $ref: '#/components/schemas/WatchlistSymbol'
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - name
+      - symbols
+    WatchlistSymbol:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        ticker:
+          type: string
+          maxLength: 16
+        sort_order:
+          type: integer
+          readOnly: true
+      required:
+      - id
+      - sort_order
+      - ticker
+  securitySchemes:
+    basicAuth:
+      type: http
+      scheme: basic
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: sessionid

@@ -183,7 +183,7 @@ def _build_payload_text(sched: ObserverSchedule, snap, provider_name: str, model
         prev_snap = (
             Snapshot.objects.filter(profile=sched.profile, status="ready")
             .exclude(id=snap.id)
-            .order_by("-created_at")
+            .order_by("-captured_at")
             .first()
         )
         if prev_snap is not None:

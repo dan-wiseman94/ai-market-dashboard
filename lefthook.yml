@@ -42,16 +42,28 @@ pre-commit:
           exit 1
         fi
         docker compose exec -T frontend pnpm exec eslint {staged_files}
+    gitleaks:
+      # Scans the STAGED diff via the gitleaks docker image (no host install needed).
+      # Blocks the commit if a secret is detected. `.env` (real secrets) is gitignored;
+      # the allowlist covers only templates + fixtures.
+      run: docker run --rm -v "$(pwd):/repo" ghcr.io/gitleaks/gitleaks:latest git --staged --redact --config=/repo/.gitleaks.toml /repo
 
 pre-push:
   commands:
+    import-contracts:
+      run: |
+        if ! docker compose ps --status running --services | grep -qx web; then
+          echo "✗ 'web' container not running — start it with 'make dev' (or set LEFTHOOK=0 to skip)" >&2
+          exit 1
+        fi
+        docker compose exec -T -w /app web uv run lint-imports
     backend-tests:
       run: |
         if ! docker compose ps --status running --services | grep -qx web; then
           echo "✗ 'web' container not running — start it with 'make dev' (or set LEFTHOOK=0 to skip)" >&2
           exit 1
         fi
-        docker compose exec -T --workdir /app web uv run pytest -x backend/
+        docker compose exec -T --workdir /app web uv run pytest -x -p no:randomly backend/
     frontend-tests:
       run: |
         if ! docker compose ps --status running --services | grep -qx frontend; then

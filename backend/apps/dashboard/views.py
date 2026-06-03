@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import logging
 
+import sentry_sdk
 from django.utils import timezone
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -24,6 +25,7 @@ def _safe(fn, default):
         return fn()
     except Exception as exc:
         log.warning("dashboard.section_failed: %s", exc)
+        sentry_sdk.capture_exception(exc)  # no-op unless SENTRY_DSN is configured
         return default
 
 

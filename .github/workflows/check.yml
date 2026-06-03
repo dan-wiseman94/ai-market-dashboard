@@ -66,11 +66,32 @@ jobs:
       - run: uv sync --frozen --dev
       - run: uv run ruff check .
       - run: uv run ruff format --check .
+      - name: makemigrations --check (model/migration drift)
+        run: uv run python backend/manage.py makemigrations --check --dry-run
+      - name: import-linter (architecture contracts)
+        # cwd is repo root (pyproject here); job env PYTHONPATH=backend makes `apps` importable.
+        run: uv run lint-imports
+      - name: mypy (ORM-aware, baseline ratchet)
+        # `set +o pipefail`: mypy exits non-zero on baselined errors under Actions' default
+        # pipefail; mypy-baseline filter exits 1 only on NEW (unbaselined) errors — that governs.
+        shell: bash
+        run: |
+          set +o pipefail
+          uv run mypy backend/apps backend/config | uv run mypy-baseline filter
+      - name: OpenAPI schema is current (drift gate)
+        # Regenerate and diff against the committed schema; any drift fails the build.
+        run: |
+          uv run python backend/manage.py spectacular --file /tmp/schema.yml --validate
+          diff -u backend/schema.yml /tmp/schema.yml
       - name: ty (type-check) — advisory while ty is pre-1.0 / lacks Django ORM modeling
         continue-on-error: true
         run: uv run ty check backend
       - name: pytest (with coverage)
-        run: uv run pytest -v --cov=backend/apps --cov-report=xml --cov-report=term
+        # -p no:randomly: the per-commit gate runs in deterministic definition order.
+        # pytest-randomly stays active locally + in the nightly flake-audit (flake-audit.yml)
+        # to surface order-dependence over time (e.g. the residual run_ai async-streaming
+        # flake) without redding every commit. --cov-fail-under is set in [tool.coverage].
+        run: uv run pytest -v -p no:randomly --cov=backend/apps --cov-report=xml --cov-report=term
       - uses: actions/upload-artifact@v7
         if: always()
         with:
@@ -94,6 +115,11 @@ jobs:
           cache: "pnpm"
           cache-dependency-path: frontend/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
+      - name: Generated API types are current (drift gate)
+        # Regenerate from the committed backend/schema.yml and fail on any diff.
+        run: |
+          pnpm gen:api
+          git diff --exit-code src/api/schema.d.ts
       - run: pnpm run lint
       - name: vitest (with coverage)
         run: pnpm run test:cov
@@ -155,6 +181,15 @@ jobs:
         continue-on-error: true
         working-directory: frontend
         run: pnpm audit --audit-level moderate
+
+  gitleaks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: gitleaks (scan full history)
+        run: docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:latest git --redact --config=/repo/.gitleaks.toml /repo
 
   compose-build:
     runs-on: ubuntu-latest

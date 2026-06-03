@@ -31,6 +31,8 @@ dependencies = [
     "pandas-market-calendars>=4.4,<5.0",
     "pgvector>=0.3,<1.0",
     "fastembed>=0.4,<1.0",
+    "drf-spectacular>=0.28,<1.0",
+    "sentry-sdk[django,celery]>=2.0,<3.0",
 ]
 
 [dependency-groups]
@@ -40,6 +42,9 @@ dev = [
     "pytest-asyncio>=1.3.0,<2.0",
     "pytest-cov>=7.1.0,<8.0",
     "pytest-xdist>=3.8.0,<4.0",
+    "pytest-randomly>=3.15,<4.0",
+    "pytest-timeout>=2.3,<3.0",
+    "hypothesis>=6.100,<7.0",
     "pytest-playwright>=0.8.0,<1.0",
     "axe-playwright-python>=0.1.7,<1.0",
     "fakeredis>=2.35.1,<3.0",
@@ -47,6 +52,13 @@ dev = [
     "pyyaml>=6.0.3,<7.0",
     "ruff>=0.15.14,<1.0",
     "ty>=0.0.4",
+    "import-linter>=2.0,<3.0",
+    "mypy>=1.15,<2.0",
+    "django-stubs[compatible-mypy]>=5.2",
+    "djangorestframework-stubs[compatible-mypy]>=3.16",
+    "mypy-baseline>=0.7,<1.0",
+    "schemathesis>=3.39,<5.0",
+    "mutmut>=3.0,<4.0",
     "daphne>=4.2.1,<5.0",
 ]
 
@@ -81,13 +93,123 @@ exclude = ["**/migrations/**", ".venv", "staticfiles", "**/.mypy_cache/**"]
 unresolved-attribute = "warn"
 invalid-attribute-override = "warn"
 
+[tool.mypy]
+python_version = "3.13"
+plugins = ["mypy_django_plugin.main", "mypy_drf_plugin.main"]
+mypy_path = "backend"
+namespace_packages = true
+explicit_package_bases = true
+ignore_missing_imports = true
+check_untyped_defs = true
+# Run as: `mypy backend/apps backend/config` from the repo root (or /app in the container).
+exclude = ['/migrations/', '/tests/']
+
+[tool.django-stubs]
+django_settings_module = "config.settings.dev"
+# This project resolves settings dynamically via django-environ (env(...)) + runtime_config();
+# strict_settings would flag those legitimate dynamic accesses.
+strict_settings = false
+
+[tool.importlinter]
+root_package = "apps"
+# Run from backend/ (the container WORKDIR), where `apps` is the top-level package.
+# Contracts encode CLAUDE.md landmines as executable invariants. Both are TRUE as of
+# 2026-06-03 (verified by grep) — they prevent regressions, not fix current ones.
+
+[[tool.importlinter.contracts]]
+name = "Concrete AI providers are private to apps.ai (use get_provider / router)"
+type = "forbidden"
+# The package re-export `from apps.ai.providers import get_provider`, the `base`
+# Provider protocol, and `claude_structured.run_structured` are the PUBLIC surface.
+# Instantiating a concrete impl elsewhere is the landmine.
+source_modules = [
+    "apps.threads",
+    "apps.observer",
+    "apps.triggers",
+    "apps.secrets",
+    "apps.thesis",
+    "apps.aieval",
+    "apps.coverage",
+    "apps.book",
+    "apps.regime",
+    "apps.warroom",
+    "apps.desk",
+    "apps.briefing",
+    "apps.predictions",
+    "apps.dashboard",
+    "apps.snapshots",
+    "apps.market",
+]
+forbidden_modules = [
+    "apps.ai.providers.claude",
+    "apps.ai.providers.openai",
+    "apps.ai.providers.local",
+]
+# Forbid only DIRECT imports — the public path (apps.ai.providers.get_provider,
+# whose package __init__ pulls in the concrete impls) is legitimate.
+allow_indirect_imports = true
+
+[[tool.importlinter.contracts]]
+name = "Low-level crypto stays inside apps.secrets (reads go via credentials.decrypt_token)"
+type = "forbidden"
+# `cryptography.fernet.InvalidToken` is imported widely just to CATCH it — that's
+# fine. What must stay private is the key derivation + EncryptedJSONField.
+source_modules = [
+    "apps.threads",
+    "apps.observer",
+    "apps.triggers",
+    "apps.market",
+    "apps.thesis",
+    "apps.aieval",
+    "apps.coverage",
+    "apps.files",
+    "apps.ai",
+    "apps.snapshots",
+    "apps.briefing",
+]
+forbidden_modules = [
+    "apps.secrets.fields",
+    "apps.secrets.keys",
+]
+# Forbid only DIRECT imports — importing apps.secrets.models (the public API) is
+# fine even though it transitively pulls in fields/keys inside apps.secrets.
+allow_indirect_imports = true
+
+[tool.mutmut]
+# Mutation testing — NIGHTLY only (slow), never a PR gate. Scoped to the highest-stakes
+# "money" paths where a surviving mutant means a real test gap. Run from the repo root
+# (where this config is found). Surviving mutants = weak assertions to investigate.
+paths_to_mutate = [
+    "backend/apps/ai/cost.py",
+    "backend/apps/ai/catalog.py",
+    "backend/apps/market/returns.py",
+    "backend/apps/thesis/services/postmortem.py",
+]
+tests_dir = ["backend/apps/ai/tests", "backend/apps/market/tests", "backend/apps/thesis/tests"]
+# Django needs the whole backend importable in mutmut's mutants/ copy.
+also_copy = ["backend", "pyproject.toml", "uv.lock"]
+pytest_add_cli_args_test_selection = [
+    "backend/apps/ai/tests",
+    "backend/apps/market/tests",
+    "backend/apps/thesis/tests",
+]
+
+[tool.coverage.run]
+omit = ["*/migrations/*", "*/tests/*", "*/conftest.py"]
+
+[tool.coverage.report]
+# Gate: fail if total coverage drops below the floor. Measured 89.85% on 2026-06-03
+# (app code only — tests/migrations omitted); floor set ~2% under, to ratchet up over
+# time. Active whenever --cov runs from the repo root (CI), where this config is found.
+fail_under = 88
+
 [tool.pytest.ini_options]
-DJANGO_SETTINGS_MODULE = "config.settings.dev"
+DJANGO_SETTINGS_MODULE = "config.settings.test"
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
 pythonpath = ["backend"]
-addopts = "-ra --strict-markers --tb=short -m 'not integration'"
+addopts = "-ra --strict-markers --tb=short -m 'not integration' --timeout=60"
 asyncio_mode = "auto"
 markers = [
     "integration: marks tests as integration tests",
