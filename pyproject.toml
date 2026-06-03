@@ -175,6 +175,56 @@ forbidden_modules = [
 # fine even though it transitively pulls in fields/keys inside apps.secrets.
 allow_indirect_imports = true
 
+[[tool.importlinter.contracts]]
+name = "Fungible market-data providers are private to apps.market (route via services.fallback)"
+type = "forbidden"
+# alpaca / tiingo / twelvedata / polygon / tradier / marketaux are interchangeable
+# quote/OHLC/chain/news vendors selected at runtime by apps.market.services.fallback.
+# Other apps must depend on that seam (or the market.* public reads), never a concrete
+# vendor — otherwise swapping or adding a provider means editing every call site.
+# Deliberately NOT listed: edgar / fred / treasury — those are distinct data domains
+# (SEC filings / macro / yield curve), not fungible quote sources, and are imported
+# directly by the snapshot & regime section fetchers by design.
+source_modules = [
+    "apps.ai",
+    "apps.aieval",
+    "apps.analytics",
+    "apps.backups",
+    "apps.book",
+    "apps.briefing",
+    "apps.core",
+    "apps.costs",
+    "apps.coverage",
+    "apps.dashboard",
+    "apps.desk",
+    "apps.export",
+    "apps.files",
+    "apps.lessons",
+    "apps.observer",
+    "apps.portfolio",
+    "apps.predictions",
+    "apps.profiles",
+    "apps.recall",
+    "apps.regime",
+    "apps.secrets",
+    "apps.snapshots",
+    "apps.thesis",
+    "apps.threads",
+    "apps.triggers",
+    "apps.warroom",
+]
+forbidden_modules = [
+    "apps.market.services.alpaca",
+    "apps.market.services.tiingo",
+    "apps.market.services.twelvedata",
+    "apps.market.services.polygon",
+    "apps.market.services.tradier",
+    "apps.market.services.marketaux",
+]
+# Forbid only DIRECT imports — using the fallback seam (which pulls a vendor in
+# lazily inside apps.market) is legitimate.
+allow_indirect_imports = true
+
 [tool.mutmut]
 # Mutation testing — NIGHTLY only (slow), never a PR gate. Scoped to the highest-stakes
 # "money" paths where a surviving mutant means a real test gap. Run from the repo root
