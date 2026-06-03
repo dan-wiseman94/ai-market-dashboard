@@ -7,13 +7,16 @@ thread id per run so it never collides with live data.
 from __future__ import annotations
 
 import itertools
-import random
+import uuid
 
 from apps.threads.event_log import record, replay_since
 
 
 def _tid() -> int:
-    return random.randint(10_000_000, 99_999_999)
+    # uuid4 (os.urandom-based), NOT random.randint — pytest-randomly deterministically
+    # reseeds the `random` module per test, which would make ids collide and let a prior
+    # run's entries in the shared real Redis (1h TTL) contaminate the replay assertions.
+    return uuid.uuid4().int % 9_000_000_000_000 + 1_000_000_000_000
 
 
 def test_record_stamps_monotonic_seq_and_replays_tail():
