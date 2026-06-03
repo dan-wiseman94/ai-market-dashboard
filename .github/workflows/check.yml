@@ -111,6 +111,11 @@ jobs:
           cache: "pnpm"
           cache-dependency-path: frontend/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
+      - name: Generated API types are current (drift gate)
+        # Regenerate from the committed backend/schema.yml and fail on any diff.
+        run: |
+          pnpm gen:api
+          git diff --exit-code src/api/schema.d.ts
       - run: pnpm run lint
       - name: vitest (with coverage)
         run: pnpm run test:cov
