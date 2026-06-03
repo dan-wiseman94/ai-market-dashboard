@@ -51,6 +51,10 @@ dev = [
     "ruff>=0.15.14,<1.0",
     "ty>=0.0.4",
     "import-linter>=2.0,<3.0",
+    "mypy>=1.15,<2.0",
+    "django-stubs[compatible-mypy]>=5.2",
+    "djangorestframework-stubs[compatible-mypy]>=3.16",
+    "mypy-baseline>=0.7,<1.0",
     "daphne>=4.2.1,<5.0",
 ]
 
@@ -84,6 +88,23 @@ exclude = ["**/migrations/**", ".venv", "staticfiles", "**/.mypy_cache/**"]
 [tool.ty.rules]
 unresolved-attribute = "warn"
 invalid-attribute-override = "warn"
+
+[tool.mypy]
+python_version = "3.13"
+plugins = ["mypy_django_plugin.main", "mypy_drf_plugin.main"]
+mypy_path = "backend"
+namespace_packages = true
+explicit_package_bases = true
+ignore_missing_imports = true
+check_untyped_defs = true
+# Run as: `mypy backend/apps backend/config` from the repo root (or /app in the container).
+exclude = ['/migrations/', '/tests/']
+
+[tool.django-stubs]
+django_settings_module = "config.settings.dev"
+# This project resolves settings dynamically via django-environ (env(...)) + runtime_config();
+# strict_settings would flag those legitimate dynamic accesses.
+strict_settings = false
 
 [tool.importlinter]
 root_package = "apps"

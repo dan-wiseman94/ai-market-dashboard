@@ -67,7 +67,7 @@ fmt: ## Format backend (ruff) + frontend (prettier via eslint)
 	$(COMPOSE) exec -w /app web uv run ruff check --fix .
 
 .PHONY: lint
-lint: lint-backend lint-imports lint-frontend ## Lint everything
+lint: lint-backend lint-imports typecheck lint-frontend ## Lint everything
 
 .PHONY: lint-backend
 lint-backend: ## ruff + ty (ruff scans repo root incl. e2e/, like CI)
@@ -79,6 +79,12 @@ lint-backend: ## ruff + ty (ruff scans repo root incl. e2e/, like CI)
 lint-imports: ## Enforce architecture import contracts (import-linter)
 	# Runs from /app (where pyproject lives); PYTHONPATH=/app/backend keeps `apps` importable.
 	$(COMPOSE) exec -w /app web uv run lint-imports
+
+.PHONY: typecheck
+typecheck: ## ORM-aware mypy, gated against mypy-baseline.txt (fails on NEW errors only)
+	# sh pipe (no pipefail): mypy always exits non-zero on baselined errors, so the
+	# filter's exit governs. New (unbaselined) errors make mypy-baseline filter exit 1.
+	$(COMPOSE) exec -w /app web sh -c 'uv run mypy backend/apps backend/config | uv run mypy-baseline filter'
 
 .PHONY: lint-frontend
 lint-frontend: ## eslint + tsc
