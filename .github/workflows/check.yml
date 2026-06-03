@@ -71,6 +71,13 @@ jobs:
       - name: import-linter (architecture contracts)
         # cwd is repo root (pyproject here); job env PYTHONPATH=backend makes `apps` importable.
         run: uv run lint-imports
+      - name: mypy (ORM-aware, baseline ratchet)
+        # `set +o pipefail`: mypy exits non-zero on baselined errors under Actions' default
+        # pipefail; mypy-baseline filter exits 1 only on NEW (unbaselined) errors — that governs.
+        shell: bash
+        run: |
+          set +o pipefail
+          uv run mypy backend/apps backend/config | uv run mypy-baseline filter
       - name: ty (type-check) — advisory while ty is pre-1.0 / lacks Django ORM modeling
         continue-on-error: true
         run: uv run ty check backend
