@@ -84,6 +84,12 @@ lint-imports: ## Enforce architecture import contracts (import-linter)
 	# Runs from /app (where pyproject lives); PYTHONPATH=/app/backend keeps `apps` importable.
 	$(COMPOSE) exec -w /app web uv run lint-imports
 
+.PHONY: mutate
+mutate: ## Mutation-test the money paths (slow; nightly in CI). Surviving mutants = weak tests.
+	# Runs from /app (where [tool.mutmut] lives). `run` exits non-zero on survivors — that's
+	# informational here, so `results` always prints the summary.
+	$(COMPOSE) exec -w /app web sh -c 'uv run mutmut run || true; uv run mutmut results'
+
 .PHONY: typecheck
 typecheck: ## ORM-aware mypy, gated against mypy-baseline.txt (fails on NEW errors only)
 	# sh pipe (no pipefail): mypy always exits non-zero on baselined errors, so the
