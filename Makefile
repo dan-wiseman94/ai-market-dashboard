@@ -170,6 +170,11 @@ e2e-api: ## E2E API lane (httpx contract)
 	$(E2E_COMPOSE) up -d
 	$(E2E_RUN) web uv run pytest e2e/api/ -n 2 -m integration -v
 
+.PHONY: e2e-schemathesis
+e2e-schemathesis: ## Fuzz every endpoint for 5xx crashes (schemathesis, under MOCK_EXTERNAL)
+	$(E2E_COMPOSE) up -d
+	$(E2E_RUN) web sh -c 'uv run schemathesis run http://localhost:8000/api/schema/ -u http://localhost:8000 -c not_a_server_error -n 6'
+
 .PHONY: e2e-ws
 e2e-ws: ## E2E WebSocket lane
 	$(E2E_COMPOSE) up -d
