@@ -63,7 +63,7 @@ pre-push:
           echo "✗ 'web' container not running — start it with 'make dev' (or set LEFTHOOK=0 to skip)" >&2
           exit 1
         fi
-        docker compose exec -T --workdir /app web uv run pytest -x backend/
+        docker compose exec -T --workdir /app web uv run pytest -x -p no:randomly backend/
     frontend-tests:
       run: |
         if ! docker compose ps --status running --services | grep -qx frontend; then
