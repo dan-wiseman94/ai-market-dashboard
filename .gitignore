@@ -33,6 +33,10 @@ coverage/
 # uv
 .uv-cache/
 
+# mutmut (mutation testing — nightly; writes a mutants/ working copy)
+mutants/
+.mutmut-cache
+
 # Env / secrets
 .env
 .env.local

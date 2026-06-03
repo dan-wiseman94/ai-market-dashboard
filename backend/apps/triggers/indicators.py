@@ -16,14 +16,14 @@ def rsi(closes: list[float], period: int) -> float | None:
 
 def sma_spread_pct(closes: list[float], *, fast: int, slow: int) -> float | None:
     sf, ss = compute("SMA", closes, period=fast), compute("SMA", closes, period=slow)
-    if sf is None or ss in (None, 0):
+    if sf is None or ss is None or ss == 0:
         return None
     return (sf - ss) / ss
 
 
 def dist_from_sma_pct(closes: list[float], *, period: int, last: float) -> float | None:
     s = compute("SMA", closes, period=period)
-    if s in (None, 0):
+    if s is None or s == 0:
         return None
     return (last - s) / s
 

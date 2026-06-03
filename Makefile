@@ -34,6 +34,14 @@ migrate: ## Run Django migrations
 makemigrations: ## Create Django migrations
 	$(COMPOSE) exec web uv run python manage.py makemigrations
 
+.PHONY: check-migrations
+check-migrations: ## Fail if models changed without a migration
+	$(COMPOSE) exec web uv run python manage.py makemigrations --check --dry-run
+
+.PHONY: schema
+schema: ## Regenerate backend/schema.yml (OpenAPI) from the DRF views
+	$(COMPOSE) exec -w /app/backend web uv run python manage.py spectacular --file schema.yml --validate
+
 .PHONY: test
 test: test-backend test-frontend ## Run all tests
 
@@ -63,13 +71,30 @@ fmt: ## Format backend (ruff) + frontend (prettier via eslint)
 	$(COMPOSE) exec -w /app web uv run ruff check --fix .
 
 .PHONY: lint
-lint: lint-backend lint-frontend ## Lint everything
+lint: lint-backend lint-imports typecheck lint-frontend ## Lint everything
 
 .PHONY: lint-backend
 lint-backend: ## ruff + ty (ruff scans repo root incl. e2e/, like CI)
 	$(COMPOSE) exec -w /app web uv run ruff check .
 	$(COMPOSE) exec -w /app web uv run ruff format --check .
 	$(COMPOSE) exec web uv run ty check .
+
+.PHONY: lint-imports
+lint-imports: ## Enforce architecture import contracts (import-linter)
+	# Runs from /app (where pyproject lives); PYTHONPATH=/app/backend keeps `apps` importable.
+	$(COMPOSE) exec -w /app web uv run lint-imports
+
+.PHONY: mutate
+mutate: ## Mutation-test the money paths (slow; nightly in CI). Surviving mutants = weak tests.
+	# Runs from /app (where [tool.mutmut] lives). `run` exits non-zero on survivors — that's
+	# informational here, so `results` always prints the summary.
+	$(COMPOSE) exec -w /app web sh -c 'uv run mutmut run || true; uv run mutmut results'
+
+.PHONY: typecheck
+typecheck: ## ORM-aware mypy, gated against mypy-baseline.txt (fails on NEW errors only)
+	# sh pipe (no pipefail): mypy always exits non-zero on baselined errors, so the
+	# filter's exit governs. New (unbaselined) errors make mypy-baseline filter exit 1.
+	$(COMPOSE) exec -w /app web sh -c 'uv run mypy backend/apps backend/config | uv run mypy-baseline filter'
 
 .PHONY: lint-frontend
 lint-frontend: ## eslint + tsc
@@ -150,6 +175,11 @@ e2e-ui: ## E2E UI lane (Playwright journeys)
 e2e-api: ## E2E API lane (httpx contract)
 	$(E2E_COMPOSE) up -d
 	$(E2E_RUN) web uv run pytest e2e/api/ -n 2 -m integration -v
+
+.PHONY: e2e-schemathesis
+e2e-schemathesis: ## Fuzz every endpoint for 5xx crashes (schemathesis, under MOCK_EXTERNAL)
+	$(E2E_COMPOSE) up -d
+	$(E2E_RUN) web sh -c 'uv run schemathesis run http://localhost:8000/api/schema/ -u http://localhost:8000 -c not_a_server_error -n 6'
 
 .PHONY: e2e-ws
 e2e-ws: ## E2E WebSocket lane

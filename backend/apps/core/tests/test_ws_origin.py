@@ -19,6 +19,7 @@ def test_asgi_websocket_is_origin_validated():
     assert isinstance(ws, OriginValidator)
 
 
+@pytest.mark.django_db  # Channels closes old DB connections on dispatch; allow DB access
 @pytest.mark.asyncio
 @override_settings(ALLOWED_HOSTS=["testserver"])
 async def test_ws_rejects_foreign_origin():
@@ -32,6 +33,7 @@ async def test_ws_rejects_foreign_origin():
     await comm.disconnect()
 
 
+@pytest.mark.django_db  # Channels closes old DB connections on dispatch; allow DB access
 @pytest.mark.asyncio
 @override_settings(ALLOWED_HOSTS=["testserver"])
 async def test_ws_allows_matching_origin():

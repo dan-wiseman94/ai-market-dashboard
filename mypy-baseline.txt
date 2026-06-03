@@ -1,0 +1,88 @@
+backend/apps/market/services/option_analytics.py:0: error: Value of type variable "SupportsRichComparisonT" of "sorted" cannot be "Any | None"  [type-var]
+backend/apps/market/services/option_analytics.py:0: error: Value of type variable "SupportsRichComparisonT" of "sorted" cannot be "Any | None"  [type-var]
+backend/apps/market/services/option_analytics.py:0: error: Value of type variable "SupportsRichComparisonT" of "sorted" cannot be "Any | None"  [type-var]
+backend/apps/threads/_persist.py:0: error: Incompatible return value type (got "dict[Any, Any] | list[Any]", expected "dict[Any, Any]")  [return-value]
+backend/apps/thesis/services/threads.py:0: error: Incompatible return value type (got "Thread | None", expected "Thread")  [return-value]
+backend/apps/analytics/services/trader_calibration.py:0: error: Incompatible types in assignment (expression has type "str | None", variable has type "str")  [assignment]
+backend/apps/analytics/services/calibration.py:0: error: Unsupported operand types for + ("None" and "int")  [operator]
+backend/apps/analytics/services/calibration.py:0: note: Left operand is of type "int | None"
+backend/apps/analytics/services/calibration.py:0: error: Unsupported operand types for + ("None" and "int")  [operator]
+backend/apps/analytics/services/calibration.py:0: note: Left operand is of type "int | None"
+backend/apps/analytics/services/calibration.py:0: error: Incompatible types in assignment (expression has type "float | None", target has type "int | None")  [assignment]
+backend/apps/analytics/services/calibration.py:0: error: Argument 1 to "_hit_rate" has incompatible type "int | None"; expected "int"  [arg-type]
+backend/apps/analytics/services/calibration.py:0: error: Argument 2 to "_hit_rate" has incompatible type "int | None"; expected "int"  [arg-type]
+backend/apps/analytics/services/calibration.py:0: error: Argument 1 to "float" has incompatible type "float | None"; expected "str | Buffer | SupportsFloat | SupportsIndex"  [arg-type]
+backend/apps/market/calendar/sessions.py:0: error: Unsupported operand types for > ("datetime" and "None")  [operator]
+backend/apps/market/calendar/sessions.py:0: note: Left operand is of type "Any | None"
+backend/apps/book/services/correlation.py:0: error: Argument 1 to "len" has incompatible type "list[str] | float | None"; expected "Sized"  [arg-type]
+backend/apps/desk/services/scoring.py:0: error: Module "django.utils.timezone" does not explicitly export attribute "timedelta"  [attr-defined]
+backend/apps/secrets/models.py:0: error: Item "bytes" of "bytes | memoryview[int] | dict[Never, Never]" has no attribute "get"  [union-attr]
+backend/apps/secrets/models.py:0: error: Item "memoryview[int]" of "bytes | memoryview[int] | dict[Never, Never]" has no attribute "get"  [union-attr]
+backend/apps/secrets/models.py:0: error: No overload variant of "get" of "dict" matches argument types "str", "str"  [call-overload]
+backend/apps/secrets/models.py:0: note: Possible overload variants:
+backend/apps/secrets/models.py:0: note: def get(self, Never, None = ..., /) -> None
+backend/apps/secrets/models.py:0: note: def get(self, Never, Never, /) -> Never
+backend/apps/secrets/models.py:0: note: def [_T] get(self, Never, _T, /) -> _T
+backend/apps/secrets/models.py:0: error: Item "bytes" of "bytes | memoryview[int] | dict[Never, Never]" has no attribute "get"  [union-attr]
+backend/apps/secrets/models.py:0: error: Item "memoryview[int]" of "bytes | memoryview[int] | dict[Never, Never]" has no attribute "get"  [union-attr]
+backend/apps/secrets/models.py:0: error: No overload variant of "get" of "dict" matches argument types "str", "str"  [call-overload]
+backend/apps/secrets/models.py:0: note: Possible overload variants:
+backend/apps/secrets/models.py:0: note: def get(self, Never, None = ..., /) -> None
+backend/apps/secrets/models.py:0: note: def get(self, Never, Never, /) -> Never
+backend/apps/secrets/models.py:0: note: def [_T] get(self, Never, _T, /) -> _T
+backend/apps/secrets/models.py:0: error: Item "bytes" of "bytes | memoryview[int] | dict[Never, Never]" has no attribute "get"  [union-attr]
+backend/apps/secrets/models.py:0: error: Item "memoryview[int]" of "bytes | memoryview[int] | dict[Never, Never]" has no attribute "get"  [union-attr]
+backend/apps/secrets/models.py:0: error: No overload variant of "get" of "dict" matches argument types "str", "str"  [call-overload]
+backend/apps/secrets/models.py:0: note: Possible overload variants:
+backend/apps/secrets/models.py:0: note: def get(self, Never, None = ..., /) -> None
+backend/apps/secrets/models.py:0: note: def get(self, Never, Never, /) -> Never
+backend/apps/secrets/models.py:0: note: def [_T] get(self, Never, _T, /) -> _T
+backend/apps/desk/services/detectors.py:0: error: Module "django.utils.timezone" does not explicitly export attribute "timedelta"  [attr-defined]
+backend/apps/desk/services/detectors.py:0: error: Module "django.utils.timezone" does not explicitly export attribute "timedelta"  [attr-defined]
+backend/apps/export/serializers.py:0: error: Argument 1 to "bytes" has incompatible type "bytes | memoryview[int] | None"; expected "Iterable[SupportsIndex] | SupportsIndex | SupportsBytes | Buffer"  [arg-type]
+backend/apps/secrets/schwab_oauth.py:0: error: Incompatible return value type (got "bytes | memoryview[int] | None", expected "dict[Any, Any] | None")  [return-value]
+backend/apps/secrets/data_source_test.py:0: error: Argument 1 has incompatible type "bytes | memoryview[int] | dict[Any, Any]"; expected "dict[Any, Any]"  [arg-type]
+backend/apps/secrets/credentials.py:0: error: Incompatible return value type (got "bytes | memoryview[int] | None", expected "dict[Any, Any] | None")  [return-value]
+backend/apps/threads/event_log.py:0: error: Argument 1 to "int" has incompatible type "Awaitable[Any] | Any"; expected "str | Buffer | SupportsInt | SupportsIndex | SupportsTrunc"  [arg-type]
+backend/apps/threads/event_log.py:0: error: Item "Awaitable[list[Any]]" of "Awaitable[list[Any]] | list[Any]" has no attribute "__iter__" (not iterable)  [union-attr]
+backend/apps/threads/event_log.py:0: note: Maybe you forgot to use "await"?
+backend/apps/core/views.py:0: error: No overload variant of "int" matches argument type "object"  [call-overload]
+backend/apps/core/views.py:0: note: Error code "call-overload" not covered by "type: ignore" comment
+backend/apps/core/views.py:0: note: Possible overload variants:
+backend/apps/core/views.py:0: note: def int(str | Buffer | SupportsInt | SupportsIndex | SupportsTrunc = ..., /) -> int
+backend/apps/core/views.py:0: note: def int(str | bytes | bytearray, /, base: SupportsIndex) -> int
+backend/apps/market/services/twelvedata.py:0: error: Name "bars" already defined on line 0  [no-redef]
+backend/apps/market/services/tradier.py:0: error: Cannot infer type of lambda  [misc]
+backend/apps/market/services/tiingo.py:0: error: Argument 1 to "fromisoformat" of "date" has incompatible type "Any | None"; expected "str"  [arg-type]
+backend/apps/market/services/tiingo.py:0: error: Argument 1 to "float" has incompatible type "Any | None"; expected "str | Buffer | SupportsFloat | SupportsIndex"  [arg-type]
+backend/apps/market/services/tiingo.py:0: error: Argument 1 to "float" has incompatible type "Any | None"; expected "str | Buffer | SupportsFloat | SupportsIndex"  [arg-type]
+backend/apps/market/services/tiingo.py:0: error: Argument 1 to "float" has incompatible type "Any | None"; expected "str | Buffer | SupportsFloat | SupportsIndex"  [arg-type]
+backend/apps/market/services/tiingo.py:0: error: Argument 1 to "float" has incompatible type "Any | None"; expected "str | Buffer | SupportsFloat | SupportsIndex"  [arg-type]
+backend/apps/market/services/tiingo.py:0: error: Argument 1 to "int" has incompatible type "Any | None"; expected "str | Buffer | SupportsInt | SupportsIndex | SupportsTrunc"  [arg-type]
+backend/apps/market/services/marketaux.py:0: error: Cannot infer type of lambda  [misc]
+backend/apps/market/services/events.py:0: error: Cannot infer type of lambda  [misc]
+backend/apps/market/services/corporate_actions.py:0: error: Cannot infer type of lambda  [misc]
+backend/apps/market/services/corporate_actions.py:0: error: Cannot infer type of lambda  [misc]
+backend/apps/observer/services/consensus.py:0: error: Argument "modal_bias" to "ConsensusReport" has incompatible type "str | None"; expected "Literal['bullish', 'bearish', 'neutral', 'mixed'] | None"  [arg-type]
+backend/apps/predictions/tasks.py:0: error: Argument 1 to "float" has incompatible type "Decimal | None"; expected "str | Buffer | SupportsFloat | SupportsIndex"  [arg-type]
+backend/apps/aieval/services.py:0: error: Argument 1 to "serialize_for_ai" has incompatible type "Snapshot | None"; expected "Snapshot"  [arg-type]
+backend/apps/thesis/views.py:0: error: "type[M]" has no attribute "objects"  [attr-defined]
+backend/apps/market/tasks.py:0: error: Item "bytes" of "bytes | memoryview[int]" has no attribute "get"  [union-attr]
+backend/apps/market/tasks.py:0: error: Item "memoryview[int]" of "bytes | memoryview[int]" has no attribute "get"  [union-attr]
+backend/apps/secrets/views.py:0: error: "Provider" has no attribute "list_models"  [attr-defined]
+backend/apps/secrets/views.py:0: error: Need type annotation for "token"  [var-annotated]
+backend/apps/secrets/views.py:0: error: Item "bytes" of "bytes | memoryview[int] | dict[Any, Any]" has no attribute "get"  [union-attr]
+backend/apps/secrets/views.py:0: error: Item "memoryview[int]" of "bytes | memoryview[int] | dict[Any, Any]" has no attribute "get"  [union-attr]
+backend/apps/secrets/views.py:0: error: Need type annotation for "existing" (hint: "existing: dict[<type>, <type>] = ...")  [var-annotated]
+backend/apps/secrets/views.py:0: error: Argument 1 to "dict" has incompatible type "bytes | memoryview[int] | dict[Never, Never]"; expected "SupportsKeysAndGetItem[Never, Never]"  [arg-type]
+backend/apps/triggers/metrics.py:0: error: Argument 3 to "_ohlc_history" has incompatible type "str | Any | None"; expected "str"  [arg-type]
+backend/apps/regime/views.py:0: error: Incompatible return value type (got "JsonResponse", expected "Response")  [return-value]
+backend/apps/book/services/analytics.py:0: error: Argument 1 to "float" has incompatible type "Decimal | None"; expected "str | Buffer | SupportsFloat | SupportsIndex"  [arg-type]
+backend/apps/threads/coach.py:0: error: Item "None" of "Any | None" has no attribute "strftime"  [union-attr]
+backend/apps/threads/views.py:0: error: Argument 2 to "serialize_for_ai" has incompatible type "**dict[str, str]"; expected "int | None"  [arg-type]
+backend/apps/snapshots/views.py:0: error: Incompatible type for lookup 'profile_id': (got "str", expected "TradingProfile | int | None")  [misc]
+backend/apps/snapshots/views.py:0: error: Incompatible types in assignment (expression has type "Snapshot | None", variable has type "Snapshot")  [assignment]
+backend/apps/snapshots/views.py:0: error: Incompatible types in assignment (expression has type "Snapshot | None", variable has type "Snapshot")  [assignment]
+backend/apps/briefing/services/run.py:0: error: Incompatible types in assignment (expression has type "object | None", variable has type "Snapshot | Combinable | None")  [assignment]
+backend/apps/briefing/services/run.py:0: error: Incompatible type for "snapshot_ref" of "Message" (got "object | None", expected "Snapshot | Combinable | None")  [misc]
+backend/apps/briefing/views.py:0: error: Cannot override instance variable (previously declared on base class "View") with class variable  [misc]
