@@ -8,6 +8,13 @@ export type WarRoomLiveMessage = {
   status: "streaming" | "done" | "failed";
 };
 
+// Terminal lifecycle events → the status they settle an in-flight message into.
+const TERMINAL_STATUS: Record<string, "done" | "failed"> = {
+  message_done: "done",
+  error: "failed",
+  cost_capped: "failed",
+};
+
 /**
  * Live persona-token stream for a running War Room debate. The personas run
  * through `run_ai_on_message`, which already broadcasts message_started /
@@ -29,16 +36,14 @@ export function useWarRoomLive(threadId: number | null, enabled: boolean) {
         const cur = prev[id] ?? { id, text: "", status: "streaming" as const };
         return { ...prev, [id]: { ...cur, text: cur.text + (msg.text ?? "") } };
       });
-    } else if (msg.event === "message_done") {
-      setLive((prev) => ({
-        ...prev,
-        [id]: { ...(prev[id] ?? { id, text: "" }), status: "done" },
-      }));
-    } else if (msg.event === "error" || msg.event === "cost_capped") {
-      setLive((prev) => ({
-        ...prev,
-        [id]: { ...(prev[id] ?? { id, text: "" }), status: "failed" },
-      }));
+    } else {
+      const status = TERMINAL_STATUS[msg.event];
+      if (status) {
+        setLive((prev) => ({
+          ...prev,
+          [id]: { ...(prev[id] ?? { id, text: "" }), status },
+        }));
+      }
     }
   }, []);
 
