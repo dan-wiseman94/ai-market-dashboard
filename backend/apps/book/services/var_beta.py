@@ -80,7 +80,8 @@ def compute_var_beta(exposures: list[dict]) -> dict:
     # Portfolio P&L series in dollars, aligned by recency — its std embeds the
     # cross-position correlation, so diversified VaR <= sum of position VaRs.
     length = min(len(r) for _, r in series)
-    pnl = [sum(dollar * r[-length:][t] for dollar, r in series) for t in range(length)]
+    aligned = [(dollar, r[-length:]) for dollar, r in series]
+    pnl = [sum(dollar * r[t] for dollar, r in aligned) for t in range(length)]
     port_sigma = statistics.pstdev(pnl) if length >= 2 else 0.0
     diversified = C.VAR_Z_95 * port_sigma
     undiversified = sum(p["var_usd"] for p in positions)
