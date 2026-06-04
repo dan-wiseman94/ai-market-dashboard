@@ -89,6 +89,91 @@ function UserMessage({ text, snapshotId }: { text: string; snapshotId?: number |
   );
 }
 
+function AssistantHeader({
+  label,
+  model,
+  isStreaming,
+  cost,
+}: {
+  label: string;
+  model?: string;
+  isStreaming: boolean;
+  cost?: string;
+}) {
+  return (
+    <header className="flex items-center gap-3 mb-4 pb-3 border-b border-rule-soft">
+      <span className="relative inline-flex items-center justify-center h-6 w-6 rounded-full bg-copper-500/15 border border-copper-500/40">
+        <span className="font-mono text-[10px] text-copper-300">AI</span>
+        {isStreaming && (
+          <span aria-hidden className="absolute inset-0 rounded-full ledger-pulse text-copper-400" />
+        )}
+      </span>
+      <div className="flex flex-col min-w-0">
+        <span className="font-mono text-[11px] text-ink-200 tracking-wide truncate">
+          {label}
+          {model && <span className="text-ink-500"> · {model}</span>}
+        </span>
+        {isStreaming && (
+          <span className="font-mono text-[9px] uppercase tracking-loose2 text-copper-400">
+            Transmitting…
+          </span>
+        )}
+      </div>
+      <div className="flex-1" />
+      {cost && (
+        <span className="ledger-pill" data-tone="copper">
+          <span className="text-ink-500">cost</span>
+          <span className="tabular-nums">{usd(cost)}</span>
+        </span>
+      )}
+    </header>
+  );
+}
+
+function AssistantBody({
+  status,
+  error,
+  kind,
+  report,
+  text,
+  isStreaming,
+}: {
+  status?: "done" | "streaming" | "failed";
+  error?: string;
+  kind?: "structured_observation";
+  report?: ObservationReport;
+  text: string;
+  isStreaming: boolean;
+}) {
+  if (status === "failed") {
+    return (
+      <div className="text-loss font-mono text-[13px]">
+        <span className="ledger-pill mr-2" data-tone="loss">failed</span>
+        {error || "unknown error"}
+      </div>
+    );
+  }
+
+  if (kind === "structured_observation" && report) {
+    return <ObservationReportCard report={report} />;
+  }
+
+  return (
+    <div className="ledger-prose">
+      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+        {text || (isStreaming ? "…" : "")}
+      </ReactMarkdown>
+      {isStreaming && text && (
+        <span
+          aria-hidden
+          className="inline-block w-2 h-4 ml-0.5 align-text-bottom bg-copper-400 ledger-pulse"
+          style={{ color: "var(--copper-400)" }}
+        />
+      )}
+    </div>
+  );
+}
+
 function Message({ role, text, status, error, cost, model, provider, bare = false, snapshotId, kind, report }: Props) {
   const isUser = role === "user";
   const isStreaming = status === "streaming";
@@ -106,54 +191,15 @@ function Message({ role, text, status, error, cost, model, provider, bare = fals
   return (
     <article className="relative group ledger-reveal">
       <div className={innerClass}>
-        <header className="flex items-center gap-3 mb-4 pb-3 border-b border-rule-soft">
-          <span className="relative inline-flex items-center justify-center h-6 w-6 rounded-full bg-copper-500/15 border border-copper-500/40">
-            <span className="font-mono text-[10px] text-copper-300">AI</span>
-            {isStreaming && (
-              <span aria-hidden className="absolute inset-0 rounded-full ledger-pulse text-copper-400" />
-            )}
-          </span>
-          <div className="flex flex-col min-w-0">
-            <span className="font-mono text-[11px] text-ink-200 tracking-wide truncate">
-              {label}
-              {model && <span className="text-ink-500"> · {model}</span>}
-            </span>
-            {isStreaming && (
-              <span className="font-mono text-[9px] uppercase tracking-loose2 text-copper-400">
-                Transmitting…
-              </span>
-            )}
-          </div>
-          <div className="flex-1" />
-          {cost && (
-            <span className="ledger-pill" data-tone="copper">
-              <span className="text-ink-500">cost</span>
-              <span className="tabular-nums">{usd(cost)}</span>
-            </span>
-          )}
-        </header>
-
-        {status === "failed" ? (
-          <div className="text-loss font-mono text-[13px]">
-            <span className="ledger-pill mr-2" data-tone="loss">failed</span>
-            {error || "unknown error"}
-          </div>
-        ) : kind === "structured_observation" && report ? (
-          <ObservationReportCard report={report} />
-        ) : (
-          <div className="ledger-prose">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-              {text || (isStreaming ? "…" : "")}
-            </ReactMarkdown>
-            {isStreaming && text && (
-              <span
-                aria-hidden
-                className="inline-block w-2 h-4 ml-0.5 align-text-bottom bg-copper-400 ledger-pulse"
-                style={{ color: "var(--copper-400)" }}
-              />
-            )}
-          </div>
-        )}
+        <AssistantHeader label={label} model={model} isStreaming={isStreaming} cost={cost} />
+        <AssistantBody
+          status={status}
+          error={error}
+          kind={kind}
+          report={report}
+          text={text}
+          isStreaming={isStreaming}
+        />
       </div>
     </article>
   );

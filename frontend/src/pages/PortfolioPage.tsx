@@ -234,6 +234,140 @@ function ClosePositionInline({
   );
 }
 
+// ---- Position Row cells (module-scoped subcomponents) ----
+
+function PositionTickerCell({ position }: { position: PortfolioPosition }) {
+  return (
+    <td className="px-4 py-3">
+      <div className="flex items-center gap-2">
+        <span className="font-mono text-[13px] text-ink-100 font-medium">
+          {position.ticker}
+        </span>
+        <span
+          className={`font-mono text-[9px] uppercase tracking-loose2 border px-1 py-0.5 rounded-ledger ${
+            position.direction === "long"
+              ? "text-gain-400 border-gain-400/30"
+              : "text-loss-400 border-loss-400/30"
+          }`}
+        >
+          {position.direction}
+        </span>
+      </div>
+      {position.thesis_id && (
+        <Link
+          to={`/theses/${position.thesis_id}`}
+          className="font-mono text-[10px] text-copper-400 hover:text-copper-200 transition-colors"
+        >
+          Thesis #{position.thesis_id}
+        </Link>
+      )}
+    </td>
+  );
+}
+
+function UnrealizedPnl({
+  position,
+  pnl,
+  pct,
+}: {
+  position: PortfolioPosition;
+  pnl: number;
+  pct: number | null;
+}) {
+  return (
+    <>
+      <span data-testid={`pnl-${position.id}`} className={pnlColor(pnl)}>
+        {pnl >= 0 ? "+" : ""}
+        {pnl.toFixed(2)}
+      </span>
+      {pct != null && (
+        <div className={`text-[10px] ${pnlColor(pnl)}`}>
+          {pct >= 0 ? "+" : ""}
+          {pct.toFixed(1)}%
+        </div>
+      )}
+    </>
+  );
+}
+
+function PositionPnlCell({
+  position,
+  pnl,
+  pct,
+  realized,
+}: {
+  position: PortfolioPosition;
+  pnl: number | null;
+  pct: number | null;
+  realized: number | null;
+}) {
+  return (
+    <td className="px-4 py-3 font-mono text-[12px] tabular-nums text-right">
+      {pnl != null ? (
+        <UnrealizedPnl position={position} pnl={pnl} pct={pct} />
+      ) : realized != null ? (
+        <span
+          data-testid={`realized-${position.id}`}
+          className={pnlColor(realized)}
+        >
+          {realized >= 0 ? "+" : ""}
+          {realized.toFixed(2)}
+        </span>
+      ) : (
+        <span className="text-ink-600">—</span>
+      )}
+    </td>
+  );
+}
+
+function PositionActionsCell({
+  position,
+  showClose,
+  closing,
+  setClosing,
+}: {
+  position: PortfolioPosition;
+  showClose: boolean;
+  closing: boolean;
+  setClosing: (closing: boolean) => void;
+}) {
+  const del = useDeletePosition();
+  const canClose = showClose && position.status === "open";
+
+  return (
+    <td className="px-4 py-3 text-right">
+      {canClose && (
+        <>
+          {closing ? (
+            <ClosePositionInline
+              position={position}
+              onDone={() => setClosing(false)}
+            />
+          ) : (
+            <button
+              data-testid={`open-close-btn-${position.id}`}
+              onClick={() => setClosing(true)}
+              className="font-mono text-[11px] text-copper-400 hover:text-copper-200 transition-colors"
+            >
+              Close…
+            </button>
+          )}
+        </>
+      )}
+      {position.status === "open" && !closing && (
+        <button
+          data-testid={`delete-btn-${position.id}`}
+          onClick={() => del.mutate(position.id)}
+          disabled={del.isPending}
+          className="font-mono text-[11px] text-ink-500 hover:text-loss-400 ml-3 disabled:opacity-50"
+        >
+          ✕
+        </button>
+      )}
+    </td>
+  );
+}
+
 // ---- Position Row ----
 
 function PositionRow({
@@ -244,7 +378,6 @@ function PositionRow({
   showClose?: boolean;
 }) {
   const [closing, setClosing] = useState(false);
-  const del = useDeletePosition();
 
   const pnl = position.unrealized?.unrealized_pnl ?? null;
   const pct = position.unrealized?.unrealized_pct ?? null;
@@ -255,30 +388,7 @@ function PositionRow({
       data-testid={`position-row-${position.id}`}
       className="border-b border-rule-soft hover:bg-copper-500/[0.03] transition-colors"
     >
-      <td className="px-4 py-3">
-        <div className="flex items-center gap-2">
-          <span className="font-mono text-[13px] text-ink-100 font-medium">
-            {position.ticker}
-          </span>
-          <span
-            className={`font-mono text-[9px] uppercase tracking-loose2 border px-1 py-0.5 rounded-ledger ${
-              position.direction === "long"
-                ? "text-gain-400 border-gain-400/30"
-                : "text-loss-400 border-loss-400/30"
-            }`}
-          >
-            {position.direction}
-          </span>
-        </div>
-        {position.thesis_id && (
-          <Link
-            to={`/theses/${position.thesis_id}`}
-            className="font-mono text-[10px] text-copper-400 hover:text-copper-200 transition-colors"
-          >
-            Thesis #{position.thesis_id}
-          </Link>
-        )}
-      </td>
+      <PositionTickerCell position={position} />
       <td className="px-4 py-3 font-mono text-[12px] text-ink-300 tabular-nums text-right">
         {Number(position.quantity).toLocaleString()}
       </td>
@@ -290,65 +400,18 @@ function PositionRow({
           ? position.unrealized.last.toFixed(2)
           : "—"}
       </td>
-      <td className="px-4 py-3 font-mono text-[12px] tabular-nums text-right">
-        {pnl != null ? (
-          <>
-            <span
-              data-testid={`pnl-${position.id}`}
-              className={pnlColor(pnl)}
-            >
-              {pnl >= 0 ? "+" : ""}
-              {pnl.toFixed(2)}
-            </span>
-            {pct != null && (
-              <div className={`text-[10px] ${pnlColor(pnl)}`}>
-                {pct >= 0 ? "+" : ""}
-                {pct.toFixed(1)}%
-              </div>
-            )}
-          </>
-        ) : realized != null ? (
-          <span
-            data-testid={`realized-${position.id}`}
-            className={pnlColor(realized)}
-          >
-            {realized >= 0 ? "+" : ""}
-            {realized.toFixed(2)}
-          </span>
-        ) : (
-          <span className="text-ink-600">—</span>
-        )}
-      </td>
-      <td className="px-4 py-3 text-right">
-        {showClose && position.status === "open" && (
-          <>
-            {closing ? (
-              <ClosePositionInline
-                position={position}
-                onDone={() => setClosing(false)}
-              />
-            ) : (
-              <button
-                data-testid={`open-close-btn-${position.id}`}
-                onClick={() => setClosing(true)}
-                className="font-mono text-[11px] text-copper-400 hover:text-copper-200 transition-colors"
-              >
-                Close…
-              </button>
-            )}
-          </>
-        )}
-        {position.status === "open" && !closing && (
-          <button
-            data-testid={`delete-btn-${position.id}`}
-            onClick={() => del.mutate(position.id)}
-            disabled={del.isPending}
-            className="font-mono text-[11px] text-ink-500 hover:text-loss-400 ml-3 disabled:opacity-50"
-          >
-            ✕
-          </button>
-        )}
-      </td>
+      <PositionPnlCell
+        position={position}
+        pnl={pnl}
+        pct={pct}
+        realized={realized}
+      />
+      <PositionActionsCell
+        position={position}
+        showClose={showClose}
+        closing={closing}
+        setClosing={setClosing}
+      />
     </tr>
   );
 }
