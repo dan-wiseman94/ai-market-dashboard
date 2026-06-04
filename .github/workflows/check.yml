@@ -43,7 +43,11 @@ jobs:
           --health-retries 10
         ports: ["6379:6379"]
     env:
-      DJANGO_SETTINGS_MODULE: config.settings.dev
+      # config.settings.test = dev + InMemoryChannelLayer — the determinism guard for the
+      # order-dependent channels_redis flake (see backend/config/settings/test.py + CLAUDE.md).
+      # This env var overrides the pyproject [tool.pytest.ini_options] DJANGO_SETTINGS_MODULE,
+      # so without it CI silently runs on channels_redis instead of the intended test layer.
+      DJANGO_SETTINGS_MODULE: config.settings.test
       DJANGO_SECRET_KEY: ci-secret-key-not-used-in-prod
       DJANGO_DEBUG: "1"
       POSTGRES_DB: ai_dashboard
@@ -74,10 +78,19 @@ jobs:
       - name: mypy (ORM-aware, baseline ratchet)
         # `set +o pipefail`: mypy exits non-zero on baselined errors under Actions' default
         # pipefail; mypy-baseline filter exits 1 only on NEW (unbaselined) errors — that governs.
+        # PIPESTATUS guard: a mypy CRASH (exit >=2: bad config, plugin/import failure) produces
+        # no error lines, so the filter would see empty input and exit 0 — masking that nothing
+        # was type-checked. Fail explicitly on >=2; otherwise the filter's verdict governs.
         shell: bash
         run: |
           set +o pipefail
           uv run mypy backend/apps backend/config | uv run mypy-baseline filter
+          mypy_rc=${PIPESTATUS[0]}; filter_rc=${PIPESTATUS[1]}
+          if [ "$mypy_rc" -ge 2 ]; then
+            echo "::error::mypy crashed (exit $mypy_rc) — type-checking did not run"
+            exit "$mypy_rc"
+          fi
+          exit "$filter_rc"
       - name: OpenAPI schema is current (drift gate)
         # Regenerate and diff against the committed schema; any drift fails the build.
         run: |
