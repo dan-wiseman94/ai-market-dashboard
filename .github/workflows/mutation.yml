@@ -53,15 +53,25 @@ jobs:
           version: "0.8"
       - run: uv python install 3.13
       - run: uv sync --frozen --dev
+      # Run from backend/ (the source root, where backend/setup.cfg [mutmut] lives) so mutant
+      # module names match the runtime import names mutmut's coverage stats record. Clear
+      # PYTHONPATH so only the mutated copy under mutants/ is importable (DJANGO_SETTINGS_MODULE
+      # is config.settings.test from the job env). See backend/setup.cfg for the full rationale.
       - name: mutmut run (money paths) — informational
+        working-directory: backend
+        env:
+          PYTHONPATH: ""
         run: uv run mutmut run || true
       - name: mutmut results
         if: always()
+        working-directory: backend
+        env:
+          PYTHONPATH: ""
         run: uv run mutmut results
       - name: Archive mutmut state
         if: always()
         uses: actions/upload-artifact@v7
         with:
           name: mutmut-results
-          path: mutants/
+          path: backend/mutants/
           retention-days: 14

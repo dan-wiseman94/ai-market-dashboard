@@ -1,4 +1,4 @@
-from apps.ai.catalog import KNOWN_PROVIDERS, get_model, list_models
+from apps.ai.catalog import KNOWN_PROVIDERS, ceiling_for_provider, get_model, list_models
 
 
 def test_lists_claude_models():
@@ -26,3 +26,26 @@ def test_known_providers_contains_claude_openai_local():
     assert "claude" in KNOWN_PROVIDERS
     assert "openai" in KNOWN_PROVIDERS
     assert "local" in KNOWN_PROVIDERS
+
+
+def test_list_models_without_provider_returns_full_catalog():
+    models = list_models()
+    providers = {m.provider for m in models}
+    assert "claude" in providers
+    assert "openai" in providers
+    assert len(models) >= 6
+
+
+def test_ceiling_for_provider_is_scoped_to_that_provider():
+    # The priciest-by-output model *within* the provider, not the global max.
+    openai_ceiling = ceiling_for_provider("openai")
+    assert openai_ceiling is not None
+    assert openai_ceiling.provider == "openai"
+    assert openai_ceiling.id == "gpt-5"
+    claude_ceiling = ceiling_for_provider("claude")
+    assert claude_ceiling is not None
+    assert claude_ceiling.id == "claude-opus-4-8"
+
+
+def test_ceiling_for_provider_unknown_returns_none():
+    assert ceiling_for_provider("nonexistent-provider") is None
