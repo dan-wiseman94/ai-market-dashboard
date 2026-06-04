@@ -45,63 +45,11 @@ def build_export_bundle(job_id: int) -> None:
         d.mkdir(parents=True, exist_ok=True)
         filename = f"ai-dashboard-export-{datetime.now(UTC).strftime('%Y%m%d-%H%M%S')}-{uuid.uuid4().hex[:6]}.zip"
         path = d / filename
-        counts = {"threads": 0, "snapshots": 0, "observations": 0, "triggers": 0}
-
         scope = job.scope or {}
 
         with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as zf:
             root = path.stem
-
-            if scope.get("threads"):
-                from apps.threads.models import Thread
-
-                for t in _scoped_queryset(Thread, scope["threads"]):
-                    zf.writestr(f"{root}/threads/{t.id}/meta.json", _dump(S.thread_to_json(t)))
-                    zf.writestr(f"{root}/threads/{t.id}/thread.md", S.thread_to_markdown(t))
-                    counts["threads"] += 1
-
-            if scope.get("snapshots"):
-                from apps.snapshots.models import Snapshot
-
-                for s in _scoped_queryset(Snapshot, scope["snapshots"]):
-                    zf.writestr(f"{root}/snapshots/{s.id}/meta.json", _dump(S.snapshot_to_json(s)))
-                    zf.writestr(
-                        f"{root}/snapshots/{s.id}/summary.md",
-                        S.snapshot_to_markdown(s),
-                    )
-                    for name, data in S.snapshot_images(s):
-                        zf.writestr(f"{root}/snapshots/{s.id}/images/{name}", data)
-                    counts["snapshots"] += 1
-
-            if scope.get("observations"):
-                from apps.observer.models import ObserverSchedule
-
-                for sched in ObserverSchedule.objects.all():
-                    zf.writestr(
-                        f"{root}/observations/{sched.id}/runs.json",
-                        _dump(S.observer_runs_to_json(sched)),
-                    )
-                    zf.writestr(
-                        f"{root}/observations/{sched.id}/runs.md",
-                        S.observer_runs_to_markdown(sched),
-                    )
-                    counts["observations"] += 1
-
-            if scope.get("triggers"):
-                from apps.triggers.models import EventTrigger
-
-                for trig in EventTrigger.objects.all():
-                    zf.writestr(
-                        f"{root}/triggers/{trig.id}/config.json",
-                        _dump(S.trigger_to_json(trig)),
-                    )
-                    counts["triggers"] += 1
-
-            if scope.get("profiles"):
-                zf.writestr(f"{root}/profiles/profiles.json", _dump(S.profiles_to_json()))
-            if scope.get("watchlists"):
-                zf.writestr(f"{root}/watchlists/watchlists.json", _dump(S.watchlists_to_json()))
-
+            counts = _write_sections(zf, root, scope)
             manifest = {
                 "version": 1,
                 "generated_at": timezone.now().isoformat(),
@@ -133,6 +81,60 @@ def build_export_bundle(job_id: int) -> None:
                 path.unlink(missing_ok=True)
             except OSError:
                 log.warning("could not unlink failed export path %s", path)
+
+
+def _write_sections(zf: zipfile.ZipFile, root: str, scope: dict) -> dict[str, int]:
+    """Write each opted-in section into the zip; return per-entity counts for the manifest."""
+    counts = {"threads": 0, "snapshots": 0, "observations": 0, "triggers": 0}
+
+    if scope.get("threads"):
+        from apps.threads.models import Thread
+
+        for t in _scoped_queryset(Thread, scope["threads"]):
+            zf.writestr(f"{root}/threads/{t.id}/meta.json", _dump(S.thread_to_json(t)))
+            zf.writestr(f"{root}/threads/{t.id}/thread.md", S.thread_to_markdown(t))
+            counts["threads"] += 1
+
+    if scope.get("snapshots"):
+        from apps.snapshots.models import Snapshot
+
+        for s in _scoped_queryset(Snapshot, scope["snapshots"]):
+            zf.writestr(f"{root}/snapshots/{s.id}/meta.json", _dump(S.snapshot_to_json(s)))
+            zf.writestr(f"{root}/snapshots/{s.id}/summary.md", S.snapshot_to_markdown(s))
+            for name, data in S.snapshot_images(s):
+                zf.writestr(f"{root}/snapshots/{s.id}/images/{name}", data)
+            counts["snapshots"] += 1
+
+    if scope.get("observations"):
+        from apps.observer.models import ObserverSchedule
+
+        for sched in ObserverSchedule.objects.all():
+            zf.writestr(
+                f"{root}/observations/{sched.id}/runs.json",
+                _dump(S.observer_runs_to_json(sched)),
+            )
+            zf.writestr(
+                f"{root}/observations/{sched.id}/runs.md",
+                S.observer_runs_to_markdown(sched),
+            )
+            counts["observations"] += 1
+
+    if scope.get("triggers"):
+        from apps.triggers.models import EventTrigger
+
+        for trig in EventTrigger.objects.all():
+            zf.writestr(
+                f"{root}/triggers/{trig.id}/config.json",
+                _dump(S.trigger_to_json(trig)),
+            )
+            counts["triggers"] += 1
+
+    if scope.get("profiles"):
+        zf.writestr(f"{root}/profiles/profiles.json", _dump(S.profiles_to_json()))
+    if scope.get("watchlists"):
+        zf.writestr(f"{root}/watchlists/watchlists.json", _dump(S.watchlists_to_json()))
+
+    return counts
 
 
 def reconcile_export_disk() -> None:
