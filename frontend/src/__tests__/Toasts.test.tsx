@@ -54,4 +54,26 @@ describe("Toasts", () => {
     fireEvent.click(toast);
     expect(screen.queryByText("saved!")).not.toBeInTheDocument();
   });
+
+  it("clears pending auto-dismiss timers on unmount (no leak past teardown)", () => {
+    // Regression: a toast pushed shortly before unmount used to leave its 4s
+    // dismiss() timer running, firing a setState after the tree was gone — which
+    // surfaced as a stray "window is not defined" once vitest tore down the jsdom
+    // env between test files.
+    vi.useFakeTimers();
+    try {
+      const { unmount } = render(
+        <ToastProvider defaultDurationMs={4000}>
+          <Toasts />
+          <Fixture />
+        </ToastProvider>,
+      );
+      fireEvent.click(screen.getByText("go"));
+      expect(vi.getTimerCount()).toBeGreaterThan(0); // auto-dismiss timer pending
+      unmount();
+      expect(vi.getTimerCount()).toBe(0); // cleared by the provider's unmount cleanup
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });
