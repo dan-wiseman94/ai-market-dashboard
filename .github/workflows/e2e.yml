@@ -58,6 +58,12 @@ jobs:
         # -c not_a_server_error: gate on crashes (real bugs), not strict response-schema
         # conformance (noisy against drf-spectacular's graceful-fallback schemas).
         run: docker compose -f compose.yaml -f compose.e2e.yaml exec -T --workdir /app web uv run schemathesis run http://localhost:8000/api/schema/ -u http://localhost:8000 -c not_a_server_error -n 6
+      - name: render-chart integration test (the /render/chart chromium path)
+        # apps.snapshots.services.render.render_chart_png is the headless-chromium chart-image
+        # pipeline. Its test is marked `integration`, so check.yml deselects it (`-m 'not
+        # integration'`) and the other e2e steps only run the e2e/ dir — it was gated nowhere.
+        # Exercise it here: `worker` carries chromium and the e2e overlay serves frontend:5173.
+        run: docker compose -f compose.yaml -f compose.e2e.yaml exec -T --workdir /app worker uv run pytest backend/apps/snapshots/tests/test_render_chart.py -m integration -v
       - name: Run e2e/ui suite
         # Must exec in `worker` (carries the chromium playwright build), with --workdir /app
         # so pytest sees the repo-root layout (web's WORKDIR is /app/backend), and -m integration
