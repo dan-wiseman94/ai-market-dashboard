@@ -225,24 +225,15 @@ forbidden_modules = [
 # lazily inside apps.market) is legitimate.
 allow_indirect_imports = true
 
-[tool.mutmut]
-# Mutation testing — NIGHTLY only (slow), never a PR gate. Scoped to the highest-stakes
-# "money" paths where a surviving mutant means a real test gap. Run from the repo root
-# (where this config is found). Surviving mutants = weak assertions to investigate.
-paths_to_mutate = [
-    "backend/apps/ai/cost.py",
-    "backend/apps/ai/catalog.py",
-    "backend/apps/market/returns.py",
-    "backend/apps/thesis/services/postmortem.py",
-]
-tests_dir = ["backend/apps/ai/tests", "backend/apps/market/tests", "backend/apps/thesis/tests"]
-# Django needs the whole backend importable in mutmut's mutants/ copy.
-also_copy = ["backend", "pyproject.toml", "uv.lock"]
-pytest_add_cli_args_test_selection = [
-    "backend/apps/ai/tests",
-    "backend/apps/market/tests",
-    "backend/apps/thesis/tests",
-]
+# Mutation testing (mutmut) — NIGHTLY only (slow), never a PR gate. Scoped to the highest-stakes
+# "money" paths where a surviving mutant means a real test gap.
+#
+# Config intentionally lives in backend/setup.cfg, NOT here: mutmut derives a mutant's module
+# name from its file path and reads config only from its CWD, so it must run from backend/
+# (the source root) for path-derived names (apps.ai.cost) to match the runtime import names
+# its coverage stats record. Run from the repo root with backend/apps/... paths, every mutant
+# was named backend.apps.* and silently reported "no tests" — mutation testing was a no-op.
+# See backend/setup.cfg, `make mutate`, and .github/workflows/mutation.yml.
 
 [tool.coverage.run]
 omit = ["*/migrations/*", "*/tests/*", "*/conftest.py"]
