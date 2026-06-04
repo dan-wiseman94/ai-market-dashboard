@@ -86,9 +86,13 @@ lint-imports: ## Enforce architecture import contracts (import-linter)
 
 .PHONY: mutate
 mutate: ## Mutation-test the money paths (slow; nightly in CI). Surviving mutants = weak tests.
-	# Runs from /app (where [tool.mutmut] lives). `run` exits non-zero on survivors — that's
-	# informational here, so `results` always prints the summary.
-	$(COMPOSE) exec -w /app web sh -c 'uv run mutmut run || true; uv run mutmut results'
+	# Runs from /app/backend (the source root, where backend/setup.cfg [mutmut] lives) so mutant
+	# module names (apps.ai.cost) match the runtime import names mutmut's coverage stats record —
+	# otherwise every mutant silently reports "no tests". test settings + cleared PYTHONPATH keep
+	# only the mutated copy under mutants/ importable. `run` exits non-zero on survivors (info
+	# only), so `results` always prints the summary.
+	$(COMPOSE) exec -w /app/backend -e DJANGO_SETTINGS_MODULE=config.settings.test -e PYTHONPATH= web \
+		sh -c 'uv run mutmut run || true; uv run mutmut results'
 
 .PHONY: typecheck
 typecheck: ## ORM-aware mypy, gated against mypy-baseline.txt (fails on NEW errors only)

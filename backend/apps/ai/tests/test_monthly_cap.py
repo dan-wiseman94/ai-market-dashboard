@@ -70,3 +70,9 @@ def test_check_monthly_cap_none_means_no_limit(db, thread: Thread) -> None:
 def test_check_monthly_cap_under_limit_passes(db, thread: Thread) -> None:
     _make_run(thread, days_ago=1, cost=Decimal("5.00"))
     check_monthly_cap("claude", Decimal("10.00"), prospective_cost=Decimal("2.00"))
+
+
+def test_check_monthly_cap_at_exact_boundary_passes(db, thread: Thread) -> None:
+    # Landing exactly on the cap is allowed — the guard is a strict ">", not ">=".
+    _make_run(thread, days_ago=1, cost=Decimal("8.00"))
+    check_monthly_cap("claude", Decimal("10.00"), prospective_cost=Decimal("2.00"))
