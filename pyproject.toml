@@ -200,6 +200,10 @@ python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
 pythonpath = ["backend"]
+# `mutants` is mutmut's generated working copy (backend/mutants/, gitignored). It now lives under
+# the pytest tree, so exclude it or a stray `make mutate` run breaks every later `pytest` collection.
+# The rest mirror pytest's built-in defaults (replacing norecursedirs drops them otherwise).
+norecursedirs = ["mutants", "*.egg", ".*", "_darcs", "build", "CVS", "dist", "node_modules", "venv", "{arch}"]
 addopts = "-ra --strict-markers --tb=short -m 'not integration' --timeout=60"
 asyncio_mode = "auto"
 markers = [
