@@ -62,6 +62,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
+    "apps.core.middleware.RejectNullBytesMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -178,6 +179,9 @@ REST_FRAMEWORK = {  # nosemgrep
     "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
     "DEFAULT_PARSER_CLASSES": ["rest_framework.parsers.JSONParser"],
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    # Map malformed-client-input exceptions (non-integer path ids, NUL bytes, etc.) that
+    # reach the ORM to 400 instead of letting them escape as 500s. See apps.core.exceptions.
+    "EXCEPTION_HANDLER": "apps.core.exceptions.exception_handler",
 }
 
 SPECTACULAR_SETTINGS = {

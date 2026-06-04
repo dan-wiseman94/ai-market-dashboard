@@ -55,6 +55,8 @@ class ThreadViewSet(
 
     def create(self, request: Request, *args: object, **kwargs: object) -> Response:
         data = request.data
+        if not isinstance(data, dict):
+            return _error("invalid_body", "Request body must be a JSON object.", 400)
         profile = None
         if pid := data.get("profile_id"):
             profile = TradingProfile.objects.filter(id=pid).first()
