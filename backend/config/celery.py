@@ -14,31 +14,34 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings.dev")
 
 app = Celery("ai_dashboard")
 app.config_from_object("django.conf:settings", namespace="CELERY")
+
 # Explicit task packages: guarantees all task modules are registered even when
 # autodiscover_tasks() is called before the full Django app registry is ready.
-app.autodiscover_tasks(
-    [
-        "apps.core",
-        "apps.market",
-        "apps.observer",
-        "apps.snapshots",
-        "apps.threads",
-        "apps.triggers",
-        "apps.backups",
-        "apps.export",
-        "apps.thesis",
-        "apps.briefing",
-        "apps.recall",
-        "apps.aieval",
-        "apps.predictions",
-        "apps.lessons",
-        "apps.coverage",
-        "apps.regime",
-        "apps.book",
-        "apps.desk",
-        "apps.warroom",
-    ]
-)
+# Exposed as a module constant so the registration guard
+# (apps/core/tests/test_celery_registration.py) binds to the SAME list the app
+# uses — a copied list would silently drift. Add new task modules here.
+TASK_PACKAGES = [
+    "apps.core",
+    "apps.market",
+    "apps.observer",
+    "apps.snapshots",
+    "apps.threads",
+    "apps.triggers",
+    "apps.backups",
+    "apps.export",
+    "apps.thesis",
+    "apps.briefing",
+    "apps.recall",
+    "apps.aieval",
+    "apps.predictions",
+    "apps.lessons",
+    "apps.coverage",
+    "apps.regime",
+    "apps.book",
+    "apps.desk",
+    "apps.warroom",
+]
+app.autodiscover_tasks(TASK_PACKAGES)
 
 app.conf.update(
     # A wedged provider stream or hung pg_dump must not pin a worker slot forever.
