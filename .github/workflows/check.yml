@@ -59,6 +59,11 @@ jobs:
       CELERY_BROKER_URL: redis://127.0.0.1:6379/1
       CELERY_RESULT_BACKEND: redis://127.0.0.1:6379/2
       PYTHONPATH: backend
+      # The unit-level e2e/tests/ get collected here (not integration-marked), but e2e/conftest.py's
+      # autouse _wait_for_stack session fixture blocks 60s waiting for a compose stack that the bare
+      # backend runner doesn't have — killed by --timeout=60, erroring all of e2e/tests/. Take the
+      # conftest's documented escape hatch for unit-level e2e tests. (Pre-existing main breakage.)
+      E2E_SKIP_STACK_WAIT: "1"
     steps:
       - uses: actions/checkout@v6
       - name: Provision /data (compose volume substitute on bare runner)
