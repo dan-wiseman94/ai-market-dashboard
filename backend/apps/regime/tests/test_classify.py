@@ -12,6 +12,31 @@ def test_classify_volatility(vix, expected):
 
 
 @pytest.mark.parametrize(
+    "vix,pct,expected",
+    [
+        # None percentile -> pure absolute thresholds (unchanged legacy behaviour)
+        (16.0, None, "Normal"),
+        (12.0, None, "Low"),
+        # low / moderate percentile -> NO escalation (must match test_compute fixtures)
+        (16.0, 0.30, "Normal"),
+        (24.0, 0.80, "Elevated"),  # RISK_OFF_INPUTS
+        (12.0, 0.20, "Low"),  # RISK_ON_INPUTS
+        # extreme percentile (>= VIX_PERCENTILE_ELEVATED) escalates ONE notch...
+        (16.0, 0.95, "Elevated"),  # Normal -> Elevated (vol high vs its own trailing regime)
+        (12.0, 0.95, "Normal"),  # Low -> Normal
+        (16.0, 0.90, "Elevated"),  # boundary: >= threshold escalates
+        # ...capped at Elevated — percentile never manufactures "Stress"...
+        (24.0, 0.99, "Elevated"),  # Elevated stays Elevated, NOT Stress
+        # ...and an absolute Stress reading stays Stress regardless of percentile.
+        (35.0, 0.10, "Stress"),
+        (35.0, 0.99, "Stress"),
+    ],
+)
+def test_classify_volatility_percentile_aware(vix, pct, expected):
+    assert c.classify_volatility(vix, pct) == expected
+
+
+@pytest.mark.parametrize(
     "ma_spread,dist50,expected",
     [
         (5.0, 3.0, "Uptrend"),

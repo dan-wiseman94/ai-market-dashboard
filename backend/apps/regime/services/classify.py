@@ -16,12 +16,20 @@ def classify_volatility(vix_last: float | None, vix_percentile: float | None = N
         return UNKNOWN
     v = float(vix_last)
     if v >= C.VIX_STRESS:
-        return "Stress"
+        return "Stress"  # genuine panic — an absolute-VIX signal; never reached via percentile
     if v >= C.VIX_ELEVATED:
-        return "Elevated"
-    if v >= C.VIX_LOW:
-        return "Normal"
-    return "Low"
+        base = "Elevated"
+    elif v >= C.VIX_LOW:
+        base = "Normal"
+    else:
+        base = "Low"
+    # Percentile-aware escalation: vol that is extreme RELATIVE to its own trailing window
+    # (>= VIX_PERCENTILE_ELEVATED) is bumped one notch — surfacing "heating up vs its own
+    # regime" even when the absolute level is moderate. Escalation-only (an absolute level is
+    # never de-escalated) and capped at Elevated (percentile never manufactures "Stress").
+    if vix_percentile is not None and vix_percentile >= C.VIX_PERCENTILE_ELEVATED:
+        return {"Low": "Normal", "Normal": "Elevated"}.get(base, base)
+    return base
 
 
 def classify_trend(ma_spread: float | None, dist_50: float | None) -> str:
