@@ -11,7 +11,8 @@ import logging
 import statistics
 import time
 from collections.abc import Iterable
-from typing import cast
+from dataclasses import dataclass
+from typing import Any, cast
 
 import redis
 from django.conf import settings
@@ -160,95 +161,16 @@ def build_snapshot(triggers: Iterable[EventTrigger]) -> MetricsSnapshot:  # noqa
             log.warning("trigger.metrics.positions_failed: %s", exc)
 
     snapshot: dict[str, float | None] = {}
-    fundamentals_cache: dict[str, dict] = {}
+    ctx = _LeafContext(
+        quotes=quotes,
+        positions_total_pl=positions_total_pl,
+        positions_total_mkt=positions_total_mkt,
+        earnings_days=earnings_days,
+        fundamentals_cache={},
+    )
     r = _redis()
-
     for leaf in leaves:
-        metric = leaf["metric"]
-        op = leaf["op"]
-        window = leaf.get("window")
-        ticker = leaf.get("ticker")
-        key = leaf_key(leaf)
-
-        if metric == "price":
-            assert ticker is not None
-            _record_last_metric(
-                r, snapshot, key=key, symbol=ticker, op=op, quote=quotes.get(ticker)
-            )
-
-        elif metric == "vix":
-            _record_last_metric(
-                r, snapshot, key=key, symbol="$VIX", op=op, quote=quotes.get("$VIX")
-            )
-
-        elif metric == "pct_change":
-            assert ticker is not None and window is not None
-            last = _extract_last(quotes.get(ticker))
-            window_key = f"trigger:window:{ticker}:{window}"
-            prior = _read_redis_float(r, window_key)
-            if last is None:
-                snapshot[key] = None
-            elif prior is None:
-                snapshot[key] = None
-                r.setex(window_key, 2 * _WINDOW_SECONDS[window], str(last))
-            else:
-                snapshot[key] = (last - prior) / prior if prior != 0 else None
-                if not r.exists(window_key):
-                    r.setex(window_key, 2 * _WINDOW_SECONDS[window], str(last))
-
-        elif metric == "volume_z":
-            assert ticker is not None and window is not None
-            # _volume_z mutates the rolling Redis baseline, so compute once per
-            # (ticker, window) even when several triggers share the same leaf.
-            if key not in snapshot:
-                snapshot[key] = _volume_z(r, ticker, window, _extract_volume(quotes.get(ticker)))
-
-        elif metric == "position_pl":
-            snapshot[key] = positions_total_pl
-
-        elif metric == "position_pl_pct":
-            if positions_total_mkt and positions_total_mkt > 0:
-                snapshot[key] = (positions_total_pl or 0) / positions_total_mkt
-            else:
-                snapshot[key] = None
-
-        elif metric == "days_to_earnings":
-            assert ticker is not None
-            snapshot[key] = earnings_days.get(ticker.upper())
-
-        elif metric in FUNDAMENTAL_METRICS:
-            assert ticker is not None
-            fund = fundamentals_cache.get(ticker.upper())
-            if fund is None:
-                fund = fetch_fundamentals(ticker.upper())
-                fundamentals_cache[ticker.upper()] = fund
-            _metric_to_fund_key = {
-                "pe_ratio": "pe",
-                "market_cap": "market_cap",
-                "revenue_growth": "rev_growth_yoy",
-                "gross_margin": "gross_margin",
-            }
-            raw_val = fund.get(_metric_to_fund_key[metric])
-            if raw_val is not None:
-                snapshot[key] = float(raw_val)
-            # absent when fund == {} or value is None — evaluator treats missing key as no-match
-
-        elif metric in INDICATOR_METRICS:
-            assert ticker is not None
-            tf = "1d" if metric in DAILY_ONLY_METRICS else window
-            params = _resolved_params(leaf)
-            resolved_key = leaf_key({**leaf, "params": params})
-            if resolved_key not in snapshot:
-                history = _ohlc_history(r, ticker, tf, _bars_needed([leaf]))
-                closes = [float(b["close"]) for b in history if b.get("close") is not None]
-                last = _extract_last(quotes.get(ticker)) or (closes[-1] if closes else None)
-                value = _indicator_value(metric, params, closes, history, last)
-                snapshot[resolved_key] = value
-                if op in CROSSING_OPS:
-                    last_key = f"trigger:last:{resolved_key}"
-                    snapshot[f"_prior:{resolved_key}"] = _read_redis_float(r, last_key)
-                    if value is not None:
-                        r.setex(last_key, _OHLC_MAX_TTL, str(value))
+        _record_leaf(r, snapshot, leaf, ctx)
 
     try:
         r.setex("trigger:last_tick_at", 120, str(int(time.time())))
@@ -256,6 +178,133 @@ def build_snapshot(triggers: Iterable[EventTrigger]) -> MetricsSnapshot:  # noqa
         log.warning("trigger.metrics.last_tick_at_failed: %s", exc)
 
     return snapshot
+
+
+@dataclass
+class _LeafContext:
+    """Per-tick inputs shared across the leaf recorders (assembled once in build_snapshot)."""
+
+    quotes: dict[str, dict]
+    positions_total_pl: float | None
+    positions_total_mkt: float | None
+    earnings_days: dict[str, int]
+    fundamentals_cache: dict[str, dict]
+
+
+_FUND_METRIC_KEY = {
+    "pe_ratio": "pe",
+    "market_cap": "market_cap",
+    "revenue_growth": "rev_growth_yoy",
+    "gross_margin": "gross_margin",
+}
+
+
+def _record_leaf(
+    r: redis.Redis, snapshot: dict[str, float | None], leaf: dict, ctx: _LeafContext
+) -> None:
+    """Dispatch one leaf to its metric recorder, writing the result into ``snapshot``."""
+    metric = leaf["metric"]
+    op = leaf["op"]
+    window = leaf.get("window")
+    ticker = leaf.get("ticker")
+    key = leaf_key(leaf)
+
+    if metric == "price":
+        assert ticker is not None
+        _record_last_metric(
+            r, snapshot, key=key, symbol=ticker, op=op, quote=ctx.quotes.get(ticker)
+        )
+    elif metric == "vix":
+        _record_last_metric(
+            r, snapshot, key=key, symbol="$VIX", op=op, quote=ctx.quotes.get("$VIX")
+        )
+    elif metric == "pct_change":
+        assert ticker is not None and window is not None
+        _record_pct_change(r, snapshot, key, ticker, window, ctx.quotes)
+    elif metric == "volume_z":
+        assert ticker is not None and window is not None
+        # _volume_z mutates the rolling Redis baseline, so compute once per
+        # (ticker, window) even when several triggers share the same leaf.
+        if key not in snapshot:
+            snapshot[key] = _volume_z(r, ticker, window, _extract_volume(ctx.quotes.get(ticker)))
+    elif metric == "position_pl":
+        snapshot[key] = ctx.positions_total_pl
+    elif metric == "position_pl_pct":
+        if ctx.positions_total_mkt and ctx.positions_total_mkt > 0:
+            snapshot[key] = (ctx.positions_total_pl or 0) / ctx.positions_total_mkt
+        else:
+            snapshot[key] = None
+    elif metric == "days_to_earnings":
+        assert ticker is not None
+        snapshot[key] = ctx.earnings_days.get(ticker.upper())
+    elif metric in FUNDAMENTAL_METRICS:
+        assert ticker is not None
+        _record_fundamental(snapshot, key, metric, ticker, ctx.fundamentals_cache)
+    elif metric in INDICATOR_METRICS:
+        assert ticker is not None
+        _record_indicator(r, snapshot, leaf, metric, ticker, window, op, ctx.quotes)
+
+
+def _record_pct_change(
+    r: redis.Redis,
+    snapshot: dict[str, float | None],
+    key: str,
+    ticker: str,
+    window: str,
+    quotes: dict,
+) -> None:
+    last = _extract_last(quotes.get(ticker))
+    window_key = f"trigger:window:{ticker}:{window}"
+    prior = _read_redis_float(r, window_key)
+    if last is None:
+        snapshot[key] = None
+    elif prior is None:
+        snapshot[key] = None
+        r.setex(window_key, 2 * _WINDOW_SECONDS[window], str(last))
+    else:
+        snapshot[key] = (last - prior) / prior if prior != 0 else None
+        if not r.exists(window_key):
+            r.setex(window_key, 2 * _WINDOW_SECONDS[window], str(last))
+
+
+def _record_fundamental(
+    snapshot: dict[str, float | None], key: str, metric: str, ticker: str, cache: dict[str, dict]
+) -> None:
+    fund = cache.get(ticker.upper())
+    if fund is None:
+        fund = fetch_fundamentals(ticker.upper())
+        cache[ticker.upper()] = fund
+    raw_val = fund.get(_FUND_METRIC_KEY[metric])
+    if raw_val is not None:
+        snapshot[key] = float(raw_val)
+    # absent when fund == {} or value is None — evaluator treats missing key as no-match
+
+
+def _record_indicator(
+    r: redis.Redis,
+    snapshot: dict[str, float | None],
+    leaf: dict,
+    metric: str,
+    ticker: str,
+    window: Any,
+    op: str,
+    quotes: dict,
+) -> None:
+    tf = "1d" if metric in DAILY_ONLY_METRICS else window
+    params = _resolved_params(leaf)
+    resolved_key = leaf_key({**leaf, "params": params})
+    if resolved_key in snapshot:
+        return
+    history = _ohlc_history(r, ticker, tf, _bars_needed([leaf]))
+    closes = [float(b["close"]) for b in history if b.get("close") is not None]
+    last = _extract_last(quotes.get(ticker)) or (closes[-1] if closes else None)
+    value = _indicator_value(metric, params, closes, history, last)
+    snapshot[resolved_key] = value
+    if op in CROSSING_OPS:
+        last_key = f"trigger:last:{resolved_key}"
+        snapshot[f"_prior:{resolved_key}"] = _read_redis_float(r, last_key)
+        if value is not None:
+            r.setex(last_key, _OHLC_MAX_TTL, str(value))
 
 
 def _earnings_days_map(leaves: list[dict]) -> dict[str, int]:

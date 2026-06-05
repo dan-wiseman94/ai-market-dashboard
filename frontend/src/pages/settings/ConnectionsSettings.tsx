@@ -8,6 +8,105 @@ import DataSourcesPanel from "@/components/settings/DataSourcesPanel";
 import SymbolCalendarOverridesCard from "@/components/SymbolCalendarOverridesCard";
 import { useToast } from "@/hooks/useToast";
 
+function SchwabStatusPill({ isLoading, connected }: { isLoading: boolean; connected: boolean }) {
+  if (isLoading) return null;
+  return (
+    <span className="ledger-pill" data-tone={connected ? "gain" : "loss"}>
+      {connected ? "Connected" : "Not connected"}
+    </span>
+  );
+}
+
+function SchwabCredentialsForm({
+  clientId,
+  secret,
+  saving,
+  secretPresent,
+  onClientIdChange,
+  onSecretChange,
+  onSaveCreds,
+}: {
+  clientId: string;
+  secret: string;
+  saving: boolean;
+  secretPresent: boolean;
+  onClientIdChange: (value: string) => void;
+  onSecretChange: (value: string) => void;
+  onSaveCreds: () => void;
+}) {
+  return (
+    <div className="mt-4 grid gap-3">
+      <label className="grid gap-1">
+        <span className="text-[12px] text-ink-300">App Key (Client ID)</span>
+        <input
+          type="text"
+          aria-label="Schwab App Key"
+          value={clientId}
+          onChange={(e) => onClientIdChange(e.target.value)}
+          placeholder="your Schwab app key"
+          className="ledger-input w-full py-2 font-mono text-[12px]"
+        />
+      </label>
+      <label className="grid gap-1">
+        <span className="text-[12px] text-ink-300">Secret</span>
+        <input
+          type="password"
+          aria-label="Schwab Secret"
+          value={secret}
+          onChange={(e) => onSecretChange(e.target.value)}
+          placeholder={secretPresent ? "•••••••• (unchanged)" : "your Schwab app secret"}
+          className="ledger-input w-full py-2 font-mono text-[12px]"
+        />
+      </label>
+      <div>
+        <button type="button" onClick={onSaveCreds} disabled={saving} className="ledger-cta">
+          {saving ? "Saving…" : "Save credentials"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function SchwabConnectControls({
+  isLoading,
+  connected,
+  configured,
+  expiresAt,
+  onConnect,
+}: {
+  isLoading: boolean;
+  connected: boolean;
+  configured: boolean;
+  expiresAt: string | null | undefined;
+  onConnect: () => void;
+}) {
+  if (isLoading) {
+    return <p className="mt-3 text-ink-400 text-sm">Checking…</p>;
+  }
+  return (
+    <>
+      {connected && expiresAt && (
+        <p className="mt-2 font-mono text-[11px] text-ink-400">
+          token refreshes in {formatDistanceToNow(new Date(expiresAt))}
+        </p>
+      )}
+      {!configured && (
+        <p className="mt-3 text-[12px] text-ink-400">
+          Add your Schwab API credentials above before connecting.
+        </p>
+      )}
+      <button
+        type="button"
+        onClick={onConnect}
+        disabled={!configured}
+        className="ledger-cta mt-4"
+      >
+        {connected ? "Reconnect" : "Connect Schwab"}
+      </button>
+    </>
+  );
+}
+
 export default function ConnectionsSettings() {
   const { data, isLoading } = useSchwabStatus();
   const { data: appCfg } = useSchwabAppConfig();
@@ -57,75 +156,29 @@ export default function ConnectionsSettings() {
       <div className="ledger-surface p-5" data-testid="schwab-card">
         <div className="flex items-center gap-3">
           <h3 className="font-display text-[1.05rem] text-ink-50">Charles Schwab</h3>
-          {!isLoading && (
-            <span className="ledger-pill" data-tone={connected ? "gain" : "loss"}>
-              {connected ? "Connected" : "Not connected"}
-            </span>
-          )}
+          <SchwabStatusPill isLoading={isLoading} connected={connected} />
         </div>
         <p className="mt-2 text-[13px] text-ink-300">
           Powers live quotes, OHLC history, option chains, and positions.
         </p>
 
-        <div className="mt-4 grid gap-3">
-          <label className="grid gap-1">
-            <span className="text-[12px] text-ink-300">App Key (Client ID)</span>
-            <input
-              type="text"
-              aria-label="Schwab App Key"
-              value={clientId}
-              onChange={(e) => setClientIdDraft(e.target.value)}
-              placeholder="your Schwab app key"
-              className="ledger-input w-full py-2 font-mono text-[12px]"
-            />
-          </label>
-          <label className="grid gap-1">
-            <span className="text-[12px] text-ink-300">Secret</span>
-            <input
-              type="password"
-              aria-label="Schwab Secret"
-              value={secret}
-              onChange={(e) => setSecret(e.target.value)}
-              placeholder={appCfg?.client_secret_present ? "•••••••• (unchanged)" : "your Schwab app secret"}
-              className="ledger-input w-full py-2 font-mono text-[12px]"
-            />
-          </label>
-          <div>
-            <button
-              type="button"
-              onClick={onSaveCreds}
-              disabled={saving}
-              className="ledger-cta"
-            >
-              {saving ? "Saving…" : "Save credentials"}
-            </button>
-          </div>
-        </div>
+        <SchwabCredentialsForm
+          clientId={clientId}
+          secret={secret}
+          saving={saving}
+          secretPresent={appCfg?.client_secret_present ?? false}
+          onClientIdChange={setClientIdDraft}
+          onSecretChange={setSecret}
+          onSaveCreds={onSaveCreds}
+        />
 
-        {isLoading ? (
-          <p className="mt-3 text-ink-400 text-sm">Checking…</p>
-        ) : (
-          <>
-            {connected && data?.expires_at && (
-              <p className="mt-2 font-mono text-[11px] text-ink-400">
-                token refreshes in {formatDistanceToNow(new Date(data.expires_at))}
-              </p>
-            )}
-            {!configured && (
-              <p className="mt-3 text-[12px] text-ink-400">
-                Add your Schwab API credentials above before connecting.
-              </p>
-            )}
-            <button
-              type="button"
-              onClick={onConnect}
-              disabled={!configured}
-              className="ledger-cta mt-4"
-            >
-              {connected ? "Reconnect" : "Connect Schwab"}
-            </button>
-          </>
-        )}
+        <SchwabConnectControls
+          isLoading={isLoading}
+          connected={connected}
+          configured={configured}
+          expiresAt={data?.expires_at}
+          onConnect={onConnect}
+        />
       </div>
       <div className="mt-6">
         <DataSourcesPanel />

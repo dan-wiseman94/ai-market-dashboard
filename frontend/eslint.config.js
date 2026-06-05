@@ -23,5 +23,11 @@ export default tseslint.config({ ignores: ["dist", "node_modules", "src/api/sche
     ...reactHooks.configs.recommended.rules,
     "react-refresh/only-export-components": ["warn", { allowConstantExport: true }],
     "@typescript-eslint/no-unused-vars": ["error", { argsIgnorePattern: "^_" }],
+    // Complexity gate (mirrors the backend ruff C901 max-complexity=15). For components,
+    // reduce by extracting subcomponents/handlers/hooks — not by raising the cap. A function
+    // that's genuinely irreducible should carry an inline `// eslint-disable-next-line complexity`
+    // with a reason.
+    complexity: ["error", 15],
+    "max-depth": ["error", 4],
   },
 }, storybook.configs["flat/recommended"]);
