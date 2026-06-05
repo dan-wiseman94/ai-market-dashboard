@@ -88,16 +88,17 @@ target-version = "py313"
 extend-exclude = ["migrations", ".venv", "staticfiles", "frontend", "tools/vulture_whitelist.py"]
 
 [tool.ruff.lint]
-# C901 = cyclomatic complexity (mccabe). Ratchet ceiling below; the 4 functions that
-# currently exceed it carry an explicit `# noqa: C901` so new code can't regress further.
+# C901 = cyclomatic complexity (mccabe), ceiling below. The historical offenders were
+# decomposed UNDER the ceiling (not grandfathered), so the gate is clean — new code must
+# come in at <= the ceiling.
 # (PLR0912/PLR0913/PLR0915 intentionally held — 22+ framework-driven sites would need
 #  grandfathering; enable later once those are paid down.)
 select = ["E", "F", "I", "B", "UP", "SIM", "DJ", "RUF", "C901"]
 ignore = ["E501"]
 
 [tool.ruff.lint.mccabe]
-# Current worst in-tree is 27 (validate_condition, build_snapshot). Ceiling set at 15 so
-# existing offenders >15 are noqa-grandfathered and anything new must come in at <=15.
+# Ceiling = 15. Every in-tree function classifies under it (the former 27-complexity
+# validate_condition / build_snapshot were split into helpers); new code must too.
 max-complexity = 15
 
 [tool.ruff.lint.per-file-ignores]
