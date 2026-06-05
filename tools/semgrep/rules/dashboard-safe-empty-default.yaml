@@ -1,0 +1,12 @@
+rules:
+  - id: dashboard-safe-empty-dict-default
+    languages: [python]
+    severity: ERROR
+    message: >-
+      _safe() fallbacks for dashboard sections MUST be full contract-valid shapes, not {}.
+      A bare {} default crashes the SPA tile that reads e.g. latest_firings.length. Use the
+      real shape, e.g. {"armed_count": 0, "latest_firings": []}.
+    metadata:
+      landmine: "CLAUDE.md > Frontend & runtime config (dashboard rollup)"
+      category: correctness
+    pattern: _safe($FN, {})

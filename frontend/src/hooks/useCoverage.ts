@@ -31,6 +31,7 @@ export interface CoverageNote extends CoverageSnapshot {
   revisions: CoverageRevision[];
 }
 
+/** @public — row shape for the coverage list endpoint; consumed as the list view adopts typed rows. */
 export interface CoverageListRow {
   id: number;
   ticker: string;

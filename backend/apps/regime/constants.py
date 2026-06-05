@@ -5,6 +5,10 @@ VIX_LOW = 14.0
 VIX_ELEVATED = 20.0
 VIX_STRESS = 30.0
 VIX_PERCENTILE_WINDOW = 252  # trading days of $VIX history for the percentile
+# When VIX sits at/above this percentile of its own trailing window it is "extreme
+# relative to its own regime" — classify_volatility escalates the absolute label one
+# notch (Low->Normal, Normal->Elevated), capped at Elevated. Top-decile by default.
+VIX_PERCENTILE_ELEVATED = 0.90
 
 # Trend ($SPX moving averages)
 MA_FAST = 50

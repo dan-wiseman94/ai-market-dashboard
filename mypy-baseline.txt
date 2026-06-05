@@ -39,7 +39,6 @@ backend/apps/secrets/models.py:0: note: def get(self, Never, Never, /) -> Never
 backend/apps/secrets/models.py:0: note: def [_T] get(self, Never, _T, /) -> _T
 backend/apps/desk/services/detectors.py:0: error: Module "django.utils.timezone" does not explicitly export attribute "timedelta"  [attr-defined]
 backend/apps/desk/services/detectors.py:0: error: Module "django.utils.timezone" does not explicitly export attribute "timedelta"  [attr-defined]
-backend/apps/export/serializers.py:0: error: Argument 1 to "bytes" has incompatible type "bytes | memoryview[int] | None"; expected "Iterable[SupportsIndex] | SupportsIndex | SupportsBytes | Buffer"  [arg-type]
 backend/apps/secrets/schwab_oauth.py:0: error: Incompatible return value type (got "bytes | memoryview[int] | None", expected "dict[Any, Any] | None")  [return-value]
 backend/apps/secrets/data_source_test.py:0: error: Argument 1 has incompatible type "bytes | memoryview[int] | dict[Any, Any]"; expected "dict[Any, Any]"  [arg-type]
 backend/apps/secrets/credentials.py:0: error: Incompatible return value type (got "bytes | memoryview[int] | None", expected "dict[Any, Any] | None")  [return-value]
