@@ -71,7 +71,7 @@ fmt: ## Format backend (ruff) + frontend (prettier via eslint)
 	$(COMPOSE) exec -w /app web uv run ruff check --fix .
 
 .PHONY: lint
-lint: lint-backend lint-imports typecheck lint-frontend ## Lint everything
+lint: lint-backend lint-imports typecheck lint-frontend deptry depcruise type-coverage semgrep-rules ## Lint everything (+ dep hygiene, FE architecture, type-coverage, landmine rules)
 
 .PHONY: lint-backend
 lint-backend: ## ruff + ty (ruff scans repo root incl. e2e/, like CI)
@@ -104,6 +104,42 @@ typecheck: ## ORM-aware mypy, gated against mypy-baseline.txt (fails on NEW erro
 .PHONY: lint-frontend
 lint-frontend: ## eslint + tsc
 	$(COMPOSE) exec frontend pnpm run lint
+
+# --- Extra quality gates (all verified green on 2026-06-04) ---------------------------
+.PHONY: deptry
+deptry: ## Dependency hygiene — unused / missing / transitively-used Python deps
+	$(COMPOSE) exec -w /app web uv run deptry backend
+
+.PHONY: depcruise
+depcruise: ## Frontend architecture contracts (no import cycles; api/ must not import UI)
+	$(COMPOSE) exec frontend pnpm depcruise
+
+.PHONY: type-coverage
+type-coverage: ## Frontend type-coverage ratchet (floor in package.json typeCoverage.atLeast)
+	$(COMPOSE) exec frontend pnpm type-coverage
+
+.PHONY: semgrep-rules
+semgrep-rules: ## Repo-specific landmine rules (CLAUDE.md silent-failures as semgrep gates)
+	# semgrep isn't in the app images; run the official image against the checkout.
+	docker run --rm -v "$(CURDIR):/src" -w /src semgrep/semgrep \
+		semgrep scan --error --quiet --config tools/semgrep/rules backend/
+
+.PHONY: semgrep-rules-test
+semgrep-rules-test: ## Unit-test the landmine rules against their ruleid/ok fixtures
+	docker run --rm -v "$(CURDIR):/src" -w /src semgrep/semgrep \
+		semgrep --test --config tools/semgrep/rules tools/semgrep/rules
+
+# --- Advisory sweep (informational; not part of `lint`/`check`) -----------------------
+.PHONY: quality
+quality: vulture knip ## Advisory dead-code sweep (vulture + knip) — informational, never gates
+
+.PHONY: vulture
+vulture: ## Dead Python code (functions/classes ruff's F-rules miss). Advisory.
+	$(COMPOSE) exec -w /app web uv run vulture || true
+
+.PHONY: knip
+knip: ## Unused frontend files / exports / types / deps. Advisory.
+	$(COMPOSE) exec frontend pnpm knip || true
 
 .PHONY: check
 check: lint test ## What CI runs

@@ -59,6 +59,11 @@ jobs:
       CELERY_BROKER_URL: redis://127.0.0.1:6379/1
       CELERY_RESULT_BACKEND: redis://127.0.0.1:6379/2
       PYTHONPATH: backend
+      # The unit-level e2e/tests/ get collected here (not integration-marked), but e2e/conftest.py's
+      # autouse _wait_for_stack session fixture blocks 60s waiting for a compose stack that the bare
+      # backend runner doesn't have — killed by --timeout=60, erroring all of e2e/tests/. Take the
+      # conftest's documented escape hatch for unit-level e2e tests. (Pre-existing main breakage.)
+      E2E_SKIP_STACK_WAIT: "1"
     steps:
       - uses: actions/checkout@v6
       - name: Provision /data (compose volume substitute on bare runner)
@@ -85,12 +90,12 @@ jobs:
         run: |
           set +o pipefail
           uv run mypy backend/apps backend/config | uv run mypy-baseline filter
-          mypy_rc=${PIPESTATUS[0]}; filter_rc=${PIPESTATUS[1]}
-          if [ "$mypy_rc" -ge 2 ]; then
-            echo "::error::mypy crashed (exit $mypy_rc) — type-checking did not run"
-            exit "$mypy_rc"
-          fi
-          exit "$filter_rc"
+      - name: deptry (dependency hygiene — unused / missing / transitively-used deps)
+        # Runs AFTER uv sync (deps installed), so import→distribution mapping is accurate.
+        run: uv run deptry backend
+      - name: vulture (dead code) — advisory, non-blocking
+        continue-on-error: true
+        run: uv run vulture
       - name: OpenAPI schema is current (drift gate)
         # Regenerate and diff against the committed schema; any drift fails the build.
         run: |
@@ -134,6 +139,13 @@ jobs:
           pnpm gen:api
           git diff --exit-code src/api/schema.d.ts
       - run: pnpm run lint
+      - name: type-coverage (ratchet — floor in package.json typeCoverage.atLeast)
+        run: pnpm type-coverage
+      - name: dependency-cruiser (architecture contracts — no cycles; api/ must not import UI)
+        run: pnpm depcruise
+      - name: knip (unused files / exports / types / deps) — advisory, non-blocking
+        continue-on-error: true
+        run: pnpm knip
       - name: vitest (with coverage)
         run: pnpm run test:cov
       - uses: actions/upload-artifact@v7
@@ -175,11 +187,15 @@ jobs:
           version: "0.8"
       - run: uv python install 3.13
       - run: uv sync --frozen --dev
-      - name: pip-audit (backend) — advisory, non-blocking
-        continue-on-error: true
+      - name: pip-audit (backend) — BLOCKING (tree is clean as of 2026-06-04)
         run: |
           uv export --frozen --no-dev --no-hashes --format requirements-txt > /tmp/reqs.txt
           uv tool run pip-audit --strict --requirement /tmp/reqs.txt
+      - name: guarddog — malware / typosquat ("slopsquat") scan of PyPI deps — advisory
+        # Heuristic (semgrep-based) supply-chain scanner; advisory because heuristics can
+        # false-positive. Directly targets AI-hallucinated / squatted package names.
+        continue-on-error: true
+        run: uv tool run guarddog pypi verify /tmp/reqs.txt
       - uses: pnpm/action-setup@v6
         with:
           version: 11
@@ -190,10 +206,12 @@ jobs:
           cache-dependency-path: frontend/pnpm-lock.yaml
       - working-directory: frontend
         run: pnpm install --frozen-lockfile
-      - name: pnpm audit (frontend) — advisory, non-blocking
-        continue-on-error: true
+      - name: pnpm audit (frontend) — BLOCKING (tree is clean as of 2026-06-04)
         working-directory: frontend
         run: pnpm audit --audit-level moderate
+      - name: guarddog — malware / typosquat scan of npm deps — advisory
+        continue-on-error: true
+        run: uv tool run guarddog npm verify frontend/package.json
 
   gitleaks:
     runs-on: ubuntu-latest
@@ -213,3 +231,23 @@ jobs:
           cp .env.example .env
           python3 -c "import secrets; print('DJANGO_SECRET_KEY=' + secrets.token_urlsafe(50))" >> .env
           docker compose build
+
+  trivy:
+    # Container OS / OS-library CVE scan of the built web image — the non-redundant value
+    # over pip-audit/pnpm-audit (those cover app deps; this covers the base image's OS
+    # packages). Advisory (ignore-unfixed + exit-code 0). Skipped on PRs to keep them fast
+    # (the web image is a 3-8 min build); runs on push-to-main and manual dispatch.
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Build web image
+        run: docker build -f backend/Dockerfile --target web -t ledger-web:scan .
+      - name: Trivy image scan (HIGH/CRITICAL, fixed only) — advisory
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: ledger-web:scan
+          format: table
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "0"

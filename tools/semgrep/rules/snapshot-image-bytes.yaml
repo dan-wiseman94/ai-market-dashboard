@@ -1,0 +1,22 @@
+rules:
+  - id: snapshot-image-bytes-direct-read
+    languages: [python]
+    severity: ERROR
+    message: >-
+      Read snapshot image bytes via apps.snapshots.image_store.read_image_bytes(img)
+      (disk-first, DB fallback) — never bytes(img.data). New SnapshotImages store bytes on
+      the /data volume with data=NULL, so bytes(img.data) silently returns empty for them.
+    metadata:
+      landmine: "CLAUDE.md > Snapshots, images & rendering"
+      category: correctness
+    paths:
+      # image_store.read_image_bytes IS the sanctioned accessor — its DB-fallback line is the
+      # one legitimate bytes(img.data) in the codebase (cf. import-linter exempting a private
+      # module from its own contract).
+      exclude:
+        - "*/snapshots/image_store.py"
+    patterns:
+      - pattern: bytes($IMG.data)
+      - metavariable-regex:
+          metavariable: $IMG
+          regex: (?i).*(img|image).*
