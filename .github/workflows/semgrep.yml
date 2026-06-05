@@ -34,3 +34,9 @@ jobs:
             --exclude-rule=dockerfile.security.missing-user.missing-user \
             --exclude-rule=javascript.lang.security.detect-insecure-websocket.detect-insecure-websocket \
             --exclude-rule=python.django.security.audit.csrf-exempt.no-csrf-exempt
+      # Repo-specific landmine rules (CLAUDE.md silent-failures encoded as gates). The
+      # fixtures live under tools/semgrep/rules/ and are NOT scanned (we target backend/).
+      - name: Validate landmine rules against their fixtures
+        run: semgrep --test --config tools/semgrep/rules tools/semgrep/rules
+      - name: Landmine rules — scan backend (BLOCKING; 0 findings as of 2026-06-04)
+        run: semgrep scan --error --config tools/semgrep/rules backend/

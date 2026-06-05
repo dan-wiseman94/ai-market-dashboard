@@ -1,0 +1,8 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "ignore": ["**/*.d.ts"],
+  "ignoreExportsUsedInFile": true,
+  "vitest": {
+    "config": ["vite.config.ts", "vitest.config.ts"]
+  }
+}

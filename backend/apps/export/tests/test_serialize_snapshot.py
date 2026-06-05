@@ -54,3 +54,26 @@ def test_snapshot_images_streams_bytes() -> None:
     name, data = images[0]
     assert name.endswith(".png")
     assert data[:8] == b"\x89PNG\r\n\x1a\n"
+
+
+@pytest.mark.django_db
+def test_snapshot_images_reads_disk_offloaded_bytes(tmp_path) -> None:
+    """Regression: disk-offloaded images (data=NULL, file_path set — the modern default from
+    image_store.create_image) must export their real bytes via read_image_bytes. The old
+    code did bytes(img.data), i.e. bytes(None) -> TypeError, silently breaking export of
+    every snapshot captured after the /data offload landed."""
+    from apps.profiles.models import TradingProfile
+    from apps.snapshots.models import Snapshot, SnapshotImage
+
+    prof = TradingProfile.objects.create(name="p4", style="swing")
+    snap = Snapshot.objects.create(profile=prof)
+    png = b"\x89PNG\r\n\x1a\n" + b"y" * 50
+    f = tmp_path / "render.png"
+    f.write_bytes(png)
+    SnapshotImage.objects.create(snapshot=snap, kind="server_render", data=None, file_path=str(f))
+
+    images = list(snapshot_images(snap))
+
+    assert len(images) == 1
+    _, data = images[0]
+    assert data == png

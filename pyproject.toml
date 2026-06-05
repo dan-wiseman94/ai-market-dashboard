@@ -33,6 +33,14 @@ dependencies = [
     "fastembed>=0.4,<1.0",
     "drf-spectacular>=0.28,<1.0",
     "sentry-sdk[django,celery]>=2.0,<3.0",
+    # Imported directly by app code but previously only present transitively (surfaced by
+    # deptry DEP003). Declared explicitly so a transitive provider dropping one can't silently
+    # break the app — all already resolved in uv.lock, so this is a no-op at install time.
+    "requests>=2.32,<3.0",   # apps/market/services/*, apps/secrets/*
+    "pydantic>=2.9,<3.0",    # apps/{observer,regime,thesis,warroom}/schemas + personas/verdict
+    "numpy>=1.26,<3.0",      # apps/recall/embeddings (vector math)
+    "httpx>=0.27,<1.0",      # apps/secrets/schwab_oauth
+    "asgiref>=3.8,<4.0",     # async_to_sync / sync_to_async in threads/secrets/snapshots
 ]
 
 [dependency-groups]
@@ -60,6 +68,9 @@ dev = [
     "schemathesis>=3.39,<5.0",
     "mutmut>=3.0,<4.0",
     "daphne>=4.2.1,<5.0",
+    # Quality tooling (see CLAUDE.md "Quality gates"):
+    "deptry>=0.20,<1.0",   # dependency hygiene: unused / missing / transitively-used deps
+    "vulture>=2.11,<3.0",  # dead-code detection (functions/classes ruff's F-rules miss)
 ]
 
 [tool.uv]
@@ -72,11 +83,22 @@ build-backend = "hatchling.build"
 [tool.ruff]
 line-length = 100
 target-version = "py313"
-extend-exclude = ["migrations", ".venv", "staticfiles", "frontend"]
+# vulture_whitelist.py is intentionally a list of bare "undefined" names (that's how vulture
+# whitelists work) — exclude it so ruff doesn't F821 on it.
+extend-exclude = ["migrations", ".venv", "staticfiles", "frontend", "tools/vulture_whitelist.py"]
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "B", "UP", "SIM", "DJ", "RUF"]
+# C901 = cyclomatic complexity (mccabe). Ratchet ceiling below; the 4 functions that
+# currently exceed it carry an explicit `# noqa: C901` so new code can't regress further.
+# (PLR0912/PLR0913/PLR0915 intentionally held — 22+ framework-driven sites would need
+#  grandfathering; enable later once those are paid down.)
+select = ["E", "F", "I", "B", "UP", "SIM", "DJ", "RUF", "C901"]
 ignore = ["E501"]
+
+[tool.ruff.lint.mccabe]
+# Current worst in-tree is 27 (validate_condition, build_snapshot). Ceiling set at 15 so
+# existing offenders >15 are noqa-grandfathered and anything new must come in at <=15.
+max-complexity = 15
 
 [tool.ruff.lint.per-file-ignores]
 "**/tests/**" = ["S101"]
@@ -243,6 +265,41 @@ pytest_add_cli_args_test_selection = [
     "backend/apps/market/tests",
     "backend/apps/thesis/tests",
 ]
+
+[tool.deptry]
+# Dependency hygiene. Run as `uv run deptry backend` (deps installed, so import→distribution
+# mapping works — `uvx deptry` is noisy because it can't see metadata). Scoped to SHIPPED code:
+# tests/migrations/conftest are excluded so dev-only imports (pytest, hypothesis) aren't DEP004'd.
+known_first_party = ["apps", "config"]
+extend_exclude = [".*/migrations/.*", ".*/tests/.*", ".*/conftest\\.py"]
+
+[tool.deptry.per_rule_ignores]
+# DEP002 = "declared but never imported". These are framework plugins wired by STRING in
+# Django settings (INSTALLED_APPS / MIDDLEWARE / CHANNEL_LAYERS / DB engine), not imported —
+# deptry can't see that usage. They are genuinely required; ignore the false "unused".
+DEP002 = [
+    "channels-redis",       # CHANNEL_LAYERS backend string
+    "django-celery-beat",   # INSTALLED_APPS
+    "django-cors-headers",  # INSTALLED_APPS + MIDDLEWARE
+    "django-structlog",     # INSTALLED_APPS + MIDDLEWARE
+    "psycopg",              # DATABASES engine (Django imports it)
+    "whitenoise",           # MIDDLEWARE string
+    "uvicorn",              # ASGI server entrypoint
+    "daphne",               # ASGI server entrypoint
+    "sentry-sdk",           # initialised via DSN; opt-in import guarded
+    "pandas",               # consumed via pandas-market-calendars; pinned for DataFrame return types
+]
+
+[tool.vulture]
+# Dead-code detection. Scoped to shipped code (tests use side-effecting pytest fixtures that
+# read as "unused vars"; migrations carry Django's unused `schema_editor` signature). Advisory:
+# vulture has irreducible false positives, so it informs rather than gates. Drive findings to
+# zero via tools/vulture_whitelist.py (names that are framework-required but look unused).
+paths = ["backend/apps", "backend/config", "tools/vulture_whitelist.py"]
+exclude = ["*/migrations/*", "*/tests/*", "*/conftest.py"]
+min_confidence = 80
+ignore_names = ["schema_editor", "apps"]
+ignore_decorators = ["@shared_task", "@receiver", "@app.task", "@register.filter", "@register.simple_tag"]
 
 [tool.coverage.run]
 omit = ["*/migrations/*", "*/tests/*", "*/conftest.py"]

@@ -19,7 +19,14 @@
     "test:cov": "vitest run --coverage --project unit",
     "test-storybook": "vitest --project storybook",
     "storybook": "storybook dev -p 6006 --host 0.0.0.0 --no-open",
-    "build-storybook": "storybook build"
+    "build-storybook": "storybook build",
+    "knip": "knip",
+    "depcruise": "depcruise 'src/**/*.{ts,tsx}'",
+    "type-coverage": "type-coverage"
+  },
+  "typeCoverage": {
+    "atLeast": 99,
+    "comment": "Ratchet floor (measured 99.52% on 2026-06-04). Raise as `any` is paid down; catches a regression that floods the codebase with untyped values."
   },
   "dependencies": {
     "@tanstack/react-query": "^5.59.0",
@@ -51,13 +58,14 @@
     "@vitejs/plugin-react": "^6.0.2",
     "@vitest/browser-playwright": "^4.1.7",
     "@vitest/coverage-v8": "^4.1.7",
-    "autoprefixer": "^10.4.20",
+    "dependency-cruiser": "^16.0.0",
     "eslint": "^10.4.0",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.2",
     "eslint-plugin-storybook": "^10.4.1",
     "globals": "^17.6.0",
     "jsdom": "^29.1.1",
+    "knip": "^5.0.0",
     "msw": "^2.7.0",
     "msw-storybook-addon": "^2.0.4",
     "openapi-typescript": "^7.13.0",
@@ -65,6 +73,7 @@
     "postcss": "^8.4.49",
     "storybook": "^10.4.1",
     "tailwindcss": "^4.3.0",
+    "type-coverage": "^2.29.0",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.59.4",
     "vite": "^8.0.14",
