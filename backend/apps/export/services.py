@@ -34,7 +34,7 @@ def _scoped_queryset(model, selector):
     return model.objects.filter(id__in=selector)
 
 
-def build_export_bundle(job_id: int) -> None:
+def build_export_bundle(job_id: int) -> None:  # noqa: C901 (complexity 16 — pre-existing baseline; do not extend)
     job = ExportJob.objects.get(pk=job_id)
     job.status = "running"
     job.save(update_fields=["status"])

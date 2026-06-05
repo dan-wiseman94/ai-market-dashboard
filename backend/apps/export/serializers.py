@@ -120,11 +120,15 @@ def snapshot_to_markdown(snapshot) -> str:
 
 def snapshot_images(snapshot) -> Iterator[tuple[str, bytes]]:
     """Yield (filename, bytes) for each SnapshotImage on the snapshot."""
+    from apps.snapshots.image_store import read_image_bytes
     from apps.snapshots.models import SnapshotImage
 
     for img in SnapshotImage.objects.filter(snapshot=snapshot):
         name = f"{img.kind}-{img.id}.png"  # images are always PNG in our pipeline
-        yield name, bytes(img.data)
+        # read_image_bytes is disk-first (file_path) with legacy in-DB fallback; bytes(img.data)
+        # would be bytes(None) -> TypeError for offloaded images (data=NULL). See the
+        # snapshot-image-bytes-direct-read semgrep rule that guards this.
+        yield name, read_image_bytes(img)
 
 
 # ---------------------------------------------------------------------------

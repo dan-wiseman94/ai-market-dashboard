@@ -130,7 +130,7 @@ def _redis() -> redis.Redis:
     return redis.Redis.from_url(settings.REDIS_URL)
 
 
-def build_snapshot(triggers: Iterable[EventTrigger]) -> MetricsSnapshot:
+def build_snapshot(triggers: Iterable[EventTrigger]) -> MetricsSnapshot:  # noqa: C901 (complexity 27 — pre-existing baseline; do not extend)
     """Populate the flat metrics dict the evaluator will read."""
     leaves = [leaf for t in triggers for leaf in iter_leaves(t.condition)]
     tickers = _ticker_union(leaves)

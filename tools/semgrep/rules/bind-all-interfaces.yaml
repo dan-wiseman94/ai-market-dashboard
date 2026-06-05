@@ -1,0 +1,12 @@
+rules:
+  - id: bind-all-interfaces-python
+    languages: [python]
+    severity: ERROR
+    message: >-
+      Never use 0.0.0.0 in backend code. The stack binds 127.0.0.1 only and every API/WS
+      endpoint is unauthenticated (DRF AllowAny; security model is network isolation).
+      Binding all interfaces exposes the whole app. Add real auth BEFORE any 0.0.0.0 bind.
+    metadata:
+      landmine: "CLAUDE.md > Backend wiring & security"
+      category: security
+    pattern: '"0.0.0.0"'
