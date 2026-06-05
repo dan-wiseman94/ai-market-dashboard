@@ -3,6 +3,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -33,8 +34,18 @@ export function ToastProvider({
 }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
   const nextId = useRef(1);
+  // Track pending auto-dismiss timers so they can be cleared on unmount — otherwise a
+  // toast pushed shortly before unmount fires its dismiss() (a setState) after the tree
+  // is gone, leaking across React-Testing-Library teardown (a stray "window is not
+  // defined" once the jsdom env is torn down) and wasting work in production.
+  const timers = useRef(new Map<number, ReturnType<typeof setTimeout>>());
 
   const dismiss = useCallback((id: number) => {
+    const timer = timers.current.get(id);
+    if (timer !== undefined) {
+      clearTimeout(timer);
+      timers.current.delete(id);
+    }
     setToasts((xs) => xs.filter((t) => t.id !== id));
   }, []);
 
@@ -42,10 +53,18 @@ export function ToastProvider({
     (t: Omit<Toast, "id">) => {
       const id = nextId.current++;
       setToasts((xs) => [...xs, { ...t, id }]);
-      window.setTimeout(() => dismiss(id), defaultDurationMs);
+      timers.current.set(id, setTimeout(() => dismiss(id), defaultDurationMs));
     },
     [defaultDurationMs, dismiss],
   );
+
+  useEffect(() => {
+    const pending = timers.current;
+    return () => {
+      pending.forEach((timer) => clearTimeout(timer));
+      pending.clear();
+    };
+  }, []);
 
   const value = useMemo(
     () => ({ toasts, push, dismiss }),

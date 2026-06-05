@@ -59,8 +59,15 @@ def validate_condition(node: Any, *, path: str = "") -> None:  # noqa: C901 (com
     """Recurse the tree. Raises ValidationError with path on any invalid shape."""
     if not isinstance(node, dict):
         raise ValidationError(f"{path or '<root>'}: expected object, got {type(node).__name__}")
+    if _validate_group(node, path):
+        return
+    if _validate_not(node, path):
+        return
+    _validate_leaf(node, path)
 
-    # Group nodes
+
+def _validate_group(node: dict, path: str) -> bool:
+    """Validate an all/any group and recurse into its children. False if not a group node."""
     for key in ("all", "any"):
         if key in node:
             if len(node) != 1:
@@ -70,19 +77,27 @@ def validate_condition(node: Any, *, path: str = "") -> None:  # noqa: C901 (com
                 raise ValidationError(f"{path}.{key}: must be a list")
             for i, child in enumerate(children):
                 validate_condition(child, path=f"{path}.{key}[{i}]")
-            return
+            return True
+    return False
 
-    if "not" in node:
-        if len(node) != 1:
-            raise ValidationError(f"{path}.not: must have only 'not' key")
-        child = node["not"]
-        if isinstance(child, list):
-            raise ValidationError(f"{path}.not: must wrap a single node, got list")
-        validate_condition(child, path=f"{path}.not")
-        return
 
-    # Leaf node — reject typo'd/unknown keys (windoww, tikcer, etc.) so a rule
-    # that "looks right" can't be silently evaluated with missing fields.
+def _validate_not(node: dict, path: str) -> bool:
+    """Validate a `not` node and recurse into its single child. False if not a `not` node."""
+    if "not" not in node:
+        return False
+    if len(node) != 1:
+        raise ValidationError(f"{path}.not: must have only 'not' key")
+    child = node["not"]
+    if isinstance(child, list):
+        raise ValidationError(f"{path}.not: must wrap a single node, got list")
+    validate_condition(child, path=f"{path}.not")
+    return True
+
+
+def _validate_leaf(node: dict, path: str) -> None:
+    """Validate a leaf node: unknown keys, then metric/op/value, ticker/window, and params."""
+    # Reject typo'd/unknown keys (windoww, tikcer, etc.) so a rule that "looks
+    # right" can't be silently evaluated with missing fields.
     extra_keys = set(node.keys()) - LEAF_KEYS
     if extra_keys:
         raise ValidationError(f"{path}: unknown leaf keys {sorted(extra_keys)!r}")
@@ -98,6 +113,13 @@ def validate_condition(node: Any, *, path: str = "") -> None:  # noqa: C901 (com
         raise ValidationError(f"{path}.value: must be a number")
     if metric in NON_CROSSING_METRICS and op in ("crosses_above", "crosses_below"):
         raise ValidationError(f"{path}.op: crossing ops not supported for metric {metric!r}")
+
+    _validate_ticker_window(node, metric, path)
+    _validate_params(node, metric, path)
+
+
+def _validate_ticker_window(node: dict, metric: Any, path: str) -> None:
+    """Validate the ticker requirement and window allow/require rules for a leaf."""
     if metric in TICKER_REQUIRED:
         ticker = node.get("ticker")
         if not isinstance(ticker, str) or not ticker:
@@ -110,6 +132,9 @@ def validate_condition(node: Any, *, path: str = "") -> None:  # noqa: C901 (com
     if window is not None and window not in VALID_WINDOWS:
         raise ValidationError(f"{path}.window: {window!r} is not a valid window")
 
+
+def _validate_params(node: dict, metric: Any, path: str) -> None:
+    """Validate the optional indicator `params` object against PARAMS_SPEC."""
     params = node.get("params")
     spec = PARAMS_SPEC.get(metric, {})
     if params is not None and not isinstance(params, dict):

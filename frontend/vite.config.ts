@@ -47,6 +47,10 @@ export default defineConfig({
     env: {
       VITE_API_BASE_URL: "",
     },
+    // v8 coverage instrumentation can 2-3x test runtime, pushing async-heavy suites
+    // (waitFor on mocked API + toasts) past the default 5s and flaking `test:cov` with
+    // spurious timeouts. 15s gives headroom without masking a genuinely hung test.
+    testTimeout: 15_000,
     coverage: {
       provider: "v8",
       reporter: ["text", "html"],
