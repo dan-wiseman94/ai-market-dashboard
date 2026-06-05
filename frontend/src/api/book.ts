@@ -48,4 +48,5 @@ export interface BookSnapshot {
 
 export const fetchCurrentBook = () => apiGet<BookSnapshot | null>("/api/book/current/");
 export const fetchBookHistory = () => apiGet<BookSnapshot[]>("/api/book/");
+/** @public — typed client for POST /api/book/recompute/; awaits a UI "recompute" affordance. */
 export const recomputeBook = () => apiPost<BookSnapshot>("/api/book/recompute/");
