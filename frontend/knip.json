@@ -1,6 +1,9 @@
 {
   "$schema": "https://unpkg.com/knip@5/schema.json",
-  "ignore": ["**/*.d.ts"],
+  "ignore": [
+    "**/*.d.ts",
+    "src/api/generated.ts"
+  ],
   "ignoreExportsUsedInFile": true,
   "vitest": {
     "config": ["vite.config.ts", "vitest.config.ts"]

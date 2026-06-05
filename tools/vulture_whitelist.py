@@ -9,3 +9,10 @@
 
 expression  # Django Field.from_db_value(self, value, expression, connection) — positional
             # framework signature; required by the ORM even though unused (apps/secrets/fields.py)
+
+vix_percentile  # KNOWN GAP (not dead code): regime services/compute.py PASSES this into
+                # classify_volatility() and services/inputs.py COMPUTES it (real percentile-of-
+                # history math), yet classify_volatility() ignores it — it only thresholds the
+                # absolute vix_last. Percentile-aware volatility classification was stubbed in the
+                # signature but never implemented. Kept as a reserved param (removing it would drop
+                # the wired-in percentile) pending a modeling decision. Flagged in the PR.

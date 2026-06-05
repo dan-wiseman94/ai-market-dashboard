@@ -14,4 +14,5 @@ export interface RegimeReading {
 
 export const fetchCurrentRegime = () => apiGet<RegimeReading | null>("/api/regime/current/");
 export const fetchRegimeHistory = () => apiGet<RegimeReading[]>("/api/regime/");
+/** @public — typed client for POST /api/regime/refresh/; awaits a UI "refresh" affordance. */
 export const refreshRegime = () => apiPost<RegimeReading>("/api/regime/refresh/");
