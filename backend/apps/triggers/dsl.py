@@ -55,7 +55,7 @@ PARAMS_SPEC: dict[str, dict[str, tuple]] = {
 }
 
 
-def validate_condition(node: Any, *, path: str = "") -> None:  # noqa: C901 (complexity 27 — pre-existing baseline; do not extend)
+def validate_condition(node: Any, *, path: str = "") -> None:
     """Recurse the tree. Raises ValidationError with path on any invalid shape."""
     if not isinstance(node, dict):
         raise ValidationError(f"{path or '<root>'}: expected object, got {type(node).__name__}")

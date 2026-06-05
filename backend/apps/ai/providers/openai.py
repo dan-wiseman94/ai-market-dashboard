@@ -47,7 +47,7 @@ class OpenAIProvider:
         else:
             self._client = AsyncOpenAI(api_key=api_key, **kw)
 
-    async def run(self, req: RunRequest) -> AsyncIterator[RunEvent]:  # noqa: C901 (complexity 23 — pre-existing baseline; do not extend)
+    async def run(self, req: RunRequest) -> AsyncIterator[RunEvent]:
         from apps.core.mocks import is_mock_mode
 
         if is_mock_mode():
