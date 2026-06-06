@@ -1,6 +1,7 @@
 from datetime import timedelta
 from unittest.mock import MagicMock, patch
 
+import fakeredis
 import httpx
 import pytest
 from django.test import override_settings
@@ -71,6 +72,36 @@ def test_mock_client_responses_survive_schwab_json():
     client = _MockSchwabClient()
     assert schwab_json(client.get_accounts()) == []
     assert schwab_json(client.get_quotes(["SPY"]))["SPY"]["quote"]["lastPrice"] == 100.0
+
+
+@pytest.mark.parametrize("status", [401, 403])
+def test_schwab_json_records_auth_error_marker_on_rejection(status):
+    # A rejected credential must leave a cross-process marker so the connection
+    # status surface can stop claiming "connected" — instead of vanishing into a
+    # silent free-provider fallback.
+    client = fakeredis.FakeStrictRedis()
+    with patch("apps.core.provider_health._redis", lambda: client):
+        from apps.core import provider_health
+
+        provider_health.clear_auth_error("schwab")
+        with pytest.raises(SchwabAuthError):
+            schwab_json(_resp_raising(status, body='{"error":"invalid_token"}'))
+        assert provider_health.auth_error("schwab") is not None
+
+
+def test_schwab_json_clears_auth_error_marker_on_success():
+    # A subsequent successful call means the credential works again; the stale
+    # marker must clear so the UI recovers without waiting out the TTL.
+    client = fakeredis.FakeStrictRedis()
+    with patch("apps.core.provider_health._redis", lambda: client):
+        from apps.core import provider_health
+
+        provider_health.mark_auth_error("schwab", "previously rejected")
+        resp = MagicMock()
+        resp.raise_for_status.return_value = None
+        resp.json.return_value = {"ok": True}
+        assert schwab_json(resp) == {"ok": True}
+        assert provider_health.auth_error("schwab") is None
 
 
 @pytest.mark.django_db

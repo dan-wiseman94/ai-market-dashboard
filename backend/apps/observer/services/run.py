@@ -10,6 +10,7 @@ from decimal import Decimal
 
 from django.utils import timezone
 
+from apps.ai.catalog import DEFAULT_CLAUDE_MODEL
 from apps.ai.cost import CostCapExceededError, check_daily_cap, check_monthly_cap
 from apps.ai.providers.claude_structured import run_structured
 from apps.core.runtime_config import runtime_config
@@ -276,7 +277,7 @@ def _run_structured_and_record(
             error="no_key",
         )
         return
-    model_id = sched.override_model or cfg.default_model or "claude-opus-4-8"
+    model_id = sched.override_model or cfg.default_model or DEFAULT_CLAUDE_MODEL
     try:
         report = run_structured(
             api_key=cfg.api_key,

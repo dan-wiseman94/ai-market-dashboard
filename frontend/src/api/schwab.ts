@@ -1,6 +1,12 @@
 import { apiGet, apiPatch } from "./client";
 
-export type SchwabStatus = { connected: boolean; expires_at: string | null };
+export type SchwabStatus = {
+  connected: boolean;
+  expires_at: string | null;
+  // Non-null when a stored credential exists but Schwab rejected it (401/403):
+  // reads have silently fallen back to a free provider until the user reconnects.
+  auth_error: string | null;
+};
 export const fetchSchwabStatus = () => apiGet<SchwabStatus>("/api/schwab/status/");
 export const fetchSchwabAuthorizeUrl = () => apiGet<{ url: string }>("/api/schwab/authorize/");
 

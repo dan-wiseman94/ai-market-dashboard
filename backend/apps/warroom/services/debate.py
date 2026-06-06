@@ -35,9 +35,13 @@ def run_one_persona(
         )
     except Exception:
         log.warning("warroom.persona_run_failed persona=%s", persona, exc_info=True)
+    # Scope to THIS run's output: an assistant "done" message created after this
+    # persona's user turn (um). Personas run sequentially in one shared thread, so
+    # without the id__gt guard a failed/no-op run would pick up the *previous*
+    # persona's message and the courtroom would mislabel it.
     assistant = (
-        Message.objects.filter(thread=thread, role="assistant", status="done")
-        .order_by("-created_at")
+        Message.objects.filter(thread=thread, role="assistant", status="done", id__gt=um.id)
+        .order_by("-id")
         .first()
     )
     if assistant is None:

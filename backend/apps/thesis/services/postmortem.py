@@ -21,6 +21,7 @@ from cryptography.fernet import InvalidToken
 from django.conf import settings
 from django.utils import timezone
 
+from apps.ai.catalog import DEFAULT_CLAUDE_MODEL
 from apps.ai.cost import CostCapExceededError, check_daily_cap, check_monthly_cap
 from apps.ai.providers.claude_structured import run_structured
 from apps.market.returns import direction_verdict, forward_return_pct, price_path_summary
@@ -135,7 +136,7 @@ def _attempt_ai_narrative(
     model_id = (
         (thesis.profile.default_model if thesis.profile else "")
         or cfg.default_model
-        or "claude-opus-4-8"
+        or DEFAULT_CLAUDE_MODEL
     )
     system = thesis.profile.style if thesis.profile else ""
     prompt = _build_prompt(thesis, pm, fwd, path)

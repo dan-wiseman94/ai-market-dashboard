@@ -44,6 +44,8 @@ class ObserverScheduleSerializer(serializers.ModelSerializer):
             "mode",
             "structured",
             "use_batch",
+            "consensus",
+            "investigate",
             "last_batch_id",
             "last_fired_at",
             "created_at",

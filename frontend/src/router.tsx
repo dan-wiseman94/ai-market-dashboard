@@ -39,6 +39,7 @@ import BookPage from "./pages/BookPage";
 import WarRoomPage from "@/pages/WarRoomPage";
 import WarRoomDetailPage from "@/pages/WarRoomDetailPage";
 import DeskPage from "@/pages/DeskPage";
+import PortfolioPage from "./pages/PortfolioPage";
 
 export const router = createBrowserRouter([
   // Render route bypasses AppLayout — it's for headless-chromium PNG captures.
@@ -93,6 +94,7 @@ export const router = createBrowserRouter([
       { path: "warroom", element: <WarRoomPage />, handle: { crumb: "War Room" } },
       { path: "warroom/:id", element: <WarRoomDetailPage />, handle: { crumb: "Debate" } },
       { path: "desk", element: <DeskPage />, handle: { crumb: "Desk" } },
+      { path: "portfolio", element: <PortfolioPage />, handle: { crumb: "Portfolio" } },
       { path: "coverage/:ticker", element: <CoveragePage />,
         handle: { crumb: ({ params }: { params: { ticker?: string } }) => params.ticker?.toUpperCase() ?? "Coverage" } },
       { path: "theses", element: <ThesesPage />, handle: { crumb: "Theses" } },

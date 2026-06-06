@@ -74,12 +74,6 @@ FEATURE_FLAGS: list[FeatureFlag] = [
         "Arm the beat-scheduled Desk sweep: scan watched tickers and auto-originate DeskEntry investigations.",
     ),
     FeatureFlag(
-        "AUTONOMY_AUTO_EXECUTE",
-        False,
-        "feature",
-        "Within the Desk sweep, auto-execute follow-up actions instead of only proposing them.",
-    ),
-    FeatureFlag(
         "OBSERVER_RESPONSE_CACHE_ENABLED",
         False,
         "feature",

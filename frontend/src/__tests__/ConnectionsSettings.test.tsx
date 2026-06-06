@@ -70,6 +70,21 @@ describe("ConnectionsSettings", () => {
     expect(screen.getByRole("button", { name: /reconnect/i })).toBeInTheDocument();
   });
 
+  it("warns when a stored credential was rejected by Schwab (auth_error)", () => {
+    // A row exists (connected=true) but Schwab rejected the token — reads have
+    // silently fallen back to a free provider. The user must be told.
+    mockUseSchwabStatus.mockReturnValue({
+      data: {
+        connected: true,
+        expires_at: null,
+        auth_error: "Schwab rejected the stored authorization. Reconnect at /settings.",
+      },
+      isLoading: false,
+    });
+    renderWithProviders();
+    expect(screen.getByText(/rejected the stored authorization/i)).toBeInTheDocument();
+  });
+
   it("disables Connect until credentials are configured", () => {
     mockUseSchwabStatus.mockReturnValue({ data: { connected: false }, isLoading: false });
     mockUseSchwabAppConfig.mockReturnValue({

@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import logging
 
+from apps.ai.catalog import DEFAULT_CLAUDE_MODEL
 from apps.warroom import constants as C
 from apps.warroom.models import WarRoomRun
 from apps.warroom.services.subject import subject_context
@@ -23,7 +24,7 @@ def _claude_cfg():
             return None
         check_daily_cap("claude", cap_usd=cfg.daily_cost_cap_usd)
         check_monthly_cap("claude", cap_usd=cfg.monthly_cost_cap_usd)
-        return cfg.api_key, (cfg.default_model or "claude-opus-4-8"), (cfg.base_url or "")
+        return cfg.api_key, (cfg.default_model or DEFAULT_CLAUDE_MODEL), (cfg.base_url or "")
     except CostCapExceededError as exc:
         log.warning("warroom.cap_hit: %s", exc)
         return None

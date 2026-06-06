@@ -20,6 +20,7 @@ from rest_framework.response import Response
 from apps.ai.catalog import list_models as _list_catalog
 from apps.ai.cost import daily_spend_usd
 from apps.ai.providers import get_provider
+from apps.core import provider_health
 from apps.secrets.data_source_test import test_credential
 from apps.secrets.data_sources import DATA_SOURCES, get_data_source
 from apps.secrets.models import ApiCredential, ProviderConfig, SchwabAppConfig
@@ -74,7 +75,7 @@ def schwab_status(_request: HttpRequest) -> JsonResponse:
     try:
         cred = ApiCredential.objects.get(provider="schwab")
     except ApiCredential.DoesNotExist:
-        return JsonResponse({"connected": False, "expires_at": None})
+        return JsonResponse({"connected": False, "expires_at": None, "auth_error": None})
     except InvalidToken:
         # The stored token was encrypted under a key that no longer exists (DJANGO_SECRET_KEY
         # rotated or /data salt reset). Decryption fires during the .get() row fetch via
@@ -85,11 +86,16 @@ def schwab_status(_request: HttpRequest) -> JsonResponse:
             "Schwab credential is undecryptable (encryption key rotated or salt reset); "
             "reconnect Schwab to overwrite it."
         )
-        return JsonResponse({"connected": False, "expires_at": None})
+        return JsonResponse({"connected": False, "expires_at": None, "auth_error": None})
+    # A row exists, but the live connection may still be broken: a 401/403 from Schwab
+    # (revoked/expired OAuth) records a cross-process marker (apps.core.provider_health)
+    # that schwab_json sets. Surface it so a rejected token stops reading as "connected"
+    # while every quote/OHLC/chain has silently fallen back to a free provider.
     return JsonResponse(
         {
             "connected": True,
             "expires_at": cred.expires_at.isoformat() if cred.expires_at else None,
+            "auth_error": provider_health.auth_error("schwab"),
         }
     )
 

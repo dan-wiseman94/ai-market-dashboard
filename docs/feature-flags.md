@@ -37,7 +37,6 @@ These are `env.bool` switches but not product features. They stay as-is.
 | `AI_CALIBRATION_ROUTING_ENABLED` | keep opt-in — needs more `EvalRun` evidence | Router fallback tier picks the best-measured `(provider, model)` from recent evals. |
 | `AIEVAL_SCHEDULED_ENABLED` | **keep opt-in (permanent)** — spends real AI $ on a schedule | Run the calibration eval on a beat (no `MOCK_EXTERNAL` short-circuit). |
 | `ANOMALY_SWEEP_ENABLED` | **keep opt-in (permanent)** — autonomy that spends $ | Arm the beat-scheduled Desk sweep; auto-originate `DeskEntry` investigations. |
-| `AUTONOMY_AUTO_EXECUTE` | **keep opt-in (safety gate — never default-on)** | Let the Desk sweep auto-execute follow-ups instead of only proposing them. |
 | `RETURNS_ADJUST_DIVIDENDS` | **decide-and-delete candidate** — a methodology choice, not a perpetual toggle | Dividend-adjust forward-return math (price-return → total-return) across all calibration. |
 
 ### Notes on the dispositions
@@ -47,8 +46,8 @@ These are `env.bool` switches but not product features. They stay as-is.
   flag graduates, delete it and make the behaviour unconditional — a graduated flag
   left in place is just more scar tissue.
 - **Permanent opt-ins**: the cost/autonomy flags (`AIEVAL_SCHEDULED_ENABLED`,
-  `ANOMALY_SWEEP_ENABLED`, `AUTONOMY_AUTO_EXECUTE`) should stay off-by-default forever —
-  they spend money or act autonomously, and the safe default is inaction.
+  `ANOMALY_SWEEP_ENABLED`) should stay off-by-default forever — they spend money or
+  act autonomously, and the safe default is inaction.
 - **Decide-and-delete** (`RETURNS_ADJUST_DIVIDENDS`): price-return vs total-return is a
   one-time methodology decision. A perpetual flag here means every calibration number is
   ambiguous until you check the env. Pick one, bake it in, drop the flag.
