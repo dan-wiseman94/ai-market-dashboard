@@ -22,6 +22,7 @@ import logging
 from collections import Counter
 from decimal import Decimal
 
+from apps.ai.catalog import DEFAULT_CLAUDE_MODEL
 from apps.ai.cost import CostCapExceededError, check_daily_cap, check_monthly_cap
 from apps.ai.providers.claude_structured import run_structured
 from apps.observer.schemas import ConsensusReport, ObservationReport, ProviderTake
@@ -55,7 +56,7 @@ def structured_capable_pairs() -> list[StructuredPair]:
     )
     for cfg in qs:
         key = cfg.api_key
-        model = cfg.default_model or "claude-opus-4-8"
+        model = cfg.default_model or DEFAULT_CLAUDE_MODEL
         if not key:
             continue
         pairs.append(
