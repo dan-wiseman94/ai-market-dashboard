@@ -1,27 +1,11 @@
 import { useRef } from "react";
 import { SaveCardButton } from "./SaveCardButton";
+import type { Bias, ObservationReport } from "@/api/observation";
 
-type Bias = "bullish" | "bearish" | "neutral" | "mixed";
-
-export type ObservationReport = {
-  headline: string;
-  bias: Bias;
-  summary: string;
-  signals: Array<{
-    ticker: string;
-    bias: Bias;
-    thesis: string;
-    invalidation: string;
-    confidence: number;
-  }>;
-  key_levels: Array<{
-    label: string;
-    price: number;
-    kind: "support" | "resistance" | "pivot" | "target";
-  }>;
-  risks: string[];
-  next_check_in: string;
-};
+// The type now lives in the data layer (so api/ can reference it without importing
+// UI — dependency-cruiser api-stays-below-ui). Re-export for existing UI/test
+// importers of this component.
+export type { ObservationReport } from "@/api/observation";
 
 const BIAS_COLOR: Record<Bias, string> = {
   bullish: "text-gain-400 border-gain-500/40",

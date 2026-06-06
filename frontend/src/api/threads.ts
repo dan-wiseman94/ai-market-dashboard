@@ -1,5 +1,5 @@
 import { apiGet, apiPatch, apiPost } from "./client";
-import type { ObservationReport } from "@/components/ObservationReportCard";
+import type { ObservationReport } from "./observation";
 
 export type AiRun = {
   id: number; provider: string; model: string;
