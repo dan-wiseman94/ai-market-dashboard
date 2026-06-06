@@ -103,7 +103,13 @@ class AIRun(models.Model):
         ("cost_capped", "Cost capped"),
     ]
 
-    message = models.OneToOneField(Message, on_delete=models.CASCADE, related_name="ai_run")
+    # Nullable: the streaming chat path always attaches a Message, but the
+    # one-shot run_structured path (post-mortems, coverage, regime/book, war-room,
+    # eval, predictions) records cost without a chat Message. Both must count
+    # against the caps. See apps.ai.cost.record_ai_run.
+    message = models.OneToOneField(
+        Message, on_delete=models.CASCADE, related_name="ai_run", null=True, blank=True
+    )
     provider = models.CharField(max_length=32)
     model = models.CharField(max_length=100)
     input_tokens = models.IntegerField(default=0)
