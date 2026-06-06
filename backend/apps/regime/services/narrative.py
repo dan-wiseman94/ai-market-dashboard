@@ -8,6 +8,7 @@ import logging
 
 from pydantic import BaseModel, Field
 
+from apps.ai.catalog import DEFAULT_CLAUDE_MODEL
 from apps.ai.cost import CostCapExceededError, check_daily_cap, check_monthly_cap
 from apps.ai.providers.claude_structured import run_structured
 
@@ -39,7 +40,7 @@ def regime_narrative(composite: str, axes: dict, drivers: list[str]) -> str:
         check_monthly_cap("claude", cap_usd=cfg.monthly_cost_cap_usd)
         report = run_structured(
             api_key=cfg.api_key,
-            model=cfg.default_model or "claude-opus-4-8",
+            model=cfg.default_model or DEFAULT_CLAUDE_MODEL,
             system="",
             user=_build_prompt(composite, axes, drivers),
             output_model=RegimeNarrative,

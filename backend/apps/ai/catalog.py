@@ -9,6 +9,11 @@ from dataclasses import dataclass
 
 KNOWN_PROVIDERS = ["claude", "openai", "local"]
 
+# The default Claude model for best-effort / structured paths when no per-send or
+# profile/schedule override and no ProviderConfig.default_model is set. Single
+# source of truth — bump here, not in each caller (was duplicated across ~8 sites).
+DEFAULT_CLAUDE_MODEL = "claude-opus-4-8"
+
 
 @dataclass(frozen=True)
 class ModelInfo:
