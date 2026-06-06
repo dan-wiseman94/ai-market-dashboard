@@ -39,3 +39,25 @@ def test_run_one_persona_none_when_no_assistant(monkeypatch):
         D.run_one_persona(th, "bear", "ctx", [], provider="claude", model="m", grounding=False)
         is None
     )
+
+
+def test_run_one_persona_does_not_inherit_a_prior_personas_message(monkeypatch):
+    """Personas run sequentially in one shared thread. If THIS persona's run fails or
+    no-ops, it must return None — not pick up the *previous* persona's assistant
+    message and re-stamp it (which the courtroom UI would then mislabel)."""
+    th = Thread.objects.create(kind="warroom", title="t")
+    # A prior persona's successful argument already sits in the thread.
+    prior = Message.objects.create(
+        thread=th,
+        role="assistant",
+        status="done",
+        content={"text": "BULL ARGUMENT", "persona": "bull"},
+    )
+    # This persona's run produces no new "done" assistant message.
+    monkeypatch.setattr(D, "run_ai_on_message", lambda **kw: {"status": "failed"})
+
+    result = D.run_one_persona(th, "bear", "ctx", [], provider="claude", model="m", grounding=False)
+
+    assert result is None
+    prior.refresh_from_db()
+    assert prior.content["persona"] == "bull"  # NOT re-stamped as "bear"
