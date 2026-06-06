@@ -104,12 +104,17 @@ def _read_token() -> dict | None:
     return {"creation_timestamp": creation, "token": raw}
 
 
-def _write_token(token: Any) -> None:
+def _write_token(token: Any, *_args: Any, **_kwargs: Any) -> None:
     """Persist a token, accepting either schwab-py's wrapper or a bare token.
 
     On refresh, schwab-py hands back ``{"creation_timestamp", "token"}``; unwrap
     it and carry the creation timestamp into the stored bare token so a later
     ``_read_token`` re-wraps it faithfully. Also stamps absolute ``expires_at``.
+
+    ``*_args``/``**_kwargs`` absorb the identifying keywords authlib's update_token
+    hook passes (``refresh_token=``/``access_token=`` since authlib 1.6), which
+    schwab-py forwards verbatim. The actual token is always the first positional
+    arg; the extras just name which grant triggered the write, so we ignore them.
     """
     if isinstance(token, dict) and "token" in token and "creation_timestamp" in token:
         inner = dict(token["token"])
