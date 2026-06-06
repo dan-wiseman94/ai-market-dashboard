@@ -11,12 +11,11 @@ each real bars fetch. Never raises — returns {} or [] on any failure.
 from __future__ import annotations
 
 import logging
-from datetime import datetime
-from decimal import Decimal, InvalidOperation
 
 import requests  # type: ignore[import-untyped]
 
 from apps.market import cache
+from apps.market.services._bars import persist_bars
 from apps.secrets.credentials import decrypt_token
 
 log = logging.getLogger(__name__)
@@ -190,35 +189,7 @@ def _normalize_bars(raw_bars: list[dict]) -> list[dict]:
 
 
 def _persist_bars(ticker: str, timeframe: str, bars: list[dict]) -> None:
-    from apps.market.models import OHLCBar
-
-    rows: list[OHLCBar] = []
-    for b in bars:
-        try:
-            if any(b.get(k) is None for k in ("open", "high", "low", "close", "volume", "ts")):
-                continue
-            rows.append(
-                OHLCBar(
-                    ticker=ticker,
-                    timeframe=timeframe,
-                    open=Decimal(str(b["open"])),
-                    high=Decimal(str(b["high"])),
-                    low=Decimal(str(b["low"])),
-                    close=Decimal(str(b["close"])),
-                    volume=int(b["volume"]),
-                    ts=datetime.fromisoformat(b["ts"]),
-                )
-            )
-        except (InvalidOperation, ValueError, TypeError) as exc:
-            log.warning("alpaca.persist.skip_bar ticker=%s ts=%s: %s", ticker, b.get("ts"), exc)
-    if not rows:
-        return
-    OHLCBar.objects.bulk_create(
-        rows,
-        update_conflicts=True,
-        unique_fields=["ticker", "timeframe", "ts"],
-        update_fields=["open", "high", "low", "close", "volume"],
-    )
+    persist_bars(ticker, timeframe, bars, source="alpaca")
 
 
 # ---------------------------------------------------------------------------
