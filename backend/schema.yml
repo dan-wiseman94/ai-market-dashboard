@@ -4352,6 +4352,15 @@ components:
           type: boolean
           description: When True, fires submit a Messages Batch per watchlist ticker
             instead of streaming. 50% cheaper; not interactive.
+        consensus:
+          type: boolean
+          description: When True (with structured), fan the ObservationReport across
+            every structured-capable provider and record a cross-model agreement signal
+            instead of a single structured report. ~Nx cost; opt-in only.
+        investigate:
+          type: boolean
+          description: When True (plain mode only), the fire runs a bounded tool-using
+            investigation instead of a single observation.
         last_batch_id:
           type: string
           readOnly: true
@@ -4646,6 +4655,15 @@ components:
           type: boolean
           description: When True, fires submit a Messages Batch per watchlist ticker
             instead of streaming. 50% cheaper; not interactive.
+        consensus:
+          type: boolean
+          description: When True (with structured), fan the ObservationReport across
+            every structured-capable provider and record a cross-model agreement signal
+            instead of a single structured report. ~Nx cost; opt-in only.
+        investigate:
+          type: boolean
+          description: When True (plain mode only), the fire runs a bounded tool-using
+            investigation instead of a single observation.
         last_batch_id:
           type: string
           readOnly: true
