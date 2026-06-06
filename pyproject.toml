@@ -295,12 +295,18 @@ ignore_decorators = ["@shared_task", "@receiver", "@app.task", "@register.filter
 
 [tool.coverage.run]
 omit = ["*/migrations/*", "*/tests/*", "*/conftest.py"]
+# Branch coverage: also require the else/short-circuit paths to be exercised, not just
+# every line. This codebase leans heavily on "degrade silently to None/{}/skip" branches
+# (decrypt_token, _safe defaults, postmortem/coverage best-effort) — branch coverage turns
+# those documented silent-failure paths into measured ones. (Line-only was 89.85%.)
+branch = true
 
 [tool.coverage.report]
-# Gate: fail if total coverage drops below the floor. Measured 89.85% on 2026-06-03
-# (app code only — tests/migrations omitted); floor set ~2% under, to ratchet up over
-# time. Active whenever --cov runs from the repo root (CI), where this config is found.
-fail_under = 88
+# Gate: fail if total coverage drops below the floor. Measured 88.37% on 2026-06-06 with
+# BRANCH coverage on (line-only was 90.14%; branch counts the else/short-circuit paths too —
+# app code only, tests/migrations omitted). Floor set ~2% under, to ratchet up over time.
+# Active whenever --cov runs from the repo root (CI), where this config is found.
+fail_under = 86
 
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "config.settings.test"
