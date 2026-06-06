@@ -138,7 +138,13 @@ def _emit_capability_warning(*, thread_id: int, features: list[str], provider_na
     return True
 
 
-@shared_task(name="threads.run_ai_on_message")
+# at-most-once: this task bills a provider AND streams to the user, and is NOT
+# idempotent (each run creates a fresh assistant Message + AIRun with no claim).
+# It must override the GLOBAL task_acks_late=True / task_reject_on_worker_lost=True
+# (set in config.celery for the idempotent background tasks) — otherwise a worker
+# killed mid-stream redelivers and re-bills + re-streams a duplicate. A lost run
+# surfaces as an incomplete stream the user can retry, never a silent double-charge.
+@shared_task(name="threads.run_ai_on_message", acks_late=False, reject_on_worker_lost=False)
 def run_ai_on_message(
     *,
     thread_id: int,
