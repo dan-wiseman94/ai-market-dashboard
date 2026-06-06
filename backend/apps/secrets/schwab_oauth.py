@@ -149,6 +149,13 @@ def persist_token(token: dict) -> None:
             ApiCredential.objects.filter(provider="schwab").delete()
             ApiCredential.objects.create(provider="schwab", token=token, expires_at=expires_at)
 
+    # A freshly persisted, working token resolves any prior rejection — clear the
+    # cross-process auth-error marker so the connection status recovers immediately
+    # rather than waiting for the next market read or the marker TTL.
+    from apps.core import provider_health
+
+    provider_health.clear_auth_error("schwab")
+
 
 def load_token() -> dict | None:
     """Return the current token dict, or None if not connected."""

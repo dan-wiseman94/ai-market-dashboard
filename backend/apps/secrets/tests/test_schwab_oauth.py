@@ -1,5 +1,6 @@
 from unittest.mock import MagicMock, patch
 
+import fakeredis
 import pytest
 from django.test import override_settings
 
@@ -11,6 +12,20 @@ from apps.secrets.schwab_oauth import (
     persist_token,
     refresh_token,
 )
+
+
+@pytest.mark.django_db
+def test_persist_token_clears_auth_error_marker():
+    """Reconnecting (a fresh, working token) must immediately clear a stale
+    auth-error marker so the connection status recovers without a market read or
+    waiting out the marker TTL."""
+    fake = fakeredis.FakeStrictRedis()
+    with patch("apps.core.provider_health._redis", lambda: fake):
+        from apps.core import provider_health
+
+        provider_health.mark_auth_error("schwab", "was rejected")
+        persist_token({"access_token": "A", "refresh_token": "R", "expires_at": 9999999999})
+        assert provider_health.auth_error("schwab") is None
 
 
 @pytest.mark.django_db
