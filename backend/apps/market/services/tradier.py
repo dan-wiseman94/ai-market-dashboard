@@ -13,6 +13,7 @@ on any failure.
 from __future__ import annotations
 
 import logging
+from functools import partial
 
 import requests  # type: ignore[import-untyped]
 
@@ -212,9 +213,10 @@ def fetch_chain(ticker: str, *, max_expiries: int = 2) -> dict:
             chain_body = cache.get_or_fetch(
                 f"market:tradier:chain:{ticker}:{expiry}",
                 ttl_seconds=cache.ttl_for_kind("chain"),
-                fetcher=lambda exp=expiry: _get(
+                fetcher=partial(
+                    _get,
                     "/markets/options/chains",
-                    {"symbol": ticker, "expiration": exp, "greeks": "true"},
+                    {"symbol": ticker, "expiration": expiry, "greeks": "true"},
                     api_key=api_key,
                 ),
             )

@@ -30,7 +30,9 @@ def _resolve_fk[M: models.Model](model: type[M], pk: object) -> M | None:
     """Look up *model* by pk, returning None for a falsy pk or unknown row."""
     if not pk:
         return None
-    return model.objects.filter(id=pk).first()
+    # `_default_manager` (not `.objects`) so this resolves on the M TypeVar — django-stubs
+    # only injects `.objects` onto concrete model classes, not a `type[M]` bound.
+    return model._default_manager.filter(id=pk).first()
 
 
 def _error(code: str, message: str, status: int) -> Response:

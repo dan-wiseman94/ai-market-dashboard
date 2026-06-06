@@ -427,7 +427,11 @@ def _format_recall_hits(hits: list[dict]) -> str:
     lines = ["### You've noted this before"]
     for h in hits:
         when = h.get("source_created_at")
-        when_s = when.strftime("%Y-%m-%d") if hasattr(when, "strftime") else str(when or "?")
+        when_s = (
+            when.strftime("%Y-%m-%d")
+            if when is not None and hasattr(when, "strftime")
+            else str(when or "?")
+        )
         lines.append(
             f'- {when_s} ({h.get("kind")}): "{h.get("snippet", "")}" → {h.get("link", "")}'
         )

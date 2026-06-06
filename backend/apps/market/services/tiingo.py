@@ -71,7 +71,14 @@ def _normalize_bar(raw: dict) -> dict | None:
     close = raw.get("close")
     volume = raw.get("volume")
 
-    if any(v is None for v in (date_str, open_, high, low, close, volume)):
+    if (
+        date_str is None
+        or open_ is None
+        or high is None
+        or low is None
+        or close is None
+        or volume is None
+    ):
         return None
 
     try:

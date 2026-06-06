@@ -189,7 +189,10 @@ class ProviderConfigViewSet(viewsets.ModelViewSet):
 
         provider_obj = get_provider(cfg.provider, api_key=cfg.api_key, base_url=cfg.base_url)
         try:
-            models = async_to_sync(provider_obj.list_models)(timeout=5.0)
+            # Gated to openai/local above; both implement list_models. It's not on the
+            # base Provider protocol (Claude has no model-listing), and the concrete
+            # provider can't be imported here (import-linter), so narrow at the call.
+            models = async_to_sync(provider_obj.list_models)(timeout=5.0)  # type: ignore[attr-defined]
         except Exception as exc:
             return Response({"ok": False, "error": _friendly_probe_error(exc, cfg.base_url)})
 

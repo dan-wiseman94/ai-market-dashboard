@@ -3,6 +3,8 @@ Tickers with insufficient overlapping history are dropped (honest coverage)."""
 
 from __future__ import annotations
 
+from typing import Any
+
 from apps.book import constants as C
 from apps.market.models import OHLCBar
 
@@ -59,7 +61,7 @@ def correlation_clusters(tickers: list[str]) -> list[dict]:
     for t in names:
         groups.setdefault(find(t), []).append(t)
 
-    out = []
+    out: list[dict[str, Any]] = []
     for members in groups.values():
         if len(members) < 2:
             continue

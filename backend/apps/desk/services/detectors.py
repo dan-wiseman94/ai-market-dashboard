@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import logging
 import sys
+from datetime import timedelta
 
 from django.utils import timezone
 
@@ -141,7 +142,7 @@ def detect_earnings_proximity(universe: list[str]) -> list[dict]:
 
     now = timezone.now()
     today = now.date()
-    horizon = now + timezone.timedelta(days=C.EARNINGS_WITHIN_DAYS)
+    horizon = now + timedelta(days=C.EARNINGS_WITHIN_DAYS)
     tickers = [t.upper() for t in universe if t]
     if not tickers:
         return []
@@ -165,7 +166,7 @@ def detect_earnings_proximity(universe: list[str]) -> list[dict]:
 def detect_coverage_stale(universe: list[str]) -> list[dict]:
     from apps.coverage.models import CoverageNote
 
-    cutoff = timezone.now() - timezone.timedelta(days=C.COVERAGE_STALE_DAYS)
+    cutoff = timezone.now() - timedelta(days=C.COVERAGE_STALE_DAYS)
     out = []
     for note in CoverageNote.objects.filter(updated_at__lt=cutoff):
         closes = _daily(note.ticker, 11)
