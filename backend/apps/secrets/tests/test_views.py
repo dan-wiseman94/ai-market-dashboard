@@ -69,7 +69,30 @@ def test_status_not_connected():
     client = Client()
     response = client.get("/api/schwab/status/")
     assert response.status_code == 200
-    assert response.json() == {"connected": False, "expires_at": None}
+    assert response.json() == {"connected": False, "expires_at": None, "auth_error": None}
+
+
+@pytest.mark.django_db
+def test_status_surfaces_schwab_auth_error():
+    """A revoked/expired OAuth token (Schwab 401/403) must stop masquerading as a
+    clean connection: the status surface reports the recorded auth-error message so
+    the user knows their reads have silently fallen back to a free provider."""
+    import fakeredis
+
+    fake = fakeredis.FakeStrictRedis()
+    future = timezone.now() + timedelta(days=5)
+    ApiCredential.objects.create(provider="schwab", token={"access_token": "A"}, expires_at=future)
+    with patch("apps.core.provider_health._redis", lambda: fake):
+        from apps.core import provider_health
+
+        provider_health.mark_auth_error(
+            "schwab", "Schwab rejected the stored authorization. Reconnect at /settings."
+        )
+        client = Client()
+        body = client.get("/api/schwab/status/").json()
+    # A credential row still exists, so connected stays True — but auth_error carries the truth.
+    assert body["connected"] is True
+    assert "Reconnect" in (body["auth_error"] or "")
 
 
 @pytest.mark.django_db
@@ -108,4 +131,4 @@ def test_status_reports_not_connected_when_token_undecryptable():
     client = Client()
     response = client.get("/api/schwab/status/")
     assert response.status_code == 200
-    assert response.json() == {"connected": False, "expires_at": None}
+    assert response.json() == {"connected": False, "expires_at": None, "auth_error": None}

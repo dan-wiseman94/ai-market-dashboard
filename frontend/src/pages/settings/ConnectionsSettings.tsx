@@ -162,6 +162,16 @@ export default function ConnectionsSettings() {
           Powers live quotes, OHLC history, option chains, and positions.
         </p>
 
+        {data?.auth_error ? (
+          <p
+            role="alert"
+            className="mt-3 rounded-ledger border border-loss-300 bg-loss-300/10 px-3 py-2 text-[13px] text-loss-300"
+          >
+            {data.auth_error} Until then, market reads fall back to a free provider if one is
+            configured.
+          </p>
+        ) : null}
+
         <SchwabCredentialsForm
           clientId={clientId}
           secret={secret}
