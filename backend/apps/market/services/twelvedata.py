@@ -285,7 +285,7 @@ def fetch_time_series(
     if not isinstance(values, list):
         return []
 
-    bars: list[dict] = []
+    bars = []
     for raw in values:
         bar = _normalize_bar(raw)
         if bar is not None:

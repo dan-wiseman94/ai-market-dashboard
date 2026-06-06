@@ -78,16 +78,17 @@ class ThreadViewSet(
                 # (the profile default), not the 40k fallback — serialization is
                 # frozen into content["text"] here, so this is the only chance to
                 # size it correctly. No profile → keep the conservative default.
-                serialize_kwargs = (
-                    {"provider": profile.default_provider, "model": profile.default_model}
-                    if profile is not None
-                    else {}
-                )
+                if profile is not None:
+                    payload = serialize_for_ai(
+                        snap, provider=profile.default_provider, model=profile.default_model
+                    )
+                else:
+                    payload = serialize_for_ai(snap)
                 coach = assemble_coach_context(snap, profile)
                 synthetic_msg = Message.objects.create(
                     thread=t,
                     role="user",
-                    content={"text": coach + serialize_for_ai(snap, **serialize_kwargs)},
+                    content={"text": coach + payload},
                     snapshot_ref=snap,
                     status="done",
                 )

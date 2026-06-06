@@ -25,7 +25,7 @@ from decimal import Decimal
 from apps.ai.catalog import DEFAULT_CLAUDE_MODEL
 from apps.ai.cost import CostCapExceededError, check_daily_cap, check_monthly_cap
 from apps.ai.providers.claude_structured import run_structured
-from apps.observer.schemas import ConsensusReport, ObservationReport, ProviderTake
+from apps.observer.schemas import Bias, ConsensusReport, ObservationReport, ProviderTake
 from apps.secrets.models import ProviderConfig
 
 log = logging.getLogger(__name__)
@@ -72,7 +72,7 @@ def structured_capable_pairs() -> list[StructuredPair]:
     return pairs
 
 
-def _modal_and_agreement(biases: list[str]) -> tuple[str | None, float | None, bool]:
+def _modal_and_agreement(biases: list[Bias]) -> tuple[Bias | None, float | None, bool]:
     """(modal_bias, agreement_fraction, divergent) for a list of biases.
 
     agreement = count(modal) / len, rounded to 4dp. None when < 2 biases — no

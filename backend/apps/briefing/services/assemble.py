@@ -11,6 +11,7 @@ from apps.market.services.events import upcoming_events
 from apps.market.services.news import fetch_news
 from apps.market.services.quotes import fetch_quotes
 from apps.profiles.models import TradingProfile, WatchlistSymbol
+from apps.snapshots.models import Snapshot
 from apps.snapshots.services import capture
 from apps.thesis.models import Thesis
 from apps.triggers.models import TriggerFiring
@@ -149,7 +150,7 @@ def _safe(fn, default):
         return default
 
 
-def assemble(config) -> tuple[dict, object | None]:
+def assemble(config) -> tuple[dict, Snapshot | None]:
     tickers = _safe(_watchlist_union, [])
     since = _safe(_since, timezone.now() - timedelta(hours=24))
     profile = _safe(lambda: config.profile or TradingProfile.objects.first(), config.profile)

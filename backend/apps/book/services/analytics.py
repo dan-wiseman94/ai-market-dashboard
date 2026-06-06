@@ -36,7 +36,10 @@ def near_invalidation() -> list[dict]:
     now = timezone.now()
     out: list[dict] = []
     for t in Thesis.objects.filter(status="open").exclude(invalidation_price=None):
-        inv = float(t.invalidation_price)
+        inv_dec = t.invalidation_price
+        if inv_dec is None:  # excluded above; narrows Decimal | None for the type checker
+            continue
+        inv = float(inv_dec)
         if inv <= 0:
             continue
         last = nearest_bar_close(t.ticker.upper(), now)

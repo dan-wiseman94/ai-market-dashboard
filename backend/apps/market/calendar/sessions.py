@@ -114,7 +114,7 @@ def market_state(
         # extended-hours windows when the calendar defines them, else closed.
         if today_pre is not None and today_pre <= now < today_open:
             phase = "premarket"
-        elif today_post is not None and today_close < now <= today_post:
+        elif today_post is not None and today_close is not None and today_close < now <= today_post:
             phase = "postmarket"
         else:
             phase = "half_day" if is_early else "closed"
