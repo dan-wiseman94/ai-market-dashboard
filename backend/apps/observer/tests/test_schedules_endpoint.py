@@ -92,6 +92,27 @@ def test_delete_schedule_drops_periodic_task(api, profile):
 
 
 @pytest.mark.django_db
+def test_consensus_mode_is_settable_via_api(api, profile):
+    # consensus is a fully-wired backend mode (run.py feeds it through
+    # _run_consensus_and_record). It must be reachable via the API + round-trip
+    # in the response, so it can be enabled without direct DB editing.
+    resp = api.post(
+        "/api/observer/schedules/",
+        {
+            "name": "c",
+            "profile": profile.id,
+            "cron": "0 * * * *",
+            "structured": True,
+            "consensus": True,
+        },
+        format="json",
+    )
+    assert resp.status_code == 201, resp.content
+    assert resp.json()["consensus"] is True
+    assert ObserverSchedule.objects.get(id=resp.json()["id"]).consensus is True
+
+
+@pytest.mark.django_db
 def test_run_now_calls_run_observer(api, profile):
     resp = api.post(
         "/api/observer/schedules/",

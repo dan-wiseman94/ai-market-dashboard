@@ -127,7 +127,7 @@ function CronFields({
 }
 
 function AiModeFields({
-  mode, setMode, structured, setStructured, useBatch, setUseBatch,
+  mode, setMode, structured, setStructured, useBatch, setUseBatch, consensus, setConsensus,
 }: {
   mode: ObserverMode;
   setMode: (v: ObserverMode) => void;
@@ -135,6 +135,8 @@ function AiModeFields({
   setStructured: (v: boolean) => void;
   useBatch: boolean;
   setUseBatch: (v: boolean) => void;
+  consensus: boolean;
+  setConsensus: (v: boolean) => void;
 }) {
   return (
     <fieldset className="grid grid-cols-2 gap-3 text-sm border border-rule rounded p-3">
@@ -163,6 +165,15 @@ function AiModeFields({
           onChange={(e) => setUseBatch(e.target.checked)}
         />
         <span>Messages Batch per watchlist ticker (50% cheaper, async)</span>
+      </label>
+      <label className="flex items-center gap-2 col-span-2">
+        <input
+          type="checkbox" checked={consensus} disabled={!structured}
+          onChange={(e) => setConsensus(e.target.checked)}
+        />
+        <span className={structured ? "" : "text-ink-600"}>
+          Cross-model consensus (fan structured report across providers; needs Structured; ~Nx cost)
+        </span>
       </label>
     </fieldset>
   );
@@ -197,6 +208,8 @@ interface CreateFormState {
   setStructured: (v: boolean) => void;
   useBatch: boolean;
   setUseBatch: (v: boolean) => void;
+  consensus: boolean;
+  setConsensus: (v: boolean) => void;
 }
 
 function CreateScheduleForm({
@@ -277,6 +290,8 @@ function CreateScheduleForm({
         setStructured={form.setStructured}
         useBatch={form.useBatch}
         setUseBatch={form.setUseBatch}
+        consensus={form.consensus}
+        setConsensus={form.setConsensus}
       />
 
       <button type="submit" disabled={isPending || !form.name || !form.profileId}
@@ -307,6 +322,7 @@ export default function SchedulesPage() {
   const [mode, setMode] = useState<ObserverMode>("full");
   const [structured, setStructured] = useState(false);
   const [useBatch, setUseBatch] = useState(false);
+  const [consensus, setConsensus] = useState(false);
   const [fireMode, setFireMode] = useState<ObserverFireMode>("cron");
   const [closeOffset, setCloseOffset] = useState(5);
 
@@ -329,12 +345,12 @@ export default function SchedulesPage() {
     await create.mutateAsync({
       name, profile: profileId, enabled, market_hours_only: marketHoursOnly,
       objective_template: objective,
-      mode, structured, use_batch: useBatch,
+      mode, structured, use_batch: useBatch, consensus,
       fire_mode: fireMode,
       ...(fireMode === "cron" ? { cron } : { close_offset_minutes: closeOffset }),
     });
     setName(""); setObjective("");
-    setMode("full"); setStructured(false); setUseBatch(false);
+    setMode("full"); setStructured(false); setUseBatch(false); setConsensus(false);
     setFireMode("cron"); setCloseOffset(5);
     setShowForm(false);
   }
@@ -356,6 +372,7 @@ export default function SchedulesPage() {
     closeOffset, setCloseOffset, cronMode, setCronMode, presetIdx, setPresetIdx,
     advancedCron, setAdvancedCron, cron, cronEnglish, objective, setObjective,
     mode, setMode, structured, setStructured, useBatch, setUseBatch,
+    consensus, setConsensus,
   };
 
   return (

@@ -18,6 +18,7 @@ export interface ObserverSchedule {
   mode: ObserverMode;
   structured: boolean;
   use_batch: boolean;
+  consensus: boolean;
   last_batch_id: string;
   last_fired_at: string | null;
   cron_display: string;
@@ -41,6 +42,7 @@ export interface CreateScheduleBody {
   mode?: ObserverMode;
   structured?: boolean;
   use_batch?: boolean;
+  consensus?: boolean;
   fire_mode?: ObserverFireMode;
   close_offset_minutes?: number;
 }
