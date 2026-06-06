@@ -11,10 +11,15 @@ instance of the same class.
 
 from __future__ import annotations
 
+import logging
+import time
+
 from anthropic import Anthropic
 from pydantic import BaseModel
 
 from apps.ai.providers._config import client_kwargs
+
+logger = logging.getLogger(__name__)
 
 
 class StructuredParseError(RuntimeError):
@@ -32,6 +37,7 @@ def run_structured[M: BaseModel](
     base_url: str = "",
 ) -> M:
     client = Anthropic(api_key=api_key, base_url=base_url or None, **client_kwargs())
+    t0 = time.perf_counter()
     resp = client.messages.parse(
         model=model,
         system=system,
@@ -39,9 +45,35 @@ def run_structured[M: BaseModel](
         max_tokens=max_tokens,
         output_format=output_model,
     )
+    latency_ms = int((time.perf_counter() - t0) * 1000)
     parsed = resp.parsed_output
     if parsed is None:
         raise StructuredParseError(
             f"Claude did not return a parsed {output_model.__name__} output",
         )
+    _record_structured_run(model=model, usage=getattr(resp, "usage", None), latency_ms=latency_ms)
     return parsed
+
+
+def _record_structured_run(*, model: str, usage: object, latency_ms: int) -> None:
+    """Best-effort: record this one-shot run as an AIRun so its cost counts
+    against the provider caps. A ledger-write failure must never lose the
+    already-parsed result, so we log and continue. Usage mapping mirrors the
+    streaming ClaudeProvider (input/output/cache_read).
+    """
+    from apps.ai.cost import record_ai_run
+    from apps.ai.types import TokenUsage
+
+    try:
+        record_ai_run(
+            provider="claude",
+            model=model,
+            usage=TokenUsage(
+                input_tokens=int(getattr(usage, "input_tokens", 0) or 0),
+                output_tokens=int(getattr(usage, "output_tokens", 0) or 0),
+                cached_tokens=int(getattr(usage, "cache_read_input_tokens", 0) or 0),
+            ),
+            latency_ms=latency_ms,
+        )
+    except Exception:  # best-effort ledger write; the parsed result is already obtained
+        logger.warning("run_structured: failed to record AIRun (model=%s)", model, exc_info=True)

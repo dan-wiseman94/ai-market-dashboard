@@ -4,9 +4,13 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
+from typing import TYPE_CHECKING
 
 from apps.ai.catalog import ceiling_for_provider, get_model
 from apps.ai.types import TokenUsage
+
+if TYPE_CHECKING:
+    from apps.threads.models import AIRun, Message
 
 
 class CostCapExceededError(RuntimeError):
@@ -34,6 +38,41 @@ def cost_usd_for(provider: str, model_id: str, usage: TokenUsage) -> Decimal:
 
 def _dec(v: float | int) -> Decimal:
     return Decimal(str(v))
+
+
+def record_ai_run(
+    *,
+    provider: str,
+    model: str,
+    usage: TokenUsage,
+    message: Message | None = None,
+    status: str = "done",
+    latency_ms: int = 0,
+    error: str = "",
+) -> AIRun:
+    """Persist an AIRun so a provider call's cost counts against the caps.
+
+    The streaming chat path records its own AIRun inline (threads.tasks); this is
+    the shared recorder for the one-shot ``run_structured`` path (post-mortems,
+    coverage revisions, regime/book narratives, war-room, eval, predictions),
+    whose spend was previously invisible to check_daily_cap / check_monthly_cap
+    (both sum AIRun.cost_usd). ``message`` is None for runs not tied to a chat
+    Message — AIRun.message is nullable for exactly this reason.
+    """
+    from apps.threads.models import AIRun
+
+    return AIRun.objects.create(
+        message=message,
+        provider=provider,
+        model=model,
+        input_tokens=usage.input_tokens,
+        output_tokens=usage.output_tokens,
+        cached_tokens=usage.cached_tokens,
+        cost_usd=cost_usd_for(provider, model, usage),
+        latency_ms=latency_ms,
+        status=status,
+        error=error,
+    )
 
 
 def _spend_since(provider: str, start: datetime) -> Decimal:
