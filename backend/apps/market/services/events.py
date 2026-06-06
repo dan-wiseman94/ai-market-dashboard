@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from datetime import UTC, datetime, timedelta
+from functools import partial
 
 import requests  # type: ignore[import-untyped]
 
@@ -103,9 +104,10 @@ def fetch_earnings(tickers: list[str], *, ahead_days: int = 30) -> list[MarketEv
         body = cache.get_or_fetch(
             f"market:earn:{ticker}:{ahead_days}",
             ttl_seconds=cache.ttl_for_kind("events"),
-            fetcher=lambda t=ticker: _finnhub_get(
+            fetcher=partial(
+                _finnhub_get,
                 "/calendar/earnings",
-                {"symbol": t, "from": str(today), "to": str(end)},
+                {"symbol": ticker, "from": str(today), "to": str(end)},
                 api_key,
             ),
         )

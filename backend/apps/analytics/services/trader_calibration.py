@@ -91,12 +91,12 @@ def _conviction_reliability(horizon_days: int) -> dict:
         }
         for conviction, bucket in sorted(by_conviction.items())
     ]
-    verdict = _conviction_verdict(by_conviction)
+    overall_verdict = _conviction_verdict(by_conviction)
     has_signal = any(b["n"] >= _MIN_N for b in buckets)
     return {
         "status": "ok" if has_signal else "insufficient_history",
         "buckets": buckets,
-        "verdict": verdict,
+        "verdict": overall_verdict,
     }
 
 

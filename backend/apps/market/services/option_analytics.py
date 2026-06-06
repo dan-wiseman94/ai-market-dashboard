@@ -131,7 +131,7 @@ def _max_pain(contracts: list[dict]) -> float | None:
     Returns the K that minimises this sum.
     """
     # Gather nearest expiry
-    expiries = sorted({c.get("expiry") for c in contracts if c.get("expiry")})
+    expiries = sorted({e for c in contracts if (e := c.get("expiry"))})
     if not expiries:
         return None
     nearest = expiries[0]
@@ -185,7 +185,7 @@ def _iv_skew_25d(contracts: list[dict]) -> float | None:
     contract whose |delta| is closest to 0.25.  Returns None if either side
     cannot be found.
     """
-    expiries = sorted({c.get("expiry") for c in contracts if c.get("expiry")})
+    expiries = sorted({e for c in contracts if (e := c.get("expiry"))})
     if not expiries:
         return None
     nearest = expiries[0]
@@ -230,7 +230,7 @@ def _term_structure(contracts: list[dict], *, spot: float | None) -> list[dict]:
     When spot is None and no contracts carry an underlying field, atm_iv for
     every expiry will be None.  Callers should supply spot.
     """
-    expiries = sorted({c.get("expiry") for c in contracts if c.get("expiry")})
+    expiries = sorted({e for c in contracts if (e := c.get("expiry"))})
     if not expiries:
         return []
 

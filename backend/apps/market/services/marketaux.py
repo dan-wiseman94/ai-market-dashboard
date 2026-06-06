@@ -13,6 +13,7 @@ from __future__ import annotations
 import contextlib
 import logging
 from datetime import UTC, datetime
+from functools import partial
 
 import requests  # type: ignore[import-untyped]
 
@@ -154,7 +155,7 @@ def fetch_news(tickers: list[str], *, limit: int = 15) -> list[dict]:
             raw_items = cache.get_or_fetch(
                 cache_key,
                 ttl_seconds=cache.ttl_for_kind("news"),
-                fetcher=lambda c=chunk: _fetch_chunk(c, api_key, limit),
+                fetcher=partial(_fetch_chunk, chunk, api_key, limit),
             )
             aggregated.extend(raw_items if isinstance(raw_items, list) else [])
     except Exception as exc:

@@ -159,6 +159,8 @@ def replay_one(example: PostMortem, *, system: str, model: str) -> dict[str, Any
 
     thesis = example.thesis
     snapshot = thesis.snapshot
+    if snapshot is None:  # callers filter thesis__snapshot__isnull=False; defensive
+        raise ValueError(f"PostMortem {example.id}: thesis has no snapshot to replay")
 
     # ONLY the frozen snapshot — deliberately no coach/recall context.
     payload_text = serialize_for_ai(snapshot, provider="claude", model=model)

@@ -18,8 +18,9 @@ def get_or_create_review_thread(thesis: Thesis) -> Thread:
     Uses kind="consult" — post-mortems are one-shot reviews, not an ongoing
     chat or observer timeline; we deliberately do NOT add a new Thread kind.
     """
-    if thesis.review_thread_id:
-        return thesis.review_thread
+    existing = thesis.review_thread
+    if existing is not None:
+        return existing
 
     thread = Thread.objects.create(
         profile=thesis.profile,

@@ -8,7 +8,7 @@ from __future__ import annotations
 from apps.threads.models import Message, ToolCall
 
 
-def _tool_output_for_jsonfield(result: object) -> dict:
+def _tool_output_for_jsonfield(result: object) -> dict | list:
     """JSONField requires dict/list; wrap scalars and None as ``{"value": ...}``."""
     if result is None:
         return {}
