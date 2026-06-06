@@ -1,9 +1,16 @@
-import { screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import * as client from "@/api/client";
 import BookPage from "@/pages/BookPage";
 import { renderWithProviders } from "./testUtils";
+
+const MINIMAL_BOOK = {
+  id: 1, created_at: "x", as_of_date: "2026-06-01",
+  exposures: [], concentration: {}, clusters: [],
+  regime_fit: { alignment: "aligned", note: "" },
+  near_invalidation: [], narrative: "", coverage: {},
+};
 
 describe("BookPage", () => {
   it("renders concentration, clusters, regime fit", async () => {
@@ -64,5 +71,16 @@ describe("BookPage", () => {
     );
     renderWithProviders(<BookPage />);
     await waitFor(() => expect(screen.getByText(/no book snapshot/i)).toBeInTheDocument());
+  });
+
+  it("recompute button posts to /api/book/recompute/", async () => {
+    vi.spyOn(client, "apiGet").mockImplementation(async (path: string) =>
+      path.endsWith("/current/") ? MINIMAL_BOOK : [MINIMAL_BOOK],
+    );
+    const post = vi.spyOn(client, "apiPost").mockResolvedValue(MINIMAL_BOOK as never);
+    renderWithProviders(<BookPage />);
+    const btn = await screen.findByRole("button", { name: /recompute/i });
+    fireEvent.click(btn);
+    await waitFor(() => expect(post).toHaveBeenCalledWith("/api/book/recompute/"));
   });
 });

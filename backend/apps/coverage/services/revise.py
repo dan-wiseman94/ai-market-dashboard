@@ -18,6 +18,7 @@ from typing import Any
 from cryptography.fernet import InvalidToken
 from django.utils import timezone
 
+from apps.ai.catalog import DEFAULT_CLAUDE_MODEL
 from apps.ai.cost import CostCapExceededError, check_daily_cap, check_monthly_cap
 from apps.ai.providers.claude_structured import run_structured
 from apps.coverage.models import CoverageNote, CoverageRevision
@@ -62,7 +63,7 @@ def revise_coverage(ticker: str, snapshot, *, profile) -> CoverageRevision | Non
     note, created = CoverageNote.objects.get_or_create(
         ticker=ticker, defaults={"stance": "neutral", "conviction": 1}
     )
-    model_id = cfg.default_model or "claude-opus-4-8"
+    model_id = cfg.default_model or DEFAULT_CLAUDE_MODEL
     try:
         draft = run_structured(
             api_key=api_key,

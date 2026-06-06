@@ -41,7 +41,10 @@ pre-commit:
           echo "✗ 'frontend' container not running — start it with 'make dev' (or set LEFTHOOK=0 to skip)" >&2
           exit 1
         fi
-        docker compose exec -T frontend pnpm exec eslint {staged_files}
+        # The frontend container mounts ./frontend -> /app (cwd /app), so strip the
+        # repo-relative "frontend/" prefix from staged paths or eslint can't find them.
+        files=$(printf '%s\n' {staged_files} | sed 's#^frontend/##')
+        docker compose exec -T frontend pnpm exec eslint $files
     gitleaks:
       # Scans the STAGED diff via the gitleaks docker image (no host install needed).
       # Blocks the commit if a secret is detected. `.env` (real secrets) is gitignored;

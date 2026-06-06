@@ -1,9 +1,23 @@
 import { ConveneWarRoomButton } from "@/components/ConveneWarRoomButton";
 import { EmptyState } from "@/components/EmptyState";
 import { Skeleton } from "@/components/Skeleton";
-import { useCurrentBook } from "@/hooks/useBook";
+import { useCurrentBook, useRecomputeBook } from "@/hooks/useBook";
 
 const usd = (n?: number) => (n == null ? "—" : `$${Math.round(n).toLocaleString()}`);
+
+function RecomputeBookButton() {
+  const recompute = useRecomputeBook();
+  return (
+    <button
+      type="button"
+      disabled={recompute.isPending}
+      className="rounded border border-rule px-3 py-1 text-sm hover:bg-ink/5 disabled:opacity-50"
+      onClick={() => recompute.mutate()}
+    >
+      {recompute.isPending ? "Recomputing…" : "Recompute"}
+    </button>
+  );
+}
 
 export default function BookPage() {
   const { data: book, isLoading } = useCurrentBook();
@@ -12,6 +26,9 @@ export default function BookPage() {
     return (
       <div className="px-8 py-8 max-w-5xl mx-auto ledger-fade-in">
         <EmptyState title="No book snapshot yet" body="The book X-ray has not run. Trigger a recompute or wait for the daily snapshot." />
+        <div className="mt-4">
+          <RecomputeBookButton />
+        </div>
       </div>
     );
   }
@@ -20,7 +37,10 @@ export default function BookPage() {
     <div className="px-8 py-8 max-w-5xl mx-auto ledger-fade-in">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Book risk X-ray</h1>
-        <ConveneWarRoomButton subject={{ book_snapshot_id: book.id }} />
+        <div className="flex items-center gap-2">
+          <RecomputeBookButton />
+          <ConveneWarRoomButton subject={{ book_snapshot_id: book.id }} />
+        </div>
       </div>
       {book.narrative && <p className="mt-2 text-ink/80">{book.narrative}</p>}
 

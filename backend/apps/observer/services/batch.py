@@ -14,6 +14,7 @@ import logging
 from anthropic import Anthropic
 from cryptography.fernet import InvalidToken
 
+from apps.ai.catalog import DEFAULT_CLAUDE_MODEL
 from apps.observer.models import ObserverSchedule
 from apps.observer.services.threads import get_or_create_observer_thread
 from apps.secrets.models import ProviderConfig
@@ -45,7 +46,7 @@ def submit_watchlist_batch(schedule_id: int) -> str:
     # defer the key here (only default_model is read); _anthropic_client below builds the
     # client and is where an undecryptable key is reported.
     cfg = ProviderConfig.objects.defer("_api_key").get(provider=provider_name)
-    model = sched.override_model or cfg.default_model or "claude-opus-4-8"
+    model = sched.override_model or cfg.default_model or DEFAULT_CLAUDE_MODEL
 
     requests = [
         {

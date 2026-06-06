@@ -2220,6 +2220,10 @@ export interface components {
             structured?: boolean;
             /** @description When True, fires submit a Messages Batch per watchlist ticker instead of streaming. 50% cheaper; not interactive. */
             use_batch?: boolean;
+            /** @description When True (with structured), fan the ObservationReport across every structured-capable provider and record a cross-model agreement signal instead of a single structured report. ~Nx cost; opt-in only. */
+            consensus?: boolean;
+            /** @description When True (plain mode only), the fire runs a bounded tool-using investigation instead of a single observation. */
+            investigate?: boolean;
             readonly last_batch_id: string;
             /** Format: date-time */
             readonly last_fired_at: string | null;
@@ -2367,6 +2371,10 @@ export interface components {
             structured?: boolean;
             /** @description When True, fires submit a Messages Batch per watchlist ticker instead of streaming. 50% cheaper; not interactive. */
             use_batch?: boolean;
+            /** @description When True (with structured), fan the ObservationReport across every structured-capable provider and record a cross-model agreement signal instead of a single structured report. ~Nx cost; opt-in only. */
+            consensus?: boolean;
+            /** @description When True (plain mode only), the fire runs a bounded tool-using investigation instead of a single observation. */
+            investigate?: boolean;
             readonly last_batch_id?: string;
             /** Format: date-time */
             readonly last_fired_at?: string | null;

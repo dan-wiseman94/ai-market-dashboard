@@ -5,8 +5,6 @@ from __future__ import annotations
 
 import logging
 
-from django.conf import settings
-
 from apps.desk import constants as C
 from apps.desk.models import DeskEntry
 from apps.desk.services.detectors import run_detectors
@@ -15,24 +13,6 @@ from apps.desk.services.scoring import in_cooldown, originated_today, rank
 from apps.desk.services.universe import build_universe
 
 log = logging.getLogger(__name__)
-
-AUTO_EXECUTE_MIN_SEVERITY = 8.0
-
-
-def _auto_execute(entry: DeskEntry) -> None:
-    """L3: auto-convene a War Room on a high-severity finding (the safe auto-action;
-    auto-revise stays manual). Best-effort."""
-    from apps.warroom.services.convene import convene
-
-    for a in entry.suggested_actions or []:
-        if a.get("type") == "convene_warroom":
-            run = convene(
-                free_prompt=(a.get("params") or {}).get("free_prompt") or f"Debate: {entry.finding}"
-            )
-            entry.warroom_run = run
-            entry.status = "acted"
-            entry.save(update_fields=["warroom_run", "status"])
-            return
 
 
 def _notify(entry: DeskEntry) -> None:
@@ -81,14 +61,6 @@ def run_sweep(top_k: int = C.TOP_K) -> int:
         except Exception:
             log.warning("desk.notify_failed", exc_info=True)
         created += 1
-        if (
-            getattr(settings, "AUTONOMY_AUTO_EXECUTE", False)
-            and entry.severity >= AUTO_EXECUTE_MIN_SEVERITY
-        ):
-            try:
-                _auto_execute(entry)
-            except Exception:
-                log.warning("desk.auto_execute_failed", exc_info=True)
     if dropped:
         log.info(
             "desk.sweep dropped %d candidates beyond top_k=%d (no silent truncation)",

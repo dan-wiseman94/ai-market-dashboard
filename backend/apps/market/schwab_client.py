@@ -6,13 +6,17 @@ under our control (encrypted in Postgres via ApiCredential).
 
 from __future__ import annotations
 
+import logging
 import time
 from typing import Any
 
 import httpx
 from schwab.auth import client_from_access_functions
 
+from apps.core import provider_health
 from apps.secrets.schwab_oauth import load_token, persist_token, schwab_app_credentials
+
+log = logging.getLogger(__name__)
 
 
 class SchwabNotConnectedError(RuntimeError):
@@ -66,8 +70,21 @@ def schwab_json(resp: Any) -> Any:
         resp.raise_for_status()
     except httpx.HTTPStatusError as e:
         if e.response.status_code in (401, 403):
-            raise SchwabAuthError(_auth_error_message(e.response)) from e
+            msg = _auth_error_message(e.response)
+            # Don't let the rejection vanish into a silent free-provider fallback:
+            # log it AND leave a cross-process marker the connection-status surface
+            # reads, so a revoked token stops masquerading as "connected".
+            log.warning(
+                "Schwab rejected the stored authorization (HTTP %s): %s",
+                e.response.status_code,
+                msg,
+            )
+            provider_health.mark_auth_error("schwab", msg)
+            raise SchwabAuthError(msg) from e
         raise
+    # The credential works again; clear any stale rejection marker so the UI
+    # recovers without waiting out the marker TTL.
+    provider_health.clear_auth_error("schwab")
     return resp.json()
 
 
