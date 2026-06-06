@@ -1,9 +1,14 @@
-import { screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import * as client from "@/api/client";
 import RegimePage from "@/pages/RegimePage";
 import { renderWithProviders } from "./testUtils";
+
+const READING = {
+  id: 1, created_at: "2026-06-01T12:00:00Z", composite: "Risk-Off",
+  axes: {}, drivers: [], narrative: "", changed_axes: [],
+};
 
 describe("RegimePage", () => {
   it("renders the composite, axes, and drivers", async () => {
@@ -27,5 +32,16 @@ describe("RegimePage", () => {
     );
     renderWithProviders(<RegimePage />);
     await waitFor(() => expect(screen.getByText(/no regime reading/i)).toBeInTheDocument());
+  });
+
+  it("refresh button posts to /api/regime/refresh/", async () => {
+    vi.spyOn(client, "apiGet").mockImplementation(async (path: string) =>
+      path.endsWith("/current/") ? READING : [READING],
+    );
+    const post = vi.spyOn(client, "apiPost").mockResolvedValue(READING as never);
+    renderWithProviders(<RegimePage />);
+    const btn = await screen.findByRole("button", { name: /refresh/i });
+    fireEvent.click(btn);
+    await waitFor(() => expect(post).toHaveBeenCalledWith("/api/regime/refresh/"));
   });
 });

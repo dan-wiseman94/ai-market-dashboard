@@ -1,6 +1,6 @@
 import { EmptyState } from "@/components/EmptyState";
 import { Skeleton } from "@/components/Skeleton";
-import { useCurrentRegime, useRegimeHistory } from "@/hooks/useRegime";
+import { useCurrentRegime, useRefreshRegime, useRegimeHistory } from "@/hooks/useRegime";
 
 const COMPOSITE_TONE: Record<string, string> = {
   "Risk-On": "text-emerald-600",
@@ -8,6 +8,20 @@ const COMPOSITE_TONE: Record<string, string> = {
   "Risk-Off": "text-copper",
   Stress: "text-red-600",
 };
+
+function RefreshRegimeButton() {
+  const refresh = useRefreshRegime();
+  return (
+    <button
+      type="button"
+      disabled={refresh.isPending}
+      className="rounded border border-rule px-3 py-1 text-sm hover:bg-ink/5 disabled:opacity-50"
+      onClick={() => refresh.mutate()}
+    >
+      {refresh.isPending ? "Refreshing…" : "Refresh"}
+    </button>
+  );
+}
 
 export default function RegimePage() {
   const { data: current, isLoading } = useCurrentRegime();
@@ -19,15 +33,21 @@ export default function RegimePage() {
       <div className="px-8 py-8 max-w-5xl mx-auto ledger-fade-in">
         <EmptyState
           title="No regime reading yet"
-          body="The regime engine has not produced a reading. Trigger one from Settings or wait for the next scheduled run."
+          body="The regime engine has not produced a reading. Refresh it now or wait for the next scheduled run."
         />
+        <div className="mt-4">
+          <RefreshRegimeButton />
+        </div>
       </div>
     );
   }
 
   return (
     <div className="px-8 py-8 max-w-5xl mx-auto ledger-fade-in">
-      <h1 className="text-2xl font-semibold">Market regime</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-semibold">Market regime</h1>
+        <RefreshRegimeButton />
+      </div>
       <p className={`mt-2 text-3xl font-bold ${COMPOSITE_TONE[current.composite] ?? "text-ink"}`}>
         {current.composite}
       </p>
