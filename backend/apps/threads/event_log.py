@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import contextlib
 import json
+from typing import Any, cast
 
 import redis
 from django.conf import settings
@@ -40,7 +41,9 @@ def record(thread_id: int, payload: dict) -> dict:
     """
     try:
         r = _redis()
-        seq = int(r.incr(_seq_key(thread_id)))
+        # redis-py's sync client returns a concrete int; its stubs type every command as
+        # the sync/async ResponseT union, so cast away the Awaitable arm.
+        seq = cast(int, r.incr(_seq_key(thread_id)))
         stamped = {**payload, "seq": seq}
         pipe = r.pipeline()
         pipe.expire(_seq_key(thread_id), _TTL_SECONDS)
@@ -57,7 +60,7 @@ def replay_since(thread_id: int, since: int) -> list[dict]:
     """Buffered events with ``seq > since``, oldest first. Best-effort → ``[]``."""
     out: list[dict] = []
     with contextlib.suppress(Exception):
-        for item in _redis().lrange(_log_key(thread_id), 0, -1):
+        for item in cast("list[Any]", _redis().lrange(_log_key(thread_id), 0, -1)):
             try:
                 ev = json.loads(item)
             except (ValueError, TypeError):

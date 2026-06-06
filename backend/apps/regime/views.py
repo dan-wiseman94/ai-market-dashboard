@@ -18,9 +18,11 @@ class RegimeViewSet(ReadOnlyModelViewSet):
     serializer_class = RegimeReadingSerializer
 
     @action(detail=False, methods=["get"])
-    def current(self, request: Request) -> Response:
+    def current(self, request: Request) -> Response | JsonResponse:
         reading = current_regime()
         if reading is None:
+            # DRF's Response(None) renders an empty body; JsonResponse emits literal `null`
+            # for the "latest-or-null" contract the frontend expects.
             return JsonResponse(None, safe=False)
         return Response(RegimeReadingSerializer(reading).data)
 

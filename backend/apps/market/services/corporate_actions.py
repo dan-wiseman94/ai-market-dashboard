@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import logging
 from datetime import UTC, date, datetime, timedelta
+from functools import partial
 
 import requests  # type: ignore[import-untyped]
 from django.utils import timezone
@@ -147,8 +148,11 @@ def fetch_splits(
         body = cache.get_or_fetch(
             f"market:split:{ticker}:{back_days}:{ahead_days}",
             ttl_seconds=cache.ttl_for_kind("corporate_actions"),
-            fetcher=lambda t=ticker: _finnhub_get_list(
-                "/stock/split", {"symbol": t, "from": str(start), "to": str(end)}, api_key
+            fetcher=partial(
+                _finnhub_get_list,
+                "/stock/split",
+                {"symbol": ticker, "from": str(start), "to": str(end)},
+                api_key,
             ),
         )
         out.extend(_upsert_splits(body))
@@ -176,8 +180,11 @@ def fetch_dividends(
         body = cache.get_or_fetch(
             f"market:div:{ticker}:{back_days}:{ahead_days}",
             ttl_seconds=cache.ttl_for_kind("corporate_actions"),
-            fetcher=lambda t=ticker: _finnhub_get_list(
-                "/stock/dividend", {"symbol": t, "from": str(start), "to": str(end)}, api_key
+            fetcher=partial(
+                _finnhub_get_list,
+                "/stock/dividend",
+                {"symbol": ticker, "from": str(start), "to": str(end)},
+                api_key,
             ),
         )
         out.extend(_upsert_dividends(body))

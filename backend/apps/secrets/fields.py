@@ -10,7 +10,7 @@ Stored on disk as raw Fernet ciphertext in a BYTEA column. Decrypted lazily on r
 from __future__ import annotations
 
 import json
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from cryptography.fernet import Fernet
 from django.db import models
@@ -24,7 +24,17 @@ def _fernet() -> Fernet:
     return Fernet(derive_fernet_key_from_settings())
 
 
-class EncryptedJSONField(models.BinaryField):
+if TYPE_CHECKING:
+    # django-stubs types model fields as generic Field[set_type, get_type]; BinaryField's
+    # stub makes reads `bytes | memoryview`. This field decrypts to an arbitrary JSON value
+    # in `from_db_value`, so reads are `Any` (matching Django's own JSONField). Subscript only
+    # under TYPE_CHECKING — Django's BinaryField is not subscriptable at runtime.
+    _Base = models.BinaryField[Any, Any]
+else:
+    _Base = models.BinaryField
+
+
+class EncryptedJSONField(_Base):
     """Stores an arbitrary JSON-serializable value encrypted with Fernet."""
 
     description = "JSON value encrypted with Fernet"

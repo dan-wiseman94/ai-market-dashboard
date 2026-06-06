@@ -81,10 +81,9 @@ def check_invalidations() -> dict:
     invalidated = 0
     for pred in qs:
         try:
+            inv = pred.invalidation_price  # qs filters invalidation_price__isnull=False
             price = nearest_bar_close(pred.ticker, now)
-            if price is None or not _is_breached(
-                pred.direction, price, float(pred.invalidation_price)
-            ):
+            if inv is None or price is None or not _is_breached(pred.direction, price, float(inv)):
                 continue
             pred.status = "invalidated"
             pred.invalidated_at = now

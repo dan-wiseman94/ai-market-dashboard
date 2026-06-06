@@ -7,6 +7,7 @@ AIRun.provider). No AI key, no scheduled task — like the other analytics.
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Any
 
 VALID_HORIZONS = (7, 30, 90)
 _DECISIVE = ("correct", "incorrect")
@@ -28,7 +29,7 @@ def _hit_rate(correct: int, incorrect: int) -> float | None:
 
 
 def _thesis_section(rows: list[tuple[int, str, str, float | None]]) -> dict:
-    buckets = {
+    buckets: dict[int, dict[str, Any]] = {
         c: {
             "conviction": c,
             "n": 0,
@@ -257,7 +258,7 @@ def calibration_drilldown(
             "direction": pm.thesis.direction,
             "conviction": pm.thesis.conviction,
             "verdict": pm.verdict,
-            "forward_return_pct": float(pm.forward_return_pct),
+            "forward_return_pct": pm.forward_return_pct,
             "horizon_days": pm.horizon_days,
             "completed_at": pm.completed_at.isoformat() if pm.completed_at else None,
             "thread_id": pm.thesis.thread_id,

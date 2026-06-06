@@ -52,7 +52,7 @@ class SnapshotViewSet(
         qs = Snapshot.objects.select_related("profile").prefetch_related("sections")
         p = self.request.query_params
         if p.get("profile"):
-            qs = qs.filter(profile_id=p["profile"])
+            qs = qs.filter(profile_id=int(p["profile"]))
         if p.get("ticker"):
             qs = qs.filter(primary_ticker__iexact=p["ticker"])
         if p.get("source"):
@@ -141,6 +141,7 @@ class SnapshotViewSet(
 
         curr = get_object_or_404(Snapshot.objects.prefetch_related("sections"), id=pk)
         against_id = request.data.get("against")
+        prev: Snapshot | None
         if against_id:
             prev = get_object_or_404(Snapshot.objects.prefetch_related("sections"), id=against_id)
         else:
@@ -185,6 +186,7 @@ class SnapshotViewSet(
 
         curr = get_object_or_404(Snapshot.objects.prefetch_related("sections"), id=pk)
         against_id = request.query_params.get("against")
+        prev: Snapshot | None
         if against_id:
             try:
                 prev = Snapshot.objects.prefetch_related("sections").get(id=against_id)

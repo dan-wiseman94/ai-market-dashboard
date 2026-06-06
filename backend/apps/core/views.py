@@ -188,7 +188,7 @@ def _coerce_setting(key: str, value: object, typ: type) -> tuple[object, str | N
                 return None, f"{key} must be a boolean"
             return value, None
         if typ is int:
-            coerced: object = int(value)  # type: ignore[arg-type]
+            coerced: object = int(value)  # type: ignore[call-overload]
         elif typ is float:
             coerced = float(value)  # type: ignore[arg-type]
         else:
