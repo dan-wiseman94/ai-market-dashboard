@@ -210,7 +210,7 @@ SCHWAB_CALLBACK_URL = env(
     "SCHWAB_CALLBACK_URL", default="https://127.0.0.1:8000/api/schwab/callback"
 )
 SCHWAB_AUTHORIZE_URL = "https://api.schwabapi.com/v1/oauth/authorize"
-SCHWAB_TOKEN_URL = "https://api.schwabapi.com/v1/oauth/token"
+SCHWAB_TOKEN_URL = "https://api.schwabapi.com/v1/oauth/token"  # noqa: S105 (URL, not a secret)
 
 # SEC EDGAR requires a descriptive User-Agent ("name email") on every request; this is
 # the keyless identifier the edgar service sends. Override with a real contact in prod.

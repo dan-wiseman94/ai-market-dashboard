@@ -1,0 +1,7 @@
+# hadolint config. We pin the BASE IMAGE by digest (see backend/Dockerfile,
+# frontend/Dockerfile.dev) rather than pinning every OS package version:
+# DL3008 (apt) / DL3018 (apk) version-pinning is high-maintenance and breaks
+# whenever Debian/Alpine rotate their package repositories.
+ignored:
+  - DL3008
+  - DL3018

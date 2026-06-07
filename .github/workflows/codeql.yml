@@ -1,0 +1,46 @@
+name: codeql
+
+# Dataflow/taint SAST (GitHub CodeQL). Complements semgrep (pattern-based) + ruff S
+# (flake8-bandit) by tracing tainted data across call chains — injection, SSRF,
+# path traversal. Findings land in the repo's Security ▸ Code scanning tab.
+#
+# NOTE: on a PRIVATE repo this needs GitHub Advanced Security (Code scanning) enabled.
+# It's free on public repos. If code scanning isn't enabled the analyze step will error;
+# enable it in repo Settings ▸ Code security, or drop this workflow.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "37 5 * * 2"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    name: analyze (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [python, javascript-typescript]
+    steps:
+      - uses: actions/checkout@v6
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          language: ${{ matrix.language }}
+          queries: security-extended
+      - name: Perform CodeQL analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:${{ matrix.language }}"

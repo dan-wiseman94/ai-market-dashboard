@@ -1,5 +1,6 @@
 # syntax=docker/dockerfile:1.7
-FROM node:22-alpine
+# Base image pinned by digest (node:22-alpine); dependabot `docker` keeps it fresh.
+FROM node:22-alpine@sha256:968df39aedcea65eeb078fb336ed7191baf48f972b4479711397108be0966920
 
 # System Chromium for the Storybook vitest browser lane (`vitest --project
 # storybook`). Playwright's bundled Chromium can't run on Alpine/musl, so we

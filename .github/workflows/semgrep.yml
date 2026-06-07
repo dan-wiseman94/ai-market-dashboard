@@ -21,8 +21,11 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       # Excluded rules are false positives for a single-user, 127.0.0.1-bound desktop
-      # app: containers don't need a non-root USER (no shared host); ws:// is internal
-      # to the compose network; csrf_exempt on image upload is intentional under token auth.
+      # app: containers don't need a non-root USER (no shared host); the insecure-websocket
+      # finding is internal to the compose network; csrf_exempt on upload is intentional.
+      # p/secrets complements gitleaks (hardcoded-secret patterns). p/owasp-top-ten is
+      # deliberately NOT added: it overlaps p/security-audit and only surfaced FPs here
+      # (Dockerfile missing-user, a benign fallback log line, OpenAPI basic-auth scheme).
       - run: |
           semgrep ci \
             --config=p/default \
@@ -31,6 +34,7 @@ jobs:
             --config=p/react \
             --config=p/typescript \
             --config=p/security-audit \
+            --config=p/secrets \
             --exclude-rule=dockerfile.security.missing-user.missing-user \
             --exclude-rule=javascript.lang.security.detect-insecure-websocket.detect-insecure-websocket \
             --exclude-rule=python.django.security.audit.csrf-exempt.no-csrf-exempt

@@ -80,7 +80,8 @@ def fetch_chain(
     On cache hit: return cached payload (no DB write).
     """
     ticker = normalize_symbol(ticker)
-    params_hash = hashlib.sha1(
+    # Short cache-key fingerprint (not a security digest) — sha256 truncated.
+    params_hash = hashlib.sha256(
         json.dumps({"k": strikes_around_atm}, sort_keys=True).encode(),
     ).hexdigest()[:8]
     cache_key = f"market:chain:{ticker}:{params_hash}"

@@ -92,6 +92,7 @@ def perform_backup(kind: str) -> BackupRecord:
             if pg_pw:
                 env["PGPASSWORD"] = pg_pw
             try:
+                # nosemgrep: python.lang.security.audit.dangerous-subprocess-use-tainted-env-args.dangerous-subprocess-use-tainted-env-args -- list-args (no shell), trusted operator/db config; not external input
                 subprocess.run(cmd, stdout=fh, check=True, timeout=1800, env=env)
             except Exception as e:
                 path.unlink(missing_ok=True)

@@ -1,5 +1,7 @@
 # syntax=docker/dockerfile:1.7
-FROM python:3.13-slim AS base
+# Base image pinned by digest for reproducible/supply-chain-safe builds (3.13-slim).
+# Dependabot's `docker` ecosystem keeps the digest fresh (see .github/dependabot.yml).
+FROM python:3.13-slim@sha256:b04b5d7233d2ad9c379e22ea8927cd1378cd15c60d4ef876c065b25ea8fb3bf3 AS base
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -41,7 +43,12 @@ RUN chmod +x /usr/local/bin/entrypoint.sh
 
 EXPOSE 8000
 
+# Containers run as root by design (single-user, 127.0.0.1-bound; the /data volume is
+# root-owned, so a non-root USER would break snapshot/backup/secret writes). Mirrors the
+# missing-user exclusion in .github/workflows/semgrep.yml.
+# nosemgrep
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+# nosemgrep
 CMD ["uvicorn", "config.asgi:application", "--host", "0.0.0.0", "--port", "8000"]
 
 FROM base AS worker
@@ -54,4 +61,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 RUN uv run playwright install chromium --with-deps
 
+# Root by design — see web stage.
+# nosemgrep
 CMD ["uv", "run", "celery", "-A", "config", "worker", "-l", "INFO"]
