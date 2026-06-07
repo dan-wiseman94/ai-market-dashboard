@@ -20,8 +20,8 @@ def seed_triggers() -> None:
 
     seed_observer()
 
+    from apps.observer.models import EventTrigger, TriggerFiring
     from apps.profiles.models import TradingProfile
-    from apps.triggers.models import EventTrigger, TriggerFiring
 
     profile = TradingProfile.objects.get(name="E2E Default")
 

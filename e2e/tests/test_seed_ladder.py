@@ -120,7 +120,7 @@ def test_seed_observer_creates_schedules_and_mixed_thread() -> None:
 
 
 def test_seed_triggers_creates_three_with_firings() -> None:
-    from apps.triggers.models import EventTrigger, TriggerFiring
+    from apps.observer.models import EventTrigger, TriggerFiring
 
     from e2e.fixtures.seed_triggers import seed_triggers
 
@@ -145,11 +145,10 @@ def test_seed_analytics_creates_airuns_across_providers() -> None:
 
 def test_analytics_fixture_brings_all_rungs(analytics) -> None:
     from apps.market.models import OHLCBar
-    from apps.observer.models import ObserverSchedule
+    from apps.observer.models import EventTrigger, ObserverSchedule
     from apps.profiles.models import TradingProfile, Watchlist
     from apps.snapshots.models import Snapshot
     from apps.threads.models import AIRun, Thread
-    from apps.triggers.models import EventTrigger
 
     assert TradingProfile.objects.count() >= 2
     assert Watchlist.objects.filter(name__startswith="E2E").count() == 3

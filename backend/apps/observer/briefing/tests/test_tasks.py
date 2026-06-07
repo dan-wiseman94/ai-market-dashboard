@@ -24,7 +24,8 @@ def test_skips_before_send_at():
     cfg.send_at_local = time(8, 30)
     cfg.save()
     with patch(
-        "apps.observer.briefing.tasks._now_local", return_value=datetime(2026, 5, 28, 7, 0, tzinfo=UTC)
+        "apps.observer.briefing.tasks._now_local",
+        return_value=datetime(2026, 5, 28, 7, 0, tzinfo=UTC),
     ):
         assert run_scheduled() == {"skipped": "before_send_at"}
 
@@ -36,9 +37,12 @@ def test_fires_when_due():
     cfg.save()
     with (
         patch(
-            "apps.observer.briefing.tasks._now_local", return_value=datetime(2026, 5, 28, 9, 0, tzinfo=UTC)
+            "apps.observer.briefing.tasks._now_local",
+            return_value=datetime(2026, 5, 28, 9, 0, tzinfo=UTC),
         ),
-        patch("apps.observer.briefing.tasks.run_briefing", return_value=type("R", (), {"id": 7})()) as rb,
+        patch(
+            "apps.observer.briefing.tasks.run_briefing", return_value=type("R", (), {"id": 7})()
+        ) as rb,
     ):
         assert run_scheduled() == {"ran": 7}
         rb.assert_called_once_with(scheduled=True)

@@ -40,7 +40,9 @@ def test_pct_change_none_when_quote_missing(fake_redis):
 @pytest.mark.django_db
 def test_pct_change_first_tick_seeds_baseline_and_returns_none(fake_redis):
     t = _trigger()
-    with patch("apps.observer.triggers.metrics.fetch_quotes", return_value={"SPY": {"last": 550.0}}):
+    with patch(
+        "apps.observer.triggers.metrics.fetch_quotes", return_value={"SPY": {"last": 550.0}}
+    ):
         snap = build_snapshot([t])
     # Cold start: no prior yet, so None — but the windowed baseline is now stored.
     assert snap["pct_change:SPY:5m"] is None
@@ -50,9 +52,13 @@ def test_pct_change_first_tick_seeds_baseline_and_returns_none(fake_redis):
 @pytest.mark.django_db
 def test_pct_change_second_tick_computes_delta(fake_redis):
     t = _trigger()
-    with patch("apps.observer.triggers.metrics.fetch_quotes", return_value={"SPY": {"last": 550.0}}):
+    with patch(
+        "apps.observer.triggers.metrics.fetch_quotes", return_value={"SPY": {"last": 550.0}}
+    ):
         build_snapshot([t])  # seed baseline at 550
-    with patch("apps.observer.triggers.metrics.fetch_quotes", return_value={"SPY": {"last": 561.0}}):
+    with patch(
+        "apps.observer.triggers.metrics.fetch_quotes", return_value={"SPY": {"last": 561.0}}
+    ):
         snap = build_snapshot([t])
     # (561 - 550) / 550 = 0.02
     assert snap["pct_change:SPY:5m"] == pytest.approx((561.0 - 550.0) / 550.0)
@@ -62,6 +68,8 @@ def test_pct_change_second_tick_computes_delta(fake_redis):
 def test_pct_change_guards_division_by_zero_prior(fake_redis):
     t = _trigger()
     fake_redis.setex(WINDOW_KEY, 600, "0")  # a zero prior must not raise
-    with patch("apps.observer.triggers.metrics.fetch_quotes", return_value={"SPY": {"last": 550.0}}):
+    with patch(
+        "apps.observer.triggers.metrics.fetch_quotes", return_value={"SPY": {"last": 550.0}}
+    ):
         snap = build_snapshot([t])
     assert snap["pct_change:SPY:5m"] is None

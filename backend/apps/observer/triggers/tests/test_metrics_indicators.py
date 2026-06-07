@@ -20,7 +20,9 @@ def test_rsi_leaf_computed(fake_redis, monkeypatch):
     rising = [
         {"high": c + 1, "low": c - 1, "close": float(c), "open": float(c)} for c in range(1, 60)
     ]
-    monkeypatch.setattr("apps.observer.triggers.metrics.fetch_ohlc", lambda *a, **k: rising, raising=False)
+    monkeypatch.setattr(
+        "apps.observer.triggers.metrics.fetch_ohlc", lambda *a, **k: rising, raising=False
+    )
     monkeypatch.setattr(
         "apps.observer.triggers.metrics.fetch_quotes",
         lambda *a, **k: {"NVDA": {"last": 60.0}},

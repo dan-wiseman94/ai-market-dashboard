@@ -28,7 +28,8 @@ def test_theses_section_computes_distances():
         status="open",
     )
     with patch(
-        "apps.observer.briefing.services.assemble.fetch_quotes", return_value={"NVDA": {"last": 100.0}}
+        "apps.observer.briefing.services.assemble.fetch_quotes",
+        return_value={"NVDA": {"last": 100.0}},
     ):
         rows = A._theses_section()
     assert rows[0]["ticker"] == "NVDA"
@@ -49,7 +50,10 @@ def test_since_uses_prior_ready_run_else_24h():
 def test_assemble_combines_sections_and_captures_snapshot():
     cfg = BriefingConfig.load()
     with (
-        patch("apps.observer.briefing.services.assemble._theses_section", return_value=[{"ticker": "NVDA"}]),
+        patch(
+            "apps.observer.briefing.services.assemble._theses_section",
+            return_value=[{"ticker": "NVDA"}],
+        ),
         patch(
             "apps.observer.briefing.services.assemble.upcoming_events",
             return_value={"earnings": [], "macro": [{"kind": "cpi"}]},
@@ -73,15 +77,26 @@ def test_assemble_never_raises_when_a_section_fails():
     cfg = BriefingConfig.load()
     with (
         patch(
-            "apps.observer.briefing.services.assemble._watchlist_union", side_effect=RuntimeError("db down")
+            "apps.observer.briefing.services.assemble._watchlist_union",
+            side_effect=RuntimeError("db down"),
         ),
         patch("apps.observer.briefing.services.assemble._capture_market", return_value=(None, {})),
-        patch("apps.observer.briefing.services.assemble._theses_section", side_effect=RuntimeError("boom")),
-        patch("apps.observer.briefing.services.assemble.upcoming_events", side_effect=RuntimeError("boom")),
         patch(
-            "apps.observer.briefing.services.assemble._triggers_section", side_effect=RuntimeError("boom")
+            "apps.observer.briefing.services.assemble._theses_section",
+            side_effect=RuntimeError("boom"),
         ),
-        patch("apps.observer.briefing.services.assemble._news_section", side_effect=RuntimeError("boom")),
+        patch(
+            "apps.observer.briefing.services.assemble.upcoming_events",
+            side_effect=RuntimeError("boom"),
+        ),
+        patch(
+            "apps.observer.briefing.services.assemble._triggers_section",
+            side_effect=RuntimeError("boom"),
+        ),
+        patch(
+            "apps.observer.briefing.services.assemble._news_section",
+            side_effect=RuntimeError("boom"),
+        ),
     ):
         data, _snap = A.assemble(cfg)  # must not raise
     assert data["theses"] == [] and data["events"] == {"earnings": [], "macro": []}

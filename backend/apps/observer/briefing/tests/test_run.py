@@ -44,7 +44,8 @@ def test_render_briefing_markdown_mentions_sections():
 def test_run_briefing_manual_creates_run_and_dispatches_ai(cfg):
     with (
         patch(
-            "apps.observer.briefing.services.run.assemble", return_value=({"theses": [], "since": "x"}, None)
+            "apps.observer.briefing.services.run.assemble",
+            return_value=({"theses": [], "since": "x"}, None),
         ),
         patch("apps.observer.briefing.services.run.run_ai_on_message.delay") as delay,
         patch("apps.observer.briefing.services.run.notify") as notify,
