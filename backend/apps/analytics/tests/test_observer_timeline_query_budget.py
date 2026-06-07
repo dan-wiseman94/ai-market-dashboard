@@ -7,7 +7,7 @@ touches msg.thread per row (a classic N+1) would breach this budget.
 
 Uses pytest-django's django_assert_max_num_queries (Django-6.0 compatible); nplusone
 is unmaintained and incompatible with Django 6.0 here. Mirrors the dashboard rollup
-guard in apps/dashboard/tests/test_dashboard_query_budget.py.
+guard in apps/analytics/tests/test_dashboard_query_budget.py.
 """
 
 from __future__ import annotations

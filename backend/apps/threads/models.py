@@ -156,3 +156,32 @@ class ToolCall(models.Model):
 
     def __str__(self) -> str:
         return f"ToolCall({self.tool_name}, ok={self.ok})"
+
+
+class UserFile(models.Model):
+    """An Anthropic Files API upload (moved from the former apps.files per the
+    27→12 consolidation). ``db_table`` is pinned to the original ``files_userfile``
+    so the move preserves the table (see migration 0009)."""
+
+    KIND_CHOICES: ClassVar[list[tuple[str, str]]] = [
+        ("filing", "SEC filing"),
+        ("transcript", "Earnings transcript"),
+        ("ohlc_csv", "Historical OHLC CSV"),
+        ("research", "Research PDF"),
+        ("other", "Other"),
+    ]
+
+    anthropic_id = models.CharField(max_length=64, unique=True)
+    kind = models.CharField(max_length=16, choices=KIND_CHOICES, default="other")
+    ticker = models.CharField(max_length=16, blank=True, default="", db_index=True)
+    mime = models.CharField(max_length=64, default="application/octet-stream")
+    size = models.BigIntegerField(default=0)
+    filename = models.CharField(max_length=200, blank=True, default="")
+    uploaded_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        db_table = "files_userfile"
+        ordering: ClassVar[list[str]] = ["-uploaded_at"]
+
+    def __str__(self) -> str:
+        return f"UserFile({self.anthropic_id}, {self.kind})"

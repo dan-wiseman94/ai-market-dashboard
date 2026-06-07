@@ -31,12 +31,12 @@ def _resolved_module(path: str) -> str:
 # that precedes the generic /api/ includes and could be swallowed by a reorder.
 SPECIFIC_ROUTES = [
     ("/api/schema/", "drf_spectacular"),  # the schema endpoint the drift gate depends on
-    ("/api/costs/today/", "apps.costs"),  # the documented past regression
+    ("/api/costs/today/", "apps.ai"),  # the documented past regression
     ("/api/observer/market-status/", "apps.observer"),
     ("/api/analytics/calibration/", "apps.analytics"),
     ("/api/market/quotes/", "apps.market"),
     ("/api/schwab/status/", "apps.secrets"),  # secrets app is mounted at /api/schwab/
-    ("/api/aieval/runs/", "apps.aieval"),
+    ("/api/aieval/runs/", "apps.analytics"),
     ("/api/predictions/ai-view/", "apps.predictions"),
 ]
 

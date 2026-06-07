@@ -5,9 +5,8 @@ from __future__ import annotations
 import pytest
 from rest_framework.test import APIClient
 
-from apps.files.models import UserFile
 from apps.profiles.models import TradingProfile
-from apps.threads.models import Message, Thread
+from apps.threads.models import Message, Thread, UserFile
 
 
 @pytest.fixture

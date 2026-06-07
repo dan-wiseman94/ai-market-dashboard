@@ -6,6 +6,7 @@ import time
 from collections.abc import AsyncIterator
 
 from anthropic import AsyncAnthropic
+from asgiref.sync import sync_to_async
 
 from apps.ai.providers._config import client_kwargs
 from apps.ai.types import (
@@ -111,7 +112,9 @@ class ClaudeProvider:
                         input=tool_input,
                     )
                     t0 = time.perf_counter()
-                    outcome = _dispatch_tool(
+                    # Offload tool dispatch (sync, ORM-touching) OFF the loop
+                    # thread; running sync ORM here trips @async_unsafe on reconnect.
+                    outcome = await sync_to_async(_dispatch_tool, thread_sensitive=True)(
                         block_name, tool_input, memory_handler=memory_handler, toolset=toolset
                     )
                     latency_ms = int((time.perf_counter() - t0) * 1000)
