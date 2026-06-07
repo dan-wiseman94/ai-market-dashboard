@@ -5,7 +5,7 @@ from decimal import Decimal
 
 import pytest
 
-from apps.costs.services import csv_rows
+from apps.ai.cost_reporting import csv_rows
 from apps.threads.models import AIRun, Message, Thread
 
 

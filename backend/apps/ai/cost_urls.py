@@ -1,6 +1,14 @@
+"""URLConf for cost reporting (GET /api/costs/...).
+
+Billing is one domain with apps.ai.cost; the model-less ``costs`` app was folded
+into apps.ai per the 27→12 consolidation plan. The /api/costs/ paths are unchanged
+(no OpenAPI drift), and this include MUST stay registered BEFORE the generic /api/
+includes in config/urls.py (the documented include-ordering landmine).
+"""
+
 from django.urls import path
 
-from . import views
+from apps.ai import cost_views as views
 
 urlpatterns = [
     path("today/", views.costs_today, name="costs-today"),

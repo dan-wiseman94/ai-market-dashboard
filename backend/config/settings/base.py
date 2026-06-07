@@ -39,7 +39,6 @@ INSTALLED_APPS = [
     "apps.triggers",
     "apps.ai",
     "apps.analytics",
-    "apps.costs",
     "apps.observer",
     "apps.backups",
     "apps.export",

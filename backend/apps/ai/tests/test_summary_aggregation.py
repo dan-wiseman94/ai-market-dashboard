@@ -6,7 +6,7 @@ from decimal import Decimal
 
 import pytest
 
-from apps.costs.services import summary
+from apps.ai.cost_reporting import summary
 from apps.threads.models import AIRun, Message, Thread
 
 

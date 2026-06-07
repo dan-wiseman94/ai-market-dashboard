@@ -6,7 +6,7 @@ from decimal import Decimal
 from django.http import HttpRequest, JsonResponse, StreamingHttpResponse
 from django.views.decorators.http import require_GET
 
-from apps.costs import services
+from apps.ai import cost_reporting as services
 
 
 def _parse_range(request: HttpRequest) -> tuple[datetime, datetime]:
