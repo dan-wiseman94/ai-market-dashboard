@@ -7,7 +7,7 @@ from apps.ai.router import resolve_provider_and_model
 
 
 def _two_providers_and_evals():
-    from apps.aieval.models import EvalRun
+    from apps.analytics.models import EvalRun
     from apps.secrets.models import ProviderConfig
 
     # claude created first => lower id => the "first enabled" fallback default.
@@ -69,7 +69,7 @@ def test_profile_pin_beats_calibration(settings):
 def test_thin_eval_falls_through_to_first_enabled(settings):
     settings.AI_CALIBRATION_ROUTING_ENABLED = True
     settings.AI_CALIBRATION_ROUTING_MIN_SCORED = 5
-    from apps.aieval.models import EvalRun
+    from apps.analytics.models import EvalRun
     from apps.secrets.models import ProviderConfig
 
     ProviderConfig.objects.create(provider="claude", enabled=True, default_model="model-a")

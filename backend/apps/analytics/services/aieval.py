@@ -30,7 +30,7 @@ from typing import Any
 from cryptography.fernet import InvalidToken
 
 from apps.ai.providers.claude_structured import run_structured
-from apps.aieval.models import EvalRun
+from apps.analytics.models import EvalRun
 from apps.analytics.services.calibration import _hit_rate, _prob_for_conviction
 from apps.observer.schemas import ObservationReport
 from apps.snapshots.serializer import serialize_for_ai

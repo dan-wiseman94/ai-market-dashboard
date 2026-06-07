@@ -129,7 +129,7 @@ SCHEDULED_WORK: list[ScheduledTask] = [
     ),
     # --- weekly, real spend, default OFF ---
     ScheduledTask(
-        "aieval.run_scheduled",
+        "analytics.aieval_run_scheduled",
         "weekly Mon 05:00",
         "Replay the calibration eval against frozen snapshots — hits the real model.",
         "AIEVAL_SCHEDULED_ENABLED",

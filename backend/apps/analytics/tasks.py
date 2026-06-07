@@ -12,7 +12,7 @@ import logging
 from celery import shared_task
 
 from apps.ai.cost import CostCapExceededError
-from apps.aieval.services import (
+from apps.analytics.services.aieval import (
     DEFAULT_EVAL_SYSTEM,
     evaluate,
     persist_eval_run,
@@ -22,7 +22,7 @@ from apps.aieval.services import (
 log = logging.getLogger(__name__)
 
 
-@shared_task(name="aieval.run_scheduled")
+@shared_task(name="analytics.aieval_run_scheduled")
 def run_scheduled() -> dict:
     from apps.core.runtime_config import runtime_config
 
@@ -40,7 +40,7 @@ def run_scheduled() -> dict:
     try:
         preflight_cost_cap("claude")
     except CostCapExceededError as exc:
-        log.warning("aieval.run_scheduled skipped — cost cap: %s", exc)
+        log.warning("analytics.aieval_run_scheduled skipped — cost cap: %s", exc)
         return {"skipped": "cost_cap"}
 
     res = evaluate(
@@ -55,7 +55,7 @@ def run_scheduled() -> dict:
 
     run = persist_eval_run(res, source="scheduled")
     log.info(
-        "aieval.run_scheduled persisted EvalRun #%s (n=%s, hit_rate=%s)",
+        "analytics.aieval_run_scheduled persisted EvalRun #%s (n=%s, hit_rate=%s)",
         run.id,
         res["n"],
         res["hit_rate"],

@@ -21,7 +21,7 @@ import sys
 from django.core.management.base import BaseCommand, CommandError
 
 from apps.ai.cost import CostCapExceededError
-from apps.aieval.services import (
+from apps.analytics.services.aieval import (
     DEFAULT_EVAL_SYSTEM,
     evaluate,
     persist_eval_run,
