@@ -10,9 +10,10 @@ from rest_framework.decorators import action
 from rest_framework.request import Request
 from rest_framework.response import Response
 
+from apps.thesis.portfolio_serializers import PositionSerializer
+from apps.thesis.portfolio_service import realized_pnl
+
 from .models import Position
-from .serializers import PositionSerializer
-from .services import realized_pnl
 
 
 def _error(code: str, message: str, status: int) -> Response:

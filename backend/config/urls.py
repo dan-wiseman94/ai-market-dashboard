@@ -23,7 +23,7 @@ urlpatterns = [
     path("api/recall/", include("apps.recall.urls")),
     path("api/aieval/", include("apps.analytics.aieval_urls")),
     path("api/dashboard/", include("apps.analytics.dashboard_urls")),
-    path("api/portfolio/", include("apps.portfolio.urls")),
+    path("api/portfolio/", include("apps.thesis.portfolio_urls")),
     path("api/predictions/", include("apps.predictions.urls")),
     path("api/lessons/", include("apps.lessons.urls")),
     path("api/coverage/", include("apps.coverage.urls")),

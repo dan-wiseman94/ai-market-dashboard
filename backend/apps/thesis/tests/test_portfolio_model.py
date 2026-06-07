@@ -4,9 +4,8 @@ from __future__ import annotations
 
 import pytest
 
-from apps.portfolio.models import Position
 from apps.profiles.models import TradingProfile
-from apps.thesis.models import Thesis
+from apps.thesis.models import Position, Thesis
 
 # ---------------------------------------------------------------------------
 # Fixtures

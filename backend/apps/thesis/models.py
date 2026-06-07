@@ -184,3 +184,56 @@ class PostMortem(Resolution):
 
     def __str__(self) -> str:
         return f"PostMortem(thesis#{self.thesis_id} {self.horizon_days}d {self.status})"
+
+
+class Position(models.Model):
+    """Manually maintained position record (moved from the former apps.portfolio per
+    the 27→12 consolidation — it's the broker-position leg of the thesis loop).
+    Strictly observational — no broker write path. ``db_table`` pinned to its
+    original name (see migration 0008). P&L is computed off stored OHLC bars.
+    """
+
+    DIRECTION_CHOICES: ClassVar = [("long", "Long"), ("short", "Short")]
+    STATUS_CHOICES: ClassVar = [("open", "Open"), ("closed", "Closed")]
+
+    ticker = models.CharField(max_length=16, db_index=True)
+    direction = models.CharField(max_length=8, choices=DIRECTION_CHOICES, default="long")
+    quantity = models.DecimalField(max_digits=18, decimal_places=4)
+    avg_cost = models.DecimalField(max_digits=14, decimal_places=4)
+    opened_at = models.DateTimeField(default=timezone.now)
+    closed_at = models.DateTimeField(null=True, blank=True)
+    close_price = models.DecimalField(max_digits=14, decimal_places=4, null=True, blank=True)
+    realized_pnl = models.DecimalField(max_digits=18, decimal_places=4, null=True, blank=True)
+    status = models.CharField(max_length=8, choices=STATUS_CHOICES, default="open", db_index=True)
+    note = models.TextField(blank=True, default="")
+    thesis = models.ForeignKey(
+        "thesis.Thesis",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="positions",
+    )
+    profile = models.ForeignKey(
+        "profiles.TradingProfile",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="positions",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "portfolio_position"
+        ordering: ClassVar = ["-opened_at"]
+        indexes: ClassVar = [
+            models.Index(fields=["status", "-opened_at"]),
+            models.Index(fields=["ticker", "status"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"Position({self.ticker}, {self.direction}, {self.status})"
+
+    def save(self, *args, **kwargs):
+        self.ticker = (self.ticker or "").upper()
+        super().save(*args, **kwargs)

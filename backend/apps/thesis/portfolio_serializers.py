@@ -8,9 +8,9 @@ from rest_framework import serializers
 
 from apps.profiles.models import TradingProfile
 from apps.thesis.models import Thesis
+from apps.thesis.portfolio_service import unrealized_pnl
 
 from .models import Position
-from .services import unrealized_pnl
 
 
 class PositionSerializer(serializers.ModelSerializer):
