@@ -101,6 +101,7 @@ jobs:
           uv run python backend/manage.py spectacular --file /tmp/schema.yml --validate
           diff -u backend/schema.yml /tmp/schema.yml
       - name: ty (type-check) — advisory while ty is pre-1.0 / lacks Django ORM modeling
+        continue-on-error: true
         run: uv run ty check backend
       - name: pytest (with coverage)
         # -p no:randomly: the per-commit gate runs in deterministic definition order.

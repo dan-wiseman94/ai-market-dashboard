@@ -174,6 +174,25 @@ The AI stops being a one-shot snapshot reader and starts behaving like an analys
   AI **revises with a reason** instead of re-deriving it every snapshot, with an
   append-only history of *why* the view moved. Browse it at `/coverage/:ticker`.
 
+### 🧭 The Strategist
+
+Where the Resident Analyst works one name at a time, the Strategist steps back to
+the whole book and the market regime — and convenes a structured debate before you commit.
+
+- **Market regime** — an append-only series of market-regime reads (several axes
+  collapsed into a composite), refreshed on a schedule; the latest row is the
+  current read the Coach and the Desk key off.
+- **Book risk X-ray** — a daily whole-book risk reading: concentration (HHI),
+  correlation clusters over stored price history, names near invalidation, regime
+  fit, and a dollar Value-at-Risk + factor-beta-to-`$SPX` lens.
+- **War Room** — convene a multi-agent "courtroom" debate (bull / bear / skeptic)
+  on a thesis, coverage note, or book snapshot with one click; each persona streams
+  live over its thread and the run resolves to a verdict.
+- **The Desk** — an agentic anomaly sweep that runs detectors (price, options,
+  breadth divergence, earnings proximity, regime change, book deterioration, stale
+  coverage), investigates the top findings under a daily cap, and offers one-click
+  follow-ups: convene a war room, revise coverage, or open a prefilled thesis.
+
 ### 📊 Calibration scorecard & analytics (on-demand)
 
 - **Calibration scorecard** — are you *actually* more right when you're more
@@ -276,13 +295,14 @@ The AI stops being a one-shot snapshot reader and starts behaving like an analys
 
 ## Status
 
-**Feature-complete.** Fourteen milestones shipped (M1 → M14), from the Compose
+**Feature-complete.** Fifteen milestones shipped (M1 → M15), from the Compose
 skeleton through market data, snapshots, streaming threads, multi-model compare,
 the observer, event triggers, the full AI platform (tool use, thinking, memory,
 files, citations, batch), the second-brain (theses, post-mortems, journal), the
 Decision Coach, semantic recall, the eval-calibration loop, the morning briefing,
-the analytics suite, free data sources, the Prediction Ledger, and the Resident
+the analytics suite, free data sources, the Prediction Ledger, the Resident
 Analyst (autonomous investigation, calibration-weighted routing, COVERAGE, and The
-Mirror). All fourteen milestones are shipped end to end.
+Mirror), and the Strategist (market regime, book risk X-ray, war room, and desk).
+All fifteen milestones are shipped end to end.
 
 *One person. One machine. Every call on the record.*

@@ -134,10 +134,10 @@ Five features that turn the AI from a one-shot snapshot reader into a resident a
 
 Where the Resident Analyst works one name at a time, the Strategist steps back to the **whole book and the market regime** — and convenes a structured debate before you commit.
 
-- **Market regime** (`/regime`) — an append-only series of market-regime readings (several axes collapsed into a composite), refreshed by the `regime.refresh` beat. The latest row is the current read that the Coach and the Desk key off.
+- **Market regime** (`/regime`) — an append-only series of market-regime readings (several axes collapsed into a composite), refreshed by the `strategy.regime_refresh` beat. The latest row is the current read that the Coach and the Desk key off.
 - **Book risk X-ray** (`/book`) — a daily whole-book risk reading: concentration (HHI), correlation clusters over stored OHLC, names near invalidation, regime fit, and a dollar **Value-at-Risk + factor-beta-to-`$SPX`** lens. Appended once a day by `book.snapshot_daily`.
 - **War Room** (`/warroom`) — convene a multi-agent "courtroom" debate (bull / bear / skeptic) on a thesis, coverage note, or book snapshot with one click; each persona streams live over its thread and the run resolves to a verdict.
-- **The Desk** (`/desk`) — an agentic anomaly sweep (`desk.sweep`) that runs detectors (price, options, breadth divergence, earnings proximity, regime change, book deterioration, stale coverage), investigates the top findings under a daily origination cap, and offers one-click follow-ups: convene a war room, revise coverage, or open a prefilled thesis.
+- **The Desk** (`/desk`) — an agentic anomaly sweep (`strategy.sweep`) that runs detectors (price, options, breadth divergence, earnings proximity, regime change, book deterioration, stale coverage), investigates the top findings under a daily origination cap, and offers one-click follow-ups: convene a war room, revise coverage, or open a prefilled thesis.
 
 ### Observer — scheduled AI runs
 
@@ -283,33 +283,23 @@ db        Postgres 16                             :5432
 frontend  Vite dev server (React + TS)            :5173
 ```
 
-Backend code lives under `backend/apps/<name>/` (imported as `apps.<name>`):
+Backend code lives under `backend/apps/<name>/` (imported as `apps.<name>`) — **17 apps**, after a 27→17 consolidation that folded model-light apps into their owners (every public `/api/<x>/` route was preserved; only the Python modules moved):
 
-- `core` · health, base consumer, logging, `MOCK_EXTERNAL` flag
+- `core` · health, base consumer, logging, `MOCK_EXTERNAL` flag, runtime settings, shared model bases, and the drift-gated feature-flag / scheduled-work inventories
 - `market` · Schwab client + free fallback providers (Alpaca / Tiingo / Twelve Data / Polygon / Tradier / FRED / SEC EDGAR / Marketaux / US Treasury), quotes/OHLC/chain/news, shared forward-return helpers (`returns.py`)
 - `snapshots` · capture orchestration + token budget
-- `ai` · provider abstraction (Claude / OpenAI / Local), router, catalog, cost calc, tool/thinking/memory/citations support + capability-gap detection
-- `threads` · messages, streaming consumer, multi-provider compare, stop, file attach, Decision Coach context (`coach.py`)
-- `observer` · scheduled AI runs via Celery beat (structured / diff / batch modes)
+- `ai` · provider abstraction (Claude / OpenAI / Local), router, catalog, cost calc + capability-gap detection — **plus the former `costs` app** (per-provider / model / thread aggregation, caps, CSV export, drill-down at `/api/costs/`)
+- `threads` · messages + `AIRun`, streaming consumer, multi-provider compare, stop, Decision Coach context (`coach.py`) — **plus the former `files` app** (Anthropic Files API proxy)
+- `observer` · scheduled AI runs via Celery beat (structured / diff / batch modes) — **plus the former `predictions` app** (the AI's own auto-resolving forecasts + invalidation alerts)
 - `triggers` · event-trigger evaluator + condition DSL + firings + backtest
 - `profiles` · trading-style profiles + agent presets
-- `secrets` · encrypted credentials (Schwab OAuth, provider API keys) + cost caps
-- `costs` · per-provider / per-model / per-thread aggregation, caps, CSV export, snapshot drill-down
-- `analytics` · nine on-demand aggregations (leaderboard, cost-per-insight, trigger heatmap, observer timeline, unusual options, thesis + AI + trader calibration, setup cohorts)
-- `aieval` · offline, look-ahead-safe eval/calibration harness (`EvalRun`) replaying candidate models against frozen snapshots
-- `dashboard` · `GET /api/dashboard/` command-centre rollup (theses / events / observer / triggers / briefing), fault-isolated per section
-- `thesis` · theses + post-mortems + decision journal (M11 "second brain")
-- `predictions` · the AI's own auto-extracted, auto-resolving forecasts + invalidation alerts + thesis reconciliation (M13)
-- `lessons` · recurring post-mortem lessons distilled into the Coach (M14)
-- `coverage` · living, version-controlled per-ticker "house view" the AI revises with a reason (M14)
-- `regime` · append-only market-regime readings; the latest row is the current read (M15)
-- `book` · daily whole-book risk X-ray: concentration, correlation clusters, dollar VaR + factor-beta (M15)
-- `warroom` · multi-agent "courtroom" debate that spins up a thread and streams the personas (M15)
-- `desk` · agentic anomaly-sweep desk that can originate a finding into a thesis (M15)
-- `portfolio` · manual position tracking with realized / unrealized P&L, linked to the thesis behind each trade
+- `secrets` · encrypted credentials (Schwab OAuth, provider + data-source API keys) + cost caps
+- `thesis` · theses + post-mortems + decision journal (the "second brain") — **plus the former `portfolio`** (manual positions + P&L) **and `lessons`** (distilled post-mortem lessons) **apps**
+- `analytics` · on-demand aggregations (leaderboard, cost-per-insight, trigger heatmap, observer timeline, unusual options, thesis / AI / trader calibration) — **plus the former `dashboard`** (command-centre rollup) **and `aieval`** (offline eval/calibration harness, `EvalRun`) **apps**
 - `recall` · semantic + keyword search across all documents; pgvector embeddings index (feeds the Decision Coach)
 - `briefing` · daily Morning Briefing assembly + AI synthesis
-- `files` · Anthropic Files API proxy (upload + attach to threads)
+- `book` · daily whole-book risk X-ray: concentration, correlation clusters, dollar VaR + factor-beta
+- `strategy` · M15 strategist umbrella — market-regime readings (`regime/`), the living per-ticker COVERAGE house view (`coverage/`), the multi-agent war-room debate (`warroom/`), and the agentic anomaly-sweep desk (`desk/`)
 - `backups` · scheduled `pg_dump` + rotation
 - `export` · async zip bundles (threads, snapshots, observations, triggers, profiles, watchlists)
 
