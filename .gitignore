@@ -61,4 +61,6 @@ Thumbs.db
 *storybook.log
 storybook-static
 
+# CodeQL local security scans (see codeql-config.yml; DB built under /tmp)
 codeql-dbs/
+*.sarif
