@@ -2,8 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from apps.lessons.models import Lesson
-from apps.thesis.models import Thesis
+from apps.thesis.models import Lesson, Thesis
 from apps.threads.coach import _distilled_lessons_block
 
 

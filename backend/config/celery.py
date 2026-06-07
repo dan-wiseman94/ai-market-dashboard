@@ -34,7 +34,6 @@ TASK_PACKAGES = [
     "apps.recall",
     "apps.analytics",
     "apps.predictions",
-    "apps.lessons",
     "apps.coverage",
     "apps.regime",
     "apps.book",
@@ -112,7 +111,7 @@ app.conf.beat_schedule = {
         "schedule": crontab(hour=5, minute=0, day_of_week=1),
     },
     "lessons-distill": {
-        "task": "lessons.distill",
+        "task": "thesis.distill",
         "schedule": crontab(hour=5, minute=30),  # daily, after new post-mortems resolve
     },
     "regime-refresh-intraday": {
