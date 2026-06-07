@@ -14,34 +14,22 @@ from typing import ClassVar
 
 from django.db import models
 
+from apps.core.model_bases import DirectionalCall, Resolution
 
-class AIPrediction(models.Model):
-    DIRECTIONS: ClassVar = [
-        ("bullish", "bullish"),
-        ("bearish", "bearish"),
-        ("neutral", "neutral"),
-    ]
+
+class AIPrediction(DirectionalCall, Resolution):
+    # ticker / direction / horizon_days / invalidation_price / invalidation_note come
+    # from DirectionalCall; forward_return_pct / verdict from Resolution.
     STATUSES: ClassVar = [
         ("open", "open"),
         ("resolving", "resolving"),
         ("resolved", "resolved"),
         ("invalidated", "invalidated"),
     ]
-    VERDICTS: ClassVar = [
-        ("correct", "correct"),
-        ("incorrect", "incorrect"),
-        ("mixed", "mixed"),
-        ("inconclusive", "inconclusive"),
-    ]
 
-    # --- What was called ---
-    ticker = models.CharField(max_length=16, db_index=True)
-    direction = models.CharField(max_length=8, choices=DIRECTIONS)
-    horizon_days = models.PositiveIntegerField()
+    # --- What was called (the rest is on DirectionalCall) ---
     confidence = models.FloatField()  # 0..1, stated by the model or the signal mean
     rationale = models.TextField(blank=True, default="")  # observation headline/summary
-    invalidation_price = models.DecimalField(max_digits=14, decimal_places=4, null=True, blank=True)
-    invalidation_note = models.CharField(max_length=300, blank=True, default="")
 
     # --- Who/what made it (provider/model are known directly — no thread attribution) ---
     provider = models.CharField(max_length=32, db_index=True)
@@ -65,9 +53,7 @@ class AIPrediction(models.Model):
     resolve_at = models.DateTimeField(db_index=True)  # predicted_at + horizon (trading days)
     status = models.CharField(max_length=12, choices=STATUSES, default="open")
 
-    # --- Outcome (filled at resolution) ---
-    forward_return_pct = models.FloatField(null=True, blank=True)
-    verdict = models.CharField(max_length=12, choices=VERDICTS, blank=True, default="")
+    # --- Outcome (forward_return_pct / verdict from Resolution; filled at resolution) ---
     resolved_at = models.DateTimeField(null=True, blank=True)
     invalidated_at = models.DateTimeField(null=True, blank=True)
 
