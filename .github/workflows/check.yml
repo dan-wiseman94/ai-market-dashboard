@@ -110,6 +110,17 @@ jobs:
         # to surface order-dependence over time (e.g. the residual run_ai async-streaming
         # flake) without redding every commit. --cov-fail-under is set in [tool.coverage].
         run: uv run pytest -v -p no:randomly --cov=backend/apps --cov-report=xml --cov-report=term
+      - name: diff coverage (new lines must be tested)
+        # Overall floors (fail_under) let untested new code slide as long as the TOTAL stays
+        # above the floor; this gates the PATCH instead. Advisory for now — promote to
+        # blocking (drop continue-on-error) after a baseline green run confirms the threshold.
+        if: github.event_name == 'pull_request'
+        continue-on-error: true
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          git fetch --no-tags --depth=1 origin "$BASE_REF"
+          uv tool run diff-cover coverage.xml --compare-branch="origin/${BASE_REF}" --fail-under=85
       - uses: actions/upload-artifact@v7
         if: always()
         with:
@@ -212,6 +223,15 @@ jobs:
       - name: guarddog — malware / typosquat scan of npm deps — advisory
         continue-on-error: true
         run: uv tool run guarddog npm verify frontend/package.json
+      - name: License inventory (Python) — advisory
+        # Surfaces dependency licenses so a copyleft / abandoned dep can't slip in unnoticed.
+        # Inventory-only for now; promote to a gate with an allowlist once reviewed.
+        continue-on-error: true
+        run: uv run --with pip-licenses pip-licenses --from=mixed --order=license --summary
+      - name: License inventory (frontend) — advisory
+        continue-on-error: true
+        working-directory: frontend
+        run: pnpm dlx license-checker --summary --production
 
   gitleaks:
     runs-on: ubuntu-latest
@@ -226,6 +246,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+      - name: hadolint (backend Dockerfile)
+        # Config in .hadolint.yaml (ignores DL3008/DL3018 — base image is digest-pinned instead).
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: backend/Dockerfile
+      - name: hadolint (frontend Dockerfile)
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: frontend/Dockerfile.dev
       - name: Build images
         run: |
           cp .env.example .env
@@ -251,3 +280,21 @@ jobs:
           severity: HIGH,CRITICAL
           ignore-unfixed: true
           exit-code: "0"
+      - name: Trivy config (IaC / Dockerfile / compose misconfig) — advisory
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: config
+          scan-ref: .
+          severity: HIGH,CRITICAL
+          exit-code: "0"
+      - name: SBOM (CycloneDX) from the web image
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: ledger-web:scan
+          format: cyclonedx
+          output: sbom.cdx.json
+      - uses: actions/upload-artifact@v7
+        with:
+          name: sbom-web-image
+          path: sbom.cdx.json
+          retention-days: 30

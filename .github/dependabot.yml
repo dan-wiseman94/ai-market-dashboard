@@ -8,6 +8,22 @@ updates:
     commit-message:
       prefix: "ci(deps)"
 
+  # Keeps the digest-pinned base images (backend/Dockerfile, frontend/Dockerfile.dev) fresh.
+  - package-ecosystem: docker
+    directory: "/backend"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "ci(deps)"
+  - package-ecosystem: docker
+    directory: "/frontend"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "ci(deps)"
+
   - package-ecosystem: pip
     directory: "/"
     schedule:

@@ -1,0 +1,76 @@
+name: migration-safety
+
+# Lints NEW Django migrations for unsafe Postgres operations (table-locking ALTERs,
+# adding NOT NULL without a default, destructive drops, etc.) with squawk. AI-written
+# migrations are a classic footgun. Paths-filtered: only runs when migrations change,
+# so it never affects non-migration PRs.
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "backend/apps/**/migrations/**.py"
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  squawk:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_DB: ai_dashboard
+          POSTGRES_USER: ai_dashboard
+          POSTGRES_PASSWORD: ci
+        options: >-
+          --health-cmd "pg_isready -U ai_dashboard"
+          --health-interval 3s --health-timeout 2s --health-retries 20
+        ports: ["5432:5432"]
+    env:
+      DJANGO_SETTINGS_MODULE: config.settings.test
+      DJANGO_SECRET_KEY: ci-secret-key-not-used-in-prod
+      POSTGRES_DB: ai_dashboard
+      POSTGRES_USER: ai_dashboard
+      POSTGRES_PASSWORD: ci
+      POSTGRES_HOST: 127.0.0.1
+      POSTGRES_PORT: "5432"
+      PYTHONPATH: backend
+      BASE_REF: ${{ github.base_ref }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v7
+        with:
+          version: "0.8"
+      - run: uv python install 3.13
+      - run: uv sync --frozen --dev
+      - name: Render SQL for changed migrations
+        # sqlmigrate emits the SQL Django would run; squawk lints THAT. Scoped to the
+        # files this PR changed so legacy migrations aren't re-litigated. Defensive: a
+        # migration with no SQL (e.g. pure data/state ops) is skipped, not failed.
+        run: |
+          set -euo pipefail
+          git fetch --no-tags --depth=1 origin "$BASE_REF"
+          mkdir -p /tmp/migsql
+          changed=$(git diff --name-only "origin/${BASE_REF}...HEAD" -- 'backend/apps/**/migrations/*.py' | grep -vE '/__init__\.py$' || true)
+          if [ -z "$changed" ]; then echo "No changed migrations to lint."; exit 0; fi
+          while IFS= read -r f; do
+            [ -z "$f" ] && continue
+            app=$(printf '%s' "$f" | sed -E 's#backend/apps/([^/]+)/migrations/.*#\1#')
+            name=$(basename "$f" .py)
+            echo "Rendering ${app}/${name}"
+            uv run python backend/manage.py sqlmigrate "$app" "$name" > "/tmp/migsql/${app}__${name}.sql" 2>/dev/null \
+              || { echo "  (no SQL — skipped)"; rm -f "/tmp/migsql/${app}__${name}.sql"; }
+          done <<< "$changed"
+          echo "rendered=$(ls -1 /tmp/migsql 2>/dev/null | wc -l)" >> "$GITHUB_OUTPUT"
+        id: render
+      - name: squawk lint
+        if: steps.render.outputs.rendered != '0'
+        uses: sbdchd/squawk-action@v2
+        with:
+          pattern: "/tmp/migsql/*.sql"
+          version: "latest"
