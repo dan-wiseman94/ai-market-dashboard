@@ -247,7 +247,7 @@ def _extract_prediction(report, *, snap, message, provider: str, model: str, pro
     call) must never break the observer fire that already produced the report.
     """
     try:
-        from apps.predictions.services.extract import extract_from_observation
+        from apps.observer.predictions.services.extract import extract_from_observation
 
         extract_from_observation(
             report, snapshot=snap, message=message, provider=provider, model=model, profile=profile

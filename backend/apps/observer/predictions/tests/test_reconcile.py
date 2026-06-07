@@ -7,8 +7,8 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from rest_framework.test import APIClient
 
-from apps.predictions.models import AIPrediction
-from apps.predictions.services.reconcile import (
+from apps.observer.models import AIPrediction
+from apps.observer.predictions.services.reconcile import (
     ai_view_payload,
     current_ai_view,
     open_divergences,

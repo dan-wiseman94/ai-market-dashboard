@@ -8,8 +8,8 @@ import pytest
 from django.utils import timezone
 
 from apps.market.models import CorporateAction, OHLCBar
-from apps.predictions.models import AIPrediction
-from apps.predictions.tasks import resolve_due, resolve_prediction
+from apps.observer.models import AIPrediction
+from apps.observer.predictions.tasks import resolve_due, resolve_prediction
 
 START = datetime(2026, 1, 5, 15, 0, tzinfo=UTC)
 END = datetime(2026, 1, 12, 15, 0, tzinfo=UTC)

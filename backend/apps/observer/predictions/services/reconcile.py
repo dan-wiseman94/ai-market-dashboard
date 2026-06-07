@@ -21,7 +21,7 @@ def reconcile_directions(thesis_dir: str, ai_dir: str) -> str:
 def current_ai_view(ticker: str):
     """The AI's current live call on ``ticker`` — the most recent ``open``
     prediction — or ``None``. Resolved/invalidated calls are not "current"."""
-    from apps.predictions.models import AIPrediction
+    from apps.observer.models import AIPrediction
 
     return (
         AIPrediction.objects.filter(ticker=ticker.upper(), status="open")
@@ -38,7 +38,7 @@ def open_divergences(*, include_partial: bool = True) -> list[dict]:
     neutral) is included unless ``include_partial`` is False. Theses with no
     current AI view are skipped (nothing to reconcile). Highest-conviction first.
     """
-    from apps.predictions.models import AIPrediction
+    from apps.observer.models import AIPrediction
     from apps.thesis.models import Thesis
 
     theses = list(Thesis.objects.filter(status="open").order_by("-conviction", "-opened_at"))

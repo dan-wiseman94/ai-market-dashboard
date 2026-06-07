@@ -8,7 +8,7 @@ import pytest
 from rest_framework.test import APIClient
 
 from apps.analytics.services.ai_calibration import ai_calibration, ai_calibration_drilldown
-from apps.predictions.models import AIPrediction
+from apps.observer.models import AIPrediction
 
 WIN_START = datetime(2026, 1, 1, tzinfo=UTC)
 WIN_END = datetime(2026, 2, 1, tzinfo=UTC)

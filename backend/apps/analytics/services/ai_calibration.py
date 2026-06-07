@@ -38,7 +38,7 @@ def _band_for(conf: float) -> str:
 
 
 def _resolved_qs(start: datetime, end: datetime, horizon: int | None):
-    from apps.predictions.models import AIPrediction
+    from apps.observer.models import AIPrediction
 
     qs = AIPrediction.objects.filter(
         status="resolved",

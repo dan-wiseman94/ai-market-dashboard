@@ -24,7 +24,7 @@ urlpatterns = [
     path("api/aieval/", include("apps.analytics.aieval_urls")),
     path("api/dashboard/", include("apps.analytics.dashboard_urls")),
     path("api/portfolio/", include("apps.thesis.portfolio_urls")),
-    path("api/predictions/", include("apps.predictions.urls")),
+    path("api/predictions/", include("apps.observer.predictions.urls")),
     path("api/lessons/", include("apps.thesis.lessons_urls")),
     path("api/coverage/", include("apps.strategy.coverage.urls")),
     path("api/regime/", include("apps.strategy.regime.urls")),

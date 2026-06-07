@@ -1,6 +1,6 @@
 from django.urls import path
 
-from apps.predictions.views import AIViewForTickerView, DivergencesView
+from apps.observer.predictions.views import AIViewForTickerView, DivergencesView
 
 urlpatterns = [
     path("ai-view/", AIViewForTickerView.as_view(), name="predictions-ai-view"),
