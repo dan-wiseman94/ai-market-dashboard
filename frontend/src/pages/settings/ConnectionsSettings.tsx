@@ -143,7 +143,14 @@ export default function ConnectionsSettings() {
   const onConnect = async () => {
     try {
       const { url } = await fetchSchwabAuthorizeUrl();
-      window.location.href = url;
+      // Open Schwab's hosted OAuth page in a NEW tab rather than navigating this one.
+      // The `configured` gate only proves the app key is non-empty, not valid — a stale,
+      // unapproved, or placeholder key makes Schwab answer the authorize request with an
+      // opaque 401 invalid_client page. A full-page redirect would replace the whole
+      // dashboard with that error and strand the user; a new tab keeps the dashboard
+      // intact so they can fix their credentials and retry. `noopener` severs the
+      // window.opener handle (the Schwab tab can't reach back into the app).
+      window.open(url, "_blank", "noopener,noreferrer");
     } catch (e) {
       // e.g. schwab_not_configured — surface the backend message instead of silently
       // failing or bouncing to Schwab's opaque 401 invalid_client page.
