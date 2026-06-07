@@ -18,6 +18,9 @@ _SPEC: list[tuple[str, str, object]] = [
     ("retention_chain_days", "AI_RETENTION_CHAIN_DAYS", 120),
     ("retention_notification_days", "AI_RETENTION_NOTIFICATION_DAYS", 90),
     ("retention_error_days", "AI_RETENTION_ERROR_DAYS", 90),
+    ("retention_regime_days", "AI_RETENTION_REGIME_DAYS", 180),
+    ("retention_desk_days", "AI_RETENTION_DESK_DAYS", 180),
+    ("retention_book_days", "AI_RETENTION_BOOK_DAYS", 365),
     ("ai_failover_enabled", "AI_FAILOVER_ENABLED", False),
     ("ai_failover_provider", "AI_FAILOVER_PROVIDER", ""),
     ("observer_response_cache_enabled", "OBSERVER_RESPONSE_CACHE_ENABLED", False),
@@ -40,6 +43,9 @@ class RuntimeConfig:
     retention_chain_days: int
     retention_notification_days: int
     retention_error_days: int
+    retention_regime_days: int
+    retention_desk_days: int
+    retention_book_days: int
     ai_failover_enabled: bool
     ai_failover_provider: str
     observer_response_cache_enabled: bool
