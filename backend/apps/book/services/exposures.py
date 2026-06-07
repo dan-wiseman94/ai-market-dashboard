@@ -43,7 +43,7 @@ def build_exposures() -> list[dict]:
         log.warning("book.exposures.thesis_failed", exc_info=True)
 
     try:
-        from apps.coverage.models import CoverageNote
+        from apps.strategy.models import CoverageNote
 
         for n in CoverageNote.objects.all():
             _add(acc, n.ticker, _COVERAGE_SIGN.get(n.stance, 0) * (n.conviction or 0), "coverage")

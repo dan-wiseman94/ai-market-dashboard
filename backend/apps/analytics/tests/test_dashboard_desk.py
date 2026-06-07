@@ -1,7 +1,7 @@
 import pytest
 from rest_framework.test import APIClient
 
-from apps.desk.models import DeskEntry
+from apps.strategy.models import DeskEntry
 
 pytestmark = pytest.mark.django_db
 

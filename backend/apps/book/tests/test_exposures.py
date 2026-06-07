@@ -1,7 +1,7 @@
 import pytest
 
 from apps.book.services.exposures import build_exposures
-from apps.coverage.models import CoverageNote
+from apps.strategy.models import CoverageNote
 from apps.thesis.models import Thesis
 
 pytestmark = pytest.mark.django_db
