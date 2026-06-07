@@ -321,7 +321,7 @@ def test_calibration_verdict_none_when_no_usable_buckets():
 
 @pytest.mark.django_db
 def test_calibration_block_renders_latest_run(coach_profile):
-    from apps.aieval.services import persist_eval_run
+    from apps.analytics.services.aieval import persist_eval_run
 
     persist_eval_run(
         {
@@ -348,7 +348,7 @@ def test_calibration_block_empty_when_no_run(coach_profile):
 
 @pytest.mark.django_db
 def test_calibration_block_empty_for_mismatched_model(coach_profile):
-    from apps.aieval.services import persist_eval_run
+    from apps.analytics.services.aieval import persist_eval_run
 
     persist_eval_run(
         {"label": "x", "model": "a-totally-different-model", "n": 5, "scored": 5, "hit_rate": 0.8},
@@ -360,7 +360,7 @@ def test_calibration_block_empty_for_mismatched_model(coach_profile):
 
 @pytest.mark.django_db
 def test_assemble_coach_context_includes_calibration(coach_profile):
-    from apps.aieval.services import persist_eval_run
+    from apps.analytics.services.aieval import persist_eval_run
 
     persist_eval_run(
         {

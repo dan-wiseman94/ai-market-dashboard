@@ -412,7 +412,7 @@ def _calibration_block(profile) -> str:
     model = getattr(profile, "default_model", None)
     if not model:
         return ""
-    from apps.aieval.services import latest_eval_for_model
+    from apps.analytics.services.aieval import latest_eval_for_model
 
     run = latest_eval_for_model(model)
     if run is None or not run.scored:

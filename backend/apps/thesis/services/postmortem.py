@@ -178,7 +178,7 @@ def run_postmortem(pm_id: int) -> None:
     """
     # Atomic claim: .update() under a row lock means only one concurrent caller
     # gets claimed=1; everyone else (already running/done/failed) is a no-op.
-    claimed = PostMortem.objects.filter(id=pm_id, status="scheduled").update(status="running")
+    claimed = PostMortem.claim(pm_id, frm="scheduled", to="running")
     if not claimed:
         log.info("post-mortem %s not claimable (already running/done); skipping", pm_id)
         return

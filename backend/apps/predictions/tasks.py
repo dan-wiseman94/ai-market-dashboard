@@ -24,7 +24,7 @@ log = logging.getLogger(__name__)
 def resolve_prediction(pred_id: int) -> bool:
     """Resolve one prediction. Returns True if THIS call resolved it, False if it
     was already claimed/resolved (idempotent — safe to overlap)."""
-    claimed = AIPrediction.objects.filter(id=pred_id, status="open").update(status="resolving")
+    claimed = AIPrediction.claim(pred_id, frm="open", to="resolving")
     if not claimed:
         return False
     pred = AIPrediction.objects.get(id=pred_id)

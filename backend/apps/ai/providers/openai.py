@@ -12,6 +12,7 @@ from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
 from typing import cast
 
+from asgiref.sync import sync_to_async
 from openai import AsyncOpenAI
 from openai.types.chat import ChatCompletionMessageParam
 
@@ -219,7 +220,10 @@ async def _run_tool_calls(
             latency_ms = 0
         else:
             t0 = time.perf_counter()
-            outcome = toolset.run(s["name"], parsed)
+            # Offload tool dispatch OFF the loop thread: running sync ORM here
+            # (recall/track_record/get_quote) would trip Django's @async_unsafe
+            # guard on a reconnect. Mirrors the partial-flush write in threads.tasks.
+            outcome = await sync_to_async(toolset.run, thread_sensitive=True)(s["name"], parsed)
             latency_ms = int((time.perf_counter() - t0) * 1000)
 
         yield ToolCallEvent(tool_use_id=s["id"], name=s["name"], input=parsed)
