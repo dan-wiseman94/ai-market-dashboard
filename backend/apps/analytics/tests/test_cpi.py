@@ -8,10 +8,10 @@ from decimal import Decimal
 import pytest
 
 from apps.analytics.services.cpi import cost_per_insight
+from apps.observer.models import EventTrigger, TriggerFiring
 from apps.profiles.models import TradingProfile
 from apps.snapshots.models import Snapshot
 from apps.threads.models import AIRun, Message, Thread
-from apps.triggers.models import EventTrigger, TriggerFiring
 
 
 @pytest.fixture

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import time
 from typing import ClassVar
 
 from django.conf import settings
@@ -176,3 +177,141 @@ class AIPrediction(DirectionalCall, Resolution):
 
     def __str__(self) -> str:
         return f"AIPrediction({self.ticker}, {self.direction}, {self.horizon_days}d, {self.status})"
+
+
+class EventTrigger(models.Model):
+    """A user-defined condition rule; fires a snapshot + AI run when matched (was
+    apps.triggers — moved into observer, the automated-monitoring domain). db_table pinned.
+    """
+
+    name = models.CharField(max_length=100)
+    profile = models.ForeignKey(
+        "profiles.TradingProfile", on_delete=models.CASCADE, related_name="triggers"
+    )
+    condition = models.JSONField()
+    cooldown_seconds = models.PositiveIntegerField(default=1800)
+    enabled = models.BooleanField(default=True)
+    investigate = models.BooleanField(
+        default=False,
+        help_text="When True, a fire runs a bounded tool-using investigation "
+        "instead of a single observation.",
+    )
+    source_thesis = models.ForeignKey(
+        "thesis.Thesis",
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="guard_triggers",
+    )
+    last_fired_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "triggers_eventtrigger"
+        indexes: ClassVar = [models.Index(fields=["enabled", "-last_fired_at"])]
+        constraints: ClassVar = [
+            models.UniqueConstraint(
+                fields=["profile", "name"], name="unique_trigger_name_per_profile"
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.name} (profile={self.profile_id})"
+
+    def clean(self) -> None:
+        from apps.observer.triggers.dsl import validate_condition
+
+        validate_condition(self.condition)
+
+
+class TriggerFiring(models.Model):
+    """Immutable audit row: one per fire event (was apps.triggers)."""
+
+    trigger = models.ForeignKey(EventTrigger, on_delete=models.CASCADE, related_name="firings")
+    fired_at = models.DateTimeField(auto_now_add=True)
+    matched_values = models.JSONField()
+    snapshot = models.ForeignKey(
+        "snapshots.Snapshot",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="trigger_firings",
+    )
+    thread = models.ForeignKey(
+        "threads.Thread",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="trigger_firings",
+    )
+    cost_capped = models.BooleanField(default=False)
+
+    class Meta:
+        db_table = "triggers_triggerfiring"
+        indexes: ClassVar = [
+            models.Index(fields=["trigger", "-fired_at"]),
+            models.Index(fields=["-fired_at"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"TriggerFiring(trigger={self.trigger_id}, fired_at={self.fired_at})"
+
+
+class BriefingConfig(models.Model):
+    """Singleton config for the daily Morning Briefing (was apps.briefing). Use load()."""
+
+    enabled = models.BooleanField(default=True)
+    send_at_local = models.TimeField(default=time(8, 30))
+    profile = models.ForeignKey(
+        "profiles.TradingProfile",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+    )
+    news_lookback_hours = models.PositiveIntegerField(default=14)
+    events_within_days = models.PositiveIntegerField(default=7)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "briefing_briefingconfig"
+
+    def __str__(self) -> str:
+        return f"BriefingConfig(enabled={self.enabled}, send_at={self.send_at_local})"
+
+    @classmethod
+    def load(cls) -> BriefingConfig:
+        obj, _ = cls.objects.get_or_create(pk=1)
+        return obj
+
+
+class BriefingRun(models.Model):
+    STATUS: ClassVar = [("assembling", "Assembling"), ("ready", "Ready"), ("failed", "Failed")]
+
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    status = models.CharField(max_length=12, choices=STATUS, default="assembling")
+    data = models.JSONField(default=dict)
+    snapshot = models.ForeignKey(
+        "snapshots.Snapshot",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+    )
+    synthesis_message = models.ForeignKey(
+        "threads.Message",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+    )
+    scheduled_date = models.DateField(null=True, blank=True, unique=True)
+    error = models.TextField(blank=True, default="")
+
+    class Meta:
+        db_table = "briefing_briefingrun"
+        ordering: ClassVar[list[str]] = ["-created_at"]
+
+    def __str__(self) -> str:
+        return f"BriefingRun(#{self.pk} {self.status})"
