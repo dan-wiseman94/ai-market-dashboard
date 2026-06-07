@@ -7,8 +7,8 @@ from datetime import UTC, datetime, timedelta
 import pytest
 
 from apps.analytics.services.trigger_heatmap import trigger_heatmap
+from apps.observer.models import EventTrigger, TriggerFiring
 from apps.profiles.models import TradingProfile
-from apps.triggers.models import EventTrigger, TriggerFiring
 
 
 @pytest.fixture

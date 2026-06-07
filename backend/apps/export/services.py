@@ -120,7 +120,7 @@ def _write_sections(zf: zipfile.ZipFile, root: str, scope: dict) -> dict[str, in
             counts["observations"] += 1
 
     if scope.get("triggers"):
-        from apps.triggers.models import EventTrigger
+        from apps.observer.models import EventTrigger
 
         for trig in EventTrigger.objects.all():
             zf.writestr(

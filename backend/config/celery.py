@@ -26,11 +26,9 @@ TASK_PACKAGES = [
     "apps.observer",
     "apps.snapshots",
     "apps.threads",
-    "apps.triggers",
     "apps.backups",
     "apps.export",
     "apps.thesis",
-    "apps.briefing",
     "apps.recall",
     "apps.analytics",
     "apps.book",
@@ -87,7 +85,7 @@ app.conf.beat_schedule = {
         "schedule": crontab(hour=8, minute=30),
     },
     "briefing-run-scheduled": {
-        "task": "briefing.run_scheduled",
+        "task": "observer.briefing_run_scheduled",
         "schedule": crontab(minute="*/15"),
     },
     "recall-index-pending": {

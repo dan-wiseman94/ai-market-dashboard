@@ -158,13 +158,11 @@ type = "forbidden"
 source_modules = [
     "apps.threads",
     "apps.observer",
-    "apps.triggers",
     "apps.secrets",
     "apps.thesis",
     "apps.analytics",
     "apps.strategy",
     "apps.book",
-    "apps.briefing",
     "apps.snapshots",
     "apps.market",
 ]
@@ -185,14 +183,12 @@ type = "forbidden"
 source_modules = [
     "apps.threads",
     "apps.observer",
-    "apps.triggers",
     "apps.market",
     "apps.thesis",
     "apps.analytics",
     "apps.strategy",
     "apps.ai",
     "apps.snapshots",
-    "apps.briefing",
 ]
 forbidden_modules = [
     "apps.secrets.fields",
@@ -218,7 +214,6 @@ source_modules = [
     "apps.strategy",
     "apps.backups",
     "apps.book",
-    "apps.briefing",
     "apps.core",
     "apps.export",
     "apps.observer",
@@ -228,7 +223,6 @@ source_modules = [
     "apps.snapshots",
     "apps.thesis",
     "apps.threads",
-    "apps.triggers",
 ]
 forbidden_modules = [
     "apps.market.services.alpaca",
