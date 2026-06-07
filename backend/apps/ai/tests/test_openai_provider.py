@@ -1,3 +1,4 @@
+import asyncio
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -218,6 +219,62 @@ async def test_openai_tool_loop_dispatches_and_continues():
     usage = next(e for e in events if isinstance(e, UsageEvent))
     assert usage.usage.input_tokens == 120
     assert usage.usage.output_tokens == 13
+
+
+def test_openai_dispatches_tools_off_the_loop_thread():
+    """Regression: the provider must dispatch tools OFF the asyncio loop thread, so a
+    tool's sync ORM never trips Django's @async_unsafe guard on a reconnect. A tool
+    that records its thread proves dispatch was offloaded; if it ran inline on the
+    loop thread (the pre-fix behavior) the two thread ids match and this fails.
+    """
+    import threading
+
+    from apps.ai.tools import Toolset, ToolSpec
+
+    sink: dict = {}
+
+    def _quote(ticker, **_):
+        sink["tool_thread"] = threading.get_ident()
+        return {"ticker": ticker, "last": 200}
+
+    real_toolset = Toolset()
+    real_toolset.register(
+        ToolSpec(name="get_quote", description="q", input_schema={"type": "object"}, fn=_quote)
+    )
+    streams = [_FakeToolCallStream(), _FakeTextStream()]
+    fake = MagicMock()
+
+    async def fake_create(**_kwargs):
+        return streams.pop(0)
+
+    fake.chat.completions.create = fake_create
+    loop: dict = {}
+
+    async def go():
+        loop["thread"] = threading.get_ident()
+        provider = OpenAIProvider(api_key="sk-test")
+        req = RunRequest(
+            model="gpt-5",
+            system="You help.",
+            messages=[ChatMessage(role="user", content="quote AAPL")],
+            tools=[
+                {
+                    "type": "function",
+                    "function": {"name": "get_quote", "description": "", "parameters": {}},
+                }
+            ],
+        )
+        return [evt async for evt in provider.run(req)]
+
+    with (
+        patch("apps.ai.providers.openai.AsyncOpenAI", return_value=fake),
+        patch("apps.ai.providers.openai._resolve_toolset", return_value=real_toolset),
+    ):
+        events = asyncio.run(go())
+
+    result_evt = next(e for e in events if isinstance(e, ToolResultEvent))
+    assert result_evt.ok is True
+    assert sink["tool_thread"] != loop["thread"]  # dispatched off the loop thread
 
 
 @pytest.mark.asyncio
