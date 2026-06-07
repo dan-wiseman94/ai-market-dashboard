@@ -35,9 +35,7 @@ log = logging.getLogger(__name__)
 # at-most-once: bills a provider (run_structured) and is not idempotent; overrides
 # the global acks_late=True so a worker crash can't redeliver + re-bill. See
 # apps/strategy/tests/test_task_acks.py.
-@shared_task(
-    name="coverage.revise_from_observation", acks_late=False, reject_on_worker_lost=False
-)
+@shared_task(name="coverage.revise_from_observation", acks_late=False, reject_on_worker_lost=False)
 def revise_from_observation(ticker: str, snapshot_id: int) -> None:
     """Re-run the house view for ``ticker`` against snapshot ``snapshot_id``.
 

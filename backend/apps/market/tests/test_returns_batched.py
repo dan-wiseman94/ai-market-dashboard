@@ -21,7 +21,14 @@ _DAYS = [datetime(2026, 4, d, 20, 0, tzinfo=UTC) for d in (6, 7, 8, 9, 10, 13, 1
 
 def _bar(ticker: str, ts: datetime, close: float) -> None:
     OHLCBar.objects.create(
-        ticker=ticker, timeframe="1d", ts=ts, open=close, high=close, low=close, close=close, volume=1
+        ticker=ticker,
+        timeframe="1d",
+        ts=ts,
+        open=close,
+        high=close,
+        low=close,
+        close=close,
+        volume=1,
     )
 
 

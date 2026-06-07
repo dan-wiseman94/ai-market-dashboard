@@ -105,12 +105,8 @@ def reconcile() -> int:
     """
     deleted = 0
     for kind in RecallDocument.objects.values_list("kind", flat=True).distinct():
-        doc_ids = set(
-            RecallDocument.objects.filter(kind=kind).values_list("object_id", flat=True)
-        )
-        live = set(
-            _source_model(kind).objects.filter(id__in=doc_ids).values_list("id", flat=True)
-        )
+        doc_ids = set(RecallDocument.objects.filter(kind=kind).values_list("object_id", flat=True))
+        live = set(_source_model(kind).objects.filter(id__in=doc_ids).values_list("id", flat=True))
         orphans = doc_ids - live
         if orphans:
             n, _ = RecallDocument.objects.filter(kind=kind, object_id__in=orphans).delete()

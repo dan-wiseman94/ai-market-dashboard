@@ -44,7 +44,9 @@ def test_reconcile_deletes_orphaned_recall_docs():
     reconcile() drops rows whose source no longer resolves. A live source is kept."""
     p = TradingProfile.objects.create(name="P", default_includes=["quotes"])
     th = Thesis.objects.create(title="t", ticker="NVDA", direction="bullish", profile=p)
-    live = RecallDocument.objects.create(kind="thesis", object_id=th.id, text="x", content_hash="h1")
+    live = RecallDocument.objects.create(
+        kind="thesis", object_id=th.id, text="x", content_hash="h1"
+    )
     orphan_thesis = RecallDocument.objects.create(
         kind="thesis", object_id=th.id + 9999, text="y", content_hash="h2"
     )
