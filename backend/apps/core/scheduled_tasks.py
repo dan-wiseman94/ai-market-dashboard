@@ -122,7 +122,7 @@ SCHEDULED_WORK: list[ScheduledTask] = [
         "",
     ),
     ScheduledTask(
-        "lessons.distill",
+        "thesis.distill",
         "daily 05:30",
         "Cluster recurring post-mortem lessons (deterministic embeddings, no AI call).",
         "",
