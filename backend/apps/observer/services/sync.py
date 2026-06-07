@@ -50,6 +50,6 @@ def sync_periodic_task(schedule: ObserverSchedule, *, cron: str) -> PeriodicTask
 
 def delete_periodic_task(schedule: ObserverSchedule) -> None:
     """Remove the linked PeriodicTask. Leaves CrontabSchedule (potentially shared)."""
-    if schedule.periodic_task_id:
-        assert schedule.periodic_task is not None
-        schedule.periodic_task.delete()
+    pt = schedule.periodic_task  # None iff periodic_task_id is None (nullable FK)
+    if pt is not None:
+        pt.delete()

@@ -5,6 +5,7 @@ import js from "@eslint/js";
 import globals from "globals";
 import reactHooks from "eslint-plugin-react-hooks";
 import reactRefresh from "eslint-plugin-react-refresh";
+import noUnsanitized from "eslint-plugin-no-unsanitized";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config({ ignores: ["dist", "node_modules", "src/api/schema.d.ts"] }, {
@@ -18,6 +19,7 @@ export default tseslint.config({ ignores: ["dist", "node_modules", "src/api/sche
   plugins: {
     "react-hooks": reactHooks,
     "react-refresh": reactRefresh,
+    "no-unsanitized": noUnsanitized,
   },
   rules: {
     ...reactHooks.configs.recommended.rules,
@@ -29,5 +31,18 @@ export default tseslint.config({ ignores: ["dist", "node_modules", "src/api/sche
     // with a reason.
     complexity: ["error", 15],
     "max-depth": ["error", 4],
+    // Security — block XSS sinks: raw DOM (innerHTML / insertAdjacentHTML / document.write)
+    // via no-unsanitized, and React's dangerouslySetInnerHTML via no-restricted-syntax.
+    // Sanitize with DOMPurify + an eslint-disable-with-reason if ever genuinely required.
+    "no-unsanitized/method": "error",
+    "no-unsanitized/property": "error",
+    "no-restricted-syntax": [
+      "error",
+      {
+        selector: "JSXAttribute[name.name='dangerouslySetInnerHTML']",
+        message:
+          "dangerouslySetInnerHTML is an XSS sink — avoid it, or sanitize with DOMPurify and justify with an eslint-disable.",
+      },
+    ],
   },
 }, storybook.configs["flat/recommended"]);

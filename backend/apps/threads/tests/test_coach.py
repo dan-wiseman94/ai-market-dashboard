@@ -28,13 +28,20 @@ def test_system_prompt_wraps_style_and_includes_date_when_enabled():
 
 
 @pytest.mark.django_db
-def test_system_prompt_is_legacy_style_only_when_disabled():
+def test_system_prompt_is_style_under_boundary_when_coach_disabled():
+    # Coach off = legacy "just your style" framing, but the untrusted-content data
+    # boundary (prompt-injection defense) is always prepended.
     p = TradingProfile.objects.create(name="p", style="Aggressive intraday", enable_coach=False)
-    assert build_system_prompt(p, now=NOW) == "Aggressive intraday"
+    system = build_system_prompt(p, now=NOW)
+    assert "Data boundary" in system
+    assert system.endswith("Aggressive intraday")
+    assert "## Your trading style" not in system  # no coach framing when disabled
 
 
-def test_system_prompt_none_profile_is_empty():
-    assert build_system_prompt(None, now=NOW) == ""
+def test_system_prompt_none_profile_is_just_boundary():
+    system = build_system_prompt(None, now=NOW)
+    assert "Data boundary" in system
+    assert "UNTRUSTED CONTENT" in system
 
 
 @pytest.mark.django_db

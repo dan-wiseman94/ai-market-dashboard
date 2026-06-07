@@ -29,7 +29,8 @@ async def _render_async(url: str) -> bytes:
             await page.goto(url, wait_until="networkidle", timeout=20000)
             await page.wait_for_selector("body[data-render-ready='true']", timeout=15000)
             chart = await page.locator("#chart-root").element_handle()
-            assert chart is not None
+            if chart is None:
+                raise RuntimeError("#chart-root not found in rendered page")
             return await chart.screenshot(type="png")
         finally:
             await browser.close()
