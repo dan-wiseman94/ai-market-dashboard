@@ -96,7 +96,8 @@ extend-exclude = ["migrations", ".venv", "staticfiles", "frontend", "tools/vultu
 # come in at <= the ceiling.
 # (PLR0912/PLR0913/PLR0915 intentionally held — 22+ framework-driven sites would need
 #  grandfathering; enable later once those are paid down.)
-select = ["E", "F", "I", "B", "UP", "SIM", "DJ", "RUF", "C901"]
+# S = flake8-bandit security rules (hardcoded secrets, weak hashes, subprocess, etc.).
+select = ["E", "F", "I", "B", "S", "UP", "SIM", "DJ", "RUF", "C901"]
 ignore = ["E501"]
 
 [tool.ruff.lint.mccabe]
@@ -105,9 +106,15 @@ ignore = ["E501"]
 max-complexity = 15
 
 [tool.ruff.lint.per-file-ignores]
-"**/tests/**" = ["S101"]
+# Tests + e2e: assert is the pytest idiom; "passwords/secrets" are fake fixtures.
+"**/tests/**" = ["S101", "S105", "S106"]
+"e2e/**" = ["S101", "S105", "S106"]
 "**/settings/*.py" = ["F403", "F405"]
 "**/migrations/**" = ["RUF012"]
+# DSL-validated invariants narrowed via assert in the trigger-metric dispatch.
+"backend/apps/triggers/metrics.py" = ["S101"]
+# Controlled pg_dump/pg_restore (list args, no shell); S603/S607 are inherent + safe here.
+"backend/apps/backups/services.py" = ["S603", "S607"]
 
 [tool.ruff.format]
 quote-style = "double"
