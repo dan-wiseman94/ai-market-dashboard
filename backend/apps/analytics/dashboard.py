@@ -100,7 +100,7 @@ def _book_section() -> dict:
 
 
 def _desk_section() -> dict:
-    from apps.desk.models import DeskEntry
+    from apps.strategy.models import DeskEntry
 
     new = DeskEntry.objects.filter(status="new").order_by("-created_at")
     latest = new.first()
