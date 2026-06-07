@@ -90,17 +90,25 @@ def _thesis_section(rows: list[tuple[int, str, str, float | None]]) -> dict:
 def _provider_section(pms) -> tuple[list[dict], int]:
     from apps.threads.models import AIRun
 
+    pms = list(pms)
+    thread_ids = {pm.thesis.thread_id for pm in pms if pm.thesis.thread_id}
+    # One query for all attributable threads instead of one AIRun query per post-mortem:
+    # distinct (thread, provider, model), bucketed in memory.
+    pairs_by_thread: dict[int, set[tuple[str, str]]] = {}
+    for tid, provider, model in (
+        AIRun.objects.filter(message__thread_id__in=thread_ids, status="done")
+        .values_list("message__thread_id", "provider", "model")
+        .distinct()
+    ):
+        pairs_by_thread.setdefault(tid, set()).add((provider, model))
+
     agg: dict[tuple[str, str], dict] = {}
     attributable = 0
     for pm in pms:
         thread_id = pm.thesis.thread_id
         if not thread_id:
             continue
-        pairs = list(
-            AIRun.objects.filter(message__thread_id=thread_id, status="done")
-            .values_list("provider", "model")
-            .distinct()
-        )
+        pairs = pairs_by_thread.get(thread_id)
         if not pairs:
             continue
         attributable += 1

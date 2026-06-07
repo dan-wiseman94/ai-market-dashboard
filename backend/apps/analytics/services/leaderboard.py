@@ -25,7 +25,7 @@ from decimal import Decimal
 
 from django.db.models import Avg, Count, Sum
 
-from apps.market.returns import trading_day_forward_return_pct
+from apps.market.returns import trading_day_forward_returns
 from apps.snapshots.primary import primary_ticker
 from apps.threads.models import AIRun
 
@@ -51,11 +51,15 @@ def provider_leaderboard(
         .order_by("-total_cost_usd")
     )
 
-    # Per (provider, model): the list of computable forward returns. A key only
-    # gains an entry when a run actually prices out; the row loop below falls back
-    # to an empty list (coverage 0, avg None) for keys that never did.
-    returns: dict[tuple[str, str], list[float]] = {}
-    for run in qs.select_related("message__thread__pinned_snapshot").iterator():
+    # First pass: collect the priceable runs (those with a pinned snapshot + primary
+    # ticker) WITHOUT any per-run price query. prefetch the snapshot's sections so
+    # primary_ticker() reads them from cache instead of firing a query per run; iterator()
+    # with a chunk_size keeps that prefetch bounded (Django 4.1+).
+    priceable: list[tuple[tuple[str, str], str, datetime]] = []
+    runs_qs = qs.select_related("message__thread__pinned_snapshot").prefetch_related(
+        "message__thread__pinned_snapshot__sections"
+    )
+    for run in runs_qs.iterator(chunk_size=1000):
         # Skip message-less one-shot runs (post-mortems, coverage, …): with no chat
         # Message there is no pinned snapshot to correlate a forward return against.
         if run.message is None:
@@ -66,10 +70,16 @@ def provider_leaderboard(
         primary = primary_ticker(snap)
         if primary is None:
             continue
-        ret = trading_day_forward_return_pct(primary, run.created_at, forward_hours)
-        if ret is None:
-            continue
-        returns.setdefault((run.provider, run.model), []).append(ret)
+        priceable.append(((run.provider, run.model), primary, run.created_at))
+
+    # One batched price-out for every (ticker, at) — O(1) queries, not O(runs). A key only
+    # gains an entry when a run actually prices out; the row loop below falls back to an
+    # empty list (coverage 0, avg None) for keys that never did.
+    fwd = trading_day_forward_returns([(t, at) for _key, t, at in priceable], forward_hours)
+    returns: dict[tuple[str, str], list[float]] = {}
+    for (key, _t, _at), ret in zip(priceable, fwd, strict=True):
+        if ret is not None:
+            returns.setdefault(key, []).append(ret)
 
     rows: list[dict] = []
     for r in agg:
