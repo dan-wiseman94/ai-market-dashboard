@@ -221,7 +221,6 @@ source_modules = [
     "apps.export",
     "apps.lessons",
     "apps.observer",
-    "apps.portfolio",
     "apps.predictions",
     "apps.profiles",
     "apps.recall",

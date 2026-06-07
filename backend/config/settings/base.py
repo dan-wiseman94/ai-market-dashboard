@@ -45,7 +45,6 @@ INSTALLED_APPS = [
     "apps.thesis",
     "apps.briefing",
     "apps.recall",
-    "apps.portfolio",
     "apps.predictions",
     "apps.lessons",
     "apps.coverage",

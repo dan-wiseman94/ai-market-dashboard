@@ -54,7 +54,7 @@ def build_exposures() -> list[dict]:
         from django.utils import timezone
 
         from apps.market.returns import nearest_bar_close
-        from apps.portfolio.models import Position
+        from apps.thesis.models import Position
 
         now = timezone.now()
         for p in Position.objects.filter(status="open"):
