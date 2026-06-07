@@ -20,11 +20,11 @@ def claude_cfg(db):
 
 
 def test_upload_proxies_to_anthropic_and_persists_row(db, claude_cfg) -> None:
-    from apps.files.models import UserFile
+    from apps.threads.models import UserFile
 
     fake_file = MagicMock(id="file_abc", size_bytes=1024)
     upload = SimpleUploadedFile("10k.pdf", b"%PDF-1.7\n...", content_type="application/pdf")
-    with patch("apps.files.services._anthropic_client") as ac:
+    with patch("apps.threads.files_service._anthropic_client") as ac:
         ac.return_value.beta.files.upload.return_value = fake_file
         client = APIClient()
         resp = client.post(
@@ -72,7 +72,7 @@ def test_upload_with_undecryptable_key_400(db) -> None:
 
 
 def test_list_returns_rows_filtered_by_kind(db, claude_cfg) -> None:
-    from apps.files.models import UserFile
+    from apps.threads.models import UserFile
 
     UserFile.objects.create(
         anthropic_id="f1",
@@ -97,7 +97,7 @@ def test_list_returns_rows_filtered_by_kind(db, claude_cfg) -> None:
 
 
 def test_delete_removes_row_and_calls_api(db, claude_cfg) -> None:
-    from apps.files.models import UserFile
+    from apps.threads.models import UserFile
 
     f = UserFile.objects.create(
         anthropic_id="f1",
@@ -106,7 +106,7 @@ def test_delete_removes_row_and_calls_api(db, claude_cfg) -> None:
         mime="application/pdf",
         size=100,
     )
-    with patch("apps.files.services._anthropic_client") as ac:
+    with patch("apps.threads.files_service._anthropic_client") as ac:
         client = APIClient()
         resp = client.delete(f"/api/files/{f.id}/")
     assert resp.status_code == 204

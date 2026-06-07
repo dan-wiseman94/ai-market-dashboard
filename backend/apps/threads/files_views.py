@@ -7,9 +7,9 @@ from rest_framework.parsers import MultiPartParser
 from rest_framework.request import Request
 from rest_framework.response import Response
 
-from apps.files.models import UserFile
-from apps.files.serializers import UserFileSerializer
-from apps.files.services import NoKeyError, delete_from_anthropic, upload_to_anthropic
+from apps.threads.files_serializers import UserFileSerializer
+from apps.threads.files_service import NoKeyError, delete_from_anthropic, upload_to_anthropic
+from apps.threads.models import UserFile
 
 
 class UserFileViewSet(viewsets.ModelViewSet):

@@ -42,7 +42,6 @@ INSTALLED_APPS = [
     "apps.observer",
     "apps.backups",
     "apps.export",
-    "apps.files",
     "apps.thesis",
     "apps.briefing",
     "apps.recall",

@@ -2,7 +2,7 @@ from typing import ClassVar
 
 from rest_framework import serializers
 
-from apps.files.models import UserFile
+from apps.threads.models import UserFile
 
 
 class UserFileSerializer(serializers.ModelSerializer):

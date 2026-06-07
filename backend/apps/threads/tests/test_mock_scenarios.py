@@ -10,7 +10,7 @@ from apps.core.mocks import reset_scenario, set_scenario
 
 
 def test_upload_raises_under_files_upload_fail():
-    from apps.files.services import upload_to_anthropic
+    from apps.threads.files_service import upload_to_anthropic
 
     with patch("apps.core.mocks.is_mock_mode", return_value=True):
         set_scenario("files-upload-fail")
@@ -22,7 +22,7 @@ def test_upload_raises_under_files_upload_fail():
 
 
 def test_upload_returns_mock_id_under_default():
-    from apps.files.services import upload_to_anthropic
+    from apps.threads.files_service import upload_to_anthropic
 
     with patch("apps.core.mocks.is_mock_mode", return_value=True):
         reset_scenario()
@@ -32,7 +32,7 @@ def test_upload_returns_mock_id_under_default():
 
 
 def test_delete_is_noop_under_mock():
-    from apps.files.services import delete_from_anthropic
+    from apps.threads.files_service import delete_from_anthropic
 
     with patch("apps.core.mocks.is_mock_mode", return_value=True):
         reset_scenario()

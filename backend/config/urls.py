@@ -18,7 +18,7 @@ urlpatterns = [
     path("api/triggers/", include("apps.triggers.urls")),
     path("api/backups/", include("apps.backups.urls")),
     path("api/export/", include("apps.export.urls")),
-    path("api/files/", include("apps.files.urls")),
+    path("api/files/", include("apps.threads.files_urls")),
     path("api/briefings/", include("apps.briefing.urls")),
     path("api/recall/", include("apps.recall.urls")),
     path("api/aieval/", include("apps.aieval.urls")),
