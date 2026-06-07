@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import logging
 
-from apps.regime.models import RegimeReading
-from apps.regime.services.classify import (
+from apps.strategy.models import RegimeReading
+from apps.strategy.regime.services.classify import (
     build_drivers,
     classify_breadth,
     classify_leadership,
@@ -12,8 +12,8 @@ from apps.regime.services.classify import (
     classify_volatility,
     fold_composite,
 )
-from apps.regime.services.inputs import gather_inputs
-from apps.regime.services.narrative import regime_narrative
+from apps.strategy.regime.services.inputs import gather_inputs
+from apps.strategy.regime.services.narrative import regime_narrative
 
 log = logging.getLogger(__name__)
 

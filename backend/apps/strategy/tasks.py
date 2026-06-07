@@ -16,9 +16,11 @@ import logging
 from celery import shared_task
 from django.conf import settings
 
+from apps.observer.services.market_hours import is_market_open
 from apps.strategy.coverage.services.revise import revise_coverage
 from apps.strategy.desk.services.sweep import run_sweep
 from apps.strategy.models import WarRoomRun
+from apps.strategy.regime.services.compute import compute_and_store
 from apps.strategy.warroom import constants as C
 from apps.strategy.warroom.services.convene import _claude_cfg
 from apps.strategy.warroom.services.debate import run_one_persona
@@ -116,3 +118,15 @@ def sweep() -> int | None:
         log.info("desk.sweep: disabled (ANOMALY_SWEEP_ENABLED off)")
         return None
     return run_sweep()
+
+
+@shared_task(name="strategy.regime_refresh")
+def refresh(force: bool = False) -> int | None:
+    """Compute + persist one RegimeReading (was regime.refresh). Skips when the market
+    is closed unless ``force`` (the pre-open / post-close forced readings pass True).
+    """
+    if not force and not is_market_open():
+        log.info("regime.refresh: market closed, skipping")
+        return None
+    reading = compute_and_store()
+    return reading.id

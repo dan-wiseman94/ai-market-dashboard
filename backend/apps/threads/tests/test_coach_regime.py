@@ -1,7 +1,7 @@
 import pytest
 
 from apps.profiles.models import TradingProfile
-from apps.regime.models import RegimeReading
+from apps.strategy.models import RegimeReading
 from apps.threads.coach import _regime_block, assemble_coach_context_for_message
 
 pytestmark = pytest.mark.django_db

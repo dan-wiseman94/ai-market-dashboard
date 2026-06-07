@@ -46,7 +46,6 @@ INSTALLED_APPS = [
     "apps.briefing",
     "apps.recall",
     "apps.predictions",
-    "apps.regime",
     "apps.book",
     "apps.strategy",
 ]

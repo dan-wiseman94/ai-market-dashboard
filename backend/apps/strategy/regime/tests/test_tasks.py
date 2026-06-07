@@ -1,6 +1,6 @@
 import pytest
 
-from apps.regime import tasks
+from apps.strategy import tasks
 
 pytestmark = pytest.mark.django_db
 

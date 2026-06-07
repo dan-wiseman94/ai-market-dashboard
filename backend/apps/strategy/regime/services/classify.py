@@ -6,7 +6,7 @@ so it is exhaustively unit-testable without any DB or network.
 
 from __future__ import annotations
 
-from apps.regime import constants as C
+from apps.strategy.regime import constants as C
 
 UNKNOWN = C.UNKNOWN
 

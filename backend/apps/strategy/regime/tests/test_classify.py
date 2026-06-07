@@ -1,6 +1,6 @@
 import pytest
 
-from apps.regime.services import classify as c
+from apps.strategy.regime.services import classify as c
 
 
 @pytest.mark.parametrize(

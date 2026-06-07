@@ -108,7 +108,7 @@ def _desk_section() -> dict:
 
 
 def _regime_section() -> dict:
-    from apps.regime.services.compute import current_regime
+    from apps.strategy.regime.services.compute import current_regime
 
     reading = current_regime()
     if reading is None:

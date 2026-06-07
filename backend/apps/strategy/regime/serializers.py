@@ -2,7 +2,7 @@ from typing import ClassVar
 
 from rest_framework import serializers
 
-from apps.regime.models import RegimeReading
+from apps.strategy.models import RegimeReading
 
 
 class RegimeReadingSerializer(serializers.ModelSerializer):
