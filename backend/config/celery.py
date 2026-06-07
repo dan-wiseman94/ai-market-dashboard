@@ -34,7 +34,6 @@ TASK_PACKAGES = [
     "apps.recall",
     "apps.analytics",
     "apps.predictions",
-    "apps.regime",
     "apps.book",
     "apps.strategy",
 ]
@@ -113,11 +112,11 @@ app.conf.beat_schedule = {
         "schedule": crontab(hour=5, minute=30),  # daily, after new post-mortems resolve
     },
     "regime-refresh-intraday": {
-        "task": "regime.refresh",
+        "task": "strategy.regime_refresh",
         "schedule": crontab(minute="*/30"),  # market-hours guard is inside the task
     },
     "regime-refresh-preopen": {
-        "task": "regime.refresh",
+        "task": "strategy.regime_refresh",
         "schedule": crontab(hour=13, minute=0),  # ~09:00 ET pre-open; forced
         "kwargs": {"force": True},
     },

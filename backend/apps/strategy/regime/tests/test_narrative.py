@@ -1,6 +1,6 @@
 import pytest
 
-from apps.regime.services import narrative as N
+from apps.strategy.regime.services import narrative as N
 
 pytestmark = pytest.mark.django_db
 

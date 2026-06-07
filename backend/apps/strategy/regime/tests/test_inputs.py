@@ -2,7 +2,7 @@ import pytest
 from django.utils import timezone
 
 from apps.market.models import OHLCBar
-from apps.regime.services import inputs as I
+from apps.strategy.regime.services import inputs as I
 
 pytestmark = pytest.mark.django_db
 

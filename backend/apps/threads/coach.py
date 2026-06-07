@@ -366,7 +366,7 @@ def _regime_block() -> str:
     """Current market regime — the only TICKER-INDEPENDENT coach block, so it
     renders even on a snapshot-free / cashtag-free chat. Lazy import keeps the
     threads -> regime boundary clean. "" when no reading exists."""
-    from apps.regime.services.compute import current_regime
+    from apps.strategy.regime.services.compute import current_regime
 
     reading = current_regime()
     if reading is None:

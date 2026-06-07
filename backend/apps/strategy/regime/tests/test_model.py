@@ -1,7 +1,7 @@
 import pytest
 
-from apps.regime.models import RegimeReading
-from apps.regime.services.compute import current_regime
+from apps.strategy.models import RegimeReading
+from apps.strategy.regime.services.compute import current_regime
 
 pytestmark = pytest.mark.django_db
 
