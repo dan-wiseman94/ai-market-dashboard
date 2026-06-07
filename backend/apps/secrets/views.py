@@ -27,7 +27,9 @@ from apps.secrets.models import ApiCredential, ProviderConfig, SchwabAppConfig
 from apps.secrets.schwab_oauth import (
     SchwabNotConfigured,
     build_authorize_url,
+    consume_oauth_state,
     exchange_code_for_token,
+    new_oauth_state,
     persist_token,
     schwab_app_credentials,
 )
@@ -40,7 +42,9 @@ log = logging.getLogger(__name__)
 def schwab_authorize(_request: HttpRequest) -> JsonResponse:
     """Returns the URL the frontend should open to begin Schwab OAuth."""
     try:
-        return JsonResponse({"url": build_authorize_url()})
+        # Mint a one-time CSRF state nonce (stored server-side) and bind it to the URL;
+        # the callback requires it back. See schwab_oauth.new_oauth_state.
+        return JsonResponse({"url": build_authorize_url(state=new_oauth_state())})
     except SchwabNotConfigured as exc:
         # No client_id set — fail clearly instead of emitting an authorize URL with an
         # empty client_id (which Schwab rejects with an opaque 401 invalid_client).
@@ -50,6 +54,8 @@ def schwab_authorize(_request: HttpRequest) -> JsonResponse:
 @require_GET
 def schwab_callback(request: HttpRequest) -> JsonResponse | HttpResponseRedirect:
     """Schwab redirects here with ?code=... after user consent."""
+    from apps.core.mocks import is_mock_mode
+
     code = request.GET.get("code")
     if not code:
         return JsonResponse(
@@ -57,6 +63,17 @@ def schwab_callback(request: HttpRequest) -> JsonResponse | HttpResponseRedirect
                 "code": "missing_code",
                 "message": "Schwab callback did not include a code parameter.",
             },
+            status=400,
+        )
+    # CSRF / auth-code-injection guard (RFC 6749 §10.12): the callback is a
+    # cross-site-triggerable GET with no auth cookies, so neither CsrfViewMiddleware nor
+    # SameSite cover it. Require the one-time `state` nonce minted in schwab_authorize, or
+    # a malicious page could silently swap in an attacker's Schwab code and repoint the
+    # dashboard's data feed at the attacker's account. Skipped under MOCK_EXTERNAL, whose
+    # canned authorize URL carries no state.
+    if not is_mock_mode() and not consume_oauth_state(request.GET.get("state")):
+        return JsonResponse(
+            {"code": "invalid_state", "message": "Missing or invalid OAuth state."},
             status=400,
         )
     try:
