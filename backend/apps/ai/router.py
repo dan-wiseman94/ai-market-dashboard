@@ -69,7 +69,7 @@ def _calibration_choice() -> tuple[str, str] | None:
 
     from django.utils import timezone
 
-    from apps.aieval.services import latest_eval_for_model
+    from apps.analytics.services.aieval import latest_eval_for_model
 
     min_scored = int(getattr(settings, "AI_CALIBRATION_ROUTING_MIN_SCORED", 5))
     max_age_days = int(getattr(settings, "AI_CALIBRATION_ROUTING_MAX_AGE_DAYS", 30))

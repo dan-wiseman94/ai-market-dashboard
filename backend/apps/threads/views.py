@@ -174,7 +174,7 @@ class ThreadViewSet(
         a `blocks` list: one document block referencing the Anthropic file_id
         + one text block carrying the prompt.
         """
-        from apps.files.models import UserFile
+        from apps.threads.models import UserFile
 
         thread = self.get_object()
         file_id = request.data.get("file_id")

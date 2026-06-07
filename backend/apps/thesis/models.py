@@ -8,6 +8,8 @@ from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.utils import timezone
 
+from apps.core.model_bases import Resolution
+
 
 class Thesis(models.Model):
     DIRECTION_CHOICES: ClassVar[list[tuple[str, str]]] = [
@@ -135,7 +137,7 @@ class DecisionJournalEntry(models.Model):
         return f"DecisionJournalEntry(thread#{self.thread_id} {self.decision})"
 
 
-class PostMortem(models.Model):
+class PostMortem(Resolution):
     """A scheduled review of a thesis at a fixed horizon after it was opened.
 
     Closes the decision loop: at 7/30/90 days we compute the ACTUAL forward
@@ -154,13 +156,6 @@ class PostMortem(models.Model):
         ("failed", "Failed"),
         ("skipped", "Skipped"),
     ]
-    VERDICT_CHOICES: ClassVar[list[tuple[str, str]]] = [
-        ("correct", "Correct"),
-        ("incorrect", "Incorrect"),
-        ("mixed", "Mixed"),
-        ("inconclusive", "Inconclusive"),
-    ]
-
     thesis = models.ForeignKey(
         Thesis,
         on_delete=models.CASCADE,
@@ -169,8 +164,6 @@ class PostMortem(models.Model):
     horizon_days = models.IntegerField()
     due_at = models.DateTimeField()
     status = models.CharField(max_length=16, choices=STATUS_CHOICES, default="scheduled")
-    forward_return_pct = models.FloatField(null=True, blank=True)
-    verdict = models.CharField(max_length=16, choices=VERDICT_CHOICES, blank=True, default="")
     report = models.JSONField(default=dict)
     message = models.ForeignKey(
         "threads.Message",
@@ -191,3 +184,84 @@ class PostMortem(models.Model):
 
     def __str__(self) -> str:
         return f"PostMortem(thesis#{self.thesis_id} {self.horizon_days}d {self.status})"
+
+
+class Position(models.Model):
+    """Manually maintained position record (moved from the former apps.portfolio per
+    the 27→12 consolidation — it's the broker-position leg of the thesis loop).
+    Strictly observational — no broker write path. ``db_table`` pinned to its
+    original name (see migration 0008). P&L is computed off stored OHLC bars.
+    """
+
+    DIRECTION_CHOICES: ClassVar = [("long", "Long"), ("short", "Short")]
+    STATUS_CHOICES: ClassVar = [("open", "Open"), ("closed", "Closed")]
+
+    ticker = models.CharField(max_length=16, db_index=True)
+    direction = models.CharField(max_length=8, choices=DIRECTION_CHOICES, default="long")
+    quantity = models.DecimalField(max_digits=18, decimal_places=4)
+    avg_cost = models.DecimalField(max_digits=14, decimal_places=4)
+    opened_at = models.DateTimeField(default=timezone.now)
+    closed_at = models.DateTimeField(null=True, blank=True)
+    close_price = models.DecimalField(max_digits=14, decimal_places=4, null=True, blank=True)
+    realized_pnl = models.DecimalField(max_digits=18, decimal_places=4, null=True, blank=True)
+    status = models.CharField(max_length=8, choices=STATUS_CHOICES, default="open", db_index=True)
+    note = models.TextField(blank=True, default="")
+    thesis = models.ForeignKey(
+        "thesis.Thesis",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="positions",
+    )
+    profile = models.ForeignKey(
+        "profiles.TradingProfile",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="positions",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "portfolio_position"
+        ordering: ClassVar = ["-opened_at"]
+        indexes: ClassVar = [
+            models.Index(fields=["status", "-opened_at"]),
+            models.Index(fields=["ticker", "status"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"Position({self.ticker}, {self.direction}, {self.status})"
+
+    def save(self, *args, **kwargs):
+        self.ticker = (self.ticker or "").upper()
+        super().save(*args, **kwargs)
+
+
+class Lesson(models.Model):
+    """Distilled recurring lesson (moved from the former apps.lessons per the 27→12
+    consolidation): clustered from decisive post-mortems, fed to the Coach. The
+    embedding is a plain JSON float list (few lessons → cosine in Python). ``db_table``
+    pinned to ``lessons_lesson`` so the move preserves the table + its M2M.
+    """
+
+    text = models.TextField(help_text="Representative bullet of the cluster.")
+    embedding = models.JSONField(null=True, blank=True)
+    tags = models.JSONField(default=dict)
+    evidence = models.ManyToManyField("thesis.PostMortem", related_name="lessons", blank=True)
+    support_n = models.PositiveIntegerField(
+        default=0, help_text="Number of post-mortems supporting this lesson."
+    )
+    muted = models.BooleanField(default=False, help_text="Hidden from the coach when True.")
+    last_seen = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "lessons_lesson"
+        ordering: ClassVar = ["-support_n", "-last_seen"]
+        indexes: ClassVar = [models.Index(fields=["muted", "-support_n"])]
+
+    def __str__(self) -> str:
+        return f"Lesson(#{self.pk} n={self.support_n} {self.text[:40]!r})"

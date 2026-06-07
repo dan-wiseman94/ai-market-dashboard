@@ -27,7 +27,7 @@ def _theses():
 
 
 def _positions():
-    from apps.portfolio.models import Position
+    from apps.thesis.models import Position
 
     return Position.objects.filter(status="open").values_list("ticker", flat=True)
 

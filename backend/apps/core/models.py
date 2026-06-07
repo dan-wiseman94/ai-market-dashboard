@@ -36,7 +36,7 @@ class SystemSettings(models.Model):
     observer_response_cache_enabled = models.BooleanField(null=True, blank=True)
     observer_response_cache_ttl_seconds = models.IntegerField(null=True, blank=True)
 
-    # Scheduled eval harness (advanced) — apps.aieval.tasks.
+    # Scheduled eval harness (advanced) — apps.analytics.tasks.
     aieval_scheduled_enabled = models.BooleanField(null=True, blank=True)
     aieval_scheduled_model = models.CharField(max_length=100, null=True, blank=True)  # noqa: DJ001
     aieval_scheduled_horizon = models.IntegerField(null=True, blank=True)
