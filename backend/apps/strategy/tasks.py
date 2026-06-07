@@ -32,7 +32,12 @@ from apps.threads.models import Message
 log = logging.getLogger(__name__)
 
 
-@shared_task(name="coverage.revise_from_observation")
+# at-most-once: bills a provider (run_structured) and is not idempotent; overrides
+# the global acks_late=True so a worker crash can't redeliver + re-bill. See
+# apps/strategy/tests/test_task_acks.py.
+@shared_task(
+    name="coverage.revise_from_observation", acks_late=False, reject_on_worker_lost=False
+)
 def revise_from_observation(ticker: str, snapshot_id: int) -> None:
     """Re-run the house view for ``ticker`` against snapshot ``snapshot_id``.
 
@@ -49,7 +54,12 @@ def revise_from_observation(ticker: str, snapshot_id: int) -> None:
     revise_coverage(ticker, snap, profile=snap.profile)
 
 
-@shared_task(name="warroom.run_debate")
+# at-most-once: the most expensive AI path (N personas x rounds + synthesis) and
+# not idempotent — it ends by posting an unconditional warroom_verdict Message.
+# Overriding the global acks_late=True stops a worker-loss / 660s time-limit
+# redelivery from re-billing every persona and posting a second contradictory
+# verdict. See apps/strategy/tests/test_task_acks.py.
+@shared_task(name="warroom.run_debate", acks_late=False, reject_on_worker_lost=False)
 def run_debate(run_id: int) -> None:
     run = WarRoomRun.objects.filter(id=run_id).first()
     if run is None:
@@ -120,7 +130,10 @@ def sweep() -> int | None:
     return run_sweep()
 
 
-@shared_task(name="strategy.regime_refresh")
+# at-most-once: a run_structured narrative + an unconditional RegimeReading append
+# (no unique key); acks_late=False stops a redelivery from re-billing + duplicating
+# the row. A lost reading is just a missing 30-min sample. See tests/test_task_acks.py.
+@shared_task(name="strategy.regime_refresh", acks_late=False, reject_on_worker_lost=False)
 def refresh(force: bool = False) -> int | None:
     """Compute + persist one RegimeReading (was regime.refresh). Skips when the market
     is closed unless ``force`` (the pre-open / post-close forced readings pass True).
