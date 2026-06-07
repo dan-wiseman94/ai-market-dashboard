@@ -162,7 +162,6 @@ source_modules = [
     "apps.desk",
     "apps.briefing",
     "apps.predictions",
-    "apps.dashboard",
     "apps.snapshots",
     "apps.market",
 ]
@@ -221,7 +220,6 @@ source_modules = [
     "apps.core",
     "apps.costs",
     "apps.coverage",
-    "apps.dashboard",
     "apps.desk",
     "apps.export",
     "apps.files",
