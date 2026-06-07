@@ -34,20 +34,28 @@ def prune_retention() -> dict:
     * Notification   — keep AI_RETENTION_NOTIFICATION_DAYS (default 90d)
     * ErrorEvent     — keep AI_RETENTION_ERROR_DAYS        (default 90d),
                        resolved=True only (unresolved kept regardless of age)
+    * RegimeReading  — keep AI_RETENTION_REGIME_DAYS       (default 180d)
+    * DeskEntry      — keep AI_RETENTION_DESK_DAYS         (default 180d)
+    * BookSnapshot   — keep AI_RETENTION_BOOK_DAYS         (default 365d)
+      (the three above are append-only leaves with no inbound FK; the latest row of
+      each is always recent, so old rows are pure history that grows every pg_dump.)
 
     Models NEVER touched
     --------------------
     Snapshot, SnapshotSection, SnapshotImage, Message, AIRun,
     Thesis, PostMortem, DecisionJournalEntry, Backup* — all load-bearing.
+    WarRoomRun / CoverageRevision / EvalRun / TriggerFiring — kept as audit/cost trails.
     """
     from datetime import timedelta
 
     from django.utils import timezone
 
+    from apps.book.models import BookSnapshot
     from apps.core.models import ErrorEvent
     from apps.core.runtime_config import runtime_config
     from apps.market.models import OHLCBar, OptionChainSnapshot
     from apps.observer.models import Notification
+    from apps.strategy.models import DeskEntry, RegimeReading
 
     rc = runtime_config()
     results: dict[str, int] = {}
@@ -81,6 +89,21 @@ def prune_retention() -> dict:
         "errors",
         lambda c: ErrorEvent.objects.filter(created_at__lt=c, resolved=True),
         rc.retention_error_days,
+    )
+    _prune(
+        "regime",
+        lambda c: RegimeReading.objects.filter(created_at__lt=c),
+        rc.retention_regime_days,
+    )
+    _prune(
+        "desk",
+        lambda c: DeskEntry.objects.filter(created_at__lt=c),
+        rc.retention_desk_days,
+    )
+    _prune(
+        "book",
+        lambda c: BookSnapshot.objects.filter(created_at__lt=c),
+        rc.retention_book_days,
     )
 
     return results
