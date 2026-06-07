@@ -150,6 +150,33 @@ def test_write_func_persists_refreshed_token():
 
 
 @pytest.mark.django_db
+@override_settings(SCHWAB_CLIENT_ID="cid", SCHWAB_CLIENT_SECRET="csec")
+def test_write_func_tolerates_authlib_keyword_args():
+    """authlib >=1.6 calls the update_token hook with refresh_token=/access_token=
+    keywords, which schwab-py forwards through wrapped_token_write_func to our
+    writer. The writer must absorb the extra kwargs and still persist the token.
+
+    Regression: TypeError "_write_token() got an unexpected keyword argument
+    'refresh_token'" broke every Schwab refresh after authlib bumped to 1.6.x.
+    """
+    ApiCredential.objects.create(
+        provider="schwab",
+        token={"access_token": "OLD", "refresh_token": "RT"},
+    )
+    from apps.market.schwab_client import _write_token
+
+    # Exactly how authlib/schwab-py invoke the hook: token positional + identifying kwargs.
+    _write_token(
+        {"access_token": "NEW", "refresh_token": "RT2", "expires_at": 9999999999},
+        refresh_token="RT2",
+        access_token="NEW",
+    )
+    cred = ApiCredential.objects.get(provider="schwab")
+    assert cred.token["access_token"] == "NEW"
+    assert cred.token["refresh_token"] == "RT2"
+
+
+@pytest.mark.django_db
 def test_read_func_wraps_bare_token_in_schwab_metadata():
     # schwab-py's client_from_access_functions requires the {creation_timestamp, token}
     # wrapper; reading must produce it from our bare stored token.
