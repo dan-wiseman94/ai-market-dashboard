@@ -52,14 +52,26 @@ const threadFixture = {
   ],
 };
 
+// The list endpoint returns light rows (no messages) inside a paginated envelope.
+const threadListRowFixture = {
+  id: 1,
+  kind: "consult" as const,
+  title: "Morning scan",
+  profile: { id: 2, name: "Growth", default_provider: "claude", default_model: "claude-sonnet-4-6" },
+  pinned_snapshot_id: 99,
+  created_at: "2026-05-17T09:00:00Z",
+  message_count: 2,
+};
+
 describe("api/threads", () => {
   describe("fetchThreads", () => {
-    it("GETs /api/threads/ and returns Thread[]", async () => {
-      const api = mockApi({ "GET /api/threads/": [threadFixture] });
+    it("GETs /api/threads/ and returns the unwrapped paginated rows", async () => {
+      const api = mockApi({ "GET /api/threads/": { results: [threadListRowFixture] } });
       const res = await fetchThreads();
       expect(res).toHaveLength(1);
       expect(res[0].id).toBe(1);
       expect(res[0].kind).toBe("consult");
+      expect(res[0].message_count).toBe(2);
       expect(api.calls).toHaveLength(1);
       expect(api.calls[0].method).toBe("GET");
       expect(api.calls[0].url).toMatch(/\/api\/threads\/$/);
@@ -73,7 +85,7 @@ describe("api/threads", () => {
     });
 
     it("returns empty array when no threads exist", async () => {
-      const api = mockApi({ "GET /api/threads/": [] });
+      const api = mockApi({ "GET /api/threads/": { results: [] } });
       const res = await fetchThreads();
       expect(res).toEqual([]);
       expect(api.calls).toHaveLength(1);

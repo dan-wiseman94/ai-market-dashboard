@@ -2282,6 +2282,21 @@ export interface components {
             previous?: string | null;
             results: components["schemas"]["SnapshotList"][];
         };
+        PaginatedThreadListList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=400&limit=100
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?offset=200&limit=100
+             */
+            previous?: string | null;
+            results: components["schemas"]["ThreadList"][];
+        };
         PatchedAgentPreset: {
             readonly id?: number;
             name?: string;
@@ -2788,6 +2803,26 @@ export interface components {
          * @enum {string}
          */
         ThreadKindEnum: "consult" | "chat" | "observer" | "briefing" | "diff" | "warroom";
+        /**
+         * @description Light row for the list endpoint — deliberately omits ``messages``.
+         *
+         *     ``Message.content`` holds serialized snapshots + full AI responses (tens of KB
+         *     each, up to ~150k-token synthetic snapshot turns), so nesting every thread's
+         *     full history made GET /api/threads/ the heaviest list endpoint in the app while
+         *     the list UI reads only title/kind/profile/created_at. The full ThreadSerializer
+         *     is still used for the detail view. ``message_count`` comes from a queryset
+         *     annotation. Mirrors SnapshotListSerializer.
+         */
+        ThreadList: {
+            readonly id: number;
+            kind?: components["schemas"]["ThreadKindEnum"];
+            title?: string;
+            readonly profile: components["schemas"]["ProfileInline"];
+            readonly pinned_snapshot_id: number | null;
+            /** Format: date-time */
+            readonly created_at: string;
+            readonly message_count: number;
+        };
         TradingProfile: {
             readonly id: number;
             name: string;
@@ -5542,7 +5577,12 @@ export interface operations {
     };
     threads_list: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Number of results to return per page. */
+                limit?: number;
+                /** @description The initial index from which to return the results. */
+                offset?: number;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -5554,7 +5594,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Thread"][];
+                    "application/json": components["schemas"]["PaginatedThreadListList"];
                 };
             };
         };

@@ -177,6 +177,12 @@ SPECTACULAR_SETTINGS = {
     "DESCRIPTION": "Single-user AI trading dashboard — internal API.",
     "VERSION": "0.4.0",
     "SERVE_INCLUDE_SCHEMA": False,
+    # Thread.kind is shared by ThreadSerializer + ThreadListSerializer; without this
+    # the enum component name flips to a hash-suffixed Kind<hash>Enum. Pin it so the
+    # name (and the generated frontend type) stays stable as serializers are added.
+    "ENUM_NAME_OVERRIDES": {
+        "ThreadKindEnum": "apps.threads.models.Thread.KIND_CHOICES",
+    },
 }
 
 # CORS (dev only — prod serves frontend same-origin)

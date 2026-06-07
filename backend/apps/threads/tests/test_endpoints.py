@@ -120,6 +120,45 @@ def test_patch_thread_ignores_readonly_kind(api):
 
 
 @pytest.mark.django_db
+def test_list_threads_is_paginated_and_omits_message_bodies(api):
+    """The list endpoint must not serialize every thread's full message history
+    (the heaviest over-fetch in the app — Message.content holds serialized
+    snapshots + full AI responses). It returns a paginated envelope of light rows
+    carrying a message_count, mirroring SnapshotViewSet; the detail view keeps the
+    nested messages."""
+    p = TradingProfile.objects.create(name="P", style="x")
+    t = Thread.objects.create(kind="consult", profile=p, title="T")
+    Message.objects.create(thread=t, role="user", content={"text": "hi"}, status="done")
+    Message.objects.create(thread=t, role="assistant", content={"text": "yo"}, status="done")
+
+    resp = api.get("/api/threads/")
+    assert resp.status_code == 200
+    body = resp.json()
+    # Paginated envelope (LimitOffsetPagination), not a bare array.
+    assert set(body) >= {"count", "results"}
+    assert body["count"] == 1
+    row = body["results"][0]
+    assert row["id"] == t.id
+    assert row["profile"]["id"] == p.id
+    assert "messages" not in row  # the whole point: no per-thread message payload
+    assert row["message_count"] == 2
+
+
+@pytest.mark.django_db
+def test_retrieve_thread_includes_full_messages(api):
+    """Retrieve keeps the full ThreadSerializer (messages nested) for the detail view."""
+    p = TradingProfile.objects.create(name="P", style="x")
+    t = Thread.objects.create(kind="consult", profile=p, title="T")
+    Message.objects.create(thread=t, role="user", content={"text": "hi"}, status="done")
+
+    resp = api.get(f"/api/threads/{t.id}/")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert len(body["messages"]) == 1
+    assert body["messages"][0]["content"]["text"] == "hi"
+
+
+@pytest.mark.django_db
 def test_send_message_enqueues_ai_run(api):
     p = TradingProfile.objects.create(name="P", style="x")
     t = Thread.objects.create(kind="consult", profile=p, title="x")
