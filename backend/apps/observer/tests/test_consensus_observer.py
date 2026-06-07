@@ -7,6 +7,7 @@ consensus=False paths (structured + streaming) are UNCHANGED.
 
 from __future__ import annotations
 
+from decimal import Decimal
 from unittest.mock import patch
 
 import pytest
@@ -14,6 +15,7 @@ import pytest
 from apps.observer.models import ObserverSchedule
 from apps.observer.schemas import ObservationReport, Signal
 from apps.observer.services import run as run_service
+from apps.observer.services.consensus import StructuredPair
 from apps.observer.services.threads import get_or_create_observer_thread
 from apps.profiles.models import TradingProfile
 from apps.secrets.models import ProviderConfig
@@ -39,6 +41,18 @@ def _report(bias: str, signals: dict[str, str] | None = None) -> ObservationRepo
             for t, b in (signals or {}).items()
         ],
         next_check_in="later",
+    )
+
+
+def _pair(model: str) -> StructuredPair:
+    """A structured-capable claude pair with no-op caps (Infinity daily / null monthly)."""
+    return StructuredPair(
+        provider="claude",
+        model=model,
+        api_key="sk-ant",
+        base_url="",
+        daily_cap=Decimal("Infinity"),
+        monthly_cap=None,
     )
 
 
@@ -72,9 +86,9 @@ def test_consensus_fire_persists_consensus_report_message():
         status="pending",
     )
     pairs = [
-        ("claude", "claude-a", "sk-ant", "", None, None),
-        ("claude", "claude-b", "sk-ant", "", None, None),
-        ("claude", "claude-c", "sk-ant", "", None, None),
+        _pair("claude-a"),
+        _pair("claude-b"),
+        _pair("claude-c"),
     ]
     reports = [
         _report("bullish", {"SPY": "bullish"}),
@@ -132,7 +146,7 @@ def test_consensus_fire_degrades_with_single_provider():
         source="observer",
         status="pending",
     )
-    pairs = [("claude", "claude-a", "sk-ant", "", None, None)]
+    pairs = [_pair("claude-a")]
 
     with (
         patch("apps.observer.services.run.any_market_open", return_value=True),

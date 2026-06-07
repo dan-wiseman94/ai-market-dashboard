@@ -12,6 +12,7 @@ from unittest.mock import patch
 import pytest
 
 from apps.observer.schemas import ConsensusReport, ObservationReport, Signal
+from apps.observer.services.consensus import StructuredPair
 from apps.secrets.models import ProviderConfig
 
 pytestmark = pytest.mark.django_db
@@ -37,11 +38,10 @@ def _report(bias: str, signals: dict[str, str] | None = None) -> ObservationRepo
     )
 
 
-def _pairs(n: int) -> list[tuple]:
+def _pairs(n: int) -> list[StructuredPair]:
     """n structured-capable pairs.
 
-    Tuple shape mirrors ``structured_capable_pairs()``:
-    ``(provider, model, api_key, base_url, daily_cap, monthly_cap)``. Caps are
+    Mirrors ``structured_capable_pairs()``'s ``StructuredPair`` shape. Caps are
     Infinity/None so the cap checks are no-ops unless a test patches them.
 
     Note: ``ProviderConfig.provider`` is unique, so the only real Claude-family
@@ -50,7 +50,15 @@ def _pairs(n: int) -> list[tuple]:
     differ by model — the aggregation keys takes by ``provider/model``.
     """
     return [
-        ("claude", f"claude-model-{i}", "sk-ant-x", "", Decimal("Infinity"), None) for i in range(n)
+        StructuredPair(
+            provider="claude",
+            model=f"claude-model-{i}",
+            api_key="sk-ant-x",
+            base_url="",
+            daily_cap=Decimal("Infinity"),
+            monthly_cap=None,
+        )
+        for i in range(n)
     ]
 
 

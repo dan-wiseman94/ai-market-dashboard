@@ -21,6 +21,7 @@ from __future__ import annotations
 import logging
 from collections import Counter
 from decimal import Decimal
+from typing import NamedTuple
 
 from apps.ai.catalog import DEFAULT_CLAUDE_MODEL
 from apps.ai.cost import CostCapExceededError, check_daily_cap, check_monthly_cap
@@ -35,8 +36,25 @@ _STRUCTURED_PROVIDERS = ("claude", "anthropic")
 
 _DEGRADED_NOTE = "single provider — no consensus available"
 
-# (provider, model, api_key, base_url, daily_cap_usd, monthly_cap_usd)
-StructuredPair = tuple[str, str, str, str, Decimal, Decimal | None]
+
+class StructuredPair(NamedTuple):
+    """A structured-capable (provider, model) target plus its cost caps.
+
+    Named fields rather than a bare 6-tuple so data-flow analysis keeps the
+    secret ``api_key`` field distinct from the freely-loggable ``provider`` /
+    ``model``: unpacking a tuple out of a list loses per-index taint precision,
+    which makes CodeQL smear the api_key's "sensitive" label onto provider/model
+    and falsely flag logging them (py/clear-text-logging-sensitive-data). As a
+    ``NamedTuple`` it still iterates/compares equal to a plain tuple, so
+    positional construction (incl. in tests) is unchanged.
+    """
+
+    provider: str
+    model: str
+    api_key: str
+    base_url: str
+    daily_cap: Decimal
+    monthly_cap: Decimal | None
 
 
 def structured_capable_pairs() -> list[StructuredPair]:
@@ -60,13 +78,13 @@ def structured_capable_pairs() -> list[StructuredPair]:
         if not key:
             continue
         pairs.append(
-            (
-                cfg.provider,
-                model,
-                key,
-                cfg.base_url or "",
-                cfg.daily_cost_cap_usd,
-                cfg.monthly_cost_cap_usd,
+            StructuredPair(
+                provider=cfg.provider,
+                model=model,
+                api_key=key,
+                base_url=cfg.base_url or "",
+                daily_cap=cfg.daily_cost_cap_usd,
+                monthly_cap=cfg.monthly_cost_cap_usd,
             )
         )
     return pairs
@@ -98,32 +116,36 @@ def consensus_report(*, system: str, user: str) -> ConsensusReport:
     pairs = structured_capable_pairs()
 
     takes: list[ProviderTake] = []
-    for provider, model, api_key, base_url, cap_usd, monthly_cap in pairs:
+    # Attribute access (not tuple-unpack) keeps the secret pair.api_key isolated
+    # from the loggable pair.provider / pair.model — see StructuredPair docstring.
+    for pair in pairs:
         # Respect cost caps per provider; a capped provider is skipped, not run.
         try:
-            check_daily_cap(provider, cap_usd=cap_usd)
-            check_monthly_cap(provider, cap_usd=monthly_cap)
+            check_daily_cap(pair.provider, cap_usd=pair.daily_cap)
+            check_monthly_cap(pair.provider, cap_usd=pair.monthly_cap)
         except CostCapExceededError as exc:
-            log.info("consensus: skipping %s/%s — cap: %s", provider, model, exc)
+            log.info("consensus: skipping %s/%s — cap: %s", pair.provider, pair.model, exc)
             continue
 
         try:
             report: ObservationReport = run_structured(
-                api_key=api_key,
-                model=model,
+                api_key=pair.api_key,
+                model=pair.model,
                 system=system,
                 user=user,
                 output_model=ObservationReport,
-                base_url=base_url,
+                base_url=pair.base_url,
             )
         except Exception as exc:
-            log.warning("consensus: %s/%s structured run failed: %s", provider, model, exc)
+            log.warning(
+                "consensus: %s/%s structured run failed: %s", pair.provider, pair.model, exc
+            )
             continue
 
         takes.append(
             ProviderTake(
-                provider=provider,
-                model=model,
+                provider=pair.provider,
+                model=pair.model,
                 bias=report.bias,
                 signal_bias={s.ticker: s.bias for s in report.signals},
             )
