@@ -2,7 +2,7 @@ from decimal import Decimal
 
 import pytest
 
-from apps.costs.services import cost_breakdown_today
+from apps.ai.cost_reporting import cost_breakdown_today
 from apps.profiles.models import TradingProfile
 from apps.threads.models import AIRun, Message, Thread
 

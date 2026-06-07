@@ -5,7 +5,7 @@ from decimal import Decimal
 
 import pytest
 
-from apps.costs.services import caps
+from apps.ai.cost_reporting import caps
 from apps.secrets.models import ProviderConfig
 from apps.threads.models import AIRun, Message, Thread
 
