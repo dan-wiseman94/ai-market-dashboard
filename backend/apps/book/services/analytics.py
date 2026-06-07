@@ -4,7 +4,7 @@ empty input and never raises out of the deterministic core."""
 from __future__ import annotations
 
 from apps.book import constants as C
-from apps.regime.services.compute import current_regime
+from apps.strategy.regime.services.compute import current_regime
 
 
 def concentration(exposures: list[dict]) -> dict:

@@ -128,3 +128,23 @@ class DeskEntry(models.Model):
 
     def __str__(self) -> str:
         return f"DeskEntry({self.anomaly_type} {self.ticker or 'book'})"
+
+
+class RegimeReading(models.Model):
+    """Append-only market-regime reading (moved from apps.regime); the latest row is
+    the current regime. Completes the M15 strategist cluster here. No FKs — a leaf."""
+
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    composite = models.CharField(max_length=20)
+    axes = models.JSONField(default=dict)
+    drivers = models.JSONField(default=list)
+    narrative = models.TextField(blank=True, default="")
+    inputs = models.JSONField(default=dict)
+    changed_axes = models.JSONField(default=list)
+
+    class Meta:
+        db_table = "regime_regimereading"
+        ordering: ClassVar = ["-created_at"]
+
+    def __str__(self) -> str:
+        return f"RegimeReading({self.composite} @ {self.created_at:%Y-%m-%d %H:%M})"

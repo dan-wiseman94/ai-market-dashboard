@@ -75,7 +75,7 @@ SCHEDULED_WORK: list[ScheduledTask] = [
         "",
     ),
     ScheduledTask(
-        "regime.refresh",
+        "strategy.regime_refresh",
         "every 30 min + forced ~09:00 ET",
         "Append a market-regime reading (intraday market-hours guard inside).",
         "",

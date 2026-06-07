@@ -72,7 +72,7 @@ def detect_options(universe: list[str]) -> list[dict]:
 
 
 def detect_regime_change() -> list[dict]:
-    from apps.regime.models import RegimeReading
+    from apps.strategy.models import RegimeReading
 
     last2 = list(RegimeReading.objects.order_by("-created_at")[:2])
     if len(last2) == 2 and last2[0].composite != last2[1].composite:
@@ -114,7 +114,7 @@ def detect_breadth_divergence() -> list[dict]:
     """Bearish index-vs-breadth divergence: the tape is in an uptrend while
     participation is narrow/deteriorating (fewer names carrying the rally).
     Reads the latest F1 regime axes — book-wide, no per-ticker scan."""
-    from apps.regime.models import RegimeReading
+    from apps.strategy.models import RegimeReading
 
     latest = RegimeReading.objects.order_by("-created_at").first()
     if not latest:

@@ -8,7 +8,7 @@ import logging
 from apps.market.models import OHLCBar
 from apps.market.services.context import fetch_market_context
 from apps.market.services.fred import fetch_macro
-from apps.regime import constants as C
+from apps.strategy.regime import constants as C
 from apps.triggers.indicators import dist_from_sma_pct, sma_spread_pct
 
 log = logging.getLogger(__name__)
