@@ -165,7 +165,6 @@ source_modules = [
     "apps.strategy",
     "apps.book",
     "apps.briefing",
-    "apps.predictions",
     "apps.snapshots",
     "apps.market",
 ]
@@ -223,7 +222,6 @@ source_modules = [
     "apps.core",
     "apps.export",
     "apps.observer",
-    "apps.predictions",
     "apps.profiles",
     "apps.recall",
     "apps.secrets",

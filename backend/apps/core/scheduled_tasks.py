@@ -63,13 +63,13 @@ SCHEDULED_WORK: list[ScheduledTask] = [
         "",
     ),
     ScheduledTask(
-        "predictions.resolve_due",
+        "observer.resolve_due_predictions",
         "every 5 min",
         "Resolve AI predictions whose horizon has elapsed.",
         "",
     ),
     ScheduledTask(
-        "predictions.check_invalidations",
+        "observer.check_prediction_invalidations",
         "every 5 min",
         "Invalidate open predictions whose invalidation level was breached.",
         "",

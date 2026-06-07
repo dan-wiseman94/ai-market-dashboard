@@ -7,6 +7,7 @@ from typing import ClassVar
 from django.conf import settings
 from django.db import models
 
+from apps.core.model_bases import DirectionalCall, Resolution
 from apps.profiles.models import TradingProfile
 
 
@@ -123,3 +124,55 @@ class Notification(models.Model):
 
     def __str__(self) -> str:
         return f"Notification({self.kind}: {self.title})"
+
+
+class AIPrediction(DirectionalCall, Resolution):
+    """The Prediction Ledger (M13): the AI's own auto-extracted, auto-resolving
+    forecasts — moved from the former apps.predictions into observer, since they are
+    promoted from observer fires (``services.run`` → ``predictions/services/extract``).
+    ticker/direction/horizon_days/invalidation_* come from DirectionalCall;
+    forward_return_pct/verdict from Resolution. ``db_table`` pinned.
+    """
+
+    STATUSES: ClassVar = [
+        ("open", "open"),
+        ("resolving", "resolving"),
+        ("resolved", "resolved"),
+        ("invalidated", "invalidated"),
+    ]
+
+    confidence = models.FloatField()  # 0..1
+    rationale = models.TextField(blank=True, default="")
+    provider = models.CharField(max_length=32, db_index=True)
+    model = models.CharField(max_length=64, db_index=True)
+    source_message = models.ForeignKey(
+        "threads.Message", null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+    source_snapshot = models.ForeignKey(
+        "snapshots.Snapshot", null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+    profile = models.ForeignKey(
+        "profiles.TradingProfile",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+    )
+    predicted_at = models.DateTimeField(db_index=True)
+    resolve_at = models.DateTimeField(db_index=True)
+    status = models.CharField(max_length=12, choices=STATUSES, default="open")
+    resolved_at = models.DateTimeField(null=True, blank=True)
+    invalidated_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "predictions_aiprediction"
+        indexes: ClassVar = [
+            models.Index(fields=["ticker", "status"]),
+            models.Index(fields=["provider", "model", "status"]),
+            models.Index(fields=["status", "resolve_at"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"AIPrediction({self.ticker}, {self.direction}, {self.horizon_days}d, {self.status})"

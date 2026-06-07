@@ -6,7 +6,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.predictions.services.reconcile import ai_view_payload, open_divergences
+from apps.observer.predictions.services.reconcile import ai_view_payload, open_divergences
 
 
 class AIViewForTickerView(APIView):
