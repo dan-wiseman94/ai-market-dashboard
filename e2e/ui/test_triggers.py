@@ -35,7 +35,7 @@ def test_create_complex_dsl_all_any_not(page, frontend_base_url, minimal) -> Non
 @pytest.mark.integration
 @pytest.mark.ui
 def test_trigger_backtest_runs_against_ohlc(page, frontend_base_url, triggers) -> None:
-    from apps.triggers.models import EventTrigger
+    from apps.observer.models import EventTrigger
 
     trig = EventTrigger.objects.get(name="E2E always fires")
     e = TriggerEditorPage(page, frontend_base_url)
@@ -48,7 +48,7 @@ def test_trigger_backtest_runs_against_ohlc(page, frontend_base_url, triggers) -
 @pytest.mark.integration
 @pytest.mark.ui
 def test_trigger_cooldown_respected(page, frontend_base_url, triggers) -> None:
-    from apps.triggers.models import EventTrigger
+    from apps.observer.models import EventTrigger
 
     trig = EventTrigger.objects.get(name="E2E always fires")
     e = TriggerEditorPage(page, frontend_base_url)
@@ -61,7 +61,7 @@ def test_trigger_cooldown_respected(page, frontend_base_url, triggers) -> None:
 @pytest.mark.integration
 @pytest.mark.ui
 def test_trigger_edit_preserves_firings(page, frontend_base_url, triggers) -> None:
-    from apps.triggers.models import EventTrigger, TriggerFiring
+    from apps.observer.models import EventTrigger, TriggerFiring
 
     trig = EventTrigger.objects.get(name="E2E always fires")
     before = TriggerFiring.objects.filter(trigger=trig).count()

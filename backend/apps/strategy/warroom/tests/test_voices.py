@@ -7,7 +7,8 @@ pytestmark = pytest.mark.django_db
 
 def test_single_mode_all_default(monkeypatch):
     monkeypatch.setattr(
-        "apps.strategy.warroom.services.voices._enabled_providers", lambda: [("claude", "claude-opus-4-8")]
+        "apps.strategy.warroom.services.voices._enabled_providers",
+        lambda: [("claude", "claude-opus-4-8")],
     )
     out = assign_voices("single")
     assert {p for _persona, p, _m in out} == {"claude"}
@@ -26,7 +27,8 @@ def test_multi_mode_spreads_across_providers(monkeypatch):
 
 def test_multi_with_one_provider_falls_back(monkeypatch):
     monkeypatch.setattr(
-        "apps.strategy.warroom.services.voices._enabled_providers", lambda: [("claude", "claude-opus-4-8")]
+        "apps.strategy.warroom.services.voices._enabled_providers",
+        lambda: [("claude", "claude-opus-4-8")],
     )
     out = assign_voices("multi")
     assert {p for _persona, p, _m in out} == {"claude"}

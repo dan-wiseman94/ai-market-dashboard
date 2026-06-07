@@ -15,8 +15,8 @@ from decimal import Decimal
 
 from django.db.models import Sum
 
+from apps.observer.models import TriggerFiring
 from apps.threads.models import AIRun
-from apps.triggers.models import TriggerFiring
 
 
 def cost_per_insight(*, start: datetime, end: datetime) -> dict:

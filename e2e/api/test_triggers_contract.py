@@ -17,7 +17,7 @@ def test_trigger_list(api_client, triggers) -> None:
 
 @pytest.mark.integration
 def test_trigger_detail(api_client, triggers) -> None:
-    from apps.triggers.models import EventTrigger
+    from apps.observer.models import EventTrigger
 
     t = EventTrigger.objects.get(name="E2E always fires")
     r = api_client.get(f"/api/triggers/{t.id}/")

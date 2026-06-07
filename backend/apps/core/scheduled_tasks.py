@@ -88,7 +88,7 @@ SCHEDULED_WORK: list[ScheduledTask] = [
         spends=True,
     ),
     ScheduledTask(
-        "briefing.run_scheduled",
+        "observer.briefing_run_scheduled",
         "every 15 min (fires once/day)",
         "Assemble + AI-synthesise the Morning Briefing (unique scheduled_date claim).",
         "",
