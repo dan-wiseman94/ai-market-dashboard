@@ -12,15 +12,62 @@ from __future__ import annotations
 import logging
 import time
 from datetime import datetime
+from secrets import token_urlsafe
 from urllib.parse import urlencode
 
 import httpx
+import redis
 from cryptography.fernet import InvalidToken
 from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 
 log = logging.getLogger(__name__)
+
+# OAuth `state` CSRF nonce (RFC 6749 §10.12). The callback is a cross-site-triggerable
+# GET with no auth cookies, so CSRF middleware / SameSite don't cover it. We mint a
+# one-time nonce in authorize and require it in the callback. Stored in the shared Redis
+# (authorize and callback need not be the same web process — Django's default cache is
+# per-process LocMemCache), with a short TTL bounding the consent round-trip.
+_OAUTH_STATE_REDIS_KEY = "schwab:oauth:state"
+_OAUTH_STATE_TTL_SECONDS = 600  # 10 min: ample for user consent, short enough to bound replay
+
+
+def _redis() -> redis.Redis:
+    return redis.Redis.from_url(settings.REDIS_URL)
+
+
+def new_oauth_state() -> str:
+    """Mint + store a one-time OAuth `state` nonce, returning it for the authorize URL."""
+    state = token_urlsafe(32)
+    try:
+        _redis().set(_OAUTH_STATE_REDIS_KEY, state, ex=_OAUTH_STATE_TTL_SECONDS)
+    except Exception:  # best-effort store; a miss just makes the callback fail closed
+        log.warning("Could not store Schwab OAuth state nonce", exc_info=True)
+    return state
+
+
+def consume_oauth_state(state: str | None) -> bool:
+    """Return True iff ``state`` matches the stored nonce, deleting it (one-time use).
+
+    Fails closed (returns False) on a missing/mismatched nonce or any Redis hiccup, so a
+    cross-site callback carrying an attacker's auth code is rejected before token exchange.
+    """
+    if not state:
+        return False
+    try:
+        r = _redis()
+        expected = r.get(_OAUTH_STATE_REDIS_KEY)
+        if expected is None:
+            return False
+        expected_str = expected.decode() if isinstance(expected, bytes) else str(expected)
+        if expected_str != state:
+            return False
+        r.delete(_OAUTH_STATE_REDIS_KEY)
+        return True
+    except Exception:
+        log.warning("Could not validate Schwab OAuth state nonce", exc_info=True)
+        return False
 
 
 class SchwabNotConfigured(RuntimeError):
