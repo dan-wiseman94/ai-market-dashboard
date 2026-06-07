@@ -56,6 +56,10 @@ def provider_leaderboard(
     # to an empty list (coverage 0, avg None) for keys that never did.
     returns: dict[tuple[str, str], list[float]] = {}
     for run in qs.select_related("message__thread__pinned_snapshot").iterator():
+        # Skip message-less one-shot runs (post-mortems, coverage, …): with no chat
+        # Message there is no pinned snapshot to correlate a forward return against.
+        if run.message is None:
+            continue
         snap = run.message.thread.pinned_snapshot
         if snap is None:
             continue
