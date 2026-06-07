@@ -54,8 +54,12 @@ def test_provider_calibration_query_budget_is_bounded(profile, django_assert_max
             thread=thread, role="assistant", content={"text": ""}, status="done"
         )
         AIRun.objects.create(
-            message=msg, provider="claude", model="m", cost_usd=Decimal("0.1"),
-            latency_ms=1, status="done",
+            message=msg,
+            provider="claude",
+            model="m",
+            cost_usd=Decimal("0.1"),
+            latency_ms=1,
+            status="done",
         )
         _pm(_thesis(3, thread=thread), horizon=30, verdict="correct", fwd=5.0)
 
