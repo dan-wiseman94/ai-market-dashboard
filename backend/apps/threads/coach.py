@@ -464,7 +464,7 @@ def _ai_track_record_block(ticker: str, profile) -> str:
     model = getattr(profile, "default_model", None)
     if not ticker or not model:
         return ""
-    from apps.predictions.models import AIPrediction
+    from apps.observer.models import AIPrediction
 
     decisive = list(
         AIPrediction.objects.filter(

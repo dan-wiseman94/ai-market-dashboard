@@ -17,7 +17,7 @@ import logging
 
 from django.utils import timezone
 
-from apps.predictions.models import AIPrediction
+from apps.observer.models import AIPrediction
 
 log = logging.getLogger(__name__)
 

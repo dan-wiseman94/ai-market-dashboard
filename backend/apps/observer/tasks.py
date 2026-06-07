@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from celery import shared_task
 
-# Side-effect import: registers poll_open_batches when autodiscover loads tasks.py.
+# Side-effect imports: register batch + prediction tasks when autodiscover loads tasks.py.
 from apps.observer import tasks_batch as _tasks_batch  # noqa: F401
+from apps.observer.predictions import tasks as _prediction_tasks  # noqa: F401
 from apps.observer.services.run import run_observer
 
 

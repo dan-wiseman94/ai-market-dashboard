@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import pytest
 
+from apps.observer.models import AIPrediction
+from apps.observer.predictions.services.extract import extract_from_observation
 from apps.observer.schemas import ObservationReport, Signal
-from apps.predictions.models import AIPrediction
-from apps.predictions.services.extract import extract_from_observation
 from apps.profiles.models import TradingProfile
 from apps.snapshots.models import Snapshot
 

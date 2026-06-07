@@ -16,7 +16,7 @@ from celery import shared_task
 from django.utils import timezone
 
 from apps.market.returns import direction_verdict, forward_return_pct, nearest_bar_close
-from apps.predictions.models import AIPrediction
+from apps.observer.models import AIPrediction
 
 log = logging.getLogger(__name__)
 
@@ -39,7 +39,7 @@ def resolve_prediction(pred_id: int) -> bool:
     return True
 
 
-@shared_task(name="predictions.resolve_due")
+@shared_task(name="observer.resolve_due_predictions")
 def resolve_due() -> dict:
     """Resolve every open prediction whose horizon has elapsed. Per-row failures
     are logged and skipped — one bad row never blocks the rest."""
@@ -67,7 +67,7 @@ def _is_breached(direction: str, price: float, invalidation: float) -> bool:
     return False
 
 
-@shared_task(name="predictions.check_invalidations")
+@shared_task(name="observer.check_prediction_invalidations")
 def check_invalidations() -> dict:
     """Mark open predictions whose invalidation level has been breached BEFORE
     their horizon, and notify (M13 F5). Only predictions carrying an

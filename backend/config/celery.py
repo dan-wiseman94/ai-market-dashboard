@@ -33,7 +33,6 @@ TASK_PACKAGES = [
     "apps.briefing",
     "apps.recall",
     "apps.analytics",
-    "apps.predictions",
     "apps.book",
     "apps.strategy",
 ]
@@ -68,11 +67,11 @@ app.conf.beat_schedule = {
         "schedule": 300.0,
     },
     "resolve-due-predictions": {
-        "task": "predictions.resolve_due",
+        "task": "observer.resolve_due_predictions",
         "schedule": 300.0,
     },
     "check-prediction-invalidations": {
-        "task": "predictions.check_invalidations",
+        "task": "observer.check_prediction_invalidations",
         "schedule": 300.0,
     },
     "fire-close-relative-schedules": {
