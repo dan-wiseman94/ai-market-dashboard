@@ -65,9 +65,50 @@ Single WS connection per browser tab, authenticated by the user token; subscript
 
 ## 4. Data model
 
+> **Regenerated from the ORM 2026-06-07** after the consolidation work (shared
+> abstract bases + app merges). §4.0 below is the authoritative current inventory;
+> the §4.1–§4.10 prose is the original v1 design, corrected inline where it drifted.
+
+### 4.0 Current model inventory
+
+Shared abstract bases live in **`apps.core.model_bases`** (no tables): `TimeStamped`,
+`DirectionalCall` (ticker/direction/horizon/invalidation), `Resolution`
+(forward_return_pct/verdict + an idempotent `claim()`), plus canonical
+`VERDICT_CHOICES` / `DIRECTION_CHOICES`. Verdict computation is shared in
+`apps.market.returns.direction_verdict`.
+
+| App | Models |
+|---|---|
+| `core` | SystemSettings, ErrorEvent (+ the abstract bases above) |
+| `secrets` | ProviderConfig, ApiCredential, SchwabAppConfig |
+| `profiles` | TradingProfile, AgentPreset, Watchlist, WatchlistSymbol |
+| `market` | OHLCBar, OptionChainSnapshot, NewsItem, MarketEvent, CompanyFundamentals, CorporateAction, CalendarOverride |
+| `snapshots` | Snapshot, SnapshotSection, SnapshotImage |
+| `threads` | Thread, Message, AIRun, ToolCall, **UserFile** (moved from the removed `files`) |
+| `observer` | ObserverSchedule, Notification |
+| `triggers` | EventTrigger, TriggerFiring |
+| `thesis` | Thesis, PostMortem *(inherits `Resolution`)*, DecisionJournalEntry |
+| `predictions` | AIPrediction *(inherits `DirectionalCall` + `Resolution`)* |
+| `analytics` | **EvalRun** (moved from the removed `aieval`) |
+| `coverage` | CoverageNote, CoverageRevision |
+| `lessons` | Lesson |
+| `portfolio` | Position (manual tracking, thesis-linked) |
+| `regime` / `book` / `desk` | RegimeReading / BookSnapshot / DeskEntry (append-only; latest row = current) |
+| `warroom` | WarRoomRun |
+| `recall` | RecallDocument (generic `(kind, object_id)` search index) |
+| `backups` / `export` | BackupRecord / ExportJob |
+| `briefing` | BriefingConfig, BriefingRun |
+
+**The "directional call + how it scored" domain is unified:** `PostMortem` and
+`AIPrediction` share `Resolution` (the byte-identical `forward_return_pct` / `verdict`
+columns + the `scheduled→running` / `open→resolving` `claim()`); `EvalRun` is the
+batch replay scorer. **Removed/merged apps (27→23):** `dashboard`→`analytics`,
+`costs`→`ai`, `files`→`threads`, `aieval`→`analytics`. FK ids are serialized as
+`*_id` (e.g. `thread_id`, `snapshot_id`) — the DRF contract the frontend types bind to.
+
 ### 4.1 Identity & config
 
-- **User** — single row. Preferences.
+- **User** — *not built.* v1 is single-user with no auth; `Notification.user` is a nullable FK to `AUTH_USER_MODEL` with no rows (a stubbed multi-user seam).
 - **ProviderConfig** — one row per provider (`claude`, `openai`, `local`). Encrypted API key, base URL, default model, `supports_vision`, `enabled`, `daily_cost_cap_usd`.
 - **ApiCredential** — Schwab OAuth tokens (access + refresh + expiry), news API key. Encrypted.
 
@@ -79,24 +120,29 @@ Single WS connection per browser tab, authenticated by the user token; subscript
 
 ### 4.3 Market data (cached / historical)
 
-- **Quote** — ticker, bid, ask, last, volume, ts.
-- **OHLCBar** — ticker, timeframe (`1m|5m|15m|1h|1d`), o/h/l/c/v, ts. Indexed `(ticker, timeframe, ts DESC)`.
-- **OptionChain** — underlying, expiry, fetched_at, raw JSON; children **OptionContract** (strike, type, bid, ask, iv, delta, gamma, theta, vega, oi, volume).
-- **NewsArticle** — ticker (nullable), headline, source, url, published_at, summary.
-- **Position** — ticker, qty, avg_cost, mkt_value, unrealized_pl, day_pl, as_of.
-- **MarketContext** — spy, qqq, vix, breadth fields, as_of.
+Quotes, market-context, and broker positions are **ephemeral cache-only** (no table —
+the v1 `Quote`/`MarketContext` tables and the cache-`Position` were dropped in `market`
+migration 0004). Persisted market models:
+
+- **OHLCBar** — ticker, timeframe (`1m|5m|15m|1h|1d`), o/h/l/c/v, ts. Unique `(ticker, timeframe, ts)`; indexed `(ticker, timeframe, ts DESC)`.
+- **OptionChainSnapshot** — underlying, expiry, fetched_at + a denormalized JSONB `payload` (replaced `OptionChain`/`OptionContract`).
+- **NewsItem** — ticker (nullable), headline, source, url, published_at, summary (was `NewsArticle`).
+- **MarketEvent** — forward calendar (earnings + curated macro); distinct from the trading-session calendar.
+- **CompanyFundamentals**, **CorporateAction** (splits/dividends), **CalendarOverride**.
+
+(Manual broker-position tracking is a separate concern: `portfolio.Position`.)
 
 ### 4.4 Snapshot domain
 
-- **Snapshot** — id, profile FK, objective (text), status (`pending|ready|failed`), captured_at, includes (JSON), notes (user text for this capture), source (`manual|observer|trigger`), summary_hash.
-- **SnapshotSection** — snapshot FK, kind (`quotes|chain|ohlc|positions|breadth|news|notes|image`), payload_json, source_refs (JSON list of FK ids into market rows), status, error.
-- **ChartImage** — snapshot FK, ticker, timeframe, origin (`client|server`), file (`/data/charts/<snapshot_id>/<uuid>.png`).
+- **Snapshot** — profile FK, objective, status — parent terminal state is **`ready`** — captured_at, includes (JSON), notes, source. (`summary_hash` / `source_refs` were never built; the synthetic-message pattern in §5.3 replaced source_refs.)
+- **SnapshotSection** — snapshot FK, kind (quotes|chain|ohlc|positions|breadth|news|image|macro|filings|treasury|events|…), payload, `payload_tokens`, status — section terminal state is **`done`** (NOT `ready`; mixing the two silently drops images — landmine), error.
+- **SnapshotImage** — snapshot FK, ticker, timeframe, origin (`client|server`); bytes offloaded to the `/data` volume (`file_path`; `data` NULL for new rows, legacy rows keep in-DB bytes). Always read via `image_store.read_image_bytes`. (Renamed from `ChartImage`.)
 
 ### 4.5 Conversations
 
 - **Thread** — kind (`consult|chat|observer`), title, created_at, profile FK (nullable), pinned_snapshot FK (for consult/chat), schedule FK (for observer).
 - **Message** — thread FK, role (`user|assistant|system`), content (JSON block list), snapshot_ref FK (nullable), parent_message FK (nullable — set on assistant messages produced by multi-provider compare, §6.6), created_at.
-- **AIRun** — message FK, provider, model, input_tokens, output_tokens, cached_tokens, cost_usd, latency_ms, status, error, raw_request_summary.
+- **AIRun** — message FK (**nullable** — the one-shot `run_structured` path records cost without a chat Message), provider, model, token counts, cost_usd, latency_ms, status, error. Plus **ToolCall** (one row per tool round-trip) and **UserFile** (Anthropic Files API proxy, moved from the removed `files` app).
 
 ### 4.6 Observer + triggers
 
@@ -131,7 +177,10 @@ JSON, stored on `EventTrigger.condition`:
 
 ### 4.10 Retention
 
-Nothing auto-pruned in v1. Charts live on disk at `/data/charts/`. A daily pg_dump runs to `/data/backups/YYYY-MM-DD.sql.gz`, keeping the last 7 days.
+`core.prune_retention` (daily 04:00 beat) ages out OHLC / chain / notifications / errors
+per the windows in `SystemSettings` / `runtime_config()`. Snapshot image bytes live on
+the `/data` volume. A daily `pg_dump` runs to `/data/backups/`, rotated. (The original
+"nothing auto-pruned in v1" no longer holds.)
 
 ## 5. Snapshot pipeline
 

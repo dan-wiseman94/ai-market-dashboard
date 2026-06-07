@@ -122,14 +122,14 @@ SCHEDULED_WORK: list[ScheduledTask] = [
         "",
     ),
     ScheduledTask(
-        "lessons.distill",
+        "thesis.distill",
         "daily 05:30",
         "Cluster recurring post-mortem lessons (deterministic embeddings, no AI call).",
         "",
     ),
     # --- weekly, real spend, default OFF ---
     ScheduledTask(
-        "aieval.run_scheduled",
+        "analytics.aieval_run_scheduled",
         "weekly Mon 05:00",
         "Replay the calibration eval against frozen snapshots — hits the real model.",
         "AIEVAL_SCHEDULED_ENABLED",

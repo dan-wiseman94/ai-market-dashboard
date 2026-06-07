@@ -333,8 +333,7 @@ def _distilled_lessons_block(ticker: str) -> str:
     same direction (leading open thesis) and/or same sector. Cross-ticker by
     design — surfaces "you've been too bullish on biotech into earnings" even on a
     name with no prior theses on it. "" when nothing matches or no lesson recurs."""
-    from apps.lessons.models import Lesson
-    from apps.thesis.models import Thesis
+    from apps.thesis.models import Lesson, Thesis
 
     top = (
         Thesis.objects.filter(ticker=ticker, status="open")
@@ -412,7 +411,7 @@ def _calibration_block(profile) -> str:
     model = getattr(profile, "default_model", None)
     if not model:
         return ""
-    from apps.aieval.services import latest_eval_for_model
+    from apps.analytics.services.aieval import latest_eval_for_model
 
     run = latest_eval_for_model(model)
     if run is None or not run.scored:
