@@ -88,7 +88,7 @@ line-length = 100
 target-version = "py313"
 # vulture_whitelist.py is intentionally a list of bare "undefined" names (that's how vulture
 # whitelists work) — exclude it so ruff doesn't F821 on it.
-extend-exclude = ["migrations", ".venv", "staticfiles", "frontend", "tools/vulture_whitelist.py"]
+extend-exclude = ["migrations", ".venv", "staticfiles", "frontend", "tools/vulture_whitelist.py", "tools/semgrep/rules"]
 
 [tool.ruff.lint]
 # C901 = cyclomatic complexity (mccabe), ceiling below. The historical offenders were
@@ -106,15 +106,18 @@ ignore = ["E501"]
 max-complexity = 15
 
 [tool.ruff.lint.per-file-ignores]
-# Tests + e2e: assert is the pytest idiom; "passwords/secrets" are fake fixtures.
+# Tests + e2e: assert is the pytest idiom; "passwords/secrets" are fake fixtures, seed
+# fixtures use non-crypto random, helpers run trusted subprocs + swallow teardown errors.
 "**/tests/**" = ["S101", "S105", "S106"]
-"e2e/**" = ["S101", "S105", "S106"]
+"e2e/**" = ["S101", "S105", "S106", "S110", "S112", "S311", "S603"]
 "**/settings/*.py" = ["F403", "F405"]
 "**/migrations/**" = ["RUF012"]
 # DSL-validated invariants narrowed via assert in the trigger-metric dispatch.
-"backend/apps/triggers/metrics.py" = ["S101"]
+"backend/apps/observer/triggers/metrics.py" = ["S101"]
 # Controlled pg_dump/pg_restore (list args, no shell); S603/S607 are inherent + safe here.
 "backend/apps/backups/services.py" = ["S603", "S607"]
+# Dev/CI tooling: flake-audit runs pytest via subprocess (list args, trusted) — S603/S607 inherent.
+"tools/flake_audit.py" = ["S603", "S607"]
 
 [tool.ruff.format]
 quote-style = "double"

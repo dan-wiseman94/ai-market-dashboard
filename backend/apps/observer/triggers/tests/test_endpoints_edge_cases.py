@@ -35,7 +35,9 @@ def test_evaluate_by_trigger_id_uses_stored_condition(fake_redis, api, profile):
         profile=profile,
         condition={"metric": "price", "ticker": "SPY", "op": ">", "value": 550},
     )
-    with patch("apps.observer.triggers.metrics.fetch_quotes", return_value={"SPY": {"last": 551.0}}):
+    with patch(
+        "apps.observer.triggers.metrics.fetch_quotes", return_value={"SPY": {"last": 551.0}}
+    ):
         resp = api.post("/api/triggers/evaluate/", {"trigger_id": t.id}, format="json")
     assert resp.status_code == 200
     assert resp.json()["matched"] is True

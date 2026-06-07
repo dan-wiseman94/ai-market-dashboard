@@ -33,7 +33,9 @@ def test_redis_factory_builds_a_client_without_connecting():
 @pytest.mark.django_db
 def test_quote_fetch_failure_is_swallowed(fake_redis):
     t = _trigger({"metric": "price", "ticker": "SPY", "op": ">", "value": 1})
-    with patch("apps.observer.triggers.metrics.fetch_quotes", side_effect=RuntimeError("schwab down")):
+    with patch(
+        "apps.observer.triggers.metrics.fetch_quotes", side_effect=RuntimeError("schwab down")
+    ):
         snap = build_snapshot([t])  # must not raise
     assert snap["price:SPY"] is None
 
@@ -42,7 +44,9 @@ def test_quote_fetch_failure_is_swallowed(fake_redis):
 def test_vix_crossing_reads_prior_from_redis(fake_redis):
     t = _trigger({"metric": "vix", "op": "crosses_above", "value": 20})
     fake_redis.setex("trigger:last:$VIX", 60, "19.0")
-    with patch("apps.observer.triggers.metrics.fetch_quotes", return_value={"$VIX": {"last": 21.0}}):
+    with patch(
+        "apps.observer.triggers.metrics.fetch_quotes", return_value={"$VIX": {"last": 21.0}}
+    ):
         snap = build_snapshot([t])
     assert snap["_prior:vix"] == 19.0
     assert snap["vix"] == 21.0
@@ -87,7 +91,9 @@ def test_redis_get_failure_yields_none_prior(fake_redis):
 def test_non_numeric_redis_prior_is_treated_as_none(fake_redis):
     t = _trigger({"metric": "price", "ticker": "SPY", "op": "crosses_above", "value": 550})
     fake_redis.setex("trigger:last:SPY", 60, "garbage")  # un-parseable prior
-    with patch("apps.observer.triggers.metrics.fetch_quotes", return_value={"SPY": {"last": 551.0}}):
+    with patch(
+        "apps.observer.triggers.metrics.fetch_quotes", return_value={"SPY": {"last": 551.0}}
+    ):
         snap = build_snapshot([t])
     assert snap["_prior:price:SPY"] is None
 
@@ -95,7 +101,9 @@ def test_non_numeric_redis_prior_is_treated_as_none(fake_redis):
 @pytest.mark.django_db
 def test_positions_fetch_failure_is_swallowed(fake_redis):
     t = _trigger({"metric": "position_pl", "op": "<", "value": -1000})
-    with patch("apps.observer.triggers.metrics.fetch_positions", side_effect=RuntimeError("schwab down")):
+    with patch(
+        "apps.observer.triggers.metrics.fetch_positions", side_effect=RuntimeError("schwab down")
+    ):
         snap = build_snapshot([t])  # must not raise
     assert snap["position_pl"] is None
 

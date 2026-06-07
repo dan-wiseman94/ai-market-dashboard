@@ -40,7 +40,9 @@ def test_evaluator_exception_disables_the_trigger():
     with (
         patch("apps.observer.triggers.tasks.metrics.build_snapshot", return_value={}),
         patch("apps.observer.triggers.tasks.cooldown_blocks", return_value=False),
-        patch("apps.observer.triggers.tasks.evaluator.evaluate", side_effect=ValueError("bad leaf")),
+        patch(
+            "apps.observer.triggers.tasks.evaluator.evaluate", side_effect=ValueError("bad leaf")
+        ),
     ):
         evaluate_triggers()
 
