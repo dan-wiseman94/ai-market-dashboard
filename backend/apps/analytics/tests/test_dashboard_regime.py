@@ -1,7 +1,7 @@
 import pytest
 from rest_framework.test import APIClient
 
-from apps.regime.models import RegimeReading
+from apps.strategy.models import RegimeReading
 
 pytestmark = pytest.mark.django_db
 

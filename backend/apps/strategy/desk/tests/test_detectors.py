@@ -3,8 +3,8 @@ from django.utils import timezone
 
 from apps.book.models import BookSnapshot
 from apps.market.models import OHLCBar
-from apps.regime.models import RegimeReading
 from apps.strategy.desk.services import detectors as D
+from apps.strategy.models import RegimeReading
 
 pytestmark = pytest.mark.django_db
 

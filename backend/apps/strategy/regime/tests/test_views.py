@@ -1,7 +1,7 @@
 import pytest
 from rest_framework.test import APIClient
 
-from apps.regime.models import RegimeReading
+from apps.strategy.models import RegimeReading
 
 pytestmark = pytest.mark.django_db
 
@@ -33,7 +33,7 @@ def test_list_returns_history():
 
 
 def test_refresh_endpoint_invokes_compute(monkeypatch):
-    from apps.regime import views
+    from apps.strategy.regime import views
 
     monkeypatch.setattr(
         views,

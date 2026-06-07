@@ -1,8 +1,8 @@
 import pytest
 
 from apps.observer.models import Notification
-from apps.regime.models import RegimeReading
-from apps.regime.services import compute
+from apps.strategy.models import RegimeReading
+from apps.strategy.regime.services import compute
 
 pytestmark = pytest.mark.django_db
 

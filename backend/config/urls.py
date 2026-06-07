@@ -27,7 +27,7 @@ urlpatterns = [
     path("api/predictions/", include("apps.predictions.urls")),
     path("api/lessons/", include("apps.thesis.lessons_urls")),
     path("api/coverage/", include("apps.strategy.coverage.urls")),
-    path("api/regime/", include("apps.regime.urls")),
+    path("api/regime/", include("apps.strategy.regime.urls")),
     path("api/book/", include("apps.book.urls")),
     path("api/warroom/", include("apps.strategy.warroom.urls")),
     path("api/desk/", include("apps.strategy.desk.urls")),

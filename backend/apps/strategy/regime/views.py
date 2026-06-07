@@ -6,9 +6,9 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.viewsets import ReadOnlyModelViewSet
 
-from apps.regime.models import RegimeReading
-from apps.regime.serializers import RegimeReadingSerializer
-from apps.regime.services.compute import compute_and_store, current_regime
+from apps.strategy.models import RegimeReading
+from apps.strategy.regime.serializers import RegimeReadingSerializer
+from apps.strategy.regime.services.compute import compute_and_store, current_regime
 
 
 class RegimeViewSet(ReadOnlyModelViewSet):
