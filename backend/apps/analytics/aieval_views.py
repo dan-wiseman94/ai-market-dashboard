@@ -5,8 +5,8 @@ from rest_framework import status as drf_status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.aieval.models import EvalRun
-from apps.aieval.serializers import EvalRunSerializer
+from apps.analytics.aieval_serializers import EvalRunSerializer
+from apps.analytics.models import EvalRun
 
 
 class EvalRunListView(generics.ListAPIView):

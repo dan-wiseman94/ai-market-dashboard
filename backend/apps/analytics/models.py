@@ -1,9 +1,9 @@
-"""Persisted offline-eval results.
+"""Analytics models.
 
-One row per harness run (manual `manage.py aieval` or the scheduled beat task).
-Stores the aggregate scoring of `apps.aieval.services.evaluate` so the calibration
-it measured can be read later — by the read-only API and by the live Decision
-Coach (A3), which injects the latest row's calibration into the prompt.
+EvalRun (offline calibration-harness results) was moved here from the former
+apps.aieval per the 27→12 consolidation — eval calibration belongs with the rest
+of the calibration analytics. ``db_table`` is pinned to its original name so the
+move preserves the table (see migration 0001).
 """
 
 from __future__ import annotations
@@ -30,11 +30,11 @@ class EvalRun(models.Model):
     avg_confidence = models.FloatField(null=True, blank=True)
     calibration_error = models.FloatField(null=True, blank=True)
 
-    # Reliability buckets + per-row outcomes (see services.evaluate()).
     calibration = models.JSONField(default=list)
     examples = models.JSONField(default=list)
 
     class Meta:
+        db_table = "aieval_evalrun"
         ordering: ClassVar[list[str]] = ["-created_at"]
         indexes: ClassVar = [models.Index(fields=["model", "-created_at"])]
 

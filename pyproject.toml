@@ -154,7 +154,7 @@ source_modules = [
     "apps.triggers",
     "apps.secrets",
     "apps.thesis",
-    "apps.aieval",
+    "apps.analytics",
     "apps.coverage",
     "apps.book",
     "apps.regime",
@@ -185,7 +185,7 @@ source_modules = [
     "apps.triggers",
     "apps.market",
     "apps.thesis",
-    "apps.aieval",
+    "apps.analytics",
     "apps.coverage",
     "apps.ai",
     "apps.snapshots",
@@ -211,7 +211,6 @@ type = "forbidden"
 # directly by the snapshot & regime section fetchers by design.
 source_modules = [
     "apps.ai",
-    "apps.aieval",
     "apps.analytics",
     "apps.backups",
     "apps.book",

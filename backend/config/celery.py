@@ -32,7 +32,7 @@ TASK_PACKAGES = [
     "apps.thesis",
     "apps.briefing",
     "apps.recall",
-    "apps.aieval",
+    "apps.analytics",
     "apps.predictions",
     "apps.lessons",
     "apps.coverage",
@@ -108,7 +108,7 @@ app.conf.beat_schedule = {
         "schedule": crontab(hour=4, minute=0),  # daily 4am UTC, low-traffic window
     },
     "aieval-run-scheduled": {
-        "task": "aieval.run_scheduled",
+        "task": "analytics.aieval_run_scheduled",
         "schedule": crontab(hour=5, minute=0, day_of_week=1),
     },
     "lessons-distill": {

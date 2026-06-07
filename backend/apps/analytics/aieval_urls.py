@@ -1,6 +1,6 @@
 from django.urls import path
 
-from apps.aieval import views
+from apps.analytics import aieval_views as views
 
 app_name = "aieval"
 

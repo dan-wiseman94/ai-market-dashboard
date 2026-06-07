@@ -2,7 +2,7 @@ from typing import ClassVar
 
 from rest_framework import serializers
 
-from apps.aieval.models import EvalRun
+from apps.analytics.models import EvalRun
 
 
 class EvalRunSerializer(serializers.ModelSerializer):

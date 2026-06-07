@@ -15,8 +15,8 @@ from django.core.management import call_command
 from django.utils import timezone
 from rest_framework.test import APIClient
 
-from apps.aieval import services as svc
-from apps.aieval.services import (
+from apps.analytics.services import aieval as svc
+from apps.analytics.services.aieval import (
     _confidence_from_report,
     confidence_calibration,
     evaluate,
@@ -505,7 +505,7 @@ def test_persist_eval_run_maps_result_to_row(db):
         ],
         "examples": [{"predicted_direction": "bullish", "hit": True}],
     }
-    from apps.aieval.models import EvalRun
+    from apps.analytics.models import EvalRun
 
     run = persist_eval_run(result, source="scheduled")
     assert isinstance(run, EvalRun)
@@ -608,7 +608,7 @@ def _record_spend(provider="claude", cost="2.00"):
 
 
 def test_preflight_cost_cap_no_config_is_noop(db):
-    from apps.aieval.services import preflight_cost_cap
+    from apps.analytics.services.aieval import preflight_cost_cap
 
     # No ProviderConfig row -> Infinity daily / None monthly -> never raises.
     preflight_cost_cap("claude")  # must not raise
@@ -618,7 +618,7 @@ def test_preflight_cost_cap_raises_when_over(db):
     from decimal import Decimal
 
     from apps.ai.cost import CostCapExceededError
-    from apps.aieval.services import preflight_cost_cap
+    from apps.analytics.services.aieval import preflight_cost_cap
     from apps.secrets.models import ProviderConfig
 
     ProviderConfig.objects.create(provider="claude", daily_cost_cap_usd=Decimal("1.00"))
@@ -642,7 +642,7 @@ def test_command_aborts_on_cost_cap(profile):
 
 
 def test_command_persists_eval_run(profile):
-    from apps.aieval.models import EvalRun
+    from apps.analytics.models import EvalRun
 
     _postmortem(_thesis(profile, snapshot=_snapshot(profile)), verdict="correct", fwd=5.0)
     out = StringIO()
@@ -667,14 +667,14 @@ def test_command_persists_eval_run(profile):
 # --------------------------------------------------------------------------- #
 
 
-from apps.aieval.tasks import run_scheduled  # noqa: E402
+from apps.analytics.tasks import run_scheduled  # noqa: E402
 
 
 def test_scheduled_skips_when_disabled(profile, settings):
     settings.AIEVAL_SCHEDULED_ENABLED = False
     _postmortem(_thesis(profile, snapshot=_snapshot(profile)), verdict="correct", fwd=5.0)
     assert run_scheduled() == {"skipped": "disabled"}
-    from apps.aieval.models import EvalRun
+    from apps.analytics.models import EvalRun
 
     assert EvalRun.objects.count() == 0
 
@@ -689,7 +689,7 @@ def test_scheduled_runs_and_persists_when_enabled(profile, settings):
         verdict="correct",
         fwd=5.0,
     )
-    from apps.aieval.models import EvalRun
+    from apps.analytics.models import EvalRun
 
     with patch.object(svc, "run_structured", return_value=_report("bullish")):
         result = run_scheduled()
@@ -723,7 +723,7 @@ def test_scheduled_skips_when_no_data(settings, db):
 
 
 def test_latest_eval_for_model(db):
-    from apps.aieval.services import latest_eval_for_model
+    from apps.analytics.services.aieval import latest_eval_for_model
 
     assert latest_eval_for_model("claude-sonnet-4-6") is None
     persist_eval_run({"label": "old", "model": "claude-sonnet-4-6", "n": 1}, source="manual")
