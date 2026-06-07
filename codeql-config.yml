@@ -1,0 +1,25 @@
+# CodeQL local-scan configuration.
+# Excludes git worktrees (full duplicate copies of the repo) and generated /
+# vendored assets so a local `database create` scans only real source once.
+# Used with: codeql database create ... --codescanning-config=codeql-config.yml
+name: "ledger local CodeQL config"
+
+queries:
+  - uses: security-and-quality
+
+paths-ignore:
+  # Worktree / scratch roots — each holds a FULL duplicate copy of the repo on
+  # disk (git knows ~2; ~30 stale/locked copies are walked by the filesystem
+  # extractor). Exclude the roots wholesale + a generic catch-all for any future
+  # nested 'worktrees' dir.
+  - "**/.claude/**"
+  - "**/.clone/**"
+  - "**/.worktrees/**"
+  - "**/worktrees/**"
+  - "**/node_modules/**"
+  - "codeql-dbs/**"                   # guard: never ingest an in-tree DB's src copy
+  - "frontend/coverage/**"          # generated Istanbul/Vitest coverage report
+  - "frontend/public/mockServiceWorker.js"  # MSW-generated service worker
+  - "frontend/dist/**"
+  - "**/__screenshots__/**"          # e2e visual baselines
+  - "tools/semgrep/rules/**"         # deliberate bad-example fixtures for Semgrep rules

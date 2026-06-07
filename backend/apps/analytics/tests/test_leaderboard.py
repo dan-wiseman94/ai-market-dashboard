@@ -189,3 +189,30 @@ def test_leaderboard_filters_by_window(db, profile) -> None:
         forward_hours=24,
     )
     assert rows == []
+
+
+def test_leaderboard_handles_message_less_runs(db, profile) -> None:
+    """One-shot run_structured costs (post-mortems, coverage, war-room, eval, …)
+    record an AIRun with message=None. The leaderboard must count them without
+    dereferencing the missing message — regression for an AttributeError crash."""
+    now = datetime(2026, 4, 10, 14, 30)
+    run = AIRun.objects.create(
+        message=None,
+        provider="claude",
+        model="claude-opus-4-8",
+        cost_usd=Decimal("0.10"),
+        latency_ms=1000,
+        status="done",
+    )
+    AIRun.objects.filter(id=run.id).update(created_at=_aware(now))
+
+    rows = provider_leaderboard(
+        start=_aware(now - timedelta(days=1)),
+        end=_aware(now + timedelta(days=1)),
+        forward_hours=24,
+    )
+    r = next(r for r in rows if r["provider"] == "claude")
+    assert r["runs"] == 1
+    # No chat Message -> no pinned snapshot -> nothing to price out.
+    assert r["coverage_pct"] == 0.0
+    assert r["avg_forward_return_pct"] is None
