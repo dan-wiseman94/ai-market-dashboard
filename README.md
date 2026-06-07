@@ -98,8 +98,8 @@ This is what wires the "second brain" into the *generation* path — the model n
 
 ### Morning Briefing
 
-- **Daily hybrid synthesis** (`apps.briefing`) — assembles deterministic sections (open theses with price-vs-target, upcoming earnings/macro, overnight trigger firings, overnight news, a breadth-only capture) and optionally posts them into a Claude thread for a best-effort AI synthesis. Every section is wrapped so it never breaks the briefing, and the AI layer degrades gracefully with no key.
-- **Once-a-day, idempotent** — the `briefing.run_scheduled` beat task (every 15 min) fires once per day past the configured send time via a unique `scheduled_date` claim; `POST /api/briefings/run/` triggers an unlimited manual run. Configure via `GET`/`PATCH /api/briefings/config/`; view at `/briefing` (`g b`).
+- **Daily hybrid synthesis** (`apps.observer.briefing`) — assembles deterministic sections (open theses with price-vs-target, upcoming earnings/macro, overnight trigger firings, overnight news, a breadth-only capture) and optionally posts them into a Claude thread for a best-effort AI synthesis. Every section is wrapped so it never breaks the briefing, and the AI layer degrades gracefully with no key.
+- **Once-a-day, idempotent** — the `observer.briefing_run_scheduled` beat task (every 15 min) fires once per day past the configured send time via a unique `scheduled_date` claim; `POST /api/briefings/run/` triggers an unlimited manual run. Configure via `GET`/`PATCH /api/briefings/config/`; view at `/briefing` (`g b`).
 
 ### Second brain — theses, post-mortems & decision journal
 
@@ -126,7 +126,7 @@ Five features that turn the AI from a one-shot snapshot reader into a resident a
 
 - **Autonomous investigation** *(opt-in per trigger / schedule)* — instead of emitting a single observation, a fire can run a **bounded agentic tool loop**, pulling data and following leads to a grounded conclusion, capped by an iteration ceiling (`AI_INVESTIGATION_MAX_ITERATIONS`) and a dedicated autonomous spend sub-cap (`AI_AUTONOMOUS_DAILY_CAP_USD`). Off by default.
 - **Calibration-weighted routing** *(opt-in — `AI_CALIBRATION_ROUTING_ENABLED`)* — when no provider/model is pinned, the router's fallback tier picks the best-*measured* model from your eval history (hit-rate, calibration error) instead of the first one configured, so the model that has proven more accurate handles more of your runs over time.
-- **Setup-cohort base rates + distilled lessons in the Coach** — the Coach injects the historical hit-rate of *past calls matching this setup* (same direction / sector — the outside view) and cross-ticker **distilled lessons** clustered from your post-mortems (`apps/lessons`), so a pattern from one ticker informs a brand-new one. Both read only decisive, completed post-mortems (look-ahead-safe).
+- **Setup-cohort base rates + distilled lessons in the Coach** — the Coach injects the historical hit-rate of *past calls matching this setup* (same direction / sector — the outside view) and cross-ticker **distilled lessons** clustered from your post-mortems (in `apps.thesis`, the `thesis.distill` beat), so a pattern from one ticker informs a brand-new one. Both read only decisive, completed post-mortems (look-ahead-safe).
 - **The Mirror** (`/mirror`) — the calibration engine turned inward: it grades *your* decision-making from your journal, theses, and outcomes ("you pass on winners," "high conviction isn't actually more accurate"), each signal drillable and hard-gated on sample size so thin history reads "insufficient," not a verdict.
 - **COVERAGE — a living house view** (`/coverage/:ticker`) — each covered ticker gets one persistent, version-controlled research note (stance, conviction, bull / bear case, key levels, what it's watching for) that the AI **revises with a reason** — behind a hysteresis gate, so a quiet day reaffirms rather than churns — instead of re-deriving it every snapshot. Every revision is an append-only audit row you can read to see *why* the view moved, and the observer auto-revises a name once you've started covering it.
 
@@ -134,10 +134,10 @@ Five features that turn the AI from a one-shot snapshot reader into a resident a
 
 Where the Resident Analyst works one name at a time, the Strategist steps back to the **whole book and the market regime** — and convenes a structured debate before you commit.
 
-- **Market regime** (`/regime`) — an append-only series of market-regime readings (several axes collapsed into a composite), refreshed by the `regime.refresh` beat. The latest row is the current read that the Coach and the Desk key off.
+- **Market regime** (`/regime`) — an append-only series of market-regime readings (several axes collapsed into a composite), refreshed by the `strategy.regime_refresh` beat. The latest row is the current read that the Coach and the Desk key off.
 - **Book risk X-ray** (`/book`) — a daily whole-book risk reading: concentration (HHI), correlation clusters over stored OHLC, names near invalidation, regime fit, and a dollar **Value-at-Risk + factor-beta-to-`$SPX`** lens. Appended once a day by `book.snapshot_daily`.
 - **War Room** (`/warroom`) — convene a multi-agent "courtroom" debate (bull / bear / skeptic) on a thesis, coverage note, or book snapshot with one click; each persona streams live over its thread and the run resolves to a verdict.
-- **The Desk** (`/desk`) — an agentic anomaly sweep (`desk.sweep`) that runs detectors (price, options, breadth divergence, earnings proximity, regime change, book deterioration, stale coverage), investigates the top findings under a daily origination cap, and offers one-click follow-ups: convene a war room, revise coverage, or open a prefilled thesis.
+- **The Desk** (`/desk`) — an agentic anomaly sweep (`strategy.sweep`) that runs detectors (price, options, breadth divergence, earnings proximity, regime change, book deterioration, stale coverage), investigates the top findings under a daily origination cap, and offers one-click follow-ups: convene a war room, revise coverage, or open a prefilled thesis.
 
 ### Observer — scheduled AI runs
 
@@ -283,35 +283,23 @@ db        Postgres 16                             :5432
 frontend  Vite dev server (React + TS)            :5173
 ```
 
-Backend code lives under `backend/apps/<name>/` (imported as `apps.<name>`):
+Backend code lives under `backend/apps/<name>/` (imported as `apps.<name>`) — **15 apps**, grouped into a few clear domains. Every public `/api/<x>/` route is unchanged; several apps now nest absorbed features as subpackages (noted below).
 
-- `core` · health, base consumer, logging, `MOCK_EXTERNAL` flag
-- `market` · Schwab client + free fallback providers (Alpaca / Tiingo / Twelve Data / Polygon / Tradier / FRED / SEC EDGAR / Marketaux / US Treasury), quotes/OHLC/chain/news, shared forward-return helpers (`returns.py`)
-- `snapshots` · capture orchestration + token budget
-- `ai` · provider abstraction (Claude / OpenAI / Local), router, catalog, cost calc, tool/thinking/memory/citations support + capability-gap detection
-- `threads` · messages, streaming consumer, multi-provider compare, stop, file attach, Decision Coach context (`coach.py`)
-- `observer` · scheduled AI runs via Celery beat (structured / diff / batch modes)
-- `triggers` · event-trigger evaluator + condition DSL + firings + backtest
+- `core` · health, base consumer, logging, `MOCK_EXTERNAL` flag, `SystemSettings` + `runtime_config()`, and `model_bases.py` (shared `Resolution` / `DirectionalCall` / `TimeStamped` abstract bases)
+- `secrets` · encrypted credentials (Schwab OAuth, provider API keys, free data-source keys) + cost caps
+- `market` · Schwab client + free fallback providers (Alpaca / Tiingo / Twelve Data / Polygon / Tradier / FRED / SEC EDGAR / Marketaux / US Treasury), quotes/OHLC/chain/news, the forward-events calendar, shared forward-return helpers (`returns.py`)
 - `profiles` · trading-style profiles + agent presets
-- `secrets` · encrypted credentials (Schwab OAuth, provider API keys) + cost caps
-- `costs` · per-provider / per-model / per-thread aggregation, caps, CSV export, snapshot drill-down
-- `analytics` · nine on-demand aggregations (leaderboard, cost-per-insight, trigger heatmap, observer timeline, unusual options, thesis + AI + trader calibration, setup cohorts)
-- `aieval` · offline, look-ahead-safe eval/calibration harness (`EvalRun`) replaying candidate models against frozen snapshots
-- `dashboard` · `GET /api/dashboard/` command-centre rollup (theses / events / observer / triggers / briefing), fault-isolated per section
-- `thesis` · theses + post-mortems + decision journal (M11 "second brain")
-- `predictions` · the AI's own auto-extracted, auto-resolving forecasts + invalidation alerts + thesis reconciliation (M13)
-- `lessons` · recurring post-mortem lessons distilled into the Coach (M14)
-- `coverage` · living, version-controlled per-ticker "house view" the AI revises with a reason (M14)
-- `regime` · append-only market-regime readings; the latest row is the current read (M15)
-- `book` · daily whole-book risk X-ray: concentration, correlation clusters, dollar VaR + factor-beta (M15)
-- `warroom` · multi-agent "courtroom" debate that spins up a thread and streams the personas (M15)
-- `desk` · agentic anomaly-sweep desk that can originate a finding into a thesis (M15)
-- `portfolio` · manual position tracking with realized / unrealized P&L, linked to the thesis behind each trade
-- `recall` · semantic + keyword search across all documents; pgvector embeddings index (feeds the Decision Coach)
-- `briefing` · daily Morning Briefing assembly + AI synthesis
-- `files` · Anthropic Files API proxy (upload + attach to threads)
+- `snapshots` · capture orchestration + token budget
+- `threads` · messages, streaming consumer, multi-provider compare, stop, Decision Coach context (`coach.py`), and the Anthropic **Files** API proxy (`UserFile`, file attach)
+- `ai` · provider abstraction (Claude / OpenAI / Local), router, catalog, tool/thinking/memory/citations support + capability-gap detection, and **cost** reporting (per-provider / per-model / per-thread aggregation, caps, CSV export, snapshot drill-down)
+- `observer` · the automated-monitoring domain — scheduled AI runs via Celery beat (structured / diff / batch modes) + notifications + timeline, plus subpackages `observer/triggers` (event-trigger evaluator + condition DSL + firings + backtest), `observer/predictions` (the AI's own auto-extracted, auto-resolving forecasts + invalidation alerts — the Prediction Ledger), and `observer/briefing` (daily Morning Briefing assembly + AI synthesis)
+- `analytics` · on-demand aggregations (leaderboard, cost-per-insight, trigger heatmap, observer timeline, unusual options, thesis + AI + trader calibration, setup cohorts), the `GET /api/dashboard/` command-centre rollup (fault-isolated per section), and the offline, look-ahead-safe **eval/calibration** harness (`EvalRun`) replaying candidate models against frozen snapshots
 - `backups` · scheduled `pg_dump` + rotation
 - `export` · async zip bundles (threads, snapshots, observations, triggers, profiles, watchlists)
+- `thesis` · the decision loop — theses + post-mortems + decision journal (M11 "second brain"), plus manual **position** tracking with realized / unrealized P&L (thesis-linked) and recurring post-mortem **lessons** distilled into the Coach
+- `recall` · semantic + keyword search across all documents; pgvector embeddings index (feeds the Decision Coach)
+- `book` · daily whole-book risk X-ray: concentration, correlation clusters, dollar VaR + factor-beta (M15)
+- `strategy` · the M15 Strategist + M14 COVERAGE, with subpackages `strategy/coverage` (living, version-controlled per-ticker "house view" the AI revises with a reason), `strategy/regime` (append-only market-regime readings; latest row = current), `strategy/warroom` (multi-agent "courtroom" debate that spins up a thread and streams the personas), and `strategy/desk` (agentic anomaly-sweep desk that can originate a finding into a thesis)
 
 WebSocket groups: `user.<id>.notifications`, `thread.<id>`, `snapshot.<id>`. See design spec §3.3.
 

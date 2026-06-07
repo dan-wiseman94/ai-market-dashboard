@@ -22,8 +22,8 @@ Two scheduled tasks can incur real AI/$ cost on their own — both ship **gated 
 
 | Task | Cadence | Gate (must be ON) |
 |---|---|---|
-| `desk.sweep` | every 30 min | `ANOMALY_SWEEP_ENABLED` |
-| `aieval.run_scheduled` | weekly Mon 05:00 | `AIEVAL_SCHEDULED_ENABLED` |
+| `strategy.sweep` | every 30 min | `ANOMALY_SWEEP_ENABLED` |
+| `analytics.aieval_run_scheduled` | weekly Mon 05:00 | `AIEVAL_SCHEDULED_ENABLED` |
 
 The drift gate's `test_gated_spending_tasks_name_a_real_flag` enforces that any
 `spends=True` task names a real feature flag — autonomous spend is never always-on.
@@ -35,13 +35,13 @@ their own per-provider cost caps; see CLAUDE.md → "Cost caps".)
 - **Every minute:** `market.refresh_schwab_token`, `observer.fire_close_relative_schedules`
 - **Sub-5-min:** `observer.poll_open_batches` (60s)
 - **Every 5 min:** `recall.index_pending`, `thesis.run_due_postmortems`,
-  `predictions.resolve_due`, `predictions.check_invalidations`
-- **Every 15–30 min:** `briefing.run_scheduled` (fires once/day), `regime.refresh`
-  (market-hours guard inside), `desk.sweep` *(gated)*
+  `observer.resolve_due_predictions`, `observer.check_prediction_invalidations`
+- **Every 15–30 min:** `observer.briefing_run_scheduled` (fires once/day), `strategy.regime_refresh`
+  (market-hours guard inside), `strategy.sweep` *(gated)*
 - **Daily:** `market.refresh_corporate_actions` (08:30), `market.refresh_events` (09:00),
   `market.ingest_daily_bars` (22:30), `book.snapshot_daily` (22:45),
-  `core.prune_retention` (04:00 UTC), `lessons.distill` (05:30)
-- **Weekly:** `aieval.run_scheduled` (Mon 05:00) *(gated)*
+  `core.prune_retention` (04:00 UTC), `thesis.distill` (05:30)
+- **Weekly:** `analytics.aieval_run_scheduled` (Mon 05:00) *(gated)*
 
 See the registry for the per-task summary and owner. Note `beat` does not hot-reload —
 after editing the schedule, `docker compose restart worker beat` (CLAUDE.md → Docker).
