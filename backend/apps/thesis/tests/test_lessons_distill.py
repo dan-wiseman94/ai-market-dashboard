@@ -5,9 +5,8 @@ from unittest.mock import patch
 
 import pytest
 
-from apps.lessons.models import Lesson
-from apps.lessons.services.distill import distill_lessons
-from apps.thesis.models import PostMortem, Thesis
+from apps.thesis.models import Lesson, PostMortem, Thesis
+from apps.thesis.services.lessons_distill import distill_lessons
 
 NOW = datetime(2026, 5, 1, 12, 0, tzinfo=UTC)
 

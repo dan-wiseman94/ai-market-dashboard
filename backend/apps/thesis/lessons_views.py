@@ -3,7 +3,7 @@ from typing import ClassVar
 from rest_framework import mixins, viewsets
 from rest_framework.serializers import ModelSerializer
 
-from apps.lessons.models import Lesson
+from apps.thesis.models import Lesson
 
 
 class LessonSerializer(ModelSerializer):

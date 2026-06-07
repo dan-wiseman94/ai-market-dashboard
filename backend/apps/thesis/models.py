@@ -237,3 +237,31 @@ class Position(models.Model):
     def save(self, *args, **kwargs):
         self.ticker = (self.ticker or "").upper()
         super().save(*args, **kwargs)
+
+
+class Lesson(models.Model):
+    """Distilled recurring lesson (moved from the former apps.lessons per the 27→12
+    consolidation): clustered from decisive post-mortems, fed to the Coach. The
+    embedding is a plain JSON float list (few lessons → cosine in Python). ``db_table``
+    pinned to ``lessons_lesson`` so the move preserves the table + its M2M.
+    """
+
+    text = models.TextField(help_text="Representative bullet of the cluster.")
+    embedding = models.JSONField(null=True, blank=True)
+    tags = models.JSONField(default=dict)
+    evidence = models.ManyToManyField("thesis.PostMortem", related_name="lessons", blank=True)
+    support_n = models.PositiveIntegerField(
+        default=0, help_text="Number of post-mortems supporting this lesson."
+    )
+    muted = models.BooleanField(default=False, help_text="Hidden from the coach when True.")
+    last_seen = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "lessons_lesson"
+        ordering: ClassVar = ["-support_n", "-last_seen"]
+        indexes: ClassVar = [models.Index(fields=["muted", "-support_n"])]
+
+    def __str__(self) -> str:
+        return f"Lesson(#{self.pk} n={self.support_n} {self.text[:40]!r})"

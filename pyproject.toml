@@ -219,7 +219,6 @@ source_modules = [
     "apps.coverage",
     "apps.desk",
     "apps.export",
-    "apps.lessons",
     "apps.observer",
     "apps.predictions",
     "apps.profiles",
