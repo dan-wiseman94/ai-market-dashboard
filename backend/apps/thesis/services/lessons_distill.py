@@ -27,9 +27,8 @@ def distill_lessons() -> dict:
     Returns a summary dict. Best-effort: returns early (no error) when embeddings
     are unavailable or there is nothing new to process.
     """
-    from apps.lessons.models import Lesson
     from apps.recall.embeddings import embed
-    from apps.thesis.models import PostMortem
+    from apps.thesis.models import Lesson, PostMortem
 
     pending = list(
         PostMortem.objects.filter(status="done", verdict__in=["correct", "incorrect"])

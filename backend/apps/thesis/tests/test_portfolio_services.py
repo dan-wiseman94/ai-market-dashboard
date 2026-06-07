@@ -12,9 +12,9 @@ import pytest
 from django.utils import timezone
 
 from apps.market.models import OHLCBar
-from apps.portfolio.models import Position
-from apps.portfolio.services import realized_pnl, unrealized_pnl
 from apps.profiles.models import TradingProfile
+from apps.thesis.models import Position
+from apps.thesis.portfolio_service import realized_pnl, unrealized_pnl
 
 # ---------------------------------------------------------------------------
 # Fixtures

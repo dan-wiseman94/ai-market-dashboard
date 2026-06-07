@@ -1,7 +1,7 @@
 import pytest
 from rest_framework.test import APIClient
 
-from apps.lessons.models import Lesson
+from apps.thesis.models import Lesson
 
 
 def _items(resp):

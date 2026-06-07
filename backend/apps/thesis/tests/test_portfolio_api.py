@@ -12,9 +12,8 @@ from django.utils import timezone
 from rest_framework.test import APIClient
 
 from apps.market.models import OHLCBar
-from apps.portfolio.models import Position
 from apps.profiles.models import TradingProfile
-from apps.thesis.models import Thesis
+from apps.thesis.models import Position, Thesis
 
 # ---------------------------------------------------------------------------
 # Fixtures
