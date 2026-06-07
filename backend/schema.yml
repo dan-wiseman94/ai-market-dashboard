@@ -2677,6 +2677,19 @@ paths:
   /api/threads/:
     get:
       operationId: threads_list
+      parameters:
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
       tags:
       - threads
       security:
@@ -2688,9 +2701,7 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Thread'
+                $ref: '#/components/schemas/PaginatedThreadListList'
           description: ''
     post:
       operationId: threads_create
@@ -4468,6 +4479,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/SnapshotList'
+    PaginatedThreadListList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=400&limit=100
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=200&limit=100
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/ThreadList'
     PatchedAgentPreset:
       type: object
       properties:
@@ -5620,6 +5654,47 @@ components:
         * `briefing` - Morning briefing
         * `diff` - Diff
         * `warroom` - War Room
+    ThreadList:
+      type: object
+      description: |-
+        Light row for the list endpoint — deliberately omits ``messages``.
+
+        ``Message.content`` holds serialized snapshots + full AI responses (tens of KB
+        each, up to ~150k-token synthetic snapshot turns), so nesting every thread's
+        full history made GET /api/threads/ the heaviest list endpoint in the app while
+        the list UI reads only title/kind/profile/created_at. The full ThreadSerializer
+        is still used for the detail view. ``message_count`` comes from a queryset
+        annotation. Mirrors SnapshotListSerializer.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        kind:
+          $ref: '#/components/schemas/ThreadKindEnum'
+        title:
+          type: string
+          maxLength: 200
+        profile:
+          allOf:
+          - $ref: '#/components/schemas/ProfileInline'
+          readOnly: true
+        pinned_snapshot_id:
+          type: integer
+          nullable: true
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        message_count:
+          type: integer
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - message_count
+      - pinned_snapshot_id
+      - profile
     TradingProfile:
       type: object
       properties:
