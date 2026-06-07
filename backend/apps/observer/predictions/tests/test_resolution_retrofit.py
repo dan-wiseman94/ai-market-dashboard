@@ -9,7 +9,7 @@ import pytest
 from django.utils import timezone
 
 from apps.core.model_bases import DirectionalCall, Resolution
-from apps.predictions.models import AIPrediction
+from apps.observer.models import AIPrediction
 
 pytestmark = pytest.mark.django_db
 

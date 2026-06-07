@@ -9,10 +9,10 @@ import pytest
 from django.utils import timezone
 
 from apps.market.models import OHLCBar
+from apps.observer.models import AIPrediction
+from apps.observer.predictions.services.extract import extract_from_observation
+from apps.observer.predictions.tasks import check_invalidations
 from apps.observer.schemas import KeyLevel, ObservationReport, Signal
-from apps.predictions.models import AIPrediction
-from apps.predictions.services.extract import extract_from_observation
-from apps.predictions.tasks import check_invalidations
 from apps.profiles.models import TradingProfile
 from apps.snapshots.models import Snapshot, SnapshotSection
 

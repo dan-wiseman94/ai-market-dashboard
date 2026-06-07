@@ -37,7 +37,7 @@ SPECIFIC_ROUTES = [
     ("/api/market/quotes/", "apps.market"),
     ("/api/schwab/status/", "apps.secrets"),  # secrets app is mounted at /api/schwab/
     ("/api/aieval/runs/", "apps.analytics"),
-    ("/api/predictions/ai-view/", "apps.predictions"),
+    ("/api/predictions/ai-view/", "apps.observer"),
 ]
 
 
