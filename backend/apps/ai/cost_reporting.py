@@ -216,12 +216,15 @@ def csv_rows(*, start: datetime, end: datetime) -> Iterator[list[str]]:
         .order_by("created_at")
     )
     for r in qs.iterator(chunk_size=500):
+        # message is null for one-shot run_structured costs (post-mortems, coverage,
+        # war-room, eval, …) — keep the cost row, just leave thread/snapshot blank.
+        msg = r.message
         yield [
             r.created_at.isoformat(),
             r.provider,
             r.model,
-            str(r.message.thread_id),
-            str(r.message.thread.pinned_snapshot_id or ""),
+            str(msg.thread_id) if msg else "",
+            str(msg.thread.pinned_snapshot_id or "") if msg else "",
             str(r.input_tokens),
             str(r.output_tokens),
             str(r.cached_tokens),
