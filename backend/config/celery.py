@@ -34,11 +34,9 @@ TASK_PACKAGES = [
     "apps.recall",
     "apps.analytics",
     "apps.predictions",
-    "apps.coverage",
     "apps.regime",
     "apps.book",
-    "apps.desk",
-    "apps.warroom",
+    "apps.strategy",
 ]
 app.autodiscover_tasks(TASK_PACKAGES)
 
@@ -128,7 +126,7 @@ app.conf.beat_schedule = {
         "schedule": crontab(hour=22, minute=45),  # after ingest-daily-bars (22:30)
     },
     "desk-sweep": {
-        "task": "desk.sweep",
+        "task": "strategy.sweep",
         "schedule": crontab(minute="*/30"),  # opt-in gate is inside the task
     },
 }

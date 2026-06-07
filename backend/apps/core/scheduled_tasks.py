@@ -81,7 +81,7 @@ SCHEDULED_WORK: list[ScheduledTask] = [
         "",
     ),
     ScheduledTask(
-        "desk.sweep",
+        "strategy.sweep",
         "every 30 min",
         "Agentic anomaly sweep that auto-originates DeskEntry investigations.",
         "ANOMALY_SWEEP_ENABLED",

@@ -14,7 +14,6 @@ from apps.ai.catalog import DEFAULT_CLAUDE_MODEL
 from apps.ai.cost import CostCapExceededError, check_daily_cap, check_monthly_cap
 from apps.ai.providers.claude_structured import run_structured
 from apps.core.runtime_config import runtime_config
-from apps.coverage.hooks import maybe_revise_from_snapshot
 from apps.market.calendar import any_market_open
 from apps.observer.models import ObserverSchedule
 from apps.observer.schemas import ObservationReport
@@ -23,6 +22,7 @@ from apps.observer.services.threads import get_or_create_observer_thread
 from apps.secrets.models import ProviderConfig
 from apps.snapshots.serializer import serialize_for_ai
 from apps.snapshots.services import capture
+from apps.strategy.coverage.hooks import maybe_revise_from_snapshot
 from apps.threads.coach import assemble_coach_context, build_system_prompt
 from apps.threads.models import Message
 from apps.threads.tasks import run_ai_on_message
