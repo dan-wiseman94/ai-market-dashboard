@@ -63,3 +63,16 @@ class Resolution(models.Model):
 
     class Meta:
         abstract = True
+
+    @classmethod
+    def claim(cls, pk: int, *, frm: str, to: str) -> bool:
+        """Atomic compare-and-set on the concrete model's ``status`` column: exactly
+        one caller wins the transition (the rest get False). The idempotent
+        scheduled→running / open→resolving claim that stops a beat re-tick and a
+        manual run from double-billing. Concrete models keep their own ``status``
+        choices — this only moves the value.
+        """
+        # cls is always a concrete subclass at runtime (with a manager + status);
+        # django-stubs only sees the abstract base, hence the narrow ignore.
+        manager = cls.objects  # type: ignore[attr-defined]
+        return manager.filter(pk=pk, status=frm).update(status=to) == 1

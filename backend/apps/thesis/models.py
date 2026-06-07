@@ -8,6 +8,8 @@ from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.utils import timezone
 
+from apps.core.model_bases import Resolution
+
 
 class Thesis(models.Model):
     DIRECTION_CHOICES: ClassVar[list[tuple[str, str]]] = [
@@ -135,7 +137,7 @@ class DecisionJournalEntry(models.Model):
         return f"DecisionJournalEntry(thread#{self.thread_id} {self.decision})"
 
 
-class PostMortem(models.Model):
+class PostMortem(Resolution):
     """A scheduled review of a thesis at a fixed horizon after it was opened.
 
     Closes the decision loop: at 7/30/90 days we compute the ACTUAL forward
@@ -154,13 +156,6 @@ class PostMortem(models.Model):
         ("failed", "Failed"),
         ("skipped", "Skipped"),
     ]
-    VERDICT_CHOICES: ClassVar[list[tuple[str, str]]] = [
-        ("correct", "Correct"),
-        ("incorrect", "Incorrect"),
-        ("mixed", "Mixed"),
-        ("inconclusive", "Inconclusive"),
-    ]
-
     thesis = models.ForeignKey(
         Thesis,
         on_delete=models.CASCADE,
@@ -169,8 +164,6 @@ class PostMortem(models.Model):
     horizon_days = models.IntegerField()
     due_at = models.DateTimeField()
     status = models.CharField(max_length=16, choices=STATUS_CHOICES, default="scheduled")
-    forward_return_pct = models.FloatField(null=True, blank=True)
-    verdict = models.CharField(max_length=16, choices=VERDICT_CHOICES, blank=True, default="")
     report = models.JSONField(default=dict)
     message = models.ForeignKey(
         "threads.Message",
