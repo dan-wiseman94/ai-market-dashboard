@@ -61,4 +61,4 @@ Thumbs.db
 *storybook.log
 storybook-static
 
-./codeql-dbs/
+codeql-dbs/
