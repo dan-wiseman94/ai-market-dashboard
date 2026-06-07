@@ -17,7 +17,7 @@ from unittest.mock import patch
 import pytest
 from rest_framework.test import APIClient
 
-# Every section helper in apps.dashboard.views, and the shape its default must keep.
+# Every section helper in apps.analytics.dashboard, and the shape its default must keep.
 SECTION_HELPERS = [
     "_theses_section",
     "_events_section",
@@ -70,7 +70,7 @@ def test_all_sections_down_still_returns_full_contract_shape(api):
     with ExitStack() as stack:
         for name in SECTION_HELPERS:
             stack.enter_context(
-                patch(f"apps.dashboard.views.{name}", side_effect=RuntimeError("section down"))
+                patch(f"apps.analytics.dashboard.{name}", side_effect=RuntimeError("section down"))
             )
         r = api.get("/api/dashboard/")
 

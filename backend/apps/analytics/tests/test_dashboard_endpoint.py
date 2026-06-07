@@ -119,7 +119,7 @@ def test_observer_section_counts_enabled_schedules(api):
 def test_never_raise_swallows_section_error(api):
     """Monkeypatch _theses_section to raise; endpoint must survive with theses=[] default."""
     with patch(
-        "apps.dashboard.views._theses_section",
+        "apps.analytics.dashboard._theses_section",
         side_effect=RuntimeError("db on fire"),
     ):
         r = api.get("/api/dashboard/")
@@ -137,7 +137,7 @@ def test_never_raise_swallows_observer_error(api):
     """Monkeypatch _observer_summary to raise; the observer default must match the frontend
     DashboardObserver contract (not a bare {}) so the SPA renders empty instead of crashing."""
     with patch(
-        "apps.dashboard.views._observer_summary",
+        "apps.analytics.dashboard._observer_summary",
         side_effect=RuntimeError("observer exploded"),
     ):
         r = api.get("/api/dashboard/")
@@ -151,7 +151,7 @@ def test_never_raise_swallows_triggers_error(api):
     """Monkeypatch _triggers_summary to raise; endpoint still 200 and the triggers default
     matches the frontend DashboardTriggers contract (was a bare {} that crashed the SPA)."""
     with patch(
-        "apps.dashboard.views._triggers_summary",
+        "apps.analytics.dashboard._triggers_summary",
         side_effect=RuntimeError("triggers exploded"),
     ):
         r = api.get("/api/dashboard/")
