@@ -63,7 +63,11 @@ jobs:
         # job cap before the e2e/ui suite ever ran. Restore parallelism (-w), bound examples
         # (-n 20), and run the crash-relevant phases only (drop the slow `stateful` link
         # walk; examples+coverage+fuzzing still catch 5xx). See PR #121.
-        run: docker compose -f compose.yaml -f compose.e2e.yaml exec -T --workdir /app web uv run schemathesis run http://localhost:8000/api/schema/ -u http://localhost:8000 -c not_a_server_error -w 6 -n 20 --phases examples,coverage,fuzzing
+        # --exclude-path: skip two operations that crash schemathesis's OWN parameter
+        # generator (hypothesis "dictionary changed size during iteration" in
+        # _hypothesis.generate_parameter, a tooling bug — the app never receives a request).
+        # These are not app failures; revisit when schemathesis fixes the generator.
+        run: docker compose -f compose.yaml -f compose.e2e.yaml exec -T --workdir /app web uv run schemathesis run http://localhost:8000/api/schema/ -u http://localhost:8000 -c not_a_server_error -w 6 -n 20 --phases examples,coverage,fuzzing --exclude-path /api/dashboard/ --exclude-path /api/analytics/observer-timeline/
       - name: render-chart integration test (the /render/chart chromium path)
         # apps.snapshots.services.render.render_chart_png is the headless-chromium chart-image
         # pipeline. Its test is marked `integration`, so check.yml deselects it (`-m 'not
