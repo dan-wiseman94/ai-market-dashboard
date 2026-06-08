@@ -133,13 +133,16 @@ describe("ThreadsPage", () => {
       Promise.resolve({
         ok: true,
         json: () =>
-          Promise.resolve([
-            {
-              id: 55, title: "Morning consult", kind: "consult",
-              profile: { name: "Day trader" },
-              created_at: "2026-04-17T09:00:00Z",
-            },
-          ]),
+          Promise.resolve({
+            results: [
+              {
+                id: 55, title: "Morning consult", kind: "consult",
+                profile: { name: "Day trader" },
+                created_at: "2026-04-17T09:00:00Z",
+                message_count: 3,
+              },
+            ],
+          }),
       }),
     ) as never;
 

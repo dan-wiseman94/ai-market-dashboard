@@ -191,6 +191,34 @@ def test_leaderboard_filters_by_window(db, profile) -> None:
     assert rows == []
 
 
+def test_leaderboard_query_budget_is_bounded(db, profile, django_assert_max_num_queries) -> None:
+    """provider_leaderboard must not fan out a per-run price query (the N+1 the batched
+    forward-return load fixed). The query count is constant in run count: agg + a single
+    runs pass (sections prefetched) + the two batched price-out queries + per-ticker
+    calendar lookups — NOT ~5 queries per run."""
+    now = datetime(2026, 4, 15, 20, 0, tzinfo=UTC)
+    for i in range(8):
+        _mk_run(
+            provider="claude",
+            model="m",
+            cost="0.10",
+            latency_ms=1000,
+            created_at=now,
+            snap_ticker="AAA" if i % 2 == 0 else "BBB",
+            profile=profile,
+        )
+    for tk in ("AAA", "BBB"):
+        _mk_bar(tk, now, 100.0)
+        _mk_bar(tk, datetime(2026, 4, 16, 20, 0, tzinfo=UTC), 110.0)
+
+    # Measured 7 with these 8 runs; 12 leaves headroom for legitimate changes while a
+    # per-run N+1 (~5 queries x 8 runs) would breach it.
+    with django_assert_max_num_queries(12):
+        provider_leaderboard(
+            start=now - timedelta(days=1), end=now + timedelta(days=1), forward_hours=24
+        )
+
+
 def test_leaderboard_handles_message_less_runs(db, profile) -> None:
     """One-shot run_structured costs (post-mortems, coverage, war-room, eval, …)
     record an AIRun with message=None. The leaderboard must count them without

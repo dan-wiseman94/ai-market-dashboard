@@ -1,6 +1,8 @@
 from django.db import transaction
+from django.db.models import Count
 from rest_framework import mixins, viewsets
 from rest_framework.decorators import action
+from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.request import Request
 from rest_framework.response import Response
 
@@ -9,9 +11,14 @@ from apps.snapshots.models import Snapshot
 from apps.snapshots.serializer import serialize_for_ai
 from apps.threads.coach import assemble_coach_context
 from apps.threads.models import Message, Thread
-from apps.threads.serializers import MessageSerializer, ThreadSerializer
+from apps.threads.serializers import MessageSerializer, ThreadListSerializer, ThreadSerializer
 from apps.threads.stop import request_stop
 from apps.threads.tasks import _broadcast, run_ai_on_message
+
+
+class _ThreadPagination(LimitOffsetPagination):
+    default_limit = 50
+    max_limit = 200
 
 
 def _e2e_scenario() -> str | None:
@@ -52,6 +59,23 @@ class ThreadViewSet(
 ):
     queryset = Thread.objects.select_related("profile").prefetch_related("messages__ai_run")
     serializer_class = ThreadSerializer
+    pagination_class = _ThreadPagination
+
+    def get_serializer_class(self):  # type: ignore[override]
+        # List rows are the light ThreadListSerializer (no per-thread messages);
+        # retrieve/create/update keep the full ThreadSerializer.
+        return ThreadListSerializer if self.action == "list" else ThreadSerializer
+
+    def get_queryset(self):  # type: ignore[override]
+        # The list view must NOT prefetch every thread's messages — it only needs
+        # a message_count annotation. Retrieve/update keep the full prefetch.
+        if self.action == "list":
+            return (
+                Thread.objects.select_related("profile")
+                .annotate(message_count=Count("messages"))
+                .order_by("-created_at")
+            )
+        return Thread.objects.select_related("profile").prefetch_related("messages__ai_run")
 
     def create(self, request: Request, *args: object, **kwargs: object) -> Response:
         data = request.data

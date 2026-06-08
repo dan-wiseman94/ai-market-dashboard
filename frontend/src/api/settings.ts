@@ -5,6 +5,9 @@ export interface SystemSettings {
   retention_chain_days: number;
   retention_notification_days: number;
   retention_error_days: number;
+  retention_regime_days: number;
+  retention_desk_days: number;
+  retention_book_days: number;
   ai_failover_enabled: boolean;
   ai_failover_provider: string;
   observer_response_cache_enabled: boolean;

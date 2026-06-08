@@ -70,3 +70,30 @@ class ThreadSerializer(serializers.ModelSerializer):
         # `title` is the only field a PATCH may change; creation builds the rest
         # directly from request.data in the view, so locking these here is safe.
         read_only_fields: ClassVar = ["kind", "pinned_snapshot_id", "created_at"]
+
+
+class ThreadListSerializer(serializers.ModelSerializer):
+    """Light row for the list endpoint — deliberately omits ``messages``.
+
+    ``Message.content`` holds serialized snapshots + full AI responses (tens of KB
+    each, up to ~150k-token synthetic snapshot turns), so nesting every thread's
+    full history made GET /api/threads/ the heaviest list endpoint in the app while
+    the list UI reads only title/kind/profile/created_at. The full ThreadSerializer
+    is still used for the detail view. ``message_count`` comes from a queryset
+    annotation. Mirrors SnapshotListSerializer.
+    """
+
+    profile = ProfileInlineSerializer(read_only=True)
+    message_count = serializers.IntegerField(read_only=True)
+
+    class Meta:
+        model = Thread
+        fields: ClassVar = [
+            "id",
+            "kind",
+            "title",
+            "profile",
+            "pinned_snapshot_id",
+            "created_at",
+            "message_count",
+        ]
