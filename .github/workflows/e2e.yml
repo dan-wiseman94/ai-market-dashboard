@@ -57,7 +57,13 @@ jobs:
         # MOCK_EXTERNAL is on in the e2e overlay, so fuzzing every method is safe.
         # -c not_a_server_error: gate on crashes (real bugs), not strict response-schema
         # conformance (noisy against drf-spectacular's graceful-fallback schemas).
-        run: docker compose -f compose.yaml -f compose.e2e.yaml exec -T --workdir /app web uv run schemathesis run http://localhost:8000/api/schema/ -u http://localhost:8000 -c not_a_server_error -n 6
+        # -w 6: concurrent workers. NOTE schemathesis 4.x repurposed `-n` (was "workers"
+        # in 3.x) to mean --max-examples, so the old `-n 6` silently dropped all parallelism
+        # AND ran the combinatorial `stateful` phase serially — ~20 min, blowing the 25-min
+        # job cap before the e2e/ui suite ever ran. Restore parallelism (-w), bound examples
+        # (-n 20), and run the crash-relevant phases only (drop the slow `stateful` link
+        # walk; examples+coverage+fuzzing still catch 5xx). See PR #121.
+        run: docker compose -f compose.yaml -f compose.e2e.yaml exec -T --workdir /app web uv run schemathesis run http://localhost:8000/api/schema/ -u http://localhost:8000 -c not_a_server_error -w 6 -n 20 --phases examples,coverage,fuzzing
       - name: render-chart integration test (the /render/chart chromium path)
         # apps.snapshots.services.render.render_chart_png is the headless-chromium chart-image
         # pipeline. Its test is marked `integration`, so check.yml deselects it (`-m 'not
