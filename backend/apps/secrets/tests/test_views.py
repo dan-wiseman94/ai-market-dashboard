@@ -48,20 +48,67 @@ def test_callback_without_code_returns_400():
 @pytest.mark.django_db
 @override_settings(SCHWAB_CLIENT_ID="cid", SCHWAB_CLIENT_SECRET="csec")
 @override_settings(FRONTEND_BASE_URL="https://app.test")
-def test_callback_exchanges_code_and_redirects_to_settings():
+def test_callback_with_valid_state_exchanges_code_and_redirects():
+    import fakeredis
+
+    fake = fakeredis.FakeStrictRedis()
     with (
+        patch("apps.secrets.schwab_oauth._redis", lambda: fake),
         patch("apps.secrets.views.exchange_code_for_token") as ex,
         patch("apps.secrets.views.persist_token") as ps,
     ):
+        from apps.secrets.schwab_oauth import new_oauth_state
+
+        state = new_oauth_state()  # mints + stores the nonce, as the authorize step does
         ex.return_value = {"access_token": "A", "refresh_token": "R", "expires_at": 9999999999}
         client = Client()
-        response = client.get("/api/schwab/callback/", {"code": "abc"})
+        response = client.get("/api/schwab/callback/", {"code": "abc", "state": state})
         assert response.status_code == 302
         # Redirect is prefixed with FRONTEND_BASE_URL so the dev callback (arriving via the
         # tls-proxy on :8000) bounces to the Vite SPA; empty base → same-origin /settings.
         assert response["Location"] == "https://app.test/settings?schwab=connected"
         ex.assert_called_once_with("abc")
         ps.assert_called_once()
+
+
+@pytest.mark.django_db
+def test_callback_rejects_missing_state():
+    """A cross-site GET to the callback with an attacker's code but no state nonce we
+    minted must be rejected BEFORE any token exchange — the OAuth login-CSRF /
+    auth-code-injection hole (RFC 6749 §10.12). The callback is a no-auth-cookie GET, so
+    CSRF middleware / SameSite don't cover it."""
+    import fakeredis
+
+    fake = fakeredis.FakeStrictRedis()
+    with (
+        patch("apps.secrets.schwab_oauth._redis", lambda: fake),
+        patch("apps.secrets.views.exchange_code_for_token") as ex,
+    ):
+        client = Client()
+        response = client.get("/api/schwab/callback/", {"code": "attacker_code"})
+        assert response.status_code == 400
+        assert response.json()["code"] == "invalid_state"
+        ex.assert_not_called()  # never exchange an unsolicited authorization code
+
+
+@pytest.mark.django_db
+def test_callback_rejects_mismatched_state():
+    """A forged state that doesn't match the minted nonce is rejected."""
+    import fakeredis
+
+    fake = fakeredis.FakeStrictRedis()
+    with (
+        patch("apps.secrets.schwab_oauth._redis", lambda: fake),
+        patch("apps.secrets.views.exchange_code_for_token") as ex,
+    ):
+        from apps.secrets.schwab_oauth import new_oauth_state
+
+        new_oauth_state()  # a real nonce exists, but the callback presents a different one
+        client = Client()
+        response = client.get("/api/schwab/callback/", {"code": "abc", "state": "forged"})
+        assert response.status_code == 400
+        assert response.json()["code"] == "invalid_state"
+        ex.assert_not_called()
 
 
 @pytest.mark.django_db

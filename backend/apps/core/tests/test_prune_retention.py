@@ -16,10 +16,12 @@ from datetime import timedelta
 import pytest
 from django.utils import timezone
 
+from apps.book.models import BookSnapshot
 from apps.core.models import ErrorEvent
 from apps.core.tasks import prune_retention
 from apps.market.models import OHLCBar, OptionChainSnapshot
 from apps.observer.models import Notification
+from apps.strategy.models import DeskEntry, RegimeReading
 
 # ---------------------------------------------------------------------------
 # helpers
@@ -61,6 +63,52 @@ def _error(days_ago: int, resolved: bool) -> ErrorEvent:
     ev = ErrorEvent.objects.create(source="test", message="boom", resolved=resolved)
     ErrorEvent.objects.filter(pk=ev.pk).update(created_at=_NOW() - timedelta(days=days_ago))
     return ev
+
+
+def _regime(days_ago: int) -> RegimeReading:
+    r = RegimeReading.objects.create(composite="neutral")
+    RegimeReading.objects.filter(pk=r.pk).update(created_at=_NOW() - timedelta(days=days_ago))
+    return r
+
+
+def _desk(days_ago: int) -> DeskEntry:
+    e = DeskEntry.objects.create(anomaly_type="vol_spike")
+    DeskEntry.objects.filter(pk=e.pk).update(created_at=_NOW() - timedelta(days=days_ago))
+    return e
+
+
+def _book(days_ago: int) -> BookSnapshot:
+    # as_of_date is unique; derive a distinct date per row from days_ago.
+    as_of = (_NOW() - timedelta(days=days_ago)).date()
+    b = BookSnapshot.objects.create(as_of_date=as_of)
+    BookSnapshot.objects.filter(pk=b.pk).update(created_at=_NOW() - timedelta(days=days_ago))
+    return b
+
+
+@pytest.mark.django_db
+def test_prunes_old_strategy_series_keeps_recent(settings):
+    """RegimeReading (~every 30 min in market hours), DeskEntry (sweep) and BookSnapshot
+    (daily) are append-only leaves with no inbound FK. Prune old rows so they don't grow
+    the DB + every pg_dump without bound; keep recent (the latest regime IS 'current')."""
+    settings.AI_RETENTION_REGIME_DAYS = 180
+    settings.AI_RETENTION_DESK_DAYS = 180
+    settings.AI_RETENTION_BOOK_DAYS = 365
+
+    r_old, r_new = _regime(days_ago=181), _regime(days_ago=1)
+    d_old, d_new = _desk(days_ago=181), _desk(days_ago=1)
+    b_old, b_new = _book(days_ago=400), _book(days_ago=10)
+
+    result = prune_retention()
+
+    assert not RegimeReading.objects.filter(pk=r_old.pk).exists()
+    assert RegimeReading.objects.filter(pk=r_new.pk).exists()
+    assert not DeskEntry.objects.filter(pk=d_old.pk).exists()
+    assert DeskEntry.objects.filter(pk=d_new.pk).exists()
+    assert not BookSnapshot.objects.filter(pk=b_old.pk).exists()
+    assert BookSnapshot.objects.filter(pk=b_new.pk).exists()
+    assert result["regime"] == 1
+    assert result["desk"] == 1
+    assert result["book"] == 1
 
 
 # ---------------------------------------------------------------------------
