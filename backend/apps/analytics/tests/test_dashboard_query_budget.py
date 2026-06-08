@@ -14,9 +14,9 @@ from decimal import Decimal
 import pytest
 from rest_framework.test import APIClient
 
+from apps.observer.models import EventTrigger, TriggerFiring
 from apps.profiles.models import TradingProfile
 from apps.thesis.models import Thesis
-from apps.triggers.models import EventTrigger, TriggerFiring
 
 # Clean count is 15 with the seeded rows — and it's constant in row count (no N+1).
 # 18 leaves small headroom for legitimate changes while a per-row N+1 (≥8 here) breaches it.

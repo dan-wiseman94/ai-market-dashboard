@@ -14,7 +14,7 @@ Coverage map (verified 2026-05-30 — keep in sync if you add an AI entry point)
   inject the coach.)
 * Observer — apps.observer.services.run calls
   assemble_coach_context(snap, sched.profile) and prepends it to the user turn.
-* Triggers — apps.triggers.tasks._do_fire calls
+* Triggers — apps.observer.triggers.tasks._do_fire calls
   assemble_coach_context(snap, trigger.profile) and prepends it to the user turn.
 
 All three active sites funnel through assemble_coach_context, which is the single

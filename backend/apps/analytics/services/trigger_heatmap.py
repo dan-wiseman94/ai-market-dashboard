@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from apps.triggers.models import TriggerFiring
+from apps.observer.models import TriggerFiring
 
 
 def trigger_heatmap(*, start: datetime, end: datetime) -> list[dict]:

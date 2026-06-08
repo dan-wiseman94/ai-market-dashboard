@@ -36,7 +36,7 @@ their own per-provider cost caps; see CLAUDE.md → "Cost caps".)
 - **Sub-5-min:** `observer.poll_open_batches` (60s)
 - **Every 5 min:** `recall.index_pending`, `thesis.run_due_postmortems`,
   `observer.resolve_due_predictions`, `observer.check_prediction_invalidations`
-- **Every 15–30 min:** `briefing.run_scheduled` (fires once/day), `strategy.regime_refresh`
+- **Every 15–30 min:** `observer.briefing_run_scheduled` (fires once/day), `strategy.regime_refresh`
   (market-hours guard inside), `strategy.sweep` *(gated)*
 - **Daily:** `market.refresh_corporate_actions` (08:30), `market.refresh_events` (09:00),
   `market.ingest_daily_bars` (22:30), `book.snapshot_daily` (22:45),

@@ -15,7 +15,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.briefing.services.assemble import _theses_section
+from apps.observer.briefing.services.assemble import _theses_section
 
 log = logging.getLogger(__name__)
 
@@ -64,7 +64,7 @@ def _observer_summary() -> dict:
 
 
 def _triggers_summary() -> dict:
-    from apps.triggers.models import EventTrigger, TriggerFiring
+    from apps.observer.models import EventTrigger, TriggerFiring
 
     armed_count = EventTrigger.objects.filter(enabled=True).count()
 
@@ -121,7 +121,7 @@ def _regime_section() -> dict:
 
 
 def _latest_briefing_summary() -> dict | None:
-    from apps.briefing.models import BriefingRun
+    from apps.observer.models import BriefingRun
 
     run = BriefingRun.objects.order_by("-created_at").first()
     if run is None:
