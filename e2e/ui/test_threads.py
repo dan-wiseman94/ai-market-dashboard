@@ -41,10 +41,18 @@ def _fresh_chat_thread(title: str) -> int:
 @pytest.mark.integration
 @pytest.mark.ui
 def test_threads_list_shows_seeded_rows(page, frontend_base_url, threads) -> None:
-    """The list renders actual seeded threads — not merely a non-empty <body>."""
+    """The list renders actual thread rows — not merely a non-empty <body>.
+
+    Asserts a *freshly created* thread rather than an early seed: the list is now paginated
+    newest-first and capped (LimitOffsetPagination), and the shared, non-rolled-back e2e DB
+    accumulates >1 page of threads across a run — so an old seed row falls off page 1. A
+    just-made thread is always at the top, which still proves the list renders real rows.
+    """
+    title = "E2E list-render probe thread"
+    _fresh_chat_thread(title)
     p = ThreadsListPage(page, frontend_base_url)
     p.go()
-    expect(page.get_by_text("E2E plain thread")).to_be_visible(timeout=10_000)
+    expect(page.get_by_text(title)).to_be_visible(timeout=10_000)
 
 
 @pytest.mark.integration
