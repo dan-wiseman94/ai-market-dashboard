@@ -84,27 +84,24 @@ Shared abstract bases live in **`apps.core.model_bases`** (no tables): `TimeStam
 | `profiles` | TradingProfile, AgentPreset, Watchlist, WatchlistSymbol |
 | `market` | OHLCBar, OptionChainSnapshot, NewsItem, MarketEvent, CompanyFundamentals, CorporateAction, CalendarOverride |
 | `snapshots` | Snapshot, SnapshotSection, SnapshotImage |
-| `threads` | Thread, Message, AIRun, ToolCall, **UserFile** (moved from the removed `files`) |
-| `observer` | ObserverSchedule, Notification |
-| `triggers` | EventTrigger, TriggerFiring |
-| `thesis` | Thesis, PostMortem *(inherits `Resolution`)*, DecisionJournalEntry |
-| `predictions` | AIPrediction *(inherits `DirectionalCall` + `Resolution`)* |
-| `analytics` | **EvalRun** (moved from the removed `aieval`) |
-| `coverage` | CoverageNote, CoverageRevision |
-| `lessons` | Lesson |
-| `portfolio` | Position (manual tracking, thesis-linked) |
-| `regime` / `book` / `desk` | RegimeReading / BookSnapshot / DeskEntry (append-only; latest row = current) |
-| `warroom` | WarRoomRun |
+| `threads` | Thread, Message, AIRun, ToolCall, UserFile *(ex-`files`)* |
+| `ai` | *(no models — providers/router/catalog/cost; absorbed the `costs` reporting/caps/CSV layer)* |
+| `observer` | ObserverSchedule, Notification, AIPrediction *(inherits `DirectionalCall`+`Resolution`, ex-`predictions`)*, EventTrigger, TriggerFiring *(ex-`triggers`)*, BriefingConfig, BriefingRun *(ex-`briefing`)* |
+| `thesis` | Thesis, PostMortem *(inherits `Resolution`)*, DecisionJournalEntry, Position *(ex-`portfolio`)*, Lesson *(ex-`lessons`)* |
+| `analytics` | EvalRun *(ex-`aieval`)* (+ the `GET /api/dashboard/` rollup, ex-`dashboard`) |
+| `strategy` | **NEW app** (subpackages): CoverageNote, CoverageRevision *(ex-`coverage`)*, WarRoomRun *(ex-`warroom`)*, DeskEntry *(ex-`desk`)*, RegimeReading *(ex-`regime`)* |
+| `book` | BookSnapshot (append-only; latest row = current) |
 | `recall` | RecallDocument (generic `(kind, object_id)` search index) |
 | `backups` / `export` | BackupRecord / ExportJob |
-| `briefing` | BriefingConfig, BriefingRun |
 
 **The "directional call + how it scored" domain is unified:** `PostMortem` and
 `AIPrediction` share `Resolution` (the byte-identical `forward_return_pct` / `verdict`
 columns + the `scheduled→running` / `open→resolving` `claim()`); `EvalRun` is the
-batch replay scorer. **Removed/merged apps (27→23):** `dashboard`→`analytics`,
-`costs`→`ai`, `files`→`threads`, `aieval`→`analytics`. FK ids are serialized as
-`*_id` (e.g. `thread_id`, `snapshot_id`) — the DRF contract the frontend types bind to.
+batch replay scorer. **Removed/merged apps (27→15):** `costs`→`ai`; `dashboard`,`aieval`→`analytics`;
+`files`→`threads`; `portfolio`,`lessons`→`thesis`; `predictions`,`triggers`,`briefing`→`observer`;
+`coverage`,`warroom`,`desk`,`regime`→ new `strategy`. Every `/api/<x>/` route is unchanged — only
+Python modules moved. FK ids are serialized as `*_id` (e.g. `thread_id`, `snapshot_id`) — the DRF
+contract the frontend types bind to.
 
 ### 4.1 Identity & config
 

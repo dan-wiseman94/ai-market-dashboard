@@ -22,9 +22,9 @@ def seed_analytics() -> None:
 
     seed_triggers()
 
+    from apps.observer.models import EventTrigger, TriggerFiring
     from apps.snapshots.models import Snapshot
     from apps.threads.models import AIRun, Message, Thread
-    from apps.triggers.models import EventTrigger, TriggerFiring
 
     rng = random.Random(7)
     now = datetime.now(UTC)

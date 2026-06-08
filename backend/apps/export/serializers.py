@@ -178,7 +178,7 @@ def observer_runs_to_markdown(schedule) -> str:
 
 
 def trigger_to_json(trigger) -> dict:
-    from apps.triggers.models import TriggerFiring
+    from apps.observer.models import TriggerFiring
 
     firings = TriggerFiring.objects.filter(trigger=trigger).order_by("fired_at")
     return {

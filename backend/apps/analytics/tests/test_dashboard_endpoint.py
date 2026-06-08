@@ -8,11 +8,9 @@ from unittest.mock import patch
 import pytest
 from rest_framework.test import APIClient
 
-from apps.briefing.models import BriefingRun
-from apps.observer.models import ObserverSchedule
+from apps.observer.models import BriefingRun, EventTrigger, ObserverSchedule, TriggerFiring
 from apps.profiles.models import TradingProfile
 from apps.thesis.models import Thesis
-from apps.triggers.models import EventTrigger, TriggerFiring
 
 
 @pytest.fixture
@@ -71,7 +69,7 @@ def test_with_seed_data(api):
     BriefingRun.objects.create(status="ready", data={"theses": [{"ticker": "NVDA"}]})
 
     with patch(
-        "apps.briefing.services.assemble.fetch_quotes",
+        "apps.observer.briefing.services.assemble.fetch_quotes",
         return_value={"NVDA": {"last": 120.0}},
     ):
         r = api.get("/api/dashboard/")
