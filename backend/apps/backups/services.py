@@ -47,6 +47,60 @@ def _sha256_stream(path: Path) -> str:
     return h.hexdigest()
 
 
+def _pg_conn() -> tuple[str, str, str, dict[str, str]]:
+    """``(host, user, db, env)`` for pg_dump / pg_restore.
+
+    Maps the docker-compose ``POSTGRES_*`` convention onto the ``PG*`` names libpq
+    actually reads (``PGPASSWORD`` is what libpq consults). Shared by the backup
+    writer and the restore path so they connect with the SAME credentials the
+    container has — the Makefile cannot, since only ``POSTGRES_*`` is set in the
+    container (``PGHOST``/``PGUSER``/``PGDATABASE`` are empty), which is why a
+    Makefile-built ``pg_restore`` could never connect.
+    """
+    host = os.environ.get("PGHOST") or os.environ.get("POSTGRES_HOST", "db")
+    user = os.environ.get("PGUSER") or os.environ.get("POSTGRES_USER", "postgres")
+    db = os.environ.get("PGDATABASE") or os.environ.get("POSTGRES_DB", "postgres")
+    pw = os.environ.get("PGPASSWORD") or os.environ.get("POSTGRES_PASSWORD", "")
+    env = os.environ.copy()
+    if pw:
+        env["PGPASSWORD"] = pw
+    return host, user, db, env
+
+
+def perform_restore(filename: str) -> Path:
+    """Restore the database from a pg_dump custom-format archive in ``backups_dir()``.
+
+    Destructive: ``--clean --if-exists`` drops and recreates objects. Mirrors
+    :func:`perform_backup`'s credential mapping (via :func:`_pg_conn`) so the
+    restore connects with the container's real ``POSTGRES_*`` credentials.
+    ``filename`` must be a bare name inside ``backups_dir()`` — a ``/`` or ``..``
+    (path traversal) or a missing file raises ``FileNotFoundError``; a non-zero
+    ``pg_restore`` exit raises ``subprocess.CalledProcessError``.
+    """
+    if "/" in filename or "\\" in filename or ".." in filename:
+        raise FileNotFoundError(f"invalid backup name: {filename!r}")
+    path = backups_dir() / filename
+    if not path.is_file():
+        raise FileNotFoundError(f"backup not found: {filename}")
+    host, user, db, env = _pg_conn()
+    cmd = [
+        "pg_restore",
+        "--clean",
+        "--if-exists",
+        "--no-owner",
+        "-h",
+        host,
+        "-U",
+        user,
+        "-d",
+        db,
+        str(path),
+    ]
+    # nosemgrep: python.lang.security.audit.dangerous-subprocess-use-tainted-env-args.dangerous-subprocess-use-tainted-env-args -- list-args (no shell), trusted operator/db config; filename traversal-guarded above
+    subprocess.run(cmd, check=True, timeout=1800, env=env)
+    return path
+
+
 def perform_backup(kind: str) -> BackupRecord:
     reconcile_disk()
     if not acquire_lock():
@@ -68,29 +122,10 @@ def perform_backup(kind: str) -> BackupRecord:
         filename = f"{ts}.sql.gz"
         path = out_dir / filename
 
-        # Map Django-side POSTGRES_* env vars onto libpq's PG* equivalents that
-        # pg_dump consults. POSTGRES_PASSWORD is the docker-compose convention;
-        # PGPASSWORD is what libpq actually reads.
-        pg_host = os.environ.get("PGHOST") or os.environ.get("POSTGRES_HOST", "db")
-        pg_user = os.environ.get("PGUSER") or os.environ.get("POSTGRES_USER", "postgres")
-        pg_db = os.environ.get("PGDATABASE") or os.environ.get("POSTGRES_DB", "postgres")
-        pg_pw = os.environ.get("PGPASSWORD") or os.environ.get("POSTGRES_PASSWORD", "")
+        pg_host, pg_user, pg_db, env = _pg_conn()
 
         with path.open("wb") as fh:
-            cmd = [
-                "pg_dump",
-                "-Fc",
-                "-Z",
-                "6",
-                "-h",
-                pg_host,
-                "-U",
-                pg_user,
-                pg_db,
-            ]
-            env = os.environ.copy()
-            if pg_pw:
-                env["PGPASSWORD"] = pg_pw
+            cmd = ["pg_dump", "-Fc", "-Z", "6", "-h", pg_host, "-U", pg_user, pg_db]
             try:
                 # nosemgrep: python.lang.security.audit.dangerous-subprocess-use-tainted-env-args.dangerous-subprocess-use-tainted-env-args -- list-args (no shell), trusted operator/db config; not external input
                 subprocess.run(cmd, stdout=fh, check=True, timeout=1800, env=env)
