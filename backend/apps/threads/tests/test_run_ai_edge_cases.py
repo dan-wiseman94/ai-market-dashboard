@@ -26,9 +26,11 @@ from apps.threads.tasks import (
 # ---------- pure helpers ----------
 
 
-def test_extract_text_falls_back_to_str_for_block_content():
+def test_extract_text_reads_block_text_not_repr():
+    # A "blocks" content (e.g. a Files-API document attach) surfaces its text
+    # blocks — never the Python repr of the dict (which used to leak to the model).
     content = {"blocks": [{"type": "text", "text": "hi"}]}  # no top-level "text" key
-    assert _extract_text(Message(content=content)) == str(content)
+    assert _extract_text(Message(content=content)) == "hi"
 
 
 @pytest.mark.django_db
