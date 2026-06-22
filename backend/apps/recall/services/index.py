@@ -7,26 +7,30 @@ from apps.recall.models import RecallDocument
 from apps.recall.text import build_text, content_hash, extract_tickers
 
 
-def _source(kind, object_id):
+def _source_model(kind):
     if kind == "thesis":
         from apps.thesis.models import Thesis
 
-        return Thesis.objects.filter(id=object_id).first()
+        return Thesis
     if kind == "journal":
         from apps.thesis.models import DecisionJournalEntry
 
-        return DecisionJournalEntry.objects.filter(id=object_id).first()
+        return DecisionJournalEntry
     if kind == "postmortem":
         from apps.thesis.models import PostMortem
 
-        return PostMortem.objects.filter(id=object_id).first()
+        return PostMortem
     if kind == "snapshot":
         from apps.snapshots.models import Snapshot
 
-        return Snapshot.objects.filter(id=object_id).first()
+        return Snapshot
     from apps.threads.models import Message
 
-    return Message.objects.filter(id=object_id).first()  # message / observation
+    return Message  # message / observation
+
+
+def _source(kind, object_id):
+    return _source_model(kind).objects.filter(id=object_id).first()
 
 
 def _source_created_at(obj):
@@ -87,3 +91,24 @@ def pending(*, cap: int = 200):
         PostMortem.objects.filter(status="done").values_list("id", flat=True),
     )
     return out
+
+
+def reconcile() -> int:
+    """Delete RecallDocument rows whose source object no longer exists, returning the count.
+
+    RecallDocument keys its source as a generic ``(kind, object_id)`` pair with NO
+    ForeignKey, and the index path only ever adds/updates — so deleting a source
+    (a Message cascades with its Thread; Thesis/Snapshot have DELETE endpoints) would
+    otherwise leave a stale row that keeps scoring in semantic + keyword recall, letting
+    the Coach quote text from an object the user has since deleted. This is the reconcile
+    half, run alongside index_pending. Batched: 2 reads + 1 delete per present kind.
+    """
+    deleted = 0
+    for kind in RecallDocument.objects.values_list("kind", flat=True).distinct():
+        doc_ids = set(RecallDocument.objects.filter(kind=kind).values_list("object_id", flat=True))
+        live = set(_source_model(kind).objects.filter(id__in=doc_ids).values_list("id", flat=True))
+        orphans = doc_ids - live
+        if orphans:
+            n, _ = RecallDocument.objects.filter(kind=kind, object_id__in=orphans).delete()
+            deleted += n
+    return deleted

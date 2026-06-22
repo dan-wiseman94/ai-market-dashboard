@@ -226,3 +226,102 @@ def trading_day_forward_return_pct(ticker: str, at: datetime, forward_hours: int
     t1 = nearest_bar_close_within(ticker, target_close, tolerance_hours=12)
     adjusted_t1, _factor = _adjusted_end_value(ticker, at, target_close, t1)
     return _pct_change(t0, adjusted_t1)
+
+
+def _nearest_close_within_inmem(
+    bars: list[tuple[datetime, float]], at: datetime, *, tolerance_hours: float
+) -> float | None:
+    """In-memory twin of :func:`nearest_bar_close_within` over a ts-ascending
+    ``(ts, close)`` list: the close of the most-recent bar with ts in
+    ``[at - tolerance, at]``, or ``None``."""
+    lo = at - timedelta(hours=tolerance_hours)
+    best: float | None = None
+    for ts, close in bars:  # ascending; keep the highest ts within [lo, at]
+        if ts > at:
+            break
+        if ts >= lo:
+            best = close
+    return best
+
+
+def _adjust_end_value_inmem(
+    actions: list, start: datetime, end: datetime, end_close: float | None
+) -> float | None:
+    """In-memory twin of :func:`_adjusted_end_value` (returns just the adjusted value).
+
+    ``actions`` is the ticker's full corporate-action list; only ex-dates in
+    ``(start.date(), end.date()]`` are applied — the same window as
+    :func:`apps.market.services.corporate_actions.corporate_actions_for`.
+    """
+    if end_close is None:
+        return None
+    window = [a for a in actions if start.date() < a.ex_date <= end.date()]
+    factor = 1.0
+    for a in window:
+        if a.kind == "split" and a.ratio is not None:
+            factor *= float(a.ratio)
+    value = end_close * factor
+    if getattr(settings, "RETURNS_ADJUST_DIVIDENDS", False):
+        for a in window:
+            if a.kind != "dividend" or a.amount is None:
+                continue
+            div_factor = 1.0
+            for s in window:
+                if s.kind == "split" and s.ratio is not None and s.ex_date <= a.ex_date:
+                    div_factor *= float(s.ratio)
+            value += float(a.amount) * div_factor
+    return value
+
+
+def trading_day_forward_returns(
+    requests: list[tuple[str, datetime]], forward_hours: int
+) -> list[float | None]:
+    """Batched twin of :func:`trading_day_forward_return_pct` over many ``(ticker, at)``
+    requests — O(1) DB queries instead of O(n).
+
+    Pre-loads the OHLC bars + corporate actions for the distinct tickers in two queries,
+    then computes every forward return in memory. The per-request math is identical to
+    :func:`trading_day_forward_return_pct` (a differential test pins the equivalence), so
+    callers get the same numbers, only without the per-row query fan-out. Results align
+    with ``requests`` order; ``None`` is an honest coverage gap. Does NOT trigger the
+    cold-ticker corporate-action backfill (this is the read-heavy analytics path).
+    """
+    from apps.market.calendar import add_trading_days, calendar_for, session_close_on
+    from apps.market.models import CorporateAction
+
+    if not requests:
+        return []
+
+    tickers = {t for t, _ in requests}
+    sessions = max(1, round(forward_hours / 24))
+    ats = [at for _, at in requests]
+    # Generous bounds: a superset of every endpoint's ±12h window. Extra bars in memory
+    # are harmless (the tolerance filter rejects them); a too-narrow window is not.
+    lo = min(ats) - timedelta(days=7)
+    hi = max(ats) + timedelta(days=sessions + 14)
+
+    bars_by_ticker: dict[str, list[tuple[datetime, float]]] = {}
+    for tk, ts, close in (
+        OHLCBar.objects.filter(ticker__in=tickers, ts__gte=lo, ts__lte=hi)
+        .order_by("ticker", "ts")
+        .values_list("ticker", "ts", "close")
+    ):
+        bars_by_ticker.setdefault(tk, []).append((ts, float(close)))
+
+    actions_by_ticker: dict[str, list] = {}
+    for a in CorporateAction.objects.filter(ticker__in=tickers).order_by("ex_date"):
+        actions_by_ticker.setdefault(a.ticker, []).append(a)
+
+    out: list[float | None] = []
+    for ticker, at in requests:
+        market = calendar_for(ticker)
+        target_day = add_trading_days(market, at, sessions)
+        target_close = session_close_on(market, target_day.date()) or target_day
+        bars = bars_by_ticker.get(ticker, [])
+        t0 = _nearest_close_within_inmem(bars, at, tolerance_hours=12)
+        t1 = _nearest_close_within_inmem(bars, target_close, tolerance_hours=12)
+        adjusted_t1 = _adjust_end_value_inmem(
+            actions_by_ticker.get(ticker, []), at, target_close, t1
+        )
+        out.append(_pct_change(t0, adjusted_t1))
+    return out

@@ -177,6 +177,12 @@ SPECTACULAR_SETTINGS = {
     "DESCRIPTION": "Single-user AI trading dashboard — internal API.",
     "VERSION": "0.4.0",
     "SERVE_INCLUDE_SCHEMA": False,
+    # Thread.kind is shared by ThreadSerializer + ThreadListSerializer; without this
+    # the enum component name flips to a hash-suffixed Kind<hash>Enum. Pin it so the
+    # name (and the generated frontend type) stays stable as serializers are added.
+    "ENUM_NAME_OVERRIDES": {
+        "ThreadKindEnum": "apps.threads.models.Thread.KIND_CHOICES",
+    },
 }
 
 # CORS (dev only — prod serves frontend same-origin)
@@ -256,6 +262,13 @@ AI_RETENTION_OHLC_DAYS = env.int("AI_RETENTION_OHLC_DAYS", default=400)
 AI_RETENTION_CHAIN_DAYS = env.int("AI_RETENTION_CHAIN_DAYS", default=120)
 AI_RETENTION_NOTIFICATION_DAYS = env.int("AI_RETENTION_NOTIFICATION_DAYS", default=90)
 AI_RETENTION_ERROR_DAYS = env.int("AI_RETENTION_ERROR_DAYS", default=90)
+# Append-only strategy/book time-series — generous windows; the latest row of each is
+# always recent (regime refreshes every ~30 min in market hours), so old rows are pure
+# history. WarRoomRun / CoverageRevision / AIRun / TriggerFiring / EvalRun are kept
+# (load-bearing audit/cost trails) and intentionally NOT pruned.
+AI_RETENTION_REGIME_DAYS = env.int("AI_RETENTION_REGIME_DAYS", default=180)
+AI_RETENTION_DESK_DAYS = env.int("AI_RETENTION_DESK_DAYS", default=180)
+AI_RETENTION_BOOK_DAYS = env.int("AI_RETENTION_BOOK_DAYS", default=365)
 
 # Logging: handled by apps.core.logging.configure_structlog, called from dev/prod settings.
 # We intentionally leave LOGGING at Django's default and reconfigure structlog imperatively.

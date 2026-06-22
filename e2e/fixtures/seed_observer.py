@@ -84,12 +84,9 @@ def seed_observer() -> None:
     # cost-cap skip message there so the timeline actually surfaces one. The "⏸"
     # prefix matches ObserverTimelinePage's isSkipped styling so it renders in the
     # collapsed headline rather than only on expand.
-    canonical, _ = Thread.objects.get_or_create(
-        profile=profile,
-        kind="observer",
-        schedule__isnull=True,
-        defaults={"title": f"Observer: {profile.name}"},
-    )
+    from apps.observer.services.threads import get_or_create_observer_thread
+
+    canonical = get_or_create_observer_thread(profile)
     if not canonical.messages.filter(role="system", content__text__icontains="cost cap").exists():
         Message.objects.create(
             thread=canonical,

@@ -89,6 +89,9 @@ export default function SystemSettings() {
           {num("retention_chain_days", "Option chains (days)")}
           {num("retention_notification_days", "Notifications (days)")}
           {num("retention_error_days", "Resolved errors (days)")}
+          {num("retention_regime_days", "Regime readings (days)")}
+          {num("retention_desk_days", "Desk findings (days)")}
+          {num("retention_book_days", "Book snapshots (days)")}
         </div>
       </div>
 

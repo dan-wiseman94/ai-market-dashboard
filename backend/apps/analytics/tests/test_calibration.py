@@ -44,6 +44,31 @@ def _pm(
     )
 
 
+@pytest.mark.django_db
+def test_provider_calibration_query_budget_is_bounded(profile, django_assert_max_num_queries):
+    """The provider-calibration section must issue ONE AIRun query for all post-mortems,
+    not one per post-mortem (the N+1 the batched _provider_section fixed)."""
+    for _ in range(8):
+        thread = Thread.objects.create(kind="consult", profile=profile)
+        msg = Message.objects.create(
+            thread=thread, role="assistant", content={"text": ""}, status="done"
+        )
+        AIRun.objects.create(
+            message=msg,
+            provider="claude",
+            model="m",
+            cost_usd=Decimal("0.1"),
+            latency_ms=1,
+            status="done",
+        )
+        _pm(_thesis(3, thread=thread), horizon=30, verdict="correct", fwd=5.0)
+
+    # Measured 2 (the pms fetch + one batched AIRun query); 6 leaves headroom while a
+    # per-post-mortem AIRun query (8 here) would breach it.
+    with django_assert_max_num_queries(6):
+        calibration(start=WIN[0], end=WIN[1], horizon=30)
+
+
 def test_prob_for_conviction_maps_1_to_0_5_and_5_to_0_9():
     assert _prob_for_conviction(1) == 0.5
     assert _prob_for_conviction(3) == 0.7

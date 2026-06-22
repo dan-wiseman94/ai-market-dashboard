@@ -45,6 +45,30 @@ def test_build_authorize_url_includes_required_params():
 @pytest.mark.django_db
 @override_settings(
     SCHWAB_CLIENT_ID="cid",
+    SCHWAB_CALLBACK_URL="https://127.0.0.1:8000/api/schwab/callback",
+    SCHWAB_AUTHORIZE_URL="https://api.schwabapi.com/v1/oauth/authorize",
+)
+def test_build_authorize_url_carries_state():
+    assert "state=abc123" in build_authorize_url(state="abc123")
+
+
+def test_oauth_state_is_one_time_and_rejects_mismatch():
+    """The CSRF nonce is single-use: a wrong value is rejected (nonce intact), the
+    correct value is accepted once, and a replay of the same value then fails."""
+    fake = fakeredis.FakeStrictRedis()
+    with patch("apps.secrets.schwab_oauth._redis", lambda: fake):
+        from apps.secrets.schwab_oauth import consume_oauth_state, new_oauth_state
+
+        state = new_oauth_state()
+        assert consume_oauth_state(None) is False
+        assert consume_oauth_state("wrong") is False  # mismatch — does not consume the nonce
+        assert consume_oauth_state(state) is True  # correct nonce accepted
+        assert consume_oauth_state(state) is False  # one-time: replay rejected
+
+
+@pytest.mark.django_db
+@override_settings(
+    SCHWAB_CLIENT_ID="cid",
     SCHWAB_CLIENT_SECRET="csec",
     SCHWAB_CALLBACK_URL="https://127.0.0.1:8000/api/schwab/callback",
     SCHWAB_TOKEN_URL="https://api.schwabapi.com/v1/oauth/token",

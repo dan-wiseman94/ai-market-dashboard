@@ -25,6 +25,9 @@ class SystemSettings(models.Model):
     retention_chain_days = models.IntegerField(null=True, blank=True)
     retention_notification_days = models.IntegerField(null=True, blank=True)
     retention_error_days = models.IntegerField(null=True, blank=True)
+    retention_regime_days = models.IntegerField(null=True, blank=True)
+    retention_desk_days = models.IntegerField(null=True, blank=True)
+    retention_book_days = models.IntegerField(null=True, blank=True)
 
     # AI failover — apps.threads.tasks. (provider "" = explicit none; NULL = inherit.)
     ai_failover_enabled = models.BooleanField(null=True, blank=True)
