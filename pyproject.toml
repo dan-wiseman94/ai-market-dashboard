@@ -99,6 +99,9 @@ extend-exclude = ["migrations", ".venv", "staticfiles", "frontend", "tools/vultu
 # S = flake8-bandit security rules (hardcoded secrets, weak hashes, subprocess, etc.).
 select = ["E", "F", "I", "B", "S", "UP", "SIM", "DJ", "RUF", "C901"]
 ignore = ["E501"]
+# Finance/stats notation used deliberately in docstrings, comments, and AI/UI strings
+# (1σ expected move, IV×√t, arrows in deltas) — allow the symbols vs their ASCII look-alikes.
+allowed-confusables = ["σ", "×", "→", "↑", "↓", "−", "≥", "±", "⚠"]
 
 [tool.ruff.lint.mccabe]
 # Ceiling = 15. Every in-tree function classifies under it (the former 27-complexity

@@ -10,6 +10,10 @@ CoverageNote uses ``bull``/``bear``/``neutral``; AIPrediction uses
 
 from __future__ import annotations
 
+import logging
+
+log = logging.getLogger(__name__)
+
 _OPP_DIR = {"bullish": "bearish", "bearish": "bullish"}
 _DIR_TO_STANCE = {"bullish": "bull", "bearish": "bear", "neutral": "neutral"}
 
@@ -31,7 +35,7 @@ def find_contradictions(ticker: str, direction: str) -> list[dict]:
         if note and note.stance in ("bull", "bear") and _DIR_TO_STANCE[direction] != note.stance:
             out.append({"source": "coverage", "stance": note.stance, "ticker": ticker})
     except Exception:
-        pass
+        log.debug("consistency: lookup failed", exc_info=True)
 
     try:
         from apps.observer.models import AIPrediction
@@ -40,7 +44,7 @@ def find_contradictions(ticker: str, direction: str) -> list[dict]:
         for p in AIPrediction.objects.filter(ticker=ticker, status="open", direction=opp):
             out.append({"source": "prediction", "direction": opp, "prediction_id": p.id})
     except Exception:
-        pass
+        log.debug("consistency: lookup failed", exc_info=True)
     return out
 
 

@@ -196,4 +196,4 @@ def _flag_contradictions(ticker: str, direction: str) -> None:
             link="/scorecard",
         )
     except Exception:
-        pass
+        log.debug("consistency sentinel failed for %s", ticker, exc_info=True)
