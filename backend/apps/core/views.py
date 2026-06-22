@@ -7,9 +7,10 @@ from typing import TYPE_CHECKING
 import redis
 from django.conf import settings
 from django.db import connection
-from django.http import HttpRequest, JsonResponse
+from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404
-from django.views.decorators.http import require_GET
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_GET, require_POST
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -211,3 +212,25 @@ def _coerce_setting(key: str, value: object, typ: type) -> tuple[object, str | N
                     "against OHLC bars by date up to the longest horizon"
                 )
     return coerced, None
+
+
+@csrf_exempt
+@require_POST
+def mcp_endpoint(request: HttpRequest):
+    """MCP-out server (#19): a minimal JSON-RPC 2.0 endpoint exposing the second
+    brain (house view / theses / predictions / recall) as read-only MCP tools."""
+    import json
+
+    from apps.core.mcp import handle
+
+    try:
+        payload = json.loads(request.body or b"{}")
+    except json.JSONDecodeError:
+        return JsonResponse(
+            {"jsonrpc": "2.0", "id": None, "error": {"code": -32700, "message": "Parse error"}},
+            status=400,
+        )
+    resp = handle(payload)
+    if resp is None:  # a notification — accepted, no body
+        return HttpResponse(status=202)
+    return JsonResponse(resp)
