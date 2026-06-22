@@ -33,9 +33,13 @@ class RunRequest:
 
 @dataclass
 class TokenUsage:
+    # input_tokens is the TOTAL prompt size; cached_tokens (cache reads) and
+    # cache_write_tokens (cache creation) are non-overlapping SUBSETS of it,
+    # billed at the cheap read rate and the write premium respectively.
     input_tokens: int = 0
     output_tokens: int = 0
     cached_tokens: int = 0
+    cache_write_tokens: int = 0
 
 
 @dataclass

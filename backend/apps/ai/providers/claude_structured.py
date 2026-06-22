@@ -55,24 +55,40 @@ def run_structured[M: BaseModel](
     return parsed
 
 
+def _token_usage_from_anthropic(usage: object):
+    """Map an Anthropic usage object to TokenUsage (total-input convention).
+
+    input_tokens, cache_read, and cache_creation are disjoint in the API; sum
+    them into input_tokens (the total prompt) and keep the read/write subsets so
+    cost.py bills reads cheap and writes at the 1.25x premium. Mirrors the
+    streaming ClaudeProvider accumulation.
+    """
+    from apps.ai.types import TokenUsage
+
+    read = int(getattr(usage, "cache_read_input_tokens", 0) or 0)
+    write = int(getattr(usage, "cache_creation_input_tokens", 0) or 0)
+    base = int(getattr(usage, "input_tokens", 0) or 0)
+    return TokenUsage(
+        input_tokens=base + read + write,
+        output_tokens=int(getattr(usage, "output_tokens", 0) or 0),
+        cached_tokens=read,
+        cache_write_tokens=write,
+    )
+
+
 def _record_structured_run(*, model: str, usage: object, latency_ms: int) -> None:
     """Best-effort: record this one-shot run as an AIRun so its cost counts
     against the provider caps. A ledger-write failure must never lose the
     already-parsed result, so we log and continue. Usage mapping mirrors the
-    streaming ClaudeProvider (input/output/cache_read).
+    streaming ClaudeProvider (total input + read/write subsets).
     """
     from apps.ai.cost import record_ai_run
-    from apps.ai.types import TokenUsage
 
     try:
         record_ai_run(
             provider="claude",
             model=model,
-            usage=TokenUsage(
-                input_tokens=int(getattr(usage, "input_tokens", 0) or 0),
-                output_tokens=int(getattr(usage, "output_tokens", 0) or 0),
-                cached_tokens=int(getattr(usage, "cache_read_input_tokens", 0) or 0),
-            ),
+            usage=_token_usage_from_anthropic(usage),
             latency_ms=latency_ms,
         )
     except Exception:  # best-effort ledger write; the parsed result is already obtained

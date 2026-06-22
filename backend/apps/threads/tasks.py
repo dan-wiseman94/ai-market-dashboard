@@ -492,6 +492,8 @@ def _run_ai_on_message(
             if any(counts.values())
             else Decimal("0")
         )
+        # Explicit columns (not **counts): counts may carry cache_write_tokens,
+        # which has no AIRun column — its cost is already folded into cost_usd.
         AIRun.objects.create(
             message=assistant,
             provider=provider_name,
@@ -499,7 +501,9 @@ def _run_ai_on_message(
             cost_usd=cost,
             latency_ms=latency_ms,
             status="done",
-            **counts,
+            input_tokens=counts["input_tokens"],
+            output_tokens=counts["output_tokens"],
+            cached_tokens=counts["cached_tokens"],
         )
         _broadcast(
             thread_id,

@@ -47,7 +47,7 @@ class ClaudeProvider:
         messages = [{"role": m.role, "content": m.content} for m in req.messages]
         messages = _maybe_cache_last_message(messages, cache=req.cache_last_message)
 
-        total_in = total_out = total_cached = 0
+        total_in = total_out = total_cached = total_cache_write = 0
         memory_handler = _make_memory_handler(req.memory_dir)
         tool_rounds = 0
         tools_enabled = True
@@ -90,9 +90,16 @@ class ClaudeProvider:
                     final = await stream.get_final_message()
 
                 u = final.usage
-                total_in += getattr(u, "input_tokens", 0) or 0
+                # Anthropic reports input_tokens (full-rate), cache_read, and
+                # cache_creation as DISJOINT buckets. input_tokens here is the
+                # TOTAL prompt (sum of all three) to match cost.py's convention;
+                # cache_read/cache_write are the cheap-read and write-premium subsets.
+                read = getattr(u, "cache_read_input_tokens", 0) or 0
+                write = getattr(u, "cache_creation_input_tokens", 0) or 0
+                total_in += (getattr(u, "input_tokens", 0) or 0) + read + write
                 total_out += getattr(u, "output_tokens", 0) or 0
-                total_cached += getattr(u, "cache_read_input_tokens", 0) or 0
+                total_cached += read
+                total_cache_write += write
 
                 stop = getattr(final, "stop_reason", None)
                 if stop != "tool_use" or not tools_list:
@@ -157,6 +164,7 @@ class ClaudeProvider:
                     input_tokens=total_in,
                     output_tokens=total_out,
                     cached_tokens=total_cached,
+                    cache_write_tokens=total_cache_write,
                 )
             )
             yield DoneEvent()
