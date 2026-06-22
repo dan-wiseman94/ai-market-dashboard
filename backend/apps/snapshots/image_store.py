@@ -13,10 +13,13 @@ surface, like any blob store). Restore = DB restore + that volume.
 
 from __future__ import annotations
 
+import logging
 import uuid
 from pathlib import Path
 
 from django.conf import settings
+
+log = logging.getLogger(__name__)
 
 
 def image_dir() -> Path:
@@ -30,6 +33,19 @@ def write_image_file(data: bytes, *, ext: str = "png") -> str:
     path = image_dir() / f"{uuid.uuid4().hex}.{ext}"
     path.write_bytes(data)
     return str(path)
+
+
+def delete_image_file(img) -> None:
+    """Unlink an offloaded SnapshotImage's /data file. No-op for legacy in-DB
+    rows (no ``file_path``). Best-effort — a unlink failure must not block the
+    row delete (the file becomes orphaned, the prior behaviour, but logged)."""
+    fp = getattr(img, "file_path", "") or ""
+    if not fp:
+        return
+    try:
+        Path(fp).unlink(missing_ok=True)
+    except OSError as exc:
+        log.warning("snapshots.image_store.unlink failed path=%s: %s", fp, exc)
 
 
 def read_image_bytes(img) -> bytes:
