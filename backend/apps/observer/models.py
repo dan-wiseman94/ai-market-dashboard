@@ -101,6 +101,7 @@ class Notification(models.Model):
         ("book", "Book"),
         ("desk", "Desk"),
         ("cal_drift", "Calibration drift"),
+        ("contra", "Consistency conflict"),
     ]
 
     # Nullable for v1 (no user-auth surface yet). When auth lands, backfill or
