@@ -234,6 +234,32 @@ export function useAICalibration(days = 90, horizon?: number) {
   });
 }
 
+export interface CalibrationDriftModel {
+  model: string;
+  recent_error: number | null;
+  baseline_error: number | null;
+  delta: number | null;
+  drifting: boolean;
+  direction: "overconfident" | "underconfident" | "stable";
+  status: "scored" | "insufficient_history";
+  recent_runs: number;
+  baseline_runs: number;
+}
+export interface CalibrationDrift {
+  generated_at: string;
+  window_days: number;
+  models: CalibrationDriftModel[];
+}
+
+/** #14 — per-model calibration drift (recent vs baseline EvalRun error). */
+export function useCalibrationDrift(windowDays = 30) {
+  return useQuery({
+    queryKey: ["analytics/calibration-drift", windowDays],
+    queryFn: () =>
+      apiGet<CalibrationDrift>(`/api/analytics/calibration-drift/?window_days=${windowDays}`),
+  });
+}
+
 export interface EvalReliabilityBucket {
   bin_low: number;
   bin_high: number;
