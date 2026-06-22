@@ -51,6 +51,21 @@ export type ThreadListRow = {
 // The list endpoint is paginated (LimitOffsetPagination); unwrap to the rows.
 export const fetchThreads = () =>
   apiGet<{ results: ThreadListRow[]; count?: number }>("/api/threads/").then((r) => r.results);
+
+export type ThreadPage = {
+  results: ThreadListRow[];
+  count: number;
+  next: string | null;
+  previous: string | null;
+};
+
+// Paginated fetch for the list UI — offset/limit so older threads are reachable
+// (the bare fetchThreads above only ever returns the newest page).
+export const fetchThreadsPage = (params?: { limit?: number; offset?: number }) => {
+  const sp = new URLSearchParams({ limit: String(params?.limit ?? 50) });
+  if (params?.offset) sp.set("offset", String(params.offset));
+  return apiGet<ThreadPage>(`/api/threads/?${sp.toString()}`);
+};
 export const fetchThread = (id: number) => apiGet<Thread>(`/api/threads/${id}/`);
 
 export const createThread = (body: {
