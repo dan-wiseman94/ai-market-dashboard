@@ -31,7 +31,7 @@ from cryptography.fernet import InvalidToken
 
 from apps.ai.providers.claude_structured import run_structured
 from apps.analytics.models import EvalRun
-from apps.analytics.services.calibration import _hit_rate, _prob_for_conviction
+from apps.analytics.services.calibration import _hit_rate
 from apps.observer.schemas import ObservationReport
 from apps.snapshots.serializer import serialize_for_ai
 from apps.thesis.models import PostMortem
@@ -252,8 +252,14 @@ def evaluate(
         else:
             incorrect += 1
             o = 0.0
-        p = _prob_for_conviction(ex.thesis.conviction)
-        brier_terms.append((p - o) ** 2)
+        # Brier scores the MODEL's own stated confidence against the outcome —
+        # NOT the human author's conviction (that would measure the trader, not
+        # the candidate model, and contradicted the model-based reliability curve
+        # computed in confidence_calibration below). Rows where the model stated
+        # no confidence are excluded from the Brier mean.
+        p = r["confidence"]
+        if p is not None:
+            brier_terms.append((p - o) ** 2)
 
     calibration = confidence_calibration(rows)
     non_empty = [b for b in calibration if b["n"] > 0]

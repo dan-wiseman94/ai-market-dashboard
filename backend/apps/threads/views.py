@@ -230,15 +230,15 @@ class ThreadViewSet(
             msg = Message.objects.get(id=message_id, thread=thread, role="assistant")
         except Message.DoesNotExist:
             return _error("not_found", "Message not found", 404)
-        if msg.status != "streaming":
-            # The run already reached a terminal state (natural finish, or a prior
-            # stop). Stopping it is a benign no-op — a 400 here just turns a UI race
-            # (or a stale "streaming" button left by a dropped WS) into console noise.
+        # Compare-and-set: cancel ONLY if still streaming. This races the worker's
+        # terminal write (which finalizes with the same status="streaming" guard);
+        # whoever flips status first wins, so we never un-cancel or double-record a
+        # run that just finished naturally. 0 rows → already terminal (benign no-op).
+        cancelled = Message.objects.filter(id=msg.id, status="streaming").update(
+            status="failed", error="cancelled"
+        )
+        if not cancelled:
             return Response({"ok": True, "already_terminal": True}, status=200)
-        # Signal the worker to abort the live stream, then record the cancellation.
-        request_stop(msg.id)
-        msg.status = "failed"
-        msg.error = "cancelled"
-        msg.save()
+        request_stop(msg.id)  # signal the worker to abort the live stream
         _broadcast(thread.id, {"event": "error", "message_id": msg.id, "error": "cancelled"})
         return Response({"ok": True}, status=200)
