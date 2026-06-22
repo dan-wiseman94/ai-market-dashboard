@@ -6,6 +6,7 @@ from apps.analytics.views import (
     CalibrationDriftView,
     CalibrationDrilldownView,
     CalibrationView,
+    ContradictionsView,
     CostPerInsightView,
     LeaderboardView,
     ObserverTimelineView,
@@ -18,6 +19,7 @@ from apps.analytics.views import (
 urlpatterns = [
     path("calibration/", CalibrationView.as_view(), name="analytics-calibration"),
     path("calibration-drift/", CalibrationDriftView.as_view(), name="analytics-calibration-drift"),
+    path("contradictions/", ContradictionsView.as_view(), name="analytics-contradictions"),
     path(
         "calibration/drilldown/",
         CalibrationDrilldownView.as_view(),

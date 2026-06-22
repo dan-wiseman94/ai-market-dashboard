@@ -99,6 +99,19 @@ paths:
       responses:
         '200':
           description: No response body
+  /api/analytics/contradictions/:
+    get:
+      operationId: analytics_contradictions_retrieve
+      description: '#15 — open predictions that oppose the ticker''s house view (CoverageNote).'
+      tags:
+      - analytics
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
   /api/analytics/cost-per-insight/:
     get:
       operationId: analytics_cost_per_insight_retrieve
@@ -4325,6 +4338,7 @@ components:
       - book
       - desk
       - cal_drift
+      - contra
       type: string
       description: |-
         * `trigger` - Trigger
@@ -4338,6 +4352,7 @@ components:
         * `book` - Book
         * `desk` - Desk
         * `cal_drift` - Calibration drift
+        * `contra` - Consistency conflict
     ObserverSchedule:
       type: object
       properties:

@@ -151,7 +151,7 @@ def extract_from_observation(
         existing.invalidated_at = timezone.now()
         existing.save(update_fields=["status", "invalidated_at", "updated_at"])
 
-    return AIPrediction.objects.create(
+    pred = AIPrediction.objects.create(
         ticker=ticker,
         direction=direction,
         horizon_days=horizon,
@@ -168,3 +168,32 @@ def extract_from_observation(
         predicted_at=predicted_at,
         resolve_at=_resolve_at(ticker, predicted_at, horizon),
     )
+    _flag_contradictions(ticker, direction)
+    return pred
+
+
+def _flag_contradictions(ticker: str, direction: str) -> None:
+    """#15: notify when this new call contradicts the house view / an open call.
+    Best-effort — a sentinel failure must never break extraction."""
+    try:
+        from apps.observer.predictions.services.consistency import find_contradictions
+        from apps.observer.services.notifications import notify
+
+        conflicts = find_contradictions(ticker, direction)
+        if not conflicts:
+            return
+        srcs = ", ".join(
+            f"{c['stance']} house view"
+            if c["source"] == "coverage"
+            else f"open {c['direction']} call"
+            for c in conflicts
+        )
+        notify(
+            user_id=None,
+            kind="contra",
+            title=f"Inconsistent view: {ticker}",
+            body=f"New {direction} {ticker} call contradicts {srcs}.",
+            link="/scorecard",
+        )
+    except Exception:
+        pass

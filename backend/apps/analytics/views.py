@@ -238,3 +238,12 @@ class CalibrationDriftView(APIView):
         except (TypeError, ValueError):
             window = 30
         return Response(calibration_drift(window_days=window))
+
+
+class ContradictionsView(APIView):
+    """#15 — open predictions that oppose the ticker's house view (CoverageNote)."""
+
+    def get(self, request: Request) -> Response:
+        from apps.observer.predictions.services.consistency import open_contradictions
+
+        return Response({"contradictions": open_contradictions()})
