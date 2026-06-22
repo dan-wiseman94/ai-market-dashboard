@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from datetime import UTC, datetime, timedelta
 from functools import partial
 
@@ -157,10 +158,19 @@ def _parse_macro_time(t: str) -> datetime | None:
     return dt.replace(tzinfo=UTC) if dt.tzinfo is None else dt
 
 
+def _macro_slug(event_name: str) -> str:
+    """Stable slug of the event name to distinguish distinct same-kind/same-day
+    releases (e.g. CPI vs Core CPI) — keyed into external_id so they don't
+    collide and overwrite each other, while a re-fetch of the same event stays
+    idempotent."""
+    return re.sub(r"[^a-z0-9]+", "-", (event_name or "").lower()).strip("-")[:48]
+
+
 def _upsert_macro(rows: list[dict], *, source: str) -> list[MarketEvent]:
     out: list[MarketEvent] = []
     for r in rows:
-        kind = _macro_kind(r.get("event", ""))
+        name = r.get("event", "")
+        kind = _macro_kind(name)
         if kind is None or not _is_high_impact(r.get("impact")) or not _is_us(r.get("country")):
             continue
         dt = _parse_macro_time(r.get("time", ""))
@@ -168,7 +178,7 @@ def _upsert_macro(rows: list[dict], *, source: str) -> list[MarketEvent]:
             continue
         obj, _ = MarketEvent.objects.update_or_create(
             source=source,
-            external_id=f"{kind.upper()}:{dt.date().isoformat()}",
+            external_id=f"{kind.upper()}:{dt.date().isoformat()}:{_macro_slug(name)}",
             defaults={
                 "kind": kind,
                 "ticker": "",
