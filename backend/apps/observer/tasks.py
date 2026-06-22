@@ -13,7 +13,12 @@ from apps.observer.services.run import run_observer
 from apps.observer.triggers import tasks as _trigger_tasks  # noqa: F401
 
 
-@shared_task(name="observer.run_observer")
+# at-most-once: the structured/consensus paths bill run_structured synchronously
+# inside run_observer (the plain path delegates to the already-at-most-once
+# run_ai_on_message.delay()). acks_late=False stops a worker-loss redelivery from
+# re-capturing the snapshot + re-billing. A lost fire is covered by the next
+# periodic fire. See apps/observer/tests/test_task_acks.py.
+@shared_task(name="observer.run_observer", acks_late=False, reject_on_worker_lost=False)
 def run_observer_task(schedule_id: int) -> int | None:
     return run_observer(schedule_id)
 

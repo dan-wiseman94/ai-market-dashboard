@@ -1,6 +1,6 @@
 from celery import shared_task
 
-from apps.recall.services.index import index_one, pending
+from apps.recall.services.index import index_one, pending, reconcile
 
 
 @shared_task(name="recall.index_document")
@@ -13,4 +13,6 @@ def index_pending() -> dict:
     items = pending(cap=200)
     for kind, oid in items:
         index_document.delay(kind, oid)
-    return {"dispatched": len(items)}
+    # Reconcile the other direction: drop docs whose source was deleted (no FK to cascade).
+    removed = reconcile()
+    return {"dispatched": len(items), "reconciled": removed}

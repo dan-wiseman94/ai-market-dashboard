@@ -31,7 +31,7 @@ const threadFixture = {
 
 describe("useThreads", () => {
   it("returns threads on success", async () => {
-    mockApi({ "GET /api/threads/": [threadFixture] });
+    mockApi({ "GET /api/threads/": { results: [threadFixture] } });
     const { result } = renderHook(() => useThreads(), { wrapper: hookWrapper() });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(result.current.data).toHaveLength(1);

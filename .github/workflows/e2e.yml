@@ -22,7 +22,10 @@ jobs:
   #     needs a Lighthouse runner; run those via `make e2e` locally or on merge.
   ui:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    # 35 (was 25): the Playwright e2e/ui suite had been skipped for months because
+    # schemathesis ate the whole budget (see the schemathesis step). With schemathesis now
+    # bounded, give the long-dormant ui suite real headroom so the lane can complete.
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v6
       - uses: docker/setup-buildx-action@v4
@@ -57,7 +60,19 @@ jobs:
         # MOCK_EXTERNAL is on in the e2e overlay, so fuzzing every method is safe.
         # -c not_a_server_error: gate on crashes (real bugs), not strict response-schema
         # conformance (noisy against drf-spectacular's graceful-fallback schemas).
-        run: docker compose -f compose.yaml -f compose.e2e.yaml exec -T --workdir /app web uv run schemathesis run http://localhost:8000/api/schema/ -u http://localhost:8000 -c not_a_server_error -n 6
+        # -w 6: concurrent workers. NOTE schemathesis 4.x repurposed `-n` (was "workers"
+        # in 3.x) to mean --max-examples, so the old `-n 6` silently dropped all parallelism
+        # AND ran the combinatorial `stateful` phase serially — ~20 min, blowing the 25-min
+        # job cap before the e2e/ui suite ever ran. Restore parallelism (-w), bound examples
+        # (-n 20), and run only the crash-relevant phases: `fuzzing` (the actual "no 5xx"
+        # check) + `examples`. `coverage` (~70% of cases, deterministic boundary gen) and the
+        # combinatorial `stateful` link-walk are dropped to keep this ~5 min, leaving the
+        # 35-min job budget for the e2e/ui Playwright suite. See PR #121/#122.
+        # --exclude-path: skip two operations that crash schemathesis's OWN parameter
+        # generator (hypothesis "dictionary changed size during iteration" in
+        # _hypothesis.generate_parameter, a tooling bug — the app never receives a request).
+        # These are not app failures; revisit when schemathesis fixes the generator.
+        run: docker compose -f compose.yaml -f compose.e2e.yaml exec -T --workdir /app web uv run schemathesis run http://localhost:8000/api/schema/ -u http://localhost:8000 -c not_a_server_error -w 6 -n 20 --phases examples,fuzzing --exclude-path /api/dashboard/ --exclude-path /api/analytics/observer-timeline/
       - name: render-chart integration test (the /render/chart chromium path)
         # apps.snapshots.services.render.render_chart_png is the headless-chromium chart-image
         # pipeline. Its test is marked `integration`, so check.yml deselects it (`-m 'not

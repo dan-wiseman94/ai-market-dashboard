@@ -25,15 +25,32 @@ export type Message = {
   snapshot_id?: number | null;
 };
 
+export type ThreadProfile = {
+  id: number; name: string; default_provider: string; default_model: string;
+} | null;
+
 export type Thread = {
   id: number; kind: "consult" | "chat" | "observer"; title: string;
-  profile: { id: number; name: string; default_provider: string; default_model: string } | null;
+  profile: ThreadProfile;
   pinned_snapshot_id: number | null;
   created_at: string;
   messages: Message[];
 };
 
-export const fetchThreads = () => apiGet<Thread[]>("/api/threads/");
+// Light row from the list endpoint — no per-thread messages (see backend
+// ThreadListSerializer); carries message_count instead. The detail view
+// (fetchThread) still returns the full Thread with nested messages.
+export type ThreadListRow = {
+  id: number; kind: "consult" | "chat" | "observer"; title: string;
+  profile: ThreadProfile;
+  pinned_snapshot_id: number | null;
+  created_at: string;
+  message_count: number;
+};
+
+// The list endpoint is paginated (LimitOffsetPagination); unwrap to the rows.
+export const fetchThreads = () =>
+  apiGet<{ results: ThreadListRow[]; count?: number }>("/api/threads/").then((r) => r.results);
 export const fetchThread = (id: number) => apiGet<Thread>(`/api/threads/${id}/`);
 
 export const createThread = (body: {

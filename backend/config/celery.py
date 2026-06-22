@@ -40,9 +40,15 @@ app.conf.update(
     # A wedged provider stream or hung pg_dump must not pin a worker slot forever.
     task_soft_time_limit=600,  # 10 min: SoftTimeLimitExceeded (catchable cleanup)
     task_time_limit=660,  # 11 min: hard kill if soft limit ignored
-    # Redelivery on worker crash (tasks are idempotent — see CLAUDE.md):
+    # Redelivery on worker crash — safe ONLY for the idempotent background tasks
+    # that each carry their own claim/lock (see CLAUDE.md):
     #   postmortem: scheduled→running DB claim; triggers: Redis SET NX lock;
-    #   backups: Redis acquire_lock() SET NX; observer: close_relative once-per-day guard.
+    #   backups: Redis acquire_lock() SET NX; close_relative: once-per-day guard.
+    # The billable, non-idempotent tasks that bill a provider synchronously and/or
+    # stream (run_ai_on_message, warroom.run_debate, coverage.revise_from_observation,
+    # strategy.regime_refresh, observer.run_observer) each OVERRIDE this to
+    # acks_late=False — a redelivery there would double-charge. Guarded by the
+    # test_*acks*.py tests next to each task.
     task_acks_late=True,
     task_reject_on_worker_lost=True,
     # Recycle workers to bound chromium/fastembed memory creep.

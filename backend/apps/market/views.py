@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+from django.db import IntegrityError, transaction
 from django.http import HttpRequest, JsonResponse
 from django.views.decorators.http import require_GET
 from rest_framework import viewsets
+from rest_framework.exceptions import ValidationError
 
 from apps.market.calendar import MARKETS, calendar_for, market_state
 from apps.market.models import CalendarOverride
@@ -150,6 +152,27 @@ def treasury(_request: HttpRequest) -> JsonResponse:
 class CalendarOverrideViewSet(viewsets.ModelViewSet):
     queryset = CalendarOverride.objects.all().order_by("symbol")
     serializer_class = CalendarOverrideSerializer
+
+    # CalendarOverride.symbol is unique AND normalized (strip().upper()) in Model.save(),
+    # which runs AFTER the serializer's UniqueValidator (which sees the raw value). So a
+    # case-variant of an existing symbol ("spy" vs stored "SPY") slips past validation and
+    # hits the DB unique constraint -> IntegrityError -> 500. Translate it to a clean 400.
+    # (Wrapped in a savepoint so the failed INSERT rolls back cleanly.)
+    def perform_create(self, serializer) -> None:
+        self._save_or_400(serializer)
+
+    def perform_update(self, serializer) -> None:
+        self._save_or_400(serializer)
+
+    @staticmethod
+    def _save_or_400(serializer) -> None:
+        try:
+            with transaction.atomic():
+                serializer.save()
+        except IntegrityError as exc:
+            raise ValidationError(
+                {"symbol": "A calendar override for this symbol already exists."}
+            ) from exc
 
 
 @require_GET
