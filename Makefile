@@ -161,7 +161,7 @@ restore: ## Restore DB from /data/backups/<file>. Usage: make restore file=2026-
 	@test -n "$(file)" || (echo "usage: make restore file=<name>" >&2; exit 1)
 	@$(COMPOSE) exec web test -f /data/backups/$(file) || (echo "not found: /data/backups/$(file)" >&2; exit 1)
 	$(COMPOSE) stop beat worker
-	$(COMPOSE) exec web sh -c 'pg_restore --clean --if-exists -h $$PGHOST -U $$PGUSER -d $$PGDATABASE /data/backups/$(file)'
+	$(COMPOSE) exec web uv run python manage.py restore_db $(file)
 	$(COMPOSE) start beat worker
 
 # E2E lanes — UI / visual / a11y / perf run in `worker` (carries chromium playwright).
