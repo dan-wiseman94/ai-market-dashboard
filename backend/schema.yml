@@ -72,6 +72,20 @@ paths:
       responses:
         '200':
           description: No response body
+  /api/analytics/calibration-drift/:
+    get:
+      operationId: analytics_calibration_drift_retrieve
+      description: '#14 — per-model calibration drift (recent vs baseline EvalRun
+        error).'
+      tags:
+      - analytics
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
   /api/analytics/calibration/drilldown/:
     get:
       operationId: analytics_calibration_drilldown_retrieve
@@ -4310,6 +4324,7 @@ components:
       - regime
       - book
       - desk
+      - cal_drift
       type: string
       description: |-
         * `trigger` - Trigger
@@ -4322,6 +4337,7 @@ components:
         * `regime` - Regime
         * `book` - Book
         * `desk` - Desk
+        * `cal_drift` - Calibration drift
     ObserverSchedule:
       type: object
       properties:

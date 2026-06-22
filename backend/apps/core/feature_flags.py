@@ -68,6 +68,12 @@ FEATURE_FLAGS: list[FeatureFlag] = [
         "Run the calibration eval on a beat schedule — spends real AI $ (no MOCK_EXTERNAL short-circuit).",
     ),
     FeatureFlag(
+        "CALIBRATION_DRIFT_SENTINEL_ENABLED",
+        False,
+        "feature",
+        "Daily sentinel: notify when a model's calibration_error drifts (over/under-confident). No AI $.",
+    ),
+    FeatureFlag(
         "ANOMALY_SWEEP_ENABLED",
         False,
         "feature",

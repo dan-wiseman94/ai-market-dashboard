@@ -239,6 +239,10 @@ AI_AUTONOMOUS_DAILY_CAP_USD = env.float("AI_AUTONOMOUS_DAILY_CAP_USD", default=0
 # ($) and run_structured has no MOCK_EXTERNAL short-circuit. Enable deliberately.
 AIEVAL_SCHEDULED_ENABLED = env.bool("AIEVAL_SCHEDULED_ENABLED", default=False)
 
+# Calibration-drift sentinel — daily notify when a model's calibration_error drifts.
+# OFF by default (it sends notifications autonomously). Reads EvalRuns only, no AI $.
+CALIBRATION_DRIFT_SENTINEL_ENABLED = env.bool("CALIBRATION_DRIFT_SENTINEL_ENABLED", default=False)
+
 # Calibration-weighted routing (M14 F2/F6, opt-in): when ON, the provider/model
 # FALLBACK (no per-send override, no profile pin) picks the best-MEASURED enabled
 # model from the eval harness instead of the first ProviderConfig by id. Per-send
