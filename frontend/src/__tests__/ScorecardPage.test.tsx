@@ -24,6 +24,10 @@ function mockDrift(data: unknown = undefined, isLoading = false) {
   vi.spyOn(hooks, "useCalibrationDrift").mockReturnValue({ data, isLoading } as never);
 }
 
+function mockContra(data: unknown = undefined, isLoading = false) {
+  vi.spyOn(hooks, "useContradictions").mockReturnValue({ data, isLoading } as never);
+}
+
 const POPULATED = {
   horizon: 30,
   scored: 2,
@@ -97,6 +101,7 @@ describe("ScorecardPage", () => {
     vi.restoreAllMocks();
     mockAICal(); // default: no resolved AI predictions; the AI-calibration test overrides
     mockDrift(); // default: no drift data; the drift test overrides
+    mockContra(); // default: no contradictions; the contradiction test overrides
   });
 
   it("shows empty state when nothing scored", () => {
@@ -214,6 +219,21 @@ describe("ScorecardPage", () => {
     expect(drift).toHaveTextContent(/opus/);
     expect(drift).toHaveTextContent(/overconfident/);
     expect(drift).not.toHaveTextContent(/sonnet/); // non-drifting models are hidden
+  });
+
+  it("renders open contradictions vs the house view (#15)", () => {
+    mock(POPULATED);
+    mockDrill();
+    mockEval();
+    mockContra({
+      contradictions: [
+        { ticker: "NVDA", prediction_direction: "bearish", stance: "bull", prediction_id: 1, predicted_at: "z" },
+      ],
+    });
+    render(<ScorecardPage />);
+    const c = screen.getByTestId("contradictions");
+    expect(c).toHaveTextContent(/NVDA/);
+    expect(c).toHaveTextContent(/bearish call vs bullish house view/i);
   });
 
   it("hides the live AI calibration section when no predictions resolved", () => {
