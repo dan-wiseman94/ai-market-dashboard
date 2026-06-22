@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import {
+  type CalibrationDrift,
   useAICalibration,
   useCalibration,
+  useCalibrationDrift,
   useCalibrationDrilldown,
   useLatestEvalRun,
   type AICalibration,
@@ -364,6 +366,7 @@ export default function ScorecardPage() {
   const { data: drill, isLoading: drillLoading } = useCalibrationDrilldown(selected, horizon, 90);
   const { data: evalRun } = useLatestEvalRun();
   const { data: aiCal } = useAICalibration(90, horizon);
+  const { data: drift } = useCalibrationDrift();
 
   function pickHorizon(h: number) {
     setHorizon(h);
@@ -394,6 +397,26 @@ export default function ScorecardPage() {
       {evalRun && evalRun.scored > 0 && <EvalCalibration evalRun={evalRun} />}
 
       {aiCal && aiCal.overall.scored > 0 && <AICalibrationSection aiCal={aiCal} />}
+
+      {drift && <CalibrationDriftSection drift={drift} />}
     </div>
+  );
+}
+
+function CalibrationDriftSection({ drift }: { drift: CalibrationDrift }) {
+  const drifting = drift.models.filter((m) => m.drifting);
+  if (drifting.length === 0) return null;
+  return (
+    <section data-testid="calibration-drift">
+      <h2 className="mb-2 font-semibold">Calibration drift</h2>
+      <ul className="space-y-1 text-sm">
+        {drifting.map((m) => (
+          <li key={m.model} className="text-copper-400">
+            ⚠ <span className="font-medium">{m.model}</span> looks {m.direction} — calibration error{" "}
+            {m.baseline_error}→{m.recent_error} (last {drift.window_days}d).
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
