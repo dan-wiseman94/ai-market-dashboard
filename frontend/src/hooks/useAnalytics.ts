@@ -260,6 +260,22 @@ export function useCalibrationDrift(windowDays = 30) {
   });
 }
 
+export interface Contradiction {
+  ticker: string;
+  prediction_direction: "bullish" | "bearish";
+  stance: "bull" | "bear";
+  prediction_id: number;
+  predicted_at: string;
+}
+
+/** #15 — open predictions whose direction opposes the ticker's house view. */
+export function useContradictions() {
+  return useQuery({
+    queryKey: ["analytics/contradictions"],
+    queryFn: () => apiGet<{ contradictions: Contradiction[] }>("/api/analytics/contradictions/"),
+  });
+}
+
 export interface EvalReliabilityBucket {
   bin_low: number;
   bin_high: number;

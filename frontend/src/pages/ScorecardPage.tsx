@@ -2,9 +2,11 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import {
   type CalibrationDrift,
+  type Contradiction,
   useAICalibration,
   useCalibration,
   useCalibrationDrift,
+  useContradictions,
   useCalibrationDrilldown,
   useLatestEvalRun,
   type AICalibration,
@@ -367,6 +369,7 @@ export default function ScorecardPage() {
   const { data: evalRun } = useLatestEvalRun();
   const { data: aiCal } = useAICalibration(90, horizon);
   const { data: drift } = useCalibrationDrift();
+  const { data: contra } = useContradictions();
 
   function pickHorizon(h: number) {
     setHorizon(h);
@@ -399,7 +402,30 @@ export default function ScorecardPage() {
       {aiCal && aiCal.overall.scored > 0 && <AICalibrationSection aiCal={aiCal} />}
 
       {drift && <CalibrationDriftSection drift={drift} />}
+
+      {contra && contra.contradictions.length > 0 && (
+        <ContradictionsSection rows={contra.contradictions} />
+      )}
     </div>
+  );
+}
+
+function ContradictionsSection({ rows }: { rows: Contradiction[] }) {
+  return (
+    <section data-testid="contradictions">
+      <h2 className="mb-2 font-semibold">Open contradictions</h2>
+      <p className="mb-2 text-sm text-ink-400">
+        Open predictions whose direction opposes the standing house view — reconcile or retire one.
+      </p>
+      <ul className="space-y-1 text-sm">
+        {rows.map((r) => (
+          <li key={r.prediction_id} className="text-copper-400">
+            ⚠ <span className="font-medium">{r.ticker}</span>: open {r.prediction_direction} call vs{" "}
+            {r.stance === "bull" ? "bullish" : "bearish"} house view.
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 
