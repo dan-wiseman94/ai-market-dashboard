@@ -186,12 +186,18 @@ def _diff_overnight(prev: dict, curr: dict) -> str:
 
 
 def _diff_chain(prev: dict, curr: dict) -> str:
-    # Compact: report change in the count of expirations/lines; deep greek diffs deferred.
-    def n(blob: dict) -> Any:
-        exps = blob.get("expirations") or blob.get("data", {}).get("expirations")
-        return len(exps) if isinstance(exps, list) else None
+    # Compact: report change in the count of expiries; deep greek diffs deferred.
+    # The chain payload stores expiries as a DICT keyed by expiry date
+    # ({"expiries": {date: section}}). The old code read a non-existent
+    # "expirations" list, so chain changes were silently never reported.
+    def n(blob: dict) -> int | None:
+        exp = blob.get("expiries")
+        if exp is None:
+            data = blob.get("data")
+            exp = data.get("expiries") if isinstance(data, dict) else None
+        return len(exp) if isinstance(exp, dict | list) else None
 
     pn, cn = n(prev), n(curr)
     if pn is not None and cn is not None and pn != cn:
-        return f"- expirations: {pn} → {cn}"
+        return f"- expiries: {pn} → {cn}"
     return ""
