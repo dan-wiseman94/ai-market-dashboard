@@ -109,3 +109,18 @@ class SnapshotImage(models.Model):
 
     def __str__(self) -> str:
         return f"SnapshotImage({self.id}, {self.kind})"
+
+
+# Unlink the offloaded /data file when a SnapshotImage row goes away (instance
+# delete OR cascade from a Snapshot delete). Connecting this signal also opts the
+# model out of Django's fast-delete, so it fires on queryset .delete() too —
+# otherwise the bytes leak on the volume forever.
+from django.db.models.signals import post_delete  # noqa: E402
+from django.dispatch import receiver  # noqa: E402
+
+
+@receiver(post_delete, sender=SnapshotImage)
+def _unlink_snapshot_image_file(sender, instance, **kwargs) -> None:
+    from apps.snapshots.image_store import delete_image_file
+
+    delete_image_file(instance)

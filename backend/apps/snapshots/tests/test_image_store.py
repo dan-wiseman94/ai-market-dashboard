@@ -74,3 +74,33 @@ def test_build_image_blocks_reads_offloaded_bytes(image_dir):
     blocks = build_image_blocks([img.id], provider_name="claude")
     assert len(blocks) == 1
     assert base64.b64encode(PNG).decode("ascii") in str(blocks[0])
+
+
+# --- the offloaded /data file must be unlinked when the row goes away ---------
+
+
+@pytest.mark.django_db
+def test_image_file_unlinked_on_row_delete(image_dir):
+    img = create_image(snapshot_id=None, kind="server_render", data=PNG)
+    path = Path(img.file_path)
+    assert path.exists()
+    img.delete()
+    assert not path.exists()
+
+
+@pytest.mark.django_db
+def test_image_file_unlinked_on_queryset_delete(image_dir):
+    # Connecting the post_delete signal must also disable fast-delete, so a
+    # queryset .delete() (e.g. a Snapshot cascade) still unlinks each file.
+    img = create_image(snapshot_id=None, kind="server_render", data=PNG)
+    path = Path(img.file_path)
+    assert path.exists()
+    SnapshotImage.objects.filter(id=img.id).delete()
+    assert not path.exists()
+
+
+@pytest.mark.django_db
+def test_legacy_in_db_row_delete_is_safe(image_dir):
+    # A legacy row (bytes in DB, no file_path) deletes without trying to unlink.
+    legacy = SnapshotImage.objects.create(kind="client_capture", data=PNG, file_path="")
+    legacy.delete()  # must not raise
