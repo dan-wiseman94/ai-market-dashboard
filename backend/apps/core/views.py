@@ -197,4 +197,17 @@ def _coerce_setting(key: str, value: object, typ: type) -> tuple[object, str | N
         return None, f"{key} must be {typ.__name__}"
     if typ in (int, float) and coerced < 0:  # type: ignore[operator]
         return None, f"{key} must be >= 0"
+    if key.startswith("retention_") and typ is int:
+        # 0 days would make the next prune delete EVERY row of that model; use
+        # null to disable pruning instead. OHLC is read by date by post-mortems,
+        # so its floor must clear the longest post-mortem horizon.
+        if coerced < 1:  # type: ignore[operator]
+            return None, f"{key} must be >= 1 (use null to disable pruning)"
+        if key == "retention_ohlc_days":
+            floor = max(settings.THESIS_POSTMORTEM_HORIZONS) + 7
+            if coerced < floor:  # type: ignore[operator]
+                return None, (
+                    f"retention_ohlc_days must be >= {floor}: post-mortems resolve "
+                    "against OHLC bars by date up to the longest horizon"
+                )
     return coerced, None
