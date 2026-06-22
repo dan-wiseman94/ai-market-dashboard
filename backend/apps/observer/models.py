@@ -100,6 +100,7 @@ class Notification(models.Model):
         ("regime", "Regime"),
         ("book", "Book"),
         ("desk", "Desk"),
+        ("cal_drift", "Calibration drift"),
     ]
 
     # Nullable for v1 (no user-auth surface yet). When auth lands, backfill or

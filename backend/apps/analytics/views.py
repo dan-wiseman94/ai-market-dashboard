@@ -225,3 +225,16 @@ class TraderCalibrationView(APIView):
         except ValueError:
             horizon = 30
         return Response(trader_calibration(horizon_days=horizon))
+
+
+class CalibrationDriftView(APIView):
+    """#14 — per-model calibration drift (recent vs baseline EvalRun error)."""
+
+    def get(self, request: Request) -> Response:
+        from apps.analytics.services.calibration_drift import calibration_drift
+
+        try:
+            window = max(7, min(180, int(request.query_params.get("window_days", "30"))))
+        except (TypeError, ValueError):
+            window = 30
+        return Response(calibration_drift(window_days=window))

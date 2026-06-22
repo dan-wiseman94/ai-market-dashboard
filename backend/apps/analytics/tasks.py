@@ -22,6 +22,50 @@ from apps.analytics.services.aieval import (
 log = logging.getLogger(__name__)
 
 
+def _redis():
+    import redis
+    from django.conf import settings
+
+    return redis.Redis.from_url(settings.REDIS_URL)
+
+
+@shared_task(name="analytics.calibration_drift_sentinel")
+def calibration_drift_sentinel() -> dict:
+    """Daily: notify when a model's calibration newly drifts. Opt-in
+    (CALIBRATION_DRIFT_SENTINEL_ENABLED, default OFF). Idempotent via a per-model
+    Redis marker — alerts ONCE per drift episode and re-arms on recovery, so a
+    persistent drift never spams. Reads EvalRuns only; no AI spend."""
+    from django.conf import settings
+
+    if not getattr(settings, "CALIBRATION_DRIFT_SENTINEL_ENABLED", False):
+        return {"skipped": "disabled"}
+
+    from apps.analytics.services.calibration_drift import calibration_drift
+    from apps.observer.services.notifications import notify
+
+    r = _redis()
+    result = calibration_drift()
+    fired = 0
+    for m in result["models"]:
+        key = f"caldrift:fired:{m['model']}"
+        if m["drifting"]:
+            if r.set(key, "1", nx=True, ex=86400):  # first detection this episode
+                notify(
+                    user_id=None,
+                    kind="cal_drift",
+                    title=f"Calibration drift: {m['model']}",
+                    body=(
+                        f"{m['model']} looks {m['direction']} — calibration error "
+                        f"{m['baseline_error']}→{m['recent_error']}."
+                    ),
+                    link="/scorecard",
+                )
+                fired += 1
+        else:
+            r.delete(key)  # recovered → re-arm for a future drift
+    return {"checked": len(result["models"]), "fired": fired}
+
+
 @shared_task(name="analytics.aieval_run_scheduled")
 def run_scheduled() -> dict:
     from apps.core.runtime_config import runtime_config
