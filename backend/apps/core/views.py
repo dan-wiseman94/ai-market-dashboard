@@ -218,10 +218,31 @@ def _coerce_setting(key: str, value: object, typ: type) -> tuple[object, str | N
 @require_POST
 def mcp_endpoint(request: HttpRequest):
     """MCP-out server (#19): a minimal JSON-RPC 2.0 endpoint exposing the second
-    brain (house view / theses / predictions / recall) as read-only MCP tools."""
+    brain (house view / theses / predictions / recall) as read-only MCP tools.
+
+    Auth: the app's posture is network isolation (127.0.0.1 + AllowAny). This is the
+    one endpoint built for EXTERNAL agents, so it adds an OPT-IN shared-token gate:
+    set MCP_AUTH_TOKEN and clients must send ``Authorization: Bearer <token>``. Unset
+    (default) preserves the localhost single-user flow — set it before exposing the
+    server beyond localhost (e.g. via a tunnel)."""
+    import hmac
     import json
 
     from apps.core.mcp import handle
+
+    token = getattr(settings, "MCP_AUTH_TOKEN", "") or ""
+    if token:
+        auth = request.headers.get("Authorization", "")
+        provided = auth[7:] if auth.startswith("Bearer ") else ""
+        if not hmac.compare_digest(provided, token):  # constant-time
+            return JsonResponse(
+                {
+                    "jsonrpc": "2.0",
+                    "id": None,
+                    "error": {"code": -32001, "message": "Unauthorized"},
+                },
+                status=401,
+            )
 
     try:
         payload = json.loads(request.body or b"{}")
