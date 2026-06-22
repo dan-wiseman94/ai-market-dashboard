@@ -215,7 +215,7 @@ def test_evaluate_hit_rate_and_brier_hand_checkable(profile):
     #   (1.0-1)^2=0, (0.5-0)^2=0.25, (0.6-1)^2=0.16
     confs = [1.0, 0.5, 0.6]
     outs = [1.0, 0.0, 1.0]
-    expected_brier = round(sum((c - o) ** 2 for c, o in zip(confs, outs)) / 3, 4)
+    expected_brier = round(sum((c - o) ** 2 for c, o in zip(confs, outs, strict=True)) / 3, 4)
     assert res["brier"] == expected_brier == 0.1367
     # avg_confidence = mean(1.0, 0.5, 0.6) = 0.7
     assert res["avg_confidence"] == round((1.0 + 0.5 + 0.6) / 3, 4)

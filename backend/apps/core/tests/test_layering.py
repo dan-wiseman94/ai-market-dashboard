@@ -44,5 +44,5 @@ def test_core_imports_no_other_app_at_module_load():
     offenders = _module_level_app_imports(CORE, "core")
     assert offenders == [], (
         "apps.core must stay the foundation — move these cross-app imports inside "
-        f"the function that uses them (lazy import):\n  " + "\n  ".join(offenders)
+        "the function that uses them (lazy import):\n  " + "\n  ".join(offenders)
     )

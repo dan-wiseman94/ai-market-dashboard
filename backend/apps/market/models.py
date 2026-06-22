@@ -204,9 +204,9 @@ class Theme(models.Model):
     class Meta:
         ordering: ClassVar = ["name"]
 
+    def __str__(self) -> str:
+        return f"Theme({self.name}, {len(self.tickers)} tickers)"
+
     def save(self, *args, **kwargs) -> None:
         self.tickers = [str(t).upper().strip() for t in (self.tickers or []) if str(t).strip()]
         super().save(*args, **kwargs)
-
-    def __str__(self) -> str:
-        return f"Theme({self.name}, {len(self.tickers)} tickers)"

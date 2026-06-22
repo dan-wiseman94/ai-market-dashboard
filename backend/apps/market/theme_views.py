@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import ClassVar
+
 from rest_framework import serializers, viewsets
 from rest_framework.decorators import action
 from rest_framework.request import Request
@@ -13,8 +15,8 @@ from apps.market.models import Theme
 class ThemeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Theme
-        fields = ["id", "name", "tickers", "note", "created_at", "updated_at"]
-        read_only_fields = ["id", "created_at", "updated_at"]
+        fields: ClassVar = ["id", "name", "tickers", "note", "created_at", "updated_at"]
+        read_only_fields: ClassVar = ["id", "created_at", "updated_at"]
 
 
 class ThemeViewSet(viewsets.ModelViewSet):
