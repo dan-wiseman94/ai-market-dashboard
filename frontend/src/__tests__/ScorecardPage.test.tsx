@@ -85,6 +85,7 @@ const AI_CAL = {
     { provider: "openai", model: "gpt-5", n: 5, correct: 3, incorrect: 2, hit_rate: 0.6 },
   ],
   by_direction: {},
+  beat_the_straddle: { n: 5, beyond_priced: 2, within_priced: 3, beyond_rate: 0.4, edge_rate: 0.2 },
 };
 
 describe("ScorecardPage", () => {
@@ -187,6 +188,8 @@ describe("ScorecardPage", () => {
     expect(screen.getByText(/Live AI prediction calibration/i)).toBeInTheDocument();
     expect(screen.getByText("0.7-0.8")).toBeInTheDocument(); // a reliability band
     expect(screen.getByText("gpt-5")).toBeInTheDocument(); // per-model row
+    // #13 beat-the-straddle: actual move vs options-priced 1σ
+    expect(screen.getByTestId("beat-the-straddle")).toHaveTextContent(/beyond the/i);
   });
 
   it("hides the live AI calibration section when no predictions resolved", () => {

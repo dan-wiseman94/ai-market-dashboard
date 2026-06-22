@@ -214,6 +214,14 @@ export interface AICalibration {
   reliability: AIReliabilityBand[];
   by_provider_model: ProviderCalibrationRow[];
   by_direction: Record<string, { n: number; hit_rate: number | null }>;
+  // #13: how often the actual move beat the options-priced 1σ move.
+  beat_the_straddle?: {
+    n: number;
+    beyond_priced: number;
+    within_priced: number;
+    beyond_rate: number | null;
+    edge_rate: number | null;
+  };
 }
 
 /** Live calibration of the AI's OWN resolved predictions (M13). */

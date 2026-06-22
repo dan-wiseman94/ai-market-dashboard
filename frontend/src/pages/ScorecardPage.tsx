@@ -299,6 +299,17 @@ function AICalibrationSection({ aiCal }: { aiCal: AICalibration }) {
           </tbody>
         </table>
       )}
+      {aiCal.beat_the_straddle && aiCal.beat_the_straddle.n > 0 && (
+        <p className="mt-4 text-sm text-ink-400" data-testid="beat-the-straddle">
+          <span className="font-medium text-ink-200">Beat-the-straddle:</span>{" "}
+          {pct(aiCal.beat_the_straddle.beyond_rate)} of priced calls moved beyond the
+          options-implied 1σ move
+          {aiCal.beat_the_straddle.edge_rate != null && (
+            <> · {pct(aiCal.beat_the_straddle.edge_rate)} in the right direction (edge)</>
+          )}{" "}
+          (n={aiCal.beat_the_straddle.n})
+        </p>
+      )}
     </section>
   );
 }
