@@ -36,6 +36,7 @@ import RecallPage from "./pages/RecallPage";
 import ErrorsPage from "./pages/ErrorsPage";
 import RegimePage from "./pages/RegimePage";
 import BookPage from "./pages/BookPage";
+import ThemesPage from "./pages/ThemesPage";
 import WarRoomPage from "@/pages/WarRoomPage";
 import WarRoomDetailPage from "@/pages/WarRoomDetailPage";
 import DeskPage from "@/pages/DeskPage";
@@ -91,6 +92,7 @@ export const router = createBrowserRouter([
       { path: "mirror", element: <MirrorPage />, handle: { crumb: "The Mirror" } },
       { path: "regime", element: <RegimePage />, handle: { crumb: "Regime" } },
       { path: "book", element: <BookPage />, handle: { crumb: "Book" } },
+      { path: "themes", element: <ThemesPage />, handle: { crumb: "Themes" } },
       { path: "warroom", element: <WarRoomPage />, handle: { crumb: "War Room" } },
       { path: "warroom/:id", element: <WarRoomDetailPage />, handle: { crumb: "Debate" } },
       { path: "desk", element: <DeskPage />, handle: { crumb: "Desk" } },
