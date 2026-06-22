@@ -246,3 +246,55 @@ def test_fetch_daily_bars_handles_missing_results_key():
         result = polygon_mod.fetch_daily_bars("AAPL")
 
     assert result == []
+
+
+# ---------------------------------------------------------------------------
+# 9. RAW-bar invariant — Polygon must request UNADJUSTED bars
+# ---------------------------------------------------------------------------
+# returns.py (_adjusted_end_value / split_factor) corrects splits itself and
+# documents OHLCBar as holding the "raw observed values". Every other provider
+# (alpaca/twelvedata/tiingo/schwab) stores raw bars; if Polygon stored
+# split-ADJUSTED bars, a split in the window would be corrected twice (once by
+# the provider, once by returns.py). Pin the request param so this can't regress.
+
+
+@pytest.mark.django_db
+def test_fetch_daily_bars_requests_unadjusted_bars():
+    captured: dict = {}
+
+    def _capture(path, params, api_key):
+        captured["params"] = params
+        return _RAW_AGGS_BODY
+
+    with (
+        patch("apps.market.services.polygon._api_key", return_value="k"),
+        patch("apps.market.services.polygon._get", side_effect=_capture),
+        patch(
+            "apps.market.services.polygon.cache.get_or_fetch",
+            side_effect=lambda key, *, ttl_seconds, fetcher: fetcher(),
+        ),
+    ):
+        polygon_mod.fetch_daily_bars("AAPL", days=120)
+
+    assert captured["params"]["adjusted"] == "false"
+
+
+@pytest.mark.django_db
+def test_fetch_prev_close_requests_unadjusted_bars():
+    captured: dict = {}
+
+    def _capture(path, params, api_key):
+        captured["params"] = params
+        return _RAW_PREV_BODY
+
+    with (
+        patch("apps.market.services.polygon._api_key", return_value="k"),
+        patch("apps.market.services.polygon._get", side_effect=_capture),
+        patch(
+            "apps.market.services.polygon.cache.get_or_fetch",
+            side_effect=lambda key, *, ttl_seconds, fetcher: fetcher(),
+        ),
+    ):
+        polygon_mod.fetch_prev_close("AAPL")
+
+    assert captured["params"]["adjusted"] == "false"
