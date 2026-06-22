@@ -408,6 +408,14 @@ def _render_chain(payload: dict, *, ticker: str = "?") -> str:
     lines.append("\n### Chain analytics")
     lines.append(_render_chain_analytics(analytics))
 
+    # Options-implied expected move (1σ): frame the AI's call against what's priced.
+    from apps.market.services.expected_move import term_structure as _em_term
+
+    em_rows = _em_term(payload)
+    if em_rows:
+        priced = " · ".join(f"±{r['move_pct'] * 100:.1f}% ({r['horizon_days']}d)" for r in em_rows)
+        lines.append(f"\n**Options-implied move (1σ):** {priced}")
+
     return "\n".join(lines)
 
 
