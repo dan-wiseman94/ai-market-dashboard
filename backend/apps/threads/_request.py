@@ -19,10 +19,23 @@ from apps.threads.coach import assemble_coach_context_for_message, build_system_
 from apps.threads.models import Message, Thread
 
 
+def _block_text(blocks: list) -> str:
+    """Concatenate the text of any ``{"type": "text", "text": ...}`` blocks."""
+    return " ".join(
+        b.get("text", "") for b in blocks if isinstance(b, dict) and b.get("type") == "text"
+    ).strip()
+
+
 def _extract_text(m: Message) -> str:
     c = m.content or {}
-    if isinstance(c, dict) and "text" in c:
-        return c["text"]
+    if isinstance(c, dict):
+        if "text" in c:
+            return c["text"]
+        # A "blocks" content (e.g. a Files-API document attach) carries its prompt
+        # in text blocks; surface that, never the Python repr of the dict.
+        blocks = c.get("blocks")
+        if isinstance(blocks, list):
+            return _block_text(blocks)
     return str(c)
 
 
@@ -56,6 +69,15 @@ def _message_content(
     message references a Snapshot with image sections. Images are attached to
     the message regardless of provider; the serializer handles provider shape.
     """
+    c = m.content or {}
+    # Explicit provider content blocks (a Files-API document attach). Claude gets
+    # them verbatim — they are already Anthropic-shaped; other providers cannot
+    # render a document block (Files API is Claude-only), so they receive the
+    # text blocks only. Either way, never a stringified dict (the prior bug).
+    in_blocks = c.get("blocks") if isinstance(c, dict) else None
+    if isinstance(in_blocks, list) and in_blocks:
+        return in_blocks if provider_name == "claude" else _block_text(in_blocks)
+
     text = _extract_text(m)
     snap_id = getattr(m, "snapshot_ref_id", None)
     if not snap_id:
