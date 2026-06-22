@@ -483,9 +483,28 @@ def _run_ai_on_message(
             _broadcast(thread_id, {"event": "error", "message_id": assistant.id, "error": err})
             return {"ok": False, "error": err}
 
-        assistant.status = "done"
-        assistant.save()
+        # Finalize ONLY if still streaming (compare-and-set). The stop endpoint
+        # races us — its status write can land after the refresh above, which does
+        # not lock the row. A CAS guarantees we never un-cancel or bill a run the
+        # user stopped: whoever flips status out of "streaming" first wins.
+        finalized = Message.objects.filter(id=assistant.id, status="streaming").update(
+            status="done", content={"text": "".join(buffer)}
+        )
         _persist_tool_calls(assistant, tool_events)
+        if not finalized:
+            assistant.refresh_from_db()
+            AIRun.objects.create(
+                message=assistant,
+                provider=provider_name,
+                model=model_id,
+                status="failed",
+                error=assistant.error or "cancelled",
+                latency_ms=latency_ms,
+                input_tokens=counts["input_tokens"],
+                output_tokens=counts["output_tokens"],
+            )
+            return {"ok": False, "error": assistant.error or "cancelled"}
+        assistant.status = "done"
 
         cost = (
             cost_usd_for(provider_name, model_id, TokenUsage(**counts))
