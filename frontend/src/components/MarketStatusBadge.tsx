@@ -3,9 +3,9 @@ import { useMarketStatus } from "@/hooks/useMarketStatus";
 import { sessionKind, SESSION_LABEL, type SessionKind } from "@/lib/marketSession";
 
 const DOT: Record<SessionKind, string> = {
-  open: "bg-emerald-400",
-  extended: "bg-amber-400",
-  closed: "bg-slate-500",
+  open: "bg-emerald-500 dark:bg-emerald-400",
+  extended: "bg-amber-500 dark:bg-amber-400",
+  closed: "bg-slate-400 dark:bg-slate-500",
 };
 
 export default function MarketStatusBadge() {
