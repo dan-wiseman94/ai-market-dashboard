@@ -65,3 +65,28 @@ def test_http_endpoint_initialize_and_get_405():
     assert r.status_code == 200
     assert r.json()["result"]["serverInfo"]["name"] == "ledger-second-brain"
     assert c.get("/api/mcp/").status_code == 405
+
+
+@pytest.mark.django_db
+def test_mcp_requires_bearer_token_when_configured(settings):
+    settings.MCP_AUTH_TOKEN = "s3cret"
+    c = Client()
+    body = json.dumps({"jsonrpc": "2.0", "id": 1, "method": "initialize"})
+    # no header / wrong token → 401; correct token → 200
+    assert c.post("/api/mcp/", data=body, content_type="application/json").status_code == 401
+    assert (
+        c.post("/api/mcp/", data=body, content_type="application/json", HTTP_AUTHORIZATION="Bearer nope").status_code
+        == 401
+    )
+    ok = c.post(
+        "/api/mcp/", data=body, content_type="application/json", HTTP_AUTHORIZATION="Bearer s3cret"
+    )
+    assert ok.status_code == 200
+
+
+@pytest.mark.django_db
+def test_mcp_open_when_token_unset(settings):
+    settings.MCP_AUTH_TOKEN = ""  # default — localhost posture, no auth required
+    c = Client()
+    body = json.dumps({"jsonrpc": "2.0", "id": 1, "method": "initialize"})
+    assert c.post("/api/mcp/", data=body, content_type="application/json").status_code == 200
