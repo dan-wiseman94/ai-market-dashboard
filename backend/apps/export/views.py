@@ -25,6 +25,14 @@ class ExportViewSet(viewsets.ModelViewSet):
     http_method_names: ClassVar = ["get", "post", "delete"]  # type: ignore[misc]
     pagination_class = _ExportPagination
 
+    def list(self, request, *args, **kwargs):
+        # Detect 'done' rows whose file vanished (rotation/volume loss) before
+        # listing, so the UI shows 'missing' rather than a download that 404s.
+        from apps.export.services import reconcile_export_disk
+
+        reconcile_export_disk()
+        return super().list(request, *args, **kwargs)
+
     def create(self, request, *args, **kwargs):
         scope = request.data.get("scope") or {}
         job = ExportJob.objects.create(scope=scope, format="zip", status="pending")

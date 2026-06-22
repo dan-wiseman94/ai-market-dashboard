@@ -70,6 +70,10 @@ def build_export_bundle(job_id: int) -> None:
         job.sha256 = h.hexdigest()
         job.completed_at = timezone.now()
         job.save()
+        try:
+            rotate_exports()  # bound /data/exports growth (best-effort)
+        except Exception:
+            log.warning("export rotation failed", exc_info=True)
     except Exception:
         job.status = "failed"
         job.error = traceback.format_exc()[:4000]
@@ -138,8 +142,32 @@ def _write_sections(zf: zipfile.ZipFile, root: str, scope: dict) -> dict[str, in
 
 
 def reconcile_export_disk() -> None:
+    """Flag completed exports whose file has gone from disk as 'missing'.
+
+    Wired into the export list view so a stale row (file pruned/rotated away or
+    lost on a volume reset) shows an honest status instead of a 404 on download.
+    """
     d = exports_dir()
     for job in ExportJob.objects.filter(status="done"):
-        if not (d / job.filename).exists():
+        if not job.filename or not (d / job.filename).exists():
             job.status = "missing"
             job.save(update_fields=["status"])
+
+
+def rotate_exports(keep: int | None = None) -> int:
+    """Keep only the most-recent ``keep`` completed exports; unlink older files
+    and drop their rows so /data/exports doesn't grow without bound. Returns the
+    number removed. Configurable via ``EXPORTS_KEEP`` (default 20)."""
+    keep = keep if keep is not None else int(os.environ.get("EXPORTS_KEEP", "20"))
+    d = exports_dir()
+    stale = list(ExportJob.objects.filter(status="done").order_by("-completed_at", "-id")[keep:])
+    removed = 0
+    for job in stale:
+        if job.filename:
+            try:
+                (d / job.filename).unlink(missing_ok=True)
+            except OSError:
+                log.warning("rotate_exports: could not unlink %s", job.filename)
+        job.delete()
+        removed += 1
+    return removed
