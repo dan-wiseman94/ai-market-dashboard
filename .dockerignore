@@ -1,0 +1,44 @@
+# Build-context hygiene: keep the daemon context small and keep secrets / local
+# cruft out of image layers. The backend image only needs pyproject.toml, uv.lock,
+# and backend/ (see backend/Dockerfile); the FE prod build mounts ./frontend as a
+# volume, so excluding paths here never starves it.
+
+# VCS, CI, agent worktrees (the worktree trees alone are hundreds of MB)
+.git
+.github
+.claude
+.worktrees
+
+# Secrets / local env — loaded at runtime via compose env_file, never baked in
+.env
+.env.*
+!.env.example
+
+# Python caches / coverage artifacts
+**/__pycache__
+**/*.py[cod]
+**/.pytest_cache
+**/.ruff_cache
+**/.mypy_cache
+**/.coverage
+**/htmlcov
+**/coverage.xml
+.fastembed_cache
+
+# Node / frontend build artifacts (the web image does not build the frontend)
+**/node_modules
+frontend/dist
+frontend/.vite
+frontend/coverage
+
+# Not needed in the backend runtime image
+docs
+e2e
+**/.storybook
+**/*.log
+
+# Editors / OS / scratch
+.vscode
+.idea
+**/.DS_Store
+scan-artifacts
