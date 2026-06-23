@@ -10,6 +10,7 @@ const TRADING: Array<[string, string, string]> = [
   ["/snapshots", "Snapshots", "SN"],
   ["/profiles", "Profiles", "PR"],
   ["/watchlists", "Watchlists", "WL"],
+  ["/themes", "Themes", "TM"],
 ];
 const SYSTEM: Array<[string, string, string]> = [
   ["/analytics", "Analytics", "AN"],

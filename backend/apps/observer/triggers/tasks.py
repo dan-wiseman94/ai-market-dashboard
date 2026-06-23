@@ -70,6 +70,13 @@ def evaluate_triggers() -> dict:
             mark_rearmed(trigger.id)
             continue
         mark_fired(trigger.id)
+        # Stamp the cooldown SYNCHRONOUSLY. cooldown_blocks reads last_fired_at,
+        # but the fire path is async (_do_fire stamps it ~seconds later); without
+        # this, the next ~10s tick still sees last_fired_at unset and fires a
+        # second time (the FIRE_LOCK only stops *concurrent* dupes, not sequential).
+        now = timezone.now()
+        EventTrigger.objects.filter(id=trigger.id).update(last_fired_at=now)
+        trigger.last_fired_at = now
         fire_trigger.delay(trigger_id=trigger.id, matched_values=values)
         fires += 1
 

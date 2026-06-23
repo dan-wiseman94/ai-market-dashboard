@@ -9,6 +9,8 @@ urlpatterns = [
     # so it can't be swallowed (include-ordering landmine). Drives the schema drift gate
     # + schemathesis fuzzing + generated frontend types.
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
+    # Specific prefix BEFORE the generic api/ (core) include — else it's swallowed.
+    path("api/themes/", include("apps.market.themes_urls")),
     path("api/", include("apps.core.urls")),
     path("api/schwab/", include("apps.secrets.urls")),
     path("api/market/", include("apps.market.urls")),

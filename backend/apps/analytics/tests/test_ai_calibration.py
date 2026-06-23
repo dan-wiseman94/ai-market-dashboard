@@ -98,3 +98,41 @@ def test_ai_calibration_endpoints_200():
     dd = APIClient().get(f"/api/analytics/ai-calibration/drilldown/?{rng}&band=0.8-0.9")
     assert dd.status_code == 200
     assert dd.json()["count"] == 1
+
+
+# ---------------------------------------------------------------------------
+# Beat-the-straddle (#13): actual move vs the options-priced 1σ move
+# ---------------------------------------------------------------------------
+
+
+def _straddle_pred(*, verdict, fwd, exp_move):
+    return AIPrediction.objects.create(
+        ticker="NVDA",
+        direction="bullish",
+        horizon_days=7,
+        confidence=0.7,
+        provider="claude",
+        model="m",
+        predicted_at=_RESOLVED_AT - timedelta(days=7),
+        resolve_at=_RESOLVED_AT,
+        status="resolved",
+        verdict=verdict,
+        forward_return_pct=fwd,
+        expected_move_pct=exp_move,
+        resolved_at=_RESOLVED_AT,
+    )
+
+
+@pytest.mark.django_db
+def test_beat_the_straddle_counts_beyond_and_edge():
+    # priced 1σ = 4% (expected_move_pct fraction 0.04); forward_return_pct is a percent.
+    _straddle_pred(verdict="correct", fwd=5.0, exp_move=0.04)  # |5|>4 → beyond + edge (correct)
+    _straddle_pred(verdict="incorrect", fwd=-5.0, exp_move=0.04)  # |5|>4 → beyond, not edge
+    _straddle_pred(verdict="correct", fwd=2.0, exp_move=0.04)  # |2|<4 → within
+    _straddle_pred(verdict="correct", fwd=5.0, exp_move=None)  # no priced move → excluded
+    bts = ai_calibration(start=WIN_START, end=WIN_END)["beat_the_straddle"]
+    assert bts["n"] == 3
+    assert bts["beyond_priced"] == 2
+    assert bts["within_priced"] == 1
+    assert bts["beyond_rate"] == round(2 / 3, 4)
+    assert bts["edge_rate"] == round(1 / 3, 4)

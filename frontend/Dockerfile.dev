@@ -19,8 +19,11 @@ USER node
 WORKDIR /app
 
 COPY --chown=node:node package.json pnpm-lock.yaml* pnpm-workspace.yaml ./
+# Frozen lockfile with NO fallback: a lockfile drift must fail the build (forcing
+# a `pnpm install` + committed lock) rather than silently resolving a different
+# dependency tree and undermining reproducibility.
 RUN --mount=type=cache,target=/home/node/.local/share/pnpm/store,uid=1000,gid=1000 \
-    pnpm install --frozen-lockfile || pnpm install
+    pnpm install --frozen-lockfile
 
 COPY --chown=node:node . .
 

@@ -110,6 +110,10 @@ app.conf.beat_schedule = {
         "task": "analytics.aieval_run_scheduled",
         "schedule": crontab(hour=5, minute=0, day_of_week=1),
     },
+    "calibration-drift-sentinel": {
+        "task": "analytics.calibration_drift_sentinel",
+        "schedule": crontab(hour=6, minute=0),  # daily
+    },
     "lessons-distill": {
         "task": "thesis.distill",
         "schedule": crontab(hour=5, minute=30),  # daily, after new post-mortems resolve

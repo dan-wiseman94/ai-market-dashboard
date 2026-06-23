@@ -254,17 +254,35 @@ def _record_pct_change(
     quotes: dict,
 ) -> None:
     last = _extract_last(quotes.get(ticker))
-    window_key = f"trigger:window:{ticker}:{window}"
-    prior = _read_redis_float(r, window_key)
     if last is None:
         snapshot[key] = None
-    elif prior is None:
+        return
+    # True sliding window over a Redis sorted set of (timestamp -> price) samples.
+    # The baseline is the OLDEST sample still inside [now - window, now]; as time
+    # passes, old samples fall out and the baseline advances. (The old single-key
+    # baseline stayed fixed for 2*window then jumped — a drifting sawtooth, so the
+    # measured horizon varied randomly between 0 and 2*window.)
+    win_s = _WINDOW_SECONDS[window]
+    now = time.time()
+    cutoff = now - win_s
+    zkey = f"trigger:windowz:{ticker}:{window}"
+    # Baseline from EXISTING samples (before recording the current one), so the
+    # very first tick has no prior and returns None.
+    # redis-py types this as a sync/async union; the client here is sync → a list.
+    existing = cast("list[Any]", r.zrangebyscore(zkey, cutoff, now, start=0, num=1))
+    r.zadd(zkey, {f"{now:.6f}|{last}": now})
+    r.expire(zkey, 2 * win_s)
+    r.zremrangebyscore(zkey, 0, cutoff)  # drop samples now outside the window
+    if not existing:
         snapshot[key] = None
-        r.setex(window_key, 2 * _WINDOW_SECONDS[window], str(last))
-    else:
-        snapshot[key] = (last - prior) / prior if prior != 0 else None
-        if not r.exists(window_key):
-            r.setex(window_key, 2 * _WINDOW_SECONDS[window], str(last))
+        return
+    member = existing[0].decode() if isinstance(existing[0], bytes) else existing[0]
+    try:
+        prior = float(member.split("|", 1)[1])
+    except (IndexError, ValueError):
+        snapshot[key] = None
+        return
+    snapshot[key] = (last - prior) / prior if prior != 0 else None
 
 
 def _record_fundamental(

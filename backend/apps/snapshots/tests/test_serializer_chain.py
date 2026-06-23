@@ -264,3 +264,47 @@ def test_render_chain_analytics_no_crash_on_missing_greeks():
     assert "### Chain analytics" in md
     # With no valid data, values degrade to em-dash — must not raise
     assert "Max-pain" in md
+
+
+# ---------------------------------------------------------------------------
+# Options-implied expected move line (1σ) — fed to the AI alongside the chain
+# ---------------------------------------------------------------------------
+
+
+def test_render_chain_includes_expected_move_when_iv_present():
+    from datetime import date, timedelta
+
+    future = (date.today() + timedelta(days=30)).isoformat()
+    payload = {
+        "underlying_last": "100.00",
+        "expiries": {
+            future: {
+                "calls": [
+                    {"strike": "100", "bid": "1", "ask": "1.1", "delta": "0.5", "iv": "0.20"}
+                ],
+                "puts": [
+                    {"strike": "100", "bid": "1", "ask": "1.1", "delta": "-0.5", "iv": "0.20"}
+                ],
+            }
+        },
+    }
+    md = _render_chain(payload, ticker="SPY")
+    assert "Options-implied move (1σ):" in md
+    assert "(30d)" in md
+
+
+def test_render_chain_omits_expected_move_when_no_iv():
+    from datetime import date, timedelta
+
+    future = (date.today() + timedelta(days=30)).isoformat()
+    payload = {
+        "underlying_last": "100.00",
+        "expiries": {
+            future: {
+                "calls": [{"strike": "100", "bid": "1", "ask": "1.1", "delta": "0.5"}],  # no iv
+                "puts": [],
+            }
+        },
+    }
+    md = _render_chain(payload, ticker="SPY")
+    assert "Options-implied move" not in md

@@ -61,6 +61,13 @@ def prune_retention() -> dict:
     results: dict[str, int] = {}
 
     def _prune(label: str, qs_factory, days: int) -> None:
+        if not days or days < 1:
+            # A non-positive window sets cutoff >= now and would delete EVERY row.
+            # Treat <1 as "pruning disabled" for this model — a guard against an
+            # env/DB misconfig (e.g. retention_*_days=0) wiping load-bearing data.
+            results[label] = 0
+            log.info("core.prune_retention.%s skipped (retention<1 day)", label)
+            return
         try:
             cutoff = timezone.now() - timedelta(days=days)
             n, _ = qs_factory(cutoff).delete()

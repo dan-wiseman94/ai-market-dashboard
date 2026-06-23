@@ -32,6 +32,7 @@ services:
       retries: 10
 
   web:
+    restart: unless-stopped
     build:
       context: .
       dockerfile: backend/Dockerfile
@@ -66,6 +67,7 @@ services:
           path: ./pyproject.toml
 
   worker:
+    restart: unless-stopped
     build:
       context: .
       dockerfile: backend/Dockerfile
@@ -89,6 +91,7 @@ services:
           target: /app/backend
 
   beat:
+    restart: unless-stopped
     build:
       context: .
       dockerfile: backend/Dockerfile
@@ -146,6 +149,7 @@ services:
       - caddy_data:/data
 
   frontend:
+    restart: unless-stopped
     build:
       context: ./frontend
       dockerfile: Dockerfile.dev

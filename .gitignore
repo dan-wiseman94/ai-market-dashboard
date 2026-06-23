@@ -26,7 +26,12 @@ dist/
 .vite/
 .turbo/
 coverage/
+<<<<<<< HEAD
+# ...but apps/strategy/coverage/ is the COVERAGE source package (moved from apps/coverage/
+# in the 27→17 app consolidation), not a report dir — negate it so `git add` still tracks it.
+=======
 # ...but apps/strategy/coverage is the COVERAGE Django app (source), not a report dir.
+>>>>>>> a9ed4728cb258de8f53c34e266c774ac2b967999
 !backend/apps/strategy/coverage/
 .pnpm-store/
 

@@ -12,12 +12,19 @@ def test_list_feed():
     assert len(rows) == 1 and rows[0]["ticker"] == "NVDA"
 
 
-def test_manual_sweep(monkeypatch):
-    from apps.strategy.desk import views
+def test_manual_sweep_dispatches_async(monkeypatch):
+    # The endpoint must NOT run the (N-AI-call) sweep in the request thread — it
+    # queues a task and returns 202 so the HTTP call doesn't block.
+    from unittest.mock import MagicMock
 
-    monkeypatch.setattr(views, "run_sweep", lambda **k: 3)
+    import apps.strategy.tasks as strategy_tasks
+
+    delay = MagicMock(return_value=MagicMock(id="task-123"))
+    monkeypatch.setattr(strategy_tasks.sweep_now, "delay", delay)
     resp = APIClient().post("/api/desk/sweep/")
-    assert resp.status_code == 200 and resp.json()["created"] == 3
+    assert resp.status_code == 202
+    assert resp.json()["status"] == "queued"
+    delay.assert_called_once()
 
 
 def test_dismiss():

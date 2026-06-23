@@ -1,8 +1,12 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import {
+  type CalibrationDrift,
+  type Contradiction,
   useAICalibration,
   useCalibration,
+  useCalibrationDrift,
+  useContradictions,
   useCalibrationDrilldown,
   useLatestEvalRun,
   type AICalibration,
@@ -299,6 +303,17 @@ function AICalibrationSection({ aiCal }: { aiCal: AICalibration }) {
           </tbody>
         </table>
       )}
+      {aiCal.beat_the_straddle && aiCal.beat_the_straddle.n > 0 && (
+        <p className="mt-4 text-sm text-ink-400" data-testid="beat-the-straddle">
+          <span className="font-medium text-ink-200">Beat-the-straddle:</span>{" "}
+          {pct(aiCal.beat_the_straddle.beyond_rate)} of priced calls moved beyond the
+          options-implied 1σ move
+          {aiCal.beat_the_straddle.edge_rate != null && (
+            <> · {pct(aiCal.beat_the_straddle.edge_rate)} in the right direction (edge)</>
+          )}{" "}
+          (n={aiCal.beat_the_straddle.n})
+        </p>
+      )}
     </section>
   );
 }
@@ -353,6 +368,8 @@ export default function ScorecardPage() {
   const { data: drill, isLoading: drillLoading } = useCalibrationDrilldown(selected, horizon, 90);
   const { data: evalRun } = useLatestEvalRun();
   const { data: aiCal } = useAICalibration(90, horizon);
+  const { data: drift } = useCalibrationDrift();
+  const { data: contra } = useContradictions();
 
   function pickHorizon(h: number) {
     setHorizon(h);
@@ -383,6 +400,49 @@ export default function ScorecardPage() {
       {evalRun && evalRun.scored > 0 && <EvalCalibration evalRun={evalRun} />}
 
       {aiCal && aiCal.overall.scored > 0 && <AICalibrationSection aiCal={aiCal} />}
+
+      {drift && <CalibrationDriftSection drift={drift} />}
+
+      {contra && contra.contradictions.length > 0 && (
+        <ContradictionsSection rows={contra.contradictions} />
+      )}
     </div>
+  );
+}
+
+function ContradictionsSection({ rows }: { rows: Contradiction[] }) {
+  return (
+    <section data-testid="contradictions">
+      <h2 className="mb-2 font-semibold">Open contradictions</h2>
+      <p className="mb-2 text-sm text-ink-400">
+        Open predictions whose direction opposes the standing house view — reconcile or retire one.
+      </p>
+      <ul className="space-y-1 text-sm">
+        {rows.map((r) => (
+          <li key={r.prediction_id} className="text-copper-400">
+            ⚠ <span className="font-medium">{r.ticker}</span>: open {r.prediction_direction} call vs{" "}
+            {r.stance === "bull" ? "bullish" : "bearish"} house view.
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function CalibrationDriftSection({ drift }: { drift: CalibrationDrift }) {
+  const drifting = drift.models.filter((m) => m.drifting);
+  if (drifting.length === 0) return null;
+  return (
+    <section data-testid="calibration-drift">
+      <h2 className="mb-2 font-semibold">Calibration drift</h2>
+      <ul className="space-y-1 text-sm">
+        {drifting.map((m) => (
+          <li key={m.model} className="text-copper-400">
+            ⚠ <span className="font-medium">{m.model}</span> looks {m.direction} — calibration error{" "}
+            {m.baseline_error}→{m.recent_error} (last {drift.window_days}d).
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }

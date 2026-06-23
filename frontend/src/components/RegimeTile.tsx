@@ -6,11 +6,13 @@ export interface DashboardRegime {
   as_of: string | null;
 }
 
+// Theme-adaptive: dark: variants keep these readable in light mode too (the
+// fixed -600 weights were tuned for the dark theme only). ink/copper are tokens.
 const TONE: Record<string, string> = {
-  "Risk-On": "text-emerald-600",
+  "Risk-On": "text-emerald-700 dark:text-emerald-400",
   "Neutral-Transitional": "text-ink",
   "Risk-Off": "text-copper",
-  Stress: "text-red-600",
+  Stress: "text-red-700 dark:text-red-400",
 };
 
 export function RegimeTile({ regime }: { regime: DashboardRegime }) {

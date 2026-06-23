@@ -135,6 +135,12 @@ SCHEDULED_WORK: list[ScheduledTask] = [
         "AIEVAL_SCHEDULED_ENABLED",
         spends=True,
     ),
+    ScheduledTask(
+        "analytics.calibration_drift_sentinel",
+        "daily 06:00",
+        "Notify when a model's calibration_error drifts (reads EvalRuns; no AI call).",
+        "CALIBRATION_DRIFT_SENTINEL_ENABLED",
+    ),
 ]
 
 

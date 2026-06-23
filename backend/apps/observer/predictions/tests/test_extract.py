@@ -125,3 +125,50 @@ class TestExtract:
         assert b.id != a.id
         assert b.direction == "bearish"
         assert AIPrediction.objects.filter(status="open").count() == 1
+
+
+# ---------------------------------------------------------------------------
+# Expected-move freeze (#13): the options-implied 1σ move for the prediction's
+# horizon is captured at decision time from the snapshot's own chain section.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_extract_freezes_expected_move_from_chain():
+    from datetime import date, timedelta
+
+    from apps.market.services import expected_move as em
+    from apps.snapshots.models import SnapshotSection
+
+    profile = _profile()
+    snap = _snap(profile, ticker="NVDA")
+    future = (date.today() + timedelta(days=10)).isoformat()
+    chain_payload = {
+        "underlying_last": "100.00",
+        "expiries": {
+            future: {
+                "calls": [
+                    {"strike": "100", "bid": "1", "ask": "1.1", "delta": "0.5", "iv": "0.20"}
+                ],
+                "puts": [
+                    {"strike": "100", "bid": "1", "ask": "1.1", "delta": "-0.5", "iv": "0.20"}
+                ],
+            }
+        },
+    }
+    SnapshotSection.objects.create(
+        snapshot=snap, kind="chain", status="done", payload=chain_payload
+    )
+
+    pred = _extract(_report(direction="bullish", horizon=7), snap, profile)
+    assert pred is not None
+    assert pred.expected_move_pct == pytest.approx(em.for_horizon(chain_payload, 7), rel=1e-3)
+
+
+@pytest.mark.django_db
+def test_extract_without_chain_freezes_none():
+    profile = _profile()
+    snap = _snap(profile, ticker="NVDA")  # no chain section
+    pred = _extract(_report(), snap, profile)
+    assert pred is not None
+    assert pred.expected_move_pct is None

@@ -16,6 +16,7 @@ urlpatterns = [
     path("errors/", views.ErrorEventListView.as_view(), name="error-list"),
     path("errors/<int:pk>/resolve/", views.ErrorEventResolveView.as_view(), name="error-resolve"),
     path("settings/", views.SystemSettingsView.as_view(), name="system-settings"),
+    path("mcp/", views.mcp_endpoint, name="mcp"),
 ]
 
 if os.environ.get("MOCK_EXTERNAL", "").lower() in ("1", "true", "yes"):

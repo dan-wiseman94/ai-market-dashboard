@@ -18,6 +18,27 @@ def test_cost_counts_cached_tokens_cheaper():
     assert cost == pytest.approx(Decimal("0.09975"), abs=Decimal("0.0001"))
 
 
+def test_cost_bills_cache_write_at_premium():
+    # Sonnet: input 3.00/Mtok, cache write = 1.25x = 3.75/Mtok.
+    # total input 10_000, of which 4_000 are cache writes:
+    #   full-rate 6_000 * 3.00  = 0.018
+    #   write     4_000 * 3.75  = 0.015
+    usage = TokenUsage(input_tokens=10_000, output_tokens=0, cache_write_tokens=4_000)
+    cost = cost_usd_for("claude", "claude-sonnet-4-6", usage)
+    assert cost == pytest.approx(Decimal("0.033"), abs=Decimal("0.0001"))
+
+
+def test_cache_write_costs_more_than_plain_input():
+    # The same 4_000 tokens cost 25% more as cache writes than as full-rate input.
+    plain = cost_usd_for("claude", "claude-sonnet-4-6", TokenUsage(input_tokens=10_000))
+    with_write = cost_usd_for(
+        "claude",
+        "claude-sonnet-4-6",
+        TokenUsage(input_tokens=10_000, cache_write_tokens=4_000),
+    )
+    assert with_write > plain
+
+
 def test_cost_for_unknown_model_uses_provider_ceiling():
     usage = TokenUsage(input_tokens=1000, output_tokens=1000)
     cost = cost_usd_for("claude", "claude-made-up-model", usage)

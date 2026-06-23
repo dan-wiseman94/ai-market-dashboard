@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useRef, useState } from "react";
-import { Outlet, useMatches, useNavigate, type UIMatch } from "react-router-dom";
+import { Outlet, useLocation, useMatches, useNavigate, type UIMatch } from "react-router-dom";
 import TopNav from "./TopNav";
 import SideNav from "./SideNav";
 import {
@@ -104,6 +104,7 @@ function useRecallCommands(query: string): Command[] {
 }
 
 export default function AppLayout() {
+  const location = useLocation();
   const [helpOpen, setHelpOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const handleHelp = useCallback(() => setHelpOpen(true), []);
@@ -162,7 +163,7 @@ export default function AppLayout() {
           <SideNav />
           <main className="flex-1 min-w-0 relative">
             <Breadcrumbs />
-            <ErrorBoundary>
+            <ErrorBoundary resetKey={location.pathname}>
               <Outlet />
             </ErrorBoundary>
           </main>

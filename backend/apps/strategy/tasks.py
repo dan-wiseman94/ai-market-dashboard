@@ -128,6 +128,15 @@ def sweep() -> int | None:
     return run_sweep()
 
 
+@shared_task(name="strategy.sweep_now")
+def sweep_now() -> int | None:
+    """User-initiated sweep — runs regardless of ANOMALY_SWEEP_ENABLED (that flag
+    gates only the autonomous beat sweep; a manual click is explicit intent). Runs
+    off the request thread so the N AI investigations don't block the HTTP call;
+    cost caps still apply inside investigate()."""
+    return run_sweep()
+
+
 # at-most-once: a run_structured narrative + an unconditional RegimeReading append
 # (no unique key); acks_late=False stops a redelivery from re-billing + duplicating
 # the row. A lost reading is just a missing 30-min sample. See tests/test_task_acks.py.

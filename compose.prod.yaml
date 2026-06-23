@@ -29,7 +29,9 @@ services:
     profiles: ["build-only"]
 
   frontend-build:
-    image: node:22-alpine
+    # Digest-pinned (node:22-alpine) to match frontend/Dockerfile.dev — reproducible
+    # prod FE builds; dependabot's `docker` ecosystem keeps the digest fresh.
+    image: node:22-alpine@sha256:968df39aedcea65eeb078fb336ed7191baf48f972b4479711397108be0966920
     working_dir: /app
     volumes:
       - ./frontend:/app

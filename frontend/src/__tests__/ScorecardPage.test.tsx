@@ -20,6 +20,14 @@ function mockAICal(data: unknown = undefined, isLoading = false) {
   vi.spyOn(hooks, "useAICalibration").mockReturnValue({ data, isLoading } as never);
 }
 
+function mockDrift(data: unknown = undefined, isLoading = false) {
+  vi.spyOn(hooks, "useCalibrationDrift").mockReturnValue({ data, isLoading } as never);
+}
+
+function mockContra(data: unknown = undefined, isLoading = false) {
+  vi.spyOn(hooks, "useContradictions").mockReturnValue({ data, isLoading } as never);
+}
+
 const POPULATED = {
   horizon: 30,
   scored: 2,
@@ -85,12 +93,15 @@ const AI_CAL = {
     { provider: "openai", model: "gpt-5", n: 5, correct: 3, incorrect: 2, hit_rate: 0.6 },
   ],
   by_direction: {},
+  beat_the_straddle: { n: 5, beyond_priced: 2, within_priced: 3, beyond_rate: 0.4, edge_rate: 0.2 },
 };
 
 describe("ScorecardPage", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     mockAICal(); // default: no resolved AI predictions; the AI-calibration test overrides
+    mockDrift(); // default: no drift data; the drift test overrides
+    mockContra(); // default: no contradictions; the contradiction test overrides
   });
 
   it("shows empty state when nothing scored", () => {
@@ -187,6 +198,42 @@ describe("ScorecardPage", () => {
     expect(screen.getByText(/Live AI prediction calibration/i)).toBeInTheDocument();
     expect(screen.getByText("0.7-0.8")).toBeInTheDocument(); // a reliability band
     expect(screen.getByText("gpt-5")).toBeInTheDocument(); // per-model row
+    // #13 beat-the-straddle: actual move vs options-priced 1σ
+    expect(screen.getByTestId("beat-the-straddle")).toHaveTextContent(/beyond the/i);
+  });
+
+  it("renders a calibration-drift warning for a drifting model (#14)", () => {
+    mock(POPULATED);
+    mockDrill();
+    mockEval();
+    mockDrift({
+      generated_at: "z",
+      window_days: 30,
+      models: [
+        { model: "opus", recent_error: 0.16, baseline_error: 0.05, delta: 0.11, drifting: true, direction: "overconfident", status: "scored", recent_runs: 3, baseline_runs: 3 },
+        { model: "sonnet", recent_error: 0.05, baseline_error: 0.05, delta: 0.0, drifting: false, direction: "stable", status: "scored", recent_runs: 3, baseline_runs: 3 },
+      ],
+    });
+    render(<ScorecardPage />);
+    const drift = screen.getByTestId("calibration-drift");
+    expect(drift).toHaveTextContent(/opus/);
+    expect(drift).toHaveTextContent(/overconfident/);
+    expect(drift).not.toHaveTextContent(/sonnet/); // non-drifting models are hidden
+  });
+
+  it("renders open contradictions vs the house view (#15)", () => {
+    mock(POPULATED);
+    mockDrill();
+    mockEval();
+    mockContra({
+      contradictions: [
+        { ticker: "NVDA", prediction_direction: "bearish", stance: "bull", prediction_id: 1, predicted_at: "z" },
+      ],
+    });
+    render(<ScorecardPage />);
+    const c = screen.getByTestId("contradictions");
+    expect(c).toHaveTextContent(/NVDA/);
+    expect(c).toHaveTextContent(/bearish call vs bullish house view/i);
   });
 
   it("hides the live AI calibration section when no predictions resolved", () => {
