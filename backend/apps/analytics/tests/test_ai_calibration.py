@@ -107,11 +107,19 @@ def test_ai_calibration_endpoints_200():
 
 def _straddle_pred(*, verdict, fwd, exp_move):
     return AIPrediction.objects.create(
-        ticker="NVDA", direction="bullish", horizon_days=7, confidence=0.7,
-        provider="claude", model="m",
-        predicted_at=_RESOLVED_AT - timedelta(days=7), resolve_at=_RESOLVED_AT,
-        status="resolved", verdict=verdict, forward_return_pct=fwd,
-        expected_move_pct=exp_move, resolved_at=_RESOLVED_AT,
+        ticker="NVDA",
+        direction="bullish",
+        horizon_days=7,
+        confidence=0.7,
+        provider="claude",
+        model="m",
+        predicted_at=_RESOLVED_AT - timedelta(days=7),
+        resolve_at=_RESOLVED_AT,
+        status="resolved",
+        verdict=verdict,
+        forward_return_pct=fwd,
+        expected_move_pct=exp_move,
+        resolved_at=_RESOLVED_AT,
     )
 
 

@@ -17,8 +17,15 @@ def _note(ticker, stance):
 def _pred(ticker, direction, status="open"):
     now = timezone.now()
     return AIPrediction.objects.create(
-        ticker=ticker, direction=direction, horizon_days=7, confidence=0.6,
-        provider="claude", model="m", predicted_at=now, resolve_at=now, status=status,
+        ticker=ticker,
+        direction=direction,
+        horizon_days=7,
+        confidence=0.6,
+        provider="claude",
+        model="m",
+        predicted_at=now,
+        resolve_at=now,
+        status=status,
     )
 
 

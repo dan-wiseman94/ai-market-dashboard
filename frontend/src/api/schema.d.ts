@@ -86,6 +86,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/analytics/calibration-drift/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description #14 — per-model calibration drift (recent vs baseline EvalRun error). */
+        get: operations["analytics_calibration_drift_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/analytics/calibration/drilldown/": {
         parameters: {
             query?: never;
@@ -95,6 +112,23 @@ export interface paths {
         };
         /** @description The theses behind a calibration bucket (scorecard drill-down). */
         get: operations["analytics_calibration_drilldown_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/analytics/contradictions/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description #15 — open predictions that oppose the ticker's house view (CoverageNote). */
+        get: operations["analytics_contradictions_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1401,6 +1435,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/themes/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["themes_list"];
+        put?: never;
+        post: operations["themes_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/themes/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["themes_retrieve"];
+        put: operations["themes_update"];
+        post?: never;
+        delete: operations["themes_destroy"];
+        options?: never;
+        head?: never;
+        patch: operations["themes_partial_update"];
+        trace?: never;
+    };
+    "/api/themes/{id}/health/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["themes_health_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/theses/": {
         parameters: {
             query?: never;
@@ -2195,9 +2277,11 @@ export interface components {
          *     * `regime` - Regime
          *     * `book` - Book
          *     * `desk` - Desk
+         *     * `cal_drift` - Calibration drift
+         *     * `contra` - Consistency conflict
          * @enum {string}
          */
-        NotificationKindEnum: "trigger" | "observer_done" | "error" | "cost_limit" | "backup" | "postmortem" | "briefing" | "regime" | "book" | "desk";
+        NotificationKindEnum: "trigger" | "observer_done" | "error" | "cost_limit" | "backup" | "postmortem" | "briefing" | "regime" | "book" | "desk" | "cal_drift" | "contra";
         ObserverSchedule: {
             readonly id: number;
             name: string;
@@ -2447,6 +2531,16 @@ export interface components {
             readonly discovered_models?: unknown;
             /** Format: date-time */
             readonly models_synced_at?: string | null;
+        };
+        PatchedTheme: {
+            readonly id?: number;
+            name?: string;
+            tickers?: unknown;
+            note?: string;
+            /** Format: date-time */
+            readonly created_at?: string;
+            /** Format: date-time */
+            readonly updated_at?: string;
         };
         PatchedThesis: {
             readonly id?: number;
@@ -2731,6 +2825,16 @@ export interface components {
          * @enum {string}
          */
         Status95aEnum: "pending" | "ready" | "failed";
+        Theme: {
+            readonly id: number;
+            name: string;
+            tickers?: unknown;
+            note?: string;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+        };
         Thesis: {
             readonly id: number;
             title: string;
@@ -3011,7 +3115,43 @@ export interface operations {
             };
         };
     };
+    analytics_calibration_drift_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     analytics_calibration_drilldown_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    analytics_contradictions_retrieve: {
         parameters: {
             query?: never;
             header?: never;
@@ -5382,6 +5522,165 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Snapshot"];
+                };
+            };
+        };
+    };
+    themes_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Theme"][];
+                };
+            };
+        };
+    };
+    themes_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Theme"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Theme"];
+                };
+            };
+        };
+    };
+    themes_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this theme. */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Theme"];
+                };
+            };
+        };
+    };
+    themes_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this theme. */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Theme"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Theme"];
+                };
+            };
+        };
+    };
+    themes_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this theme. */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    themes_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this theme. */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedTheme"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Theme"];
+                };
+            };
+        };
+    };
+    themes_health_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this theme. */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Theme"];
                 };
             };
         };
