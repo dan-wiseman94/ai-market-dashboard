@@ -7,7 +7,10 @@ AI a paragraph that says what changed, not two 50k-token payloads.
 
 from __future__ import annotations
 
+import logging
 from typing import Any
+
+log = logging.getLogger(__name__)
 
 _NOISE_PCT = 0.005  # 0.5% — movements below this don't go into the diff
 
@@ -22,20 +25,27 @@ def diff_sections(prev: dict[str, Any], curr: dict[str, Any]) -> str:
     all_kinds = set(prev) | set(curr)
 
     for kind in sorted(all_kinds):
-        p = prev.get(kind)
-        c = curr.get(kind)
-        if p is None and c is not None:
-            lines.append(f"**{kind}**: new this capture")
-            summary = _summarize_new(kind, c)
-            if summary:
-                lines.append(summary)
-        elif c is None and p is not None:
-            lines.append(f"**{kind}**: removed/dropped from this capture")
-        else:
-            delta = _diff_one(kind, p, c)
-            if delta:
-                lines.append(f"**{kind}**:")
-                lines.append(delta)
+        # Per-section isolation: a single malformed section payload must never
+        # take down the whole diff (the endpoint would 400 via core.exception_handler).
+        # Skip the offending section and keep the rest — the diff "never raises" intent.
+        try:
+            p = prev.get(kind)
+            c = curr.get(kind)
+            if p is None and c is not None:
+                lines.append(f"**{kind}**: new this capture")
+                summary = _summarize_new(kind, c)
+                if summary:
+                    lines.append(summary)
+            elif c is None and p is not None:
+                lines.append(f"**{kind}**: removed/dropped from this capture")
+            else:
+                delta = _diff_one(kind, p, c)
+                if delta:
+                    lines.append(f"**{kind}**:")
+                    lines.append(delta)
+        except Exception:
+            log.warning("diff_section_skipped kind=%s", kind, exc_info=True)
+            continue
 
     return "\n".join(lines) if lines else "No meaningful changes."
 
@@ -58,7 +68,9 @@ def _headline(item: dict) -> str:
 
 def _summarize_new(kind: str, payload: Any) -> str:
     if kind == "quotes" and isinstance(payload, dict):
-        return ", ".join(f"{t}={q.get('last', '?')}" for t, q in list(payload.items())[:8])
+        return ", ".join(
+            f"{t}={q.get('last', '?')}" for t, q in list(payload.items())[:8] if isinstance(q, dict)
+        )
     if kind == "news":
         return "\n".join(f"- {_headline(item)}" for item in _news_items(payload)[:5])
     return "(section content added)"
