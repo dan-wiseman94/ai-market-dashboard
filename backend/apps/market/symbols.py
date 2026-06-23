@@ -1,15 +1,20 @@
-"""Symbol normalization for Schwab's index symbology.
+"""Symbol normalization for Schwab's index + futures symbology.
 
 Schwab quotes cash indices under a ``$`` namespace (``$SPX``, ``$VIX``, ``$NDX``)
-that bare user input ("SPX", "VIX") never matches. The quote/OHLC/chain calls
-then return an error envelope (quotes), empty candles (OHLC), or a 400 (chain),
-so an index snapshot silently comes back empty. Map the well-known index
-aliases to their canonical ``$``-prefixed Schwab symbols at the fetch boundary
-so bare index tickers "just work" everywhere — quotes, OHLC, chain, and the
-chart image that renders off OHLC.
+and futures under a leading-slash namespace (``/ES`` = continuous front-month
+E-mini S&P 500). Bare user input ("SPX", "ES") matches neither: the quote/OHLC/
+chain calls return an error envelope (quotes), empty candles (OHLC), or a 400
+(chain) — *or worse*, silently resolve a colliding equity (bare "ES" is
+Eversource Energy, "CL" is Colgate). Either way the snapshot is wrong. Map the
+well-known index aliases and futures roots to their canonical Schwab symbols at
+the fetch boundary so bare index/futures tickers "just work" everywhere —
+quotes, OHLC, chain, and the chart image that renders off OHLC.
 
-Only unambiguous cash-index aliases are mapped; none of these collide with a
-real equity or ETF ticker. ETFs (SPY/QQQ), sector ETFs, and ordinary equities
+Cash-index aliases never collide with an equity/ETF. Futures roots *can* (CL =
+Colgate, GC, NG, …); we intentionally resolve a bare root to the future to stay
+consistent with ``calendar.heuristics`` (which classifies bare "ES" as a CME
+future). A user who wants the colliding equity types it without ambiguity — but
+the roots below are the futures intent. ETFs (SPY/QQQ) and ordinary equities
 pass through untouched (just upper-cased).
 """
 
@@ -26,17 +31,32 @@ INDEX_ALIASES: dict[str, str] = {
     "OEX": "$OEX",  # S&P 100 index
 }
 
+# Bare futures roots Schwab quotes under the leading-slash namespace (``/ES``).
+# Single source of truth: ``calendar.heuristics`` imports these for market-key
+# classification, so the symbol that gets fetched and the calendar it's read
+# against can never disagree. Extend both behaviors by editing here only.
+CME_FUTURE_ROOTS: frozenset[str] = frozenset(
+    {"ES", "NQ", "RTY", "YM", "CL", "GC", "SI", "ZB", "ZN", "ZF", "NG", "HG"}
+)
+CFE_FUTURE_ROOTS: frozenset[str] = frozenset({"VX"})  # VIX future (≠ cash $VIX)
+FUTURE_ROOTS: frozenset[str] = CME_FUTURE_ROOTS | CFE_FUTURE_ROOTS
+
 
 def normalize_symbol(symbol: str) -> str:
     """Canonicalize a ticker for Schwab.
 
-    Upper-cases, then maps bare cash-index aliases to their ``$``-prefixed Schwab
-    symbol. Idempotent: already-prefixed symbols (``$SPX``) pass through. Empty or
-    whitespace-only input returns ``""``.
+    Upper-cases, then maps bare cash-index aliases to their ``$``-prefixed symbol
+    (``SPX`` -> ``$SPX``) and bare futures roots to their leading-slash symbol
+    (``ES`` -> ``/ES``). Idempotent: already-prefixed symbols (``$SPX``, ``/ES``,
+    a dated contract ``/ESU24``) pass through. Empty/whitespace input -> ``""``.
     """
     s = (symbol or "").strip().upper()
     if not s:
         return ""
-    if s.startswith("$"):
+    if s.startswith(("$", "/")):
         return s
-    return INDEX_ALIASES.get(s, s)
+    if s in INDEX_ALIASES:
+        return INDEX_ALIASES[s]
+    if s in FUTURE_ROOTS:
+        return f"/{s}"
+    return s
