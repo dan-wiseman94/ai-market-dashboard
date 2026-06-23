@@ -32,3 +32,30 @@ from apps.market.symbols import normalize_symbol
 )
 def test_normalize_symbol(raw, expected):
     assert normalize_symbol(raw) == expected
+
+
+@pytest.mark.parametrize(
+    "raw,expected",
+    [
+        # Bare CME future roots get Schwab's leading-slash futures namespace.
+        ("ES", "/ES"),  # E-mini S&P 500
+        ("es", "/ES"),  # case-insensitive
+        (" es ", "/ES"),  # whitespace stripped
+        ("NQ", "/NQ"),  # E-mini Nasdaq-100
+        ("RTY", "/RTY"),  # E-mini Russell 2000
+        ("YM", "/YM"),  # E-mini Dow
+        ("CL", "/CL"),  # crude oil (future, not Colgate equity)
+        ("GC", "/GC"),  # gold
+        ("ZN", "/ZN"),  # 10y note
+        # CFE / VIX future root.
+        ("VX", "/VX"),
+        # Already-prefixed futures symbols are idempotent.
+        ("/ES", "/ES"),
+        ("/es", "/ES"),
+        ("/ESU24", "/ESU24"),  # dated contract passes through untouched
+        # The cash VIX index ($VIX) stays distinct from the VIX future (/VX).
+        ("VIX", "$VIX"),
+    ],
+)
+def test_normalize_symbol_futures(raw, expected):
+    assert normalize_symbol(raw) == expected
