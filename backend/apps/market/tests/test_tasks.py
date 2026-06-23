@@ -55,6 +55,38 @@ def test_refresh_noops_when_token_undecryptable():
 
 @pytest.mark.django_db
 @override_settings(CELERY_TASK_ALWAYS_EAGER=True, CELERY_TASK_EAGER_PROPAGATES=True)
+def test_refresh_degrades_and_marks_reconnect_when_refresh_rejected():
+    """An expired/revoked refresh token (Schwab returns 400 invalid_grant) is
+    unrecoverable by any automated refresh. The task must not raise an unhandled
+    HTTPError every beat tick — degrade to a clean result AND record a cross-process
+    auth-error marker so the connection status surfaces "reconnect needed"."""
+    import fakeredis
+    import httpx
+
+    from apps.core import provider_health
+
+    ApiCredential.objects.create(
+        provider="schwab",
+        token={"access_token": "A", "refresh_token": "DEAD"},
+        expires_at=timezone.now() + timedelta(minutes=2),  # <5 min → triggers refresh
+    )
+    request = httpx.Request("POST", "https://api.schwabapi.com/v1/oauth/token")
+    response = httpx.Response(400, request=request, json={"error": "invalid_grant"})
+    fake = fakeredis.FakeStrictRedis()
+    with (
+        patch(
+            "apps.market.tasks.refresh_token",
+            side_effect=httpx.HTTPStatusError("400", request=request, response=response),
+        ),
+        patch("apps.core.provider_health._redis", lambda: fake),
+    ):
+        result = refresh_schwab_token.delay().get(timeout=2)
+        assert result == {"ok": False, "reason": "refresh_rejected"}
+        assert provider_health.auth_error("schwab") is not None
+
+
+@pytest.mark.django_db
+@override_settings(CELERY_TASK_ALWAYS_EAGER=True, CELERY_TASK_EAGER_PROPAGATES=True)
 def test_refresh_triggers_when_near_expiry():
     ApiCredential.objects.create(
         provider="schwab",
