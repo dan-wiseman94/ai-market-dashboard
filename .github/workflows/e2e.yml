@@ -72,22 +72,26 @@ jobs:
         # generator (hypothesis "dictionary changed size during iteration" in
         # _hypothesis.generate_parameter, a tooling bug — the app never receives a request).
         # These are not app failures; revisit when schemathesis fixes the generator.
-        # Retry up to 3×: that same generator bug is non-deterministic and lands on a
-        # DIFFERENT operation each run, so a retry clears the flake without masking a
-        # genuine, repeatable 5xx (which would fail all three attempts). See PR #123.
+        #
+        # -w 1 (single worker), NOT -w 6: that generator bug is a THREAD-SAFETY race —
+        # concurrent workers mutate Hypothesis's shared strategy caches mid-iteration, so
+        # under -w 6 it crashed EVERY run (on a different pre-existing operation each time;
+        # a 3× retry did not help — see PR #123). One worker is race-free. To hold the time
+        # budget we drop examples 20→8 and keep only the crash-relevant `fuzzing`+`examples`
+        # phases. Retry 2× only guards a genuinely-transient infra hiccup.
         run: |
           sx() {
             docker compose -f compose.yaml -f compose.e2e.yaml exec -T --workdir /app web \
               uv run schemathesis run http://localhost:8000/api/schema/ -u http://localhost:8000 \
-              -c not_a_server_error -w 6 -n 20 --phases examples,fuzzing \
+              -c not_a_server_error -w 1 -n 8 --phases examples,fuzzing \
               --exclude-path /api/dashboard/ --exclude-path /api/analytics/observer-timeline/
           }
-          for attempt in 1 2 3; do
-            echo "::group::schemathesis attempt ${attempt}/3"
+          for attempt in 1 2; do
+            echo "::group::schemathesis attempt ${attempt}/2"
             if sx; then echo "::endgroup::"; echo "schemathesis passed on attempt ${attempt}"; exit 0; fi
-            echo "::endgroup::"; echo "schemathesis attempt ${attempt} failed (tooling flake?), retrying"
+            echo "::endgroup::"; echo "schemathesis attempt ${attempt} failed, retrying"
           done
-          echo "schemathesis failed after 3 attempts — a repeatable failure, not the flake"; exit 1
+          echo "schemathesis failed after 2 attempts — a repeatable failure, not a hiccup"; exit 1
       - name: render-chart integration test (the /render/chart chromium path)
         # apps.snapshots.services.render.render_chart_png is the headless-chromium chart-image
         # pipeline. Its test is marked `integration`, so check.yml deselects it (`-m 'not
