@@ -268,7 +268,8 @@ def _record_pct_change(
     zkey = f"trigger:windowz:{ticker}:{window}"
     # Baseline from EXISTING samples (before recording the current one), so the
     # very first tick has no prior and returns None.
-    existing = r.zrangebyscore(zkey, cutoff, now, start=0, num=1)
+    # redis-py types this as a sync/async union; the client here is sync → a list.
+    existing = cast("list[Any]", r.zrangebyscore(zkey, cutoff, now, start=0, num=1))
     r.zadd(zkey, {f"{now:.6f}|{last}": now})
     r.expire(zkey, 2 * win_s)
     r.zremrangebyscore(zkey, 0, cutoff)  # drop samples now outside the window
