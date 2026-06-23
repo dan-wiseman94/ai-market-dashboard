@@ -188,3 +188,25 @@ class CorporateAction(models.Model):
 
     def __str__(self) -> str:
         return f"CorporateAction({self.kind}, {self.ticker}, {self.ex_date})"
+
+
+class Theme(models.Model):
+    """A named narrative grouping tickers (AI-capex, GLP-1, …); narrative health
+    is computed on demand from OHLCBar (#18). Tickers are flat watchlists today —
+    this reasons at the theme level (breadth / leadership / relative strength)."""
+
+    name = models.CharField(max_length=64, unique=True)
+    tickers = models.JSONField(default=list)
+    note = models.TextField(blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering: ClassVar = ["name"]
+
+    def __str__(self) -> str:
+        return f"Theme({self.name}, {len(self.tickers)} tickers)"
+
+    def save(self, *args, **kwargs) -> None:
+        self.tickers = [str(t).upper().strip() for t in (self.tickers or []) if str(t).strip()]
+        super().save(*args, **kwargs)

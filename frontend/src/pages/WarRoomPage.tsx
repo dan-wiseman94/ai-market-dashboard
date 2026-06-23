@@ -5,7 +5,7 @@ import { Skeleton } from "@/components/Skeleton";
 import { useConveneWarRoom, useWarRoomRuns } from "@/hooks/useWarroom";
 
 export default function WarRoomPage() {
-  const { data: runs = [], isLoading, refetch } = useWarRoomRuns();
+  const { data: runs = [], isLoading, isError, refetch } = useWarRoomRuns();
   const convene = useConveneWarRoom();
   const [prompt, setPrompt] = useState("");
   const [structure, setStructure] = useState<"judge_panel" | "rebuttal" | "deep">("rebuttal");
@@ -68,6 +68,13 @@ export default function WarRoomPage() {
       <h2 className="mt-8 text-lg font-medium">Past debates</h2>
       {isLoading ? (
         <Skeleton where="warroom" />
+      ) : isError ? (
+        <div className="mt-2 text-sm text-copper-400">
+          Couldn&rsquo;t load past debates.{" "}
+          <button className="underline hover:text-copper-300" onClick={() => refetch()}>
+            Retry
+          </button>
+        </div>
       ) : (
         <ul className="mt-2 divide-y divide-rule">
           {runs.map((r) => (
@@ -75,6 +82,8 @@ export default function WarRoomPage() {
               <div className="font-medium"><Link to={`/warroom/${r.id}`}>{r.subject_label}</Link></div>
               {r.status === "error" ? (
                 <div className="text-sm text-copper-400">{r.error}</div>
+              ) : r.status !== "done" || !r.verdict ? (
+                <div className="text-sm text-ink-500">Debating…</div>
               ) : (
                 <div className="text-sm text-ink-400">
                   Verdict: {r.verdict.verdict}

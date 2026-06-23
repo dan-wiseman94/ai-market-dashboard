@@ -1,14 +1,22 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   compareMessage,
   fetchThread,
   fetchThreads,
+  fetchThreadsPage,
   renameThread,
   sendMessage,
   stopMessage,
 } from "@/api/threads";
 
 export const useThreads = () => useQuery({ queryKey: ["threads"], queryFn: fetchThreads });
+
+export const useThreadsPage = (params: { limit: number; offset: number }) =>
+  useQuery({
+    queryKey: ["threads", "page", params.limit, params.offset],
+    queryFn: () => fetchThreadsPage(params),
+    placeholderData: keepPreviousData, // keep the current page visible while the next loads
+  });
 
 export const useThread = (id: number | null) =>
   useQuery({

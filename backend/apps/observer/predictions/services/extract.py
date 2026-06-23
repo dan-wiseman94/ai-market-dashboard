@@ -84,6 +84,21 @@ def _invalidation_price_from_levels(report, direction: str, current_price: float
     return None
 
 
+def _expected_move_pct(snapshot, horizon_days: int) -> float | None:
+    """1σ options-implied move frozen at decision time, from the snapshot's own
+    chain section (look-ahead-safe — the chain as captured). Best-effort: a missing
+    chain / odd shape / any error yields None and never breaks extraction."""
+    try:
+        from apps.market.services.expected_move import for_horizon
+
+        for sec in snapshot.sections.all():
+            if sec.kind == "chain" and isinstance(sec.payload, dict):
+                return for_horizon(sec.payload, horizon_days)
+    except Exception:
+        return None
+    return None
+
+
 def _resolve_at(ticker: str, predicted_at, horizon_days: int):
     """predicted_at + horizon trading sessions on the ticker's calendar."""
     from apps.market.calendar import add_trading_days, calendar_for
@@ -136,11 +151,12 @@ def extract_from_observation(
         existing.invalidated_at = timezone.now()
         existing.save(update_fields=["status", "invalidated_at", "updated_at"])
 
-    return AIPrediction.objects.create(
+    pred = AIPrediction.objects.create(
         ticker=ticker,
         direction=direction,
         horizon_days=horizon,
         confidence=confidence,
+        expected_move_pct=_expected_move_pct(snapshot, horizon),
         rationale=(getattr(report, "headline", "") or "")[:500],
         invalidation_note=_invalidation_for(report, ticker),
         invalidation_price=inv_price,
@@ -152,3 +168,32 @@ def extract_from_observation(
         predicted_at=predicted_at,
         resolve_at=_resolve_at(ticker, predicted_at, horizon),
     )
+    _flag_contradictions(ticker, direction)
+    return pred
+
+
+def _flag_contradictions(ticker: str, direction: str) -> None:
+    """#15: notify when this new call contradicts the house view / an open call.
+    Best-effort — a sentinel failure must never break extraction."""
+    try:
+        from apps.observer.predictions.services.consistency import find_contradictions
+        from apps.observer.services.notifications import notify
+
+        conflicts = find_contradictions(ticker, direction)
+        if not conflicts:
+            return
+        srcs = ", ".join(
+            f"{c['stance']} house view"
+            if c["source"] == "coverage"
+            else f"open {c['direction']} call"
+            for c in conflicts
+        )
+        notify(
+            user_id=None,
+            kind="contra",
+            title=f"Inconsistent view: {ticker}",
+            body=f"New {direction} {ticker} call contradicts {srcs}.",
+            link="/scorecard",
+        )
+    except Exception:
+        log.debug("consistency sentinel failed for %s", ticker, exc_info=True)

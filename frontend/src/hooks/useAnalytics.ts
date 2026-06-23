@@ -214,6 +214,14 @@ export interface AICalibration {
   reliability: AIReliabilityBand[];
   by_provider_model: ProviderCalibrationRow[];
   by_direction: Record<string, { n: number; hit_rate: number | null }>;
+  // #13: how often the actual move beat the options-priced 1σ move.
+  beat_the_straddle?: {
+    n: number;
+    beyond_priced: number;
+    within_priced: number;
+    beyond_rate: number | null;
+    edge_rate: number | null;
+  };
 }
 
 /** Live calibration of the AI's OWN resolved predictions (M13). */
@@ -223,6 +231,48 @@ export function useAICalibration(days = 90, horizon?: number) {
     queryKey: ["analytics/ai-calibration", days, horizon ?? null],
     queryFn: () =>
       apiGet<AICalibration>(`/api/analytics/ai-calibration/?start=${startISO(days)}${h}`),
+  });
+}
+
+export interface CalibrationDriftModel {
+  model: string;
+  recent_error: number | null;
+  baseline_error: number | null;
+  delta: number | null;
+  drifting: boolean;
+  direction: "overconfident" | "underconfident" | "stable";
+  status: "scored" | "insufficient_history";
+  recent_runs: number;
+  baseline_runs: number;
+}
+export interface CalibrationDrift {
+  generated_at: string;
+  window_days: number;
+  models: CalibrationDriftModel[];
+}
+
+/** #14 — per-model calibration drift (recent vs baseline EvalRun error). */
+export function useCalibrationDrift(windowDays = 30) {
+  return useQuery({
+    queryKey: ["analytics/calibration-drift", windowDays],
+    queryFn: () =>
+      apiGet<CalibrationDrift>(`/api/analytics/calibration-drift/?window_days=${windowDays}`),
+  });
+}
+
+export interface Contradiction {
+  ticker: string;
+  prediction_direction: "bullish" | "bearish";
+  stance: "bull" | "bear";
+  prediction_id: number;
+  predicted_at: string;
+}
+
+/** #15 — open predictions whose direction opposes the ticker's house view. */
+export function useContradictions() {
+  return useQuery({
+    queryKey: ["analytics/contradictions"],
+    queryFn: () => apiGet<{ contradictions: Contradiction[] }>("/api/analytics/contradictions/"),
   });
 }
 

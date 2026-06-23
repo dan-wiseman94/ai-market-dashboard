@@ -1,0 +1,10 @@
+# The FE build context is ./frontend; keep installed deps + build output out of it
+# (node_modules is a named volume at runtime; deps install from the lockfile).
+node_modules
+dist
+.vite
+coverage
+playwright-report
+test-results
+*.log
+.DS_Store

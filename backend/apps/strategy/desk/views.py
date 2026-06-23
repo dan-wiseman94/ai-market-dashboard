@@ -6,7 +6,6 @@ from rest_framework.response import Response
 from rest_framework.viewsets import ReadOnlyModelViewSet
 
 from apps.strategy.desk.serializers import DeskEntrySerializer
-from apps.strategy.desk.services.sweep import run_sweep
 from apps.strategy.models import DeskEntry
 from apps.strategy.warroom.services.convene import convene
 
@@ -35,7 +34,12 @@ class DeskViewSet(ReadOnlyModelViewSet):
 
     @action(detail=False, methods=["post"])
     def sweep(self, request: Request) -> Response:
-        return Response({"created": run_sweep()})
+        # Dispatch off the request thread: a sweep runs N AI investigations and
+        # would otherwise block the HTTP call for many seconds (and dollars).
+        from apps.strategy.tasks import sweep_now
+
+        task = sweep_now.delay()
+        return Response({"task_id": str(task.id), "status": "queued"}, status=202)
 
     @action(detail=True, methods=["post"])
     def dismiss(self, request: Request, pk=None) -> Response:

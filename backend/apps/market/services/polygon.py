@@ -150,7 +150,9 @@ def fetch_daily_bars(ticker: str, *, days: int = 120) -> list[dict]:
     from_date = to_date - timedelta(days=days)
 
     path = f"/v2/aggs/ticker/{ticker}/range/1/day/{from_date}/{to_date}"
-    params = {"adjusted": "true", "sort": "asc", "limit": 120}
+    # Request RAW (unadjusted) bars: returns.py corrects splits itself and
+    # assumes OHLCBar holds raw prices. adjusted="true" would double-correct.
+    params = {"adjusted": "false", "sort": "asc", "limit": 120}
 
     try:
         body = cache.get_or_fetch(
@@ -187,7 +189,7 @@ def fetch_prev_close(ticker: str) -> dict | None:
         return None
 
     path = f"/v2/aggs/ticker/{ticker}/prev"
-    params: dict = {"adjusted": "true"}
+    params: dict = {"adjusted": "false"}  # raw bars — see fetch_daily_bars note
 
     try:
         body = cache.get_or_fetch(

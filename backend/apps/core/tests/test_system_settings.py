@@ -82,6 +82,44 @@ def test_patch_rejects_unknown_field():
 
 
 @pytest.mark.django_db
+def test_patch_rejects_zero_retention():
+    # 0 days would make the next prune delete every row of that model.
+    response = Client().patch(
+        "/api/settings/",
+        data=json.dumps({"retention_chain_days": 0}),
+        content_type="application/json",
+    )
+    assert response.status_code == 400
+    assert response.json()["code"] == "invalid_value"
+    # null still allowed (disables pruning, inherits default)
+    ok = Client().patch(
+        "/api/settings/",
+        data=json.dumps({"retention_chain_days": None}),
+        content_type="application/json",
+    )
+    assert ok.status_code == 200
+
+
+@pytest.mark.django_db
+def test_patch_rejects_ohlc_retention_below_postmortem_horizon():
+    # Post-mortems resolve against OHLC by date up to the 90d horizon; a low OHLC
+    # retention would prune the bars they need.
+    response = Client().patch(
+        "/api/settings/",
+        data=json.dumps({"retention_ohlc_days": 30}),
+        content_type="application/json",
+    )
+    assert response.status_code == 400
+    ok = Client().patch(
+        "/api/settings/",
+        data=json.dumps({"retention_ohlc_days": 120}),
+        content_type="application/json",
+    )
+    assert ok.status_code == 200
+    assert ok.json()["retention_ohlc_days"] == 120
+
+
+@pytest.mark.django_db
 def test_patch_rejects_negative_number():
     response = Client().patch(
         "/api/settings/",

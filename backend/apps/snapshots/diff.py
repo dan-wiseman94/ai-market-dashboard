@@ -7,7 +7,10 @@ AI a paragraph that says what changed, not two 50k-token payloads.
 
 from __future__ import annotations
 
+import logging
 from typing import Any
+
+log = logging.getLogger(__name__)
 
 _NOISE_PCT = 0.005  # 0.5% — movements below this don't go into the diff
 
@@ -22,20 +25,27 @@ def diff_sections(prev: dict[str, Any], curr: dict[str, Any]) -> str:
     all_kinds = set(prev) | set(curr)
 
     for kind in sorted(all_kinds):
-        p = prev.get(kind)
-        c = curr.get(kind)
-        if p is None and c is not None:
-            lines.append(f"**{kind}**: new this capture")
-            summary = _summarize_new(kind, c)
-            if summary:
-                lines.append(summary)
-        elif c is None and p is not None:
-            lines.append(f"**{kind}**: removed/dropped from this capture")
-        else:
-            delta = _diff_one(kind, p, c)
-            if delta:
-                lines.append(f"**{kind}**:")
-                lines.append(delta)
+        # Per-section isolation: a single malformed section payload must never
+        # take down the whole diff (the endpoint would 400 via core.exception_handler).
+        # Skip the offending section and keep the rest — the diff "never raises" intent.
+        try:
+            p = prev.get(kind)
+            c = curr.get(kind)
+            if p is None and c is not None:
+                lines.append(f"**{kind}**: new this capture")
+                summary = _summarize_new(kind, c)
+                if summary:
+                    lines.append(summary)
+            elif c is None and p is not None:
+                lines.append(f"**{kind}**: removed/dropped from this capture")
+            else:
+                delta = _diff_one(kind, p, c)
+                if delta:
+                    lines.append(f"**{kind}**:")
+                    lines.append(delta)
+        except Exception:
+            log.warning("diff_section_skipped kind=%s", kind, exc_info=True)
+            continue
 
     return "\n".join(lines) if lines else "No meaningful changes."
 
@@ -58,7 +68,9 @@ def _headline(item: dict) -> str:
 
 def _summarize_new(kind: str, payload: Any) -> str:
     if kind == "quotes" and isinstance(payload, dict):
-        return ", ".join(f"{t}={q.get('last', '?')}" for t, q in list(payload.items())[:8])
+        return ", ".join(
+            f"{t}={q.get('last', '?')}" for t, q in list(payload.items())[:8] if isinstance(q, dict)
+        )
     if kind == "news":
         return "\n".join(f"- {_headline(item)}" for item in _news_items(payload)[:5])
     return "(section content added)"
@@ -186,12 +198,18 @@ def _diff_overnight(prev: dict, curr: dict) -> str:
 
 
 def _diff_chain(prev: dict, curr: dict) -> str:
-    # Compact: report change in the count of expirations/lines; deep greek diffs deferred.
-    def n(blob: dict) -> Any:
-        exps = blob.get("expirations") or blob.get("data", {}).get("expirations")
-        return len(exps) if isinstance(exps, list) else None
+    # Compact: report change in the count of expiries; deep greek diffs deferred.
+    # The chain payload stores expiries as a DICT keyed by expiry date
+    # ({"expiries": {date: section}}). The old code read a non-existent
+    # "expirations" list, so chain changes were silently never reported.
+    def n(blob: dict) -> int | None:
+        exp = blob.get("expiries")
+        if exp is None:
+            data = blob.get("data")
+            exp = data.get("expiries") if isinstance(data, dict) else None
+        return len(exp) if isinstance(exp, dict | list) else None
 
     pn, cn = n(prev), n(curr)
     if pn is not None and cn is not None and pn != cn:
-        return f"- expirations: {pn} → {cn}"
+        return f"- expiries: {pn} → {cn}"
     return ""

@@ -14,6 +14,7 @@ from __future__ import annotations
 from datetime import timedelta
 
 import pytest
+from django.test import override_settings
 from django.utils import timezone
 
 from apps.book.models import BookSnapshot
@@ -358,3 +359,19 @@ def test_beat_registration():
         "'prune-retention' not found in beat_schedule — beat task won't fire"
     )
     assert schedule["prune-retention"]["task"] == "core.prune_retention"
+
+
+# ---------------------------------------------------------------------------
+# 7. non-positive window is a no-op (NOT a delete-everything)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+@override_settings(AI_RETENTION_OHLC_DAYS=0)
+def test_prune_skips_nonpositive_window_keeps_all_rows():
+    """A misconfigured 0-day window (env or DB) must delete nothing — cutoff>=now
+    would otherwise wipe every row of the model."""
+    _ohlc(days_ago=5000)  # ancient bar that ANY positive window would delete
+    res = prune_retention()
+    assert res["ohlc"] == 0
+    assert OHLCBar.objects.filter(ticker="SPY").count() == 1

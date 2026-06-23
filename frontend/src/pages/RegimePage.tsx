@@ -3,10 +3,10 @@ import { Skeleton } from "@/components/Skeleton";
 import { useCurrentRegime, useRefreshRegime, useRegimeHistory } from "@/hooks/useRegime";
 
 const COMPOSITE_TONE: Record<string, string> = {
-  "Risk-On": "text-emerald-600",
+  "Risk-On": "text-emerald-700 dark:text-emerald-400",
   "Neutral-Transitional": "text-ink",
   "Risk-Off": "text-copper",
-  Stress: "text-red-600",
+  Stress: "text-red-700 dark:text-red-400",
 };
 
 function RefreshRegimeButton() {

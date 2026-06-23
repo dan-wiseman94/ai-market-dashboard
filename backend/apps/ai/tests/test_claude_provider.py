@@ -32,7 +32,7 @@ class _FakeStream:
         msg.usage.input_tokens = self._usage["input"]
         msg.usage.output_tokens = self._usage["output"]
         msg.usage.cache_read_input_tokens = self._usage.get("cached", 0)
-        msg.usage.cache_creation_input_tokens = 0
+        msg.usage.cache_creation_input_tokens = self._usage.get("created", 0)
         return msg
 
 
@@ -61,11 +61,41 @@ async def test_claude_streams_text_and_usage():
     assert "".join(text_parts) == "Hello world"
 
     usage = next(e for e in events if isinstance(e, UsageEvent))
-    assert usage.usage.input_tokens == 100
+    # input_tokens is the TOTAL prompt: full-rate (100) + cache read (10) + write (0).
+    assert usage.usage.input_tokens == 110
     assert usage.usage.output_tokens == 50
     assert usage.usage.cached_tokens == 10
+    assert usage.usage.cache_write_tokens == 0
 
     assert isinstance(events[-1], DoneEvent)
+
+
+@pytest.mark.asyncio
+async def test_claude_usage_includes_cache_write_tokens():
+    """cache_creation (write) tokens must be captured — they were silently
+    dropped, making cost.py under-count Claude spend and under-enforce caps."""
+    fake_client = MagicMock()
+    fake_client.messages.stream = MagicMock(
+        return_value=_FakeStream(
+            ["hi"],
+            {"input": 100, "output": 50, "cached": 10, "created": 20},
+        )
+    )
+
+    with patch("apps.ai.providers.claude.AsyncAnthropic", return_value=fake_client):
+        provider = ClaudeProvider(api_key="sk-ant-test")
+        req = RunRequest(
+            model="claude-sonnet-4-6",
+            system="s",
+            messages=[ChatMessage(role="user", content="hi")],
+        )
+        events = [e async for e in provider.run(req)]
+
+    usage = next(e for e in events if isinstance(e, UsageEvent)).usage
+    # total = 100 full + 10 read + 20 write
+    assert usage.input_tokens == 130
+    assert usage.cached_tokens == 10
+    assert usage.cache_write_tokens == 20
 
 
 @pytest.mark.asyncio

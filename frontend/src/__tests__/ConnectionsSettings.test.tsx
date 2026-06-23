@@ -107,6 +107,25 @@ describe("ConnectionsSettings", () => {
     expect(await screen.findByText(/schwab credentials saved/i)).toBeInTheDocument();
   });
 
+  it("opens the Schwab authorize URL in a new tab, not the current one", async () => {
+    // A full-page redirect (window.location.href) hands the whole dashboard tab to
+    // Schwab's hosted page; if Schwab rejects the app key with 401 invalid_client the
+    // user is stranded on that error page. Opening a new tab keeps the dashboard intact.
+    mockUseSchwabStatus.mockReturnValue({ data: { connected: false }, isLoading: false });
+    vi.mocked(fetchSchwabAuthorizeUrl).mockResolvedValueOnce({
+      url: "https://api.schwabapi.com/v1/oauth/authorize?client_id=x",
+    });
+    const openSpy = vi.spyOn(window, "open").mockReturnValue(null);
+    renderWithProviders();
+    await userEvent.click(screen.getByRole("button", { name: /connect schwab/i }));
+    expect(openSpy).toHaveBeenCalledWith(
+      "https://api.schwabapi.com/v1/oauth/authorize?client_id=x",
+      "_blank",
+      "noopener,noreferrer",
+    );
+    openSpy.mockRestore();
+  });
+
   it("shows an error toast when the authorize request fails", async () => {
     mockUseSchwabStatus.mockReturnValue({ data: { connected: false }, isLoading: false });
     vi.mocked(fetchSchwabAuthorizeUrl).mockRejectedValueOnce(

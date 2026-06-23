@@ -18,6 +18,8 @@ class CostCapExceededError(RuntimeError):
 
 
 _PER_MTOK = Decimal("1000000")
+# Anthropic 5-minute prompt-cache write costs 1.25x the base input rate.
+_CACHE_WRITE_MULT = Decimal("1.25")
 
 
 def cost_usd_for(provider: str, model_id: str, usage: TokenUsage) -> Decimal:
@@ -29,11 +31,17 @@ def cost_usd_for(provider: str, model_id: str, usage: TokenUsage) -> Decimal:
     if model is None:
         return Decimal("0")
 
-    non_cached = max(0, usage.input_tokens - usage.cached_tokens)
-    input_cost = _dec(non_cached) * _dec(model.input_per_mtok) / _PER_MTOK
-    cached_cost = _dec(usage.cached_tokens) * _dec(model.cached_per_mtok) / _PER_MTOK
+    # cached_tokens (reads) and cache_write_tokens (creation) are disjoint subsets
+    # of input_tokens; the remainder bills at the full input rate. Cache writes
+    # carry Anthropic's 5-minute write premium (1.25x base input).
+    cache_read = usage.cached_tokens
+    cache_write = usage.cache_write_tokens
+    full_rate = max(0, usage.input_tokens - cache_read - cache_write)
+    input_cost = _dec(full_rate) * _dec(model.input_per_mtok) / _PER_MTOK
+    cached_cost = _dec(cache_read) * _dec(model.cached_per_mtok) / _PER_MTOK
+    write_cost = _dec(cache_write) * _dec(model.input_per_mtok) * _CACHE_WRITE_MULT / _PER_MTOK
     output_cost = _dec(usage.output_tokens) * _dec(model.output_per_mtok) / _PER_MTOK
-    return (input_cost + cached_cost + output_cost).quantize(Decimal("0.000001"))
+    return (input_cost + cached_cost + write_cost + output_cost).quantize(Decimal("0.000001"))
 
 
 def _dec(v: float | int) -> Decimal:

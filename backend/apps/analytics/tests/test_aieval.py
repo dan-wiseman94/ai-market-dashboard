@@ -210,12 +210,13 @@ def test_evaluate_hit_rate_and_brier_hand_checkable(profile):
     assert res["skipped"] == 0
     # hit_rate = 2 correct / 3 = 0.6667
     assert res["hit_rate"] == round(2 / 3, 4)
-    # brier = mean((p-1)^2, (p-0)^2, (p-1)^2) with p = prob for conviction 3 = 0.7.
-    # Compute the expected value the SAME way the code does (avoid rounded literals
-    # diverging from float-squared terms): outcomes o = [1, 0, 1].
-    p = 0.7
-    expected_brier = round(((p - 1) ** 2 + (p - 0) ** 2 + (p - 1) ** 2) / 3, 4)
-    assert res["brier"] == expected_brier == 0.2233
+    # brier scores the MODEL's stated confidence per row against the outcome
+    # (NOT the human conviction). confs = (1.0, 0.5, 0.6); outcomes o = (1, 0, 1):
+    #   (1.0-1)^2=0, (0.5-0)^2=0.25, (0.6-1)^2=0.16
+    confs = [1.0, 0.5, 0.6]
+    outs = [1.0, 0.0, 1.0]
+    expected_brier = round(sum((c - o) ** 2 for c, o in zip(confs, outs, strict=True)) / 3, 4)
+    assert res["brier"] == expected_brier == 0.1367
     # avg_confidence = mean(1.0, 0.5, 0.6) = 0.7
     assert res["avg_confidence"] == round((1.0 + 0.5 + 0.6) / 3, 4)
 

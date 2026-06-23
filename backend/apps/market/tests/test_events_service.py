@@ -98,6 +98,22 @@ def test_fetch_macro_filters_to_us_high_impact_allowlist():
 
 
 @pytest.mark.django_db
+def test_upsert_macro_keeps_distinct_same_kind_same_day_events():
+    # CPI YoY and Core CPI YoY both map to kind 'cpi' on the same day but are
+    # distinct releases — the old kind:date external_id collided and kept one.
+    rows = [
+        {"event": "CPI YoY", "country": "US", "impact": "high", "time": "2026-07-15 12:30:00"},
+        {"event": "Core CPI YoY", "country": "US", "impact": "high", "time": "2026-07-15 12:30:00"},
+    ]
+    out = events._upsert_macro(rows, source="finnhub")
+    assert len(out) == 2
+    assert MarketEvent.objects.filter(kind="cpi").count() == 2
+    # idempotent: re-upserting the same rows updates in place, no duplicates
+    events._upsert_macro(rows, source="finnhub")
+    assert MarketEvent.objects.filter(kind="cpi").count() == 2
+
+
+@pytest.mark.django_db
 def test_fetch_macro_falls_back_to_seed_when_endpoint_empty():
     seed = [
         {

@@ -100,6 +100,8 @@ class Notification(models.Model):
         ("regime", "Regime"),
         ("book", "Book"),
         ("desk", "Desk"),
+        ("cal_drift", "Calibration drift"),
+        ("contra", "Consistency conflict"),
     ]
 
     # Nullable for v1 (no user-auth surface yet). When auth lands, backfill or
@@ -143,6 +145,10 @@ class AIPrediction(DirectionalCall, Resolution):
     ]
 
     confidence = models.FloatField()  # 0..1
+    # 1σ options-implied move (fraction) for this horizon, FROZEN at prediction time
+    # from the snapshot's chain. None when no chain was captured. Scored at resolution
+    # against |forward_return_pct| (within vs beyond what the options market priced).
+    expected_move_pct = models.FloatField(null=True, blank=True)
     rationale = models.TextField(blank=True, default="")
     provider = models.CharField(max_length=32, db_index=True)
     model = models.CharField(max_length=64, db_index=True)

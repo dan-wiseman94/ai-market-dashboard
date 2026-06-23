@@ -8,7 +8,11 @@ from apps.snapshots.models import Snapshot
 from apps.snapshots.services import capture_for_existing
 
 
-@shared_task(name="snapshots.capture")
+# At-most-once: capture is NOT idempotent (sections fetch/persist with side
+# effects) and carries no compare-and-set claim, so it must override the global
+# task_acks_late=True. A worker killed mid-capture leaves a visible partial
+# snapshot the user can re-trigger — never a silently re-run double capture.
+@shared_task(name="snapshots.capture", acks_late=False, reject_on_worker_lost=False)
 def capture_task(
     *,
     snapshot_id: int,

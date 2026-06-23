@@ -66,7 +66,13 @@ def ai_calibration(*, start: datetime, end: datetime, horizon: int | None = None
     (provider, model) and per direction hit-rates, over resolved predictions."""
     rows = list(
         _resolved_qs(start, end, horizon).values_list(
-            "confidence", "direction", "verdict", "provider", "model"
+            "confidence",
+            "direction",
+            "verdict",
+            "provider",
+            "model",
+            "expected_move_pct",
+            "forward_return_pct",
         )
     )
 
@@ -75,8 +81,11 @@ def ai_calibration(*, start: datetime, end: datetime, horizon: int | None = None
     by_model: dict[tuple[str, str], dict] = {}
     tot = {"scored": 0, "correct": 0, "incorrect": 0, "mixed": 0}
     brier_terms: list[float] = []
+    # Beat-the-straddle: did the actual move exceed the options-priced 1σ move?
+    # expected_move_pct is a FRACTION; forward_return_pct is a PERCENT → compare |fwd| > priced*100.
+    straddle = {"n": 0, "beyond": 0, "edge": 0}
 
-    for conf, direction, verdict, provider, model in rows:
+    for conf, direction, verdict, provider, model, exp_move, fwd in rows:
         tot["scored"] += 1
         if verdict in _ALL_VERDICTS:
             tot[verdict] += 1
@@ -89,6 +98,13 @@ def ai_calibration(*, start: datetime, end: datetime, horizon: int | None = None
 
         _bump(by_dir, direction, verdict)
         _bump(by_model, (provider, model), verdict, {"provider": provider, "model": model})
+
+        if exp_move and exp_move > 0 and fwd is not None:
+            straddle["n"] += 1
+            if abs(fwd) > exp_move * 100.0:
+                straddle["beyond"] += 1
+                if verdict == "correct":
+                    straddle["edge"] += 1
 
     reliability = []
     for lo, hi in _BANDS:
@@ -125,6 +141,15 @@ def ai_calibration(*, start: datetime, end: datetime, horizon: int | None = None
         "by_direction": {
             d: {"n": v["n"], "hit_rate": _hit_rate(v["correct"], v["incorrect"])}
             for d, v in by_dir.items()
+        },
+        "beat_the_straddle": {
+            "n": straddle["n"],
+            "beyond_priced": straddle["beyond"],
+            "within_priced": straddle["n"] - straddle["beyond"],
+            # share of priced predictions whose actual move exceeded the options-implied move
+            "beyond_rate": round(straddle["beyond"] / straddle["n"], 4) if straddle["n"] else None,
+            # the strongest cell: directionally CORRECT and bigger than priced
+            "edge_rate": round(straddle["edge"] / straddle["n"], 4) if straddle["n"] else None,
         },
     }
 

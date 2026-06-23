@@ -61,3 +61,27 @@ def test_no_change_returns_nothing_meaningful() -> None:
     curr = {"quotes": {"SPY": {"last": 520.0}}}
     out = diff_sections(prev, curr)
     assert "No meaningful changes" in out or "below 0.5%" in out
+
+
+def test_malformed_section_does_not_raise_or_400_the_whole_diff() -> None:
+    """A single bad section payload must be skipped, not raise (which core's
+    exception_handler turns into a 400 'Invalid input.'). Regression: a new
+    'quotes' section whose value isn't a dict used to AttributeError out."""
+    prev = {"ohlc": {"data": {"ticker": "SPY", "bars": [{"close": 100.0}]}}}
+    curr = {
+        "ohlc": {"data": {"ticker": "SPY", "bars": [{"close": 101.0}]}},
+        "quotes": {"AAPL": "not-a-dict"},  # malformed — would raise in _summarize_new
+    }
+    out = diff_sections(prev, curr)  # must not raise
+    assert isinstance(out, str)
+    assert "SPY last: 100.0 → 101.0" in out  # the good section still diffs
+
+
+def test_section_helper_exception_is_isolated() -> None:
+    """If a helper raises on a hostile payload, diff_sections skips that section
+    and still returns the other deltas (per-section isolation)."""
+    prev = {"quotes": {"AAPL": {"last": 100.0}}, "breadth": {"spx_last": 4000}}
+    curr = {"quotes": {"AAPL": 12345}, "breadth": {"spx_last": 4010}}  # quote value not a dict
+    out = diff_sections(prev, curr)
+    assert isinstance(out, str)
+    assert "spx_last: 4000 → 4010" in out  # breadth still reported
