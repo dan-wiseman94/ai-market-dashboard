@@ -9,6 +9,9 @@ external agents (Claude Desktop, this CLI) can ask "what's our house view on NVD
 from __future__ import annotations
 
 import json
+import logging
+
+log = logging.getLogger(__name__)
 
 PROTOCOL_VERSION = "2025-06-18"
 SERVER_INFO = {"name": "ledger-second-brain", "version": "1.0.0"}
@@ -148,10 +151,15 @@ def handle(payload: dict) -> dict | None:
             result = fn(params.get("arguments") or {})
         except Exception:
             # A tool failure is an MCP tool error (isError), not a transport error.
-            # Do not expose raw exception details to clients.
+            # Log the detail server-side; never expose raw exception text to clients
+            # (information exposure — flagged by CodeQL).
+            log.exception("MCP tool %s failed", name)
             return _ok(
                 rpc_id,
-                {"content": [{"type": "text", "text": "error: internal tool failure"}], "isError": True},
+                {
+                    "content": [{"type": "text", "text": "error: internal tool failure"}],
+                    "isError": True,
+                },
             )
         return _ok(rpc_id, {"content": [{"type": "text", "text": json.dumps(result, default=str)}]})
 
