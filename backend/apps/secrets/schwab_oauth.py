@@ -26,10 +26,14 @@ log = logging.getLogger(__name__)
 
 # OAuth `state` CSRF nonce (RFC 6749 §10.12). The callback is a cross-site-triggerable
 # GET with no auth cookies, so CSRF middleware / SameSite don't cover it. We mint a
-# one-time nonce in authorize and require it in the callback. Stored in the shared Redis
-# (authorize and callback need not be the same web process — Django's default cache is
-# per-process LocMemCache), with a short TTL bounding the consent round-trip.
-_OAUTH_STATE_REDIS_KEY = "schwab:oauth:state"
+# one-time nonce in authorize and require it in the callback. Each minted nonce is stored
+# under its OWN key (``schwab:oauth:state:<nonce>``) in the shared Redis — authorize and
+# callback need not be the same web process, and Django's default cache is per-process
+# LocMemCache. A short TTL bounds the consent round-trip. Per-nonce keys (rather than one
+# shared key) let several "Connect" clicks have independent outstanding flows: completing
+# an earlier one stays valid instead of being clobbered by a later mint (which previously
+# surfaced as a spurious 400 invalid_state with the new token never persisting).
+_OAUTH_STATE_KEY_PREFIX = "schwab:oauth:state:"
 _OAUTH_STATE_TTL_SECONDS = 600  # 10 min: ample for user consent, short enough to bound replay
 
 
@@ -37,34 +41,32 @@ def _redis() -> redis.Redis:
     return redis.Redis.from_url(settings.REDIS_URL)
 
 
+def _oauth_state_key(state: str) -> str:
+    return f"{_OAUTH_STATE_KEY_PREFIX}{state}"
+
+
 def new_oauth_state() -> str:
     """Mint + store a one-time OAuth `state` nonce, returning it for the authorize URL."""
     state = token_urlsafe(32)
     try:
-        _redis().set(_OAUTH_STATE_REDIS_KEY, state, ex=_OAUTH_STATE_TTL_SECONDS)
+        _redis().set(_oauth_state_key(state), "1", ex=_OAUTH_STATE_TTL_SECONDS)
     except Exception:  # best-effort store; a miss just makes the callback fail closed
         log.warning("Could not store Schwab OAuth state nonce", exc_info=True)
     return state
 
 
 def consume_oauth_state(state: str | None) -> bool:
-    """Return True iff ``state`` matches the stored nonce, deleting it (one-time use).
+    """Return True iff ``state`` names a live nonce, deleting it (one-time use).
 
-    Fails closed (returns False) on a missing/mismatched nonce or any Redis hiccup, so a
-    cross-site callback carrying an attacker's auth code is rejected before token exchange.
+    Validate-and-delete is atomic: Redis ``DEL`` returns the number of keys removed, so a
+    concurrent replay of the same nonce can win at most once. Fails closed (returns False)
+    on a missing/unknown/empty nonce or any Redis hiccup, so a cross-site callback carrying
+    an attacker's auth code is rejected before token exchange.
     """
     if not state:
         return False
     try:
-        r = _redis()
-        expected = r.get(_OAUTH_STATE_REDIS_KEY)
-        if expected is None:
-            return False
-        expected_str = expected.decode() if isinstance(expected, bytes) else str(expected)
-        if expected_str != state:
-            return False
-        r.delete(_OAUTH_STATE_REDIS_KEY)
-        return True
+        return _redis().delete(_oauth_state_key(state)) == 1
     except Exception:
         log.warning("Could not validate Schwab OAuth state nonce", exc_info=True)
         return False

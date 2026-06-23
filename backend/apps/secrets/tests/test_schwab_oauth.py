@@ -66,6 +66,24 @@ def test_oauth_state_is_one_time_and_rejects_mismatch():
         assert consume_oauth_state(state) is False  # one-time: replay rejected
 
 
+def test_oauth_state_supports_concurrent_outstanding_nonces():
+    """Clicking "Connect" several times mints independent nonces. Completing an
+    *earlier* flow must still validate — a later mint must not invalidate the first
+    (the prior single-fixed-key design overwrote it, yielding a spurious 400
+    invalid_state and a token that never persisted). Each nonce stays one-time-use."""
+    fake = fakeredis.FakeStrictRedis()
+    with patch("apps.secrets.schwab_oauth._redis", lambda: fake):
+        from apps.secrets.schwab_oauth import consume_oauth_state, new_oauth_state
+
+        first = new_oauth_state()
+        second = new_oauth_state()
+        assert first != second
+        # Both outstanding flows validate, in any order, each exactly once.
+        assert consume_oauth_state(second) is True
+        assert consume_oauth_state(first) is True
+        assert consume_oauth_state(first) is False  # one-time: replay rejected
+
+
 @pytest.mark.django_db
 @override_settings(
     SCHWAB_CLIENT_ID="cid",
