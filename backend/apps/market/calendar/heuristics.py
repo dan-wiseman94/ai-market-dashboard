@@ -6,9 +6,12 @@ classify() itself is ordered: futures > crypto > international suffix > default.
 
 from __future__ import annotations
 
-# Known CME future roots (index/commodity). Extend as needed.
-_CME_ROOTS = {"ES", "NQ", "RTY", "YM", "CL", "GC", "SI", "ZB", "ZN", "ZF", "NG", "HG"}
-_CFE_ROOTS = {"VX"}
+from apps.market.symbols import CFE_FUTURE_ROOTS, CME_FUTURE_ROOTS
+
+# Known future roots (index/commodity) — single source of truth in symbols.py so
+# the fetch boundary (normalize_symbol -> "/ES") and this classifier agree.
+_CME_ROOTS = CME_FUTURE_ROOTS
+_CFE_ROOTS = CFE_FUTURE_ROOTS
 _CRYPTO_BASES = {"BTC", "ETH", "SOL", "XRP", "DOGE", "ADA", "LTC", "BCH"}
 _CRYPTO_QUOTE_SUFFIXES = ("-USD", "-USDT", "-USDC", "-EUR")
 
