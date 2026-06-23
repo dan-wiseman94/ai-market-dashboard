@@ -146,10 +146,12 @@ def handle(payload: dict) -> dict | None:
             return _err(rpc_id, -32602, f"Unknown tool: {name}")
         try:
             result = fn(params.get("arguments") or {})
-        except Exception as exc:
+        except Exception:
             # A tool failure is an MCP tool error (isError), not a transport error.
+            # Do not expose raw exception details to clients.
             return _ok(
-                rpc_id, {"content": [{"type": "text", "text": f"error: {exc}"}], "isError": True}
+                rpc_id,
+                {"content": [{"type": "text", "text": "error: internal tool failure"}], "isError": True},
             )
         return _ok(rpc_id, {"content": [{"type": "text", "text": json.dumps(result, default=str)}]})
 
