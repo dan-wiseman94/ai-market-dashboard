@@ -28,8 +28,12 @@ def test_tools_list_has_the_four_tools():
 def test_house_view_tool_returns_coverage_note():
     CoverageNote.objects.create(ticker="NVDA", stance="bull", conviction=3)
     r = handle(
-        {"jsonrpc": "2.0", "id": 3, "method": "tools/call",
-         "params": {"name": "house_view", "arguments": {"ticker": "nvda"}}}
+        {
+            "jsonrpc": "2.0",
+            "id": 3,
+            "method": "tools/call",
+            "params": {"name": "house_view", "arguments": {"ticker": "nvda"}},
+        }
     )
     data = json.loads(r["result"]["content"][0]["text"])
     assert data["ticker"] == "NVDA" and data["stance"] == "bull"
@@ -38,8 +42,12 @@ def test_house_view_tool_returns_coverage_note():
 @pytest.mark.django_db
 def test_recall_search_tool_returns_a_list():
     r = handle(
-        {"jsonrpc": "2.0", "id": 4, "method": "tools/call",
-         "params": {"name": "recall_search", "arguments": {"query": "nvda"}}}
+        {
+            "jsonrpc": "2.0",
+            "id": 4,
+            "method": "tools/call",
+            "params": {"name": "recall_search", "arguments": {"query": "nvda"}},
+        }
     )
     assert isinstance(json.loads(r["result"]["content"][0]["text"]), list)
 
@@ -69,17 +77,25 @@ def test_http_endpoint_initialize_and_get_405():
 
 @pytest.mark.django_db
 def test_mcp_requires_bearer_token_when_configured(settings):
-    settings.MCP_AUTH_TOKEN = "s3cret"
+    settings.MCP_AUTH_TOKEN = "unit-test-token-placeholder"
     c = Client()
     body = json.dumps({"jsonrpc": "2.0", "id": 1, "method": "initialize"})
     # no header / wrong token → 401; correct token → 200
     assert c.post("/api/mcp/", data=body, content_type="application/json").status_code == 401
     assert (
-        c.post("/api/mcp/", data=body, content_type="application/json", HTTP_AUTHORIZATION="Bearer nope").status_code
+        c.post(
+            "/api/mcp/",
+            data=body,
+            content_type="application/json",
+            HTTP_AUTHORIZATION="Bearer nope",
+        ).status_code
         == 401
     )
     ok = c.post(
-        "/api/mcp/", data=body, content_type="application/json", HTTP_AUTHORIZATION="Bearer s3cret"
+        "/api/mcp/",
+        data=body,
+        content_type="application/json",
+        HTTP_AUTHORIZATION="Bearer unit-test-token-placeholder",
     )
     assert ok.status_code == 200
 

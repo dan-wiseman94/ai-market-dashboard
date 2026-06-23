@@ -279,8 +279,12 @@ def test_render_chain_includes_expected_move_when_iv_present():
         "underlying_last": "100.00",
         "expiries": {
             future: {
-                "calls": [{"strike": "100", "bid": "1", "ask": "1.1", "delta": "0.5", "iv": "0.20"}],
-                "puts": [{"strike": "100", "bid": "1", "ask": "1.1", "delta": "-0.5", "iv": "0.20"}],
+                "calls": [
+                    {"strike": "100", "bid": "1", "ask": "1.1", "delta": "0.5", "iv": "0.20"}
+                ],
+                "puts": [
+                    {"strike": "100", "bid": "1", "ask": "1.1", "delta": "-0.5", "iv": "0.20"}
+                ],
             }
         },
     }

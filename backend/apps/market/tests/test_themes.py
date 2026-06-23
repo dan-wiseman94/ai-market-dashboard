@@ -14,7 +14,14 @@ from apps.market.services.themes import theme_health
 
 def _bar(ticker, close, ts):
     OHLCBar.objects.create(
-        ticker=ticker, timeframe="1d", open=close, high=close, low=close, close=close, volume=1, ts=ts
+        ticker=ticker,
+        timeframe="1d",
+        open=close,
+        high=close,
+        low=close,
+        close=close,
+        volume=1,
+        ts=ts,
     )
 
 
