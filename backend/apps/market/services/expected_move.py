@@ -67,12 +67,7 @@ def _atm_iv_by_expiry(payload: dict) -> dict[str, float]:
             flat.append({**c, "side": "put", "expiry": exp})
     if not flat:
         return {}
-    underlying = (payload or {}).get("underlying_last")
-    try:
-        spot = float(underlying) if underlying else None
-    except (TypeError, ValueError):
-        spot = None
-    ts = chain_analytics(flat, spot=spot).get("term_structure") or []
+    ts = chain_analytics(flat, spot=_spot_of(payload)).get("term_structure") or []
     return {row["expiry"]: row["atm_iv"] for row in ts if row.get("atm_iv") is not None}
 
 
@@ -99,19 +94,10 @@ def for_horizon(payload: dict, horizon_days: int, *, today: date | None = None) 
     return one_sigma_pct(iv, horizon_days)
 
 
-def term_structure(
-    payload: dict, *, horizons: tuple[int, ...] = _DEFAULT_HORIZONS, today: date | None = None
+def _moves_from_by_exp(
+    by_exp: dict[str, float], spot: float | None, *, horizons: tuple[int, ...], today: date
 ) -> list[dict]:
-    """``[{horizon_days, move_pct, move_abs}]`` for each horizon, or ``[]`` on no IV."""
-    by_exp = _atm_iv_by_expiry(payload)
-    if not by_exp:
-        return []
-    today = today or _today()
-    underlying = (payload or {}).get("underlying_last")
-    try:
-        spot = float(underlying) if underlying else None
-    except (TypeError, ValueError):
-        spot = None
+    """``[{horizon_days, move_pct, move_abs}]`` from a ``{expiry: atm_iv}`` map."""
     out: list[dict] = []
     for h in horizons:
         iv = _nearest_atm_iv(by_exp, h, today=today)
@@ -126,3 +112,42 @@ def term_structure(
             }
         )
     return out
+
+
+def _spot_of(payload: dict) -> float | None:
+    underlying = (payload or {}).get("underlying_last")
+    try:
+        return float(underlying) if underlying else None
+    except (TypeError, ValueError):
+        return None
+
+
+def term_structure(
+    payload: dict, *, horizons: tuple[int, ...] = _DEFAULT_HORIZONS, today: date | None = None
+) -> list[dict]:
+    """``[{horizon_days, move_pct, move_abs}]`` for each horizon, or ``[]`` on no IV."""
+    by_exp = _atm_iv_by_expiry(payload)
+    if not by_exp:
+        return []
+    return _moves_from_by_exp(by_exp, _spot_of(payload), horizons=horizons, today=today or _today())
+
+
+def moves_from_term_structure(
+    term_structure_rows: list,
+    spot: float | None,
+    *,
+    horizons: tuple[int, ...] = _DEFAULT_HORIZONS,
+    today: date | None = None,
+) -> list[dict]:
+    """Same output as :func:`term_structure`, but from an ALREADY-computed
+    ``chain_analytics`` term structure (``[{expiry, atm_iv}, ...]``) plus ``spot`` — so a
+    caller that already ran ``chain_analytics`` (the snapshot chain renderer) gets the
+    expected-move rows without re-flattening the chain and re-running the analytics."""
+    by_exp = {
+        row["expiry"]: row["atm_iv"]
+        for row in (term_structure_rows or [])
+        if isinstance(row, dict) and row.get("atm_iv") is not None
+    }
+    if not by_exp:
+        return []
+    return _moves_from_by_exp(by_exp, spot, horizons=horizons, today=today or _today())

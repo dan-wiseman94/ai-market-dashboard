@@ -120,11 +120,9 @@ def run_observer(schedule_id: int) -> int | None:
     if sched.consensus:
         # Consensus is itself a structured operation (fans ObservationReport), so
         # it takes precedence over the plain structured path. Opt-in, ~Nx cost.
-        _run_consensus_and_record(sched, thread, coach + payload_text)
+        _run_consensus_and_record(sched, thread, user_text)
     elif sched.structured:
-        _run_structured_and_record(
-            sched, thread, coach + payload_text, provider_name, cfg, snap=snap
-        )
+        _run_structured_and_record(sched, thread, user_text, provider_name, cfg, snap=snap)
     else:
         rc = runtime_config()  # one row fetch; reused for the gate and the TTL below
         cached = (

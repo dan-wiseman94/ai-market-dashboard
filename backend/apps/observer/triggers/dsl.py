@@ -55,6 +55,19 @@ PARAMS_SPEC: dict[str, dict[str, tuple]] = {
 }
 
 
+def resolved_params(leaf: dict) -> dict:
+    """Indicator ``params`` with ``PARAMS_SPEC`` defaults filled in.
+
+    Single source for both the live metrics path and backtest replay, so default
+    resolution (and therefore the resolved ``leaf_key``) cannot drift between them.
+    """
+    spec = PARAMS_SPEC.get(leaf["metric"], {})
+    p = dict(leaf.get("params") or {})
+    for k, (_t, default, *_r) in spec.items():
+        p.setdefault(k, default)
+    return p
+
+
 def validate_condition(node: Any, *, path: str = "") -> None:
     """Recurse the tree. Raises ValidationError with path on any invalid shape."""
     if not isinstance(node, dict):

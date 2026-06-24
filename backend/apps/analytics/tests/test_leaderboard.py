@@ -39,7 +39,14 @@ def _mk_run(
 ) -> AIRun:
     snap = None
     if snap_ticker is not None:
-        snap = Snapshot.objects.create(profile=profile, status="ready", source="manual")
+        # Mirror capture: the primary ticker is stored on the row (the leaderboard
+        # reads snap.primary_ticker rather than re-deriving it from sections).
+        snap = Snapshot.objects.create(
+            profile=profile,
+            status="ready",
+            source="manual",
+            primary_ticker=snap_ticker.upper(),
+        )
         SnapshotSection.objects.create(
             snapshot=snap,
             kind="quotes",

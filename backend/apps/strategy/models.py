@@ -85,7 +85,6 @@ class WarRoomRun(models.Model):
     free_prompt = models.TextField(blank=True, default="")
     params = models.JSONField(default=dict)
     verdict = models.JSONField(default=dict)
-    confidence = models.FloatField(null=True, blank=True)
     status = models.CharField(max_length=16, choices=STATUS_CHOICES, default="done")
     error = models.TextField(blank=True, default="")
 

@@ -27,7 +27,7 @@ from apps.observer.triggers.dsl import (
     DAILY_ONLY_METRICS,
     FUNDAMENTAL_METRICS,
     INDICATOR_METRICS,
-    PARAMS_SPEC,
+    resolved_params,
 )
 from apps.observer.triggers.evaluator import CROSSING_OPS, MetricsSnapshot, iter_leaves, leaf_key
 
@@ -39,18 +39,10 @@ _VOL_MIN_SAMPLES = 3  # intervals needed before a z-score is meaningful
 _OHLC_MAX_TTL = 3600  # daily bars barely move intraday
 
 
-def _resolved_params(leaf: dict) -> dict:
-    spec = PARAMS_SPEC.get(leaf["metric"], {})
-    p = dict(leaf.get("params") or {})
-    for k, (_t, default, *_r) in spec.items():
-        p.setdefault(k, default)
-    return p
-
-
 def _bars_needed(leaves: list[dict]) -> int:
     need = 30
     for lf in leaves:
-        pr = _resolved_params(lf)
+        pr = resolved_params(lf)
         need = max(
             need,
             pr.get("period", 0) + 1,
@@ -92,39 +84,6 @@ def _ohlc_history(r: redis.Redis, ticker: str, timeframe: str, bars: int) -> lis
     with contextlib.suppress(Exception):
         r.setex(key, ttl, json.dumps(data))
     return data
-
-
-def _indicator_value(
-    metric: str,
-    params: dict,
-    closes: list[float],
-    bars: list[dict],
-    last: float | None,
-) -> float | None:
-    if last is None and metric not in ("rsi", "sma_spread_pct"):
-        return None
-    if metric == "rsi":
-        return ind.rsi(closes, params["period"])
-    if metric == "sma_spread_pct":
-        return ind.sma_spread_pct(closes, fast=params["fast"], slow=params["slow"])
-    if last is None:
-        return None
-    if metric == "atr_pct":
-        return ind.atr_pct(bars, period=params["period"], last=last)
-    if metric == "dist_from_sma_pct":
-        return ind.dist_from_sma_pct(closes, period=params["period"], last=last)
-    if metric == "dist_from_52w_high":
-        return ind.dist_from_high([float(b["high"]) for b in bars], last=last)
-    if metric == "dist_from_52w_low":
-        return ind.dist_from_low([float(b["low"]) for b in bars], last=last)
-    if metric == "gap_pct":
-        if len(bars) < 2:
-            return None
-        return ind.gap_pct(
-            today_open=float(bars[-1]["open"]),
-            prev_close=float(bars[-2]["close"]),
-        )
-    return None
 
 
 def _redis() -> redis.Redis:
@@ -309,14 +268,26 @@ def _record_indicator(
     quotes: dict,
 ) -> None:
     tf = "1d" if metric in DAILY_ONLY_METRICS else window
-    params = _resolved_params(leaf)
+    params = resolved_params(leaf)
     resolved_key = leaf_key({**leaf, "params": params})
     if resolved_key in snapshot:
         return
     history = _ohlc_history(r, ticker, tf, _bars_needed([leaf]))
     closes = [float(b["close"]) for b in history if b.get("close") is not None]
     last = _extract_last(quotes.get(ticker)) or (closes[-1] if closes else None)
-    value = _indicator_value(metric, params, closes, history, last)
+    # gap_pct needs the current bar's open + the prior close; pass None when the
+    # history is too short (the original len(bars) < 2 guard).
+    today_open = float(history[-1]["open"]) if len(history) >= 2 else None
+    prev_close = float(history[-2]["close"]) if len(history) >= 2 else None
+    value = ind.indicator_value(
+        metric,
+        params,
+        closes=closes,
+        bars=history,
+        last=last,
+        today_open=today_open,
+        prev_close=prev_close,
+    )
     snapshot[resolved_key] = value
     if op in CROSSING_OPS:
         last_key = f"trigger:last:{resolved_key}"

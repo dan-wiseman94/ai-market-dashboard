@@ -114,9 +114,8 @@ def run_debate(run_id: int) -> None:
         content={"kind": "warroom_verdict", **verdict},
     )
     run.verdict = verdict
-    run.confidence = v.confidence
     run.status = "done"
-    run.save(update_fields=["verdict", "confidence", "status"])
+    run.save(update_fields=["verdict", "status"])
 
 
 @shared_task(name="strategy.sweep")

@@ -20,23 +20,29 @@ _MIN_N = 4  # below this, a behavioral claim is a horoscope, not a finding
 
 
 def trader_calibration(*, horizon_days: int = 30) -> dict:
-    verdict_by_thesis = _decisive_verdicts(horizon_days)
+    # Both Mirror signals read the SAME decisive-post-mortem population; fetch it
+    # ONCE (thesis_id, conviction, verdict) and feed both, rather than running the
+    # identical WHERE twice with different projected columns.
+    rows = _decisive_postmortems(horizon_days)
+    verdict_by_thesis = {thesis_id: verdict for thesis_id, _conviction, verdict in rows}
     return {
         "horizon_days": horizon_days,
         "decision_outcomes": _decision_outcomes(verdict_by_thesis),
-        "conviction_reliability": _conviction_reliability(horizon_days),
+        "conviction_reliability": _conviction_reliability(
+            [(conviction, verdict) for _thesis_id, conviction, verdict in rows]
+        ),
     }
 
 
-def _decisive_verdicts(horizon_days: int) -> dict[int, str]:
-    """thesis_id -> verdict for decisive post-mortems at the horizon (one per thesis,
-    via the (thesis, horizon) unique constraint)."""
+def _decisive_postmortems(horizon_days: int) -> list[tuple]:
+    """(thesis_id, conviction, verdict) for decisive post-mortems at the horizon —
+    one row per thesis via the (thesis, horizon) unique constraint."""
     from apps.thesis.models import PostMortem
 
-    return dict(
+    return list(
         PostMortem.objects.filter(
             horizon_days=horizon_days, status="done", verdict__in=["correct", "incorrect"]
-        ).values_list("thesis_id", "verdict")
+        ).values_list("thesis_id", "thesis__conviction", "verdict")
     )
 
 
@@ -69,12 +75,9 @@ def _decision_outcomes(verdict_by_thesis: dict[int, str]) -> dict:
     return {"status": "ok" if buckets else "insufficient_history", "buckets": buckets}
 
 
-def _conviction_reliability(horizon_days: int) -> dict:
-    from apps.thesis.models import PostMortem
-
-    rows = PostMortem.objects.filter(
-        horizon_days=horizon_days, status="done", verdict__in=["correct", "incorrect"]
-    ).values_list("thesis__conviction", "verdict")
+def _conviction_reliability(rows: list[tuple]) -> dict:
+    """rows is the pre-fetched ``(conviction, verdict)`` pairs from
+    ``_decisive_postmortems`` (shared with decision_outcomes — see trader_calibration)."""
     by_conviction: dict[int, dict] = {}
     for conviction, verdict in rows:
         if conviction is None:

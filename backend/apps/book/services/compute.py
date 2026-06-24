@@ -27,14 +27,12 @@ def _build_payload() -> dict:
     clusters = correlation_clusters(tickers)
     fit = regime_fit(exposures)
     near = near_invalidation()
-    coverage = {"n_names": len(exposures), "n_clustered": sum(len(c["members"]) for c in clusters)}
     return {
         "exposures": exposures,
         "concentration": conc,
         "clusters": clusters,
         "regime_fit": fit,
         "near_invalidation": near,
-        "coverage": coverage,
         "var_beta": compute_var_beta(exposures),
     }
 

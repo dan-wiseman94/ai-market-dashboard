@@ -3830,15 +3830,12 @@ components:
         narrative:
           type: string
           readOnly: true
-        coverage:
-          readOnly: true
         var_beta:
           readOnly: true
       required:
       - as_of_date
       - clusters
       - concentration
-      - coverage
       - created_at
       - exposures
       - id
@@ -6067,8 +6064,8 @@ components:
         confidence:
           type: number
           format: double
-          readOnly: true
           nullable: true
+          readOnly: true
         status:
           allOf:
           - $ref: '#/components/schemas/WarRoomRunStatusEnum'

@@ -35,15 +35,25 @@ def _filtered(qs, kinds, ticker):
     return qs
 
 
-def search(q: str, *, k: int = 10, kinds=None, ticker=None) -> list[dict]:
+def search_with_mode(q: str, *, k: int = 10, kinds=None, ticker=None) -> tuple[list[dict], str]:
+    """:func:`search` plus the mode it actually used (``"semantic"`` when the query
+    embedded, else ``"keyword"``). Lets a caller that needs both — the search view —
+    avoid a second ``embed([...])`` (via :func:`mode`) just to report the mode."""
     vec = embed([q])
     qs = _filtered(RecallDocument.objects.all(), kinds, ticker)
     if vec:
         qs = qs.filter(embedding__isnull=False).order_by(CosineDistance("embedding", vec[0]))
+        used = "semantic"
     else:
         sq = SearchQuery(q, config="english")
         qs = qs.annotate(rank=SearchRank("search", sq)).filter(search=sq).order_by("-rank")
-    return [_hit(d) for d in qs[:k]]
+        used = "keyword"
+    return [_hit(d) for d in qs[:k]], used
+
+
+def search(q: str, *, k: int = 10, kinds=None, ticker=None) -> list[dict]:
+    results, _mode = search_with_mode(q, k=k, kinds=kinds, ticker=ticker)
+    return results
 
 
 def mode() -> str:
