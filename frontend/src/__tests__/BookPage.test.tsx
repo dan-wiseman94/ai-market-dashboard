@@ -9,7 +9,7 @@ const MINIMAL_BOOK = {
   id: 1, created_at: "x", as_of_date: "2026-06-01",
   exposures: [], concentration: {}, clusters: [],
   regime_fit: { alignment: "aligned", note: "" },
-  near_invalidation: [], narrative: "", coverage: {},
+  near_invalidation: [], narrative: "",
 };
 
 describe("BookPage", () => {
@@ -21,7 +21,7 @@ describe("BookPage", () => {
         concentration: { hhi: 0.42, top_n_share: 0.7, net_long: 11, net_short: -2 },
         clusters: [{ members: ["NVDA", "AMD"], avg_corr: 0.9 }],
         regime_fit: { alignment: "misaligned", note: "net-long into risk-off" },
-        near_invalidation: [], narrative: "Concentrated book.", coverage: {},
+        near_invalidation: [], narrative: "Concentrated book.",
       };
       return path.endsWith("/current/") ? snap : [snap];
     });
@@ -39,7 +39,7 @@ describe("BookPage", () => {
         exposures: [{ ticker: "NVDA", net_signed: 3, abs_exposure: 3, dollar: 10000, sources: ["position"] }],
         concentration: { hhi: 0.5, top_n_share: 1, net_long: 3, net_short: 0 },
         clusters: [], regime_fit: { alignment: "aligned", note: "" },
-        near_invalidation: [], narrative: "", coverage: {},
+        near_invalidation: [], narrative: "",
         var_beta: {
           available: true,
           method: "parametric_gaussian_1d_95",

@@ -12,7 +12,10 @@ def test_build_market_state_union():
     assert st["any_open"] is True  # crypto open
     assert st["markets"]["crypto"]["is_open"] is True
     assert st["markets"]["us_equity"]["is_open"] is False
-    assert "BTC-USD" in st["representative_tickers"]
+    # captured_at (dup of the Snapshot column) and representative_tickers (unread)
+    # were dropped from the payload.
+    assert "representative_tickers" not in st
+    assert "captured_at" not in st
 
 
 @pytest.mark.django_db

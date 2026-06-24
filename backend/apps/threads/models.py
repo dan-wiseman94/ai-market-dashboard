@@ -119,7 +119,6 @@ class AIRun(models.Model):
     latency_ms = models.IntegerField(default=0)
     status = models.CharField(max_length=16, choices=STATUS_CHOICES, default="pending")
     error = models.TextField(blank=True, default="")
-    raw_request_summary = models.JSONField(default=dict)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

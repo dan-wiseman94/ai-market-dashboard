@@ -13,8 +13,7 @@ def test_create_and_str():
         subject_kind="free",
         subject_label="NVDA into earnings",
         params={"structure": "rebuttal"},
-        verdict={"verdict": "balanced"},
-        confidence=0.6,
+        verdict={"verdict": "balanced", "confidence": 0.6},
     )
-    assert run.confidence == 0.6
+    assert run.verdict["confidence"] == 0.6
     assert "NVDA" in str(run)

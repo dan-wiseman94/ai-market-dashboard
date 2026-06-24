@@ -2004,7 +2004,6 @@ export interface components {
             readonly regime_fit: unknown;
             readonly near_invalidation: unknown;
             readonly narrative: string;
-            readonly coverage: unknown;
             readonly var_beta: unknown;
         };
         BriefingConfig: {

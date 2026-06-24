@@ -68,4 +68,6 @@ def regime_fit(exposures: list[dict]) -> dict:
         alignment, note = "neutral", "book is directionally flat"
     else:
         alignment, note = "aligned", "book tilt matches the regime"
-    return {"regime": composite, "alignment": alignment, "note": note, "net_signed": net}
+    # net drives the alignment branching above; it is not returned (no reader, and it
+    # duplicated concentration.net_long+net_short).
+    return {"regime": composite, "alignment": alignment, "note": note}

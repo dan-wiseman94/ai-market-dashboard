@@ -26,7 +26,6 @@ from decimal import Decimal
 from django.db.models import Avg, Count, Sum
 
 from apps.market.returns import trading_day_forward_returns
-from apps.snapshots.primary import primary_ticker
 from apps.threads.models import AIRun
 
 
@@ -52,13 +51,13 @@ def provider_leaderboard(
     )
 
     # First pass: collect the priceable runs (those with a pinned snapshot + primary
-    # ticker) WITHOUT any per-run price query. prefetch the snapshot's sections so
-    # primary_ticker() reads them from cache instead of firing a query per run; iterator()
-    # with a chunk_size keeps that prefetch bounded (Django 4.1+).
+    # ticker) WITHOUT any per-run price query. The primary ticker is stored on the
+    # Snapshot at capture (== the old primary_ticker(snap) derivation, and backfilled
+    # for legacy rows), so read the column off the select_related row instead of
+    # re-deriving it from a prefetched sections list. iterator() with a chunk_size
+    # keeps the scan bounded (Django 4.1+).
     priceable: list[tuple[tuple[str, str], str, datetime]] = []
-    runs_qs = qs.select_related("message__thread__pinned_snapshot").prefetch_related(
-        "message__thread__pinned_snapshot__sections"
-    )
+    runs_qs = qs.select_related("message__thread__pinned_snapshot")
     for run in runs_qs.iterator(chunk_size=1000):
         # Skip message-less one-shot runs (post-mortems, coverage, …): with no chat
         # Message there is no pinned snapshot to correlate a forward return against.
@@ -67,8 +66,8 @@ def provider_leaderboard(
         snap = run.message.thread.pinned_snapshot
         if snap is None:
             continue
-        primary = primary_ticker(snap)
-        if primary is None:
+        primary = snap.primary_ticker
+        if not primary:
             continue
         priceable.append(((run.provider, run.model), primary, run.created_at))
 
