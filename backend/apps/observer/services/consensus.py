@@ -153,12 +153,14 @@ def consensus_report(*, system: str, user: str) -> ConsensusReport:
 
     n = len(takes)
     if n < 2:
-        modal = takes[0].bias if takes else None
+        # _modal_and_agreement already returns (modal-or-None, None, False) for a
+        # single/zero take — reuse it instead of reimplementing the degraded shape.
+        modal_bias, _agreement, divergent = _modal_and_agreement([t.bias for t in takes])
         return ConsensusReport(
             n_providers=n,
             bias_agreement=None,
-            modal_bias=modal,
-            divergent=False,
+            modal_bias=modal_bias,
+            divergent=divergent,
             takes=takes,
             note=_DEGRADED_NOTE,
         )
