@@ -37,6 +37,7 @@ from __future__ import annotations
 import logging
 import re
 from datetime import datetime
+from typing import Any
 from zoneinfo import ZoneInfo
 
 from django.conf import settings
@@ -44,6 +45,11 @@ from django.conf import settings
 from apps.recall.services.search import related_to_situation, search
 
 log = logging.getLogger(__name__)
+
+# Sentinel for "caller didn't supply this". Lets assemble_coach_context resolve a
+# shared lookup (leading open thesis / snapshot last) ONCE and thread it into the
+# blocks, while a block called directly (e.g. in tests) still self-computes.
+_UNSET = object()
 
 # Recall sub-block bounds: at most N semantically-related past notes, scoped to a
 # short situation query. Kinds worth recalling into the coach (not raw messages/snapshots).
@@ -58,8 +64,6 @@ _CASHTAG_RE = re.compile(r"\$([A-Za-z]{1,5})\b")
 # Lessons block: at most this many decisive post-mortems, each with <=2 bullets.
 _MAX_LESSONS = 2
 _MAX_LESSON_BULLETS = 2
-# Free-form report keys that hold lesson bullets (read defensively; report is JSON).
-_LESSON_REPORT_KEYS = ("lessons", "what_missed")
 
 _BASE_FRAMING = (
     "You are a market-observation assistant for one experienced trader.\n"
@@ -138,6 +142,20 @@ def _safe(fn, default: str = "") -> str:
         return default
 
 
+def _safe_value(fn, default=_UNSET):
+    """_safe for a non-string value (model instance / scalar). Returns ``fn()``, or
+    ``default`` (``_UNSET``) on any error. assemble_coach_context resolves shared
+    lookups through this and threads the result in; on failure it passes ``_UNSET``
+    so the block self-recomputes (and its own ``_safe`` catches a re-failure) —
+    behavior-identical to the old per-block lookups, only without the duplicate
+    queries on the happy path."""
+    try:
+        return fn()
+    except Exception:
+        log.warning("coach.value_failed", exc_info=True)
+        return default
+
+
 def _fmt_num(v) -> str:
     if v is None:
         return "—"
@@ -157,17 +175,20 @@ def _snapshot_last(snapshot, ticker: str):
     return None
 
 
-def _theses_block(ticker: str, snapshot) -> str:
+def _open_theses_qs(ticker: str):
+    """Open theses on ``ticker``, highest-conviction then newest — the single ordering
+    every coach block that keys off the leading open thesis shares (was inlined 4×)."""
     from apps.thesis.models import Thesis
 
-    theses = list(
-        Thesis.objects.filter(ticker=ticker, status="open").order_by("-conviction", "-opened_at")[
-            :3
-        ]
-    )
+    return Thesis.objects.filter(ticker=ticker, status="open").order_by("-conviction", "-opened_at")
+
+
+def _theses_block(ticker: str, snapshot, last: Any = _UNSET) -> str:
+    theses = list(_open_theses_qs(ticker)[:3])
     if not theses:
         return ""
-    last = _snapshot_last(snapshot, ticker)
+    if last is _UNSET:
+        last = _snapshot_last(snapshot, ticker)
     lines = [f"### Open theses on {ticker}"]
     for t in theses:
         bits = [f'[{t.direction} · conviction {t.conviction}/5] "{t.title}"']
@@ -206,15 +227,11 @@ def _diff_block(snapshot) -> str:
     return f"### Since your last look ({prev.captured_at:%Y-%m-%d %H:%M})\n{delta}"
 
 
-def _track_record_block(ticker: str) -> str:
+def _track_record_block(ticker: str, top: Any = _UNSET) -> str:
     from apps.analytics.services.calibration import track_record_for_ticker
-    from apps.thesis.models import Thesis
 
-    top = (
-        Thesis.objects.filter(ticker=ticker, status="open")
-        .order_by("-conviction", "-opened_at")
-        .first()
-    )
+    if top is _UNSET:
+        top = _open_theses_qs(ticker).first()
     tr = track_record_for_ticker(
         ticker,
         direction=top.direction if top else None,
@@ -240,20 +257,16 @@ def _track_record_block(ticker: str) -> str:
     return "\n".join(lines)
 
 
-def _cohort_block(ticker: str) -> str:
+def _cohort_block(ticker: str, top: Any = _UNSET) -> str:
     """Outside-view base rate (M14 F2): how calls LIKE this one (same direction,
     same sector when known) have resolved across the book — the base rate the
     per-ticker block doesn't show. Keyed off the leading open thesis's direction;
     "" when there is no open thesis or not enough cohort history. Look-ahead-safe
     (decisive post-mortems only)."""
     from apps.analytics.services.cohorts import cohort_base_rate
-    from apps.thesis.models import Thesis
 
-    top = (
-        Thesis.objects.filter(ticker=ticker, status="open")
-        .order_by("-conviction", "-opened_at")
-        .first()
-    )
+    if top is _UNSET:
+        top = _open_theses_qs(ticker).first()
     if top is None:
         return ""
     res = cohort_base_rate(direction=top.direction, ticker=ticker)
@@ -280,6 +293,7 @@ def _lessons_block(ticker: str) -> str:
     if not ticker:
         return ""
     from apps.thesis.models import PostMortem
+    from apps.thesis.services.lessons_distill import report_bullets
 
     rows = list(
         PostMortem.objects.filter(
@@ -296,13 +310,7 @@ def _lessons_block(ticker: str) -> str:
     for pm in rows:
         title = (pm.thesis.title or "").strip() or f"thesis #{pm.thesis_id}"
         lines.append(f"- {title} [{pm.verdict}, {pm.horizon_days}d]")
-        report = pm.report if isinstance(pm.report, dict) else {}
-        bullets: list[str] = []
-        for key in _LESSON_REPORT_KEYS:
-            val = report.get(key)
-            if isinstance(val, list):
-                bullets.extend(str(x).strip() for x in val if str(x).strip())
-        for bullet in bullets[:_MAX_LESSON_BULLETS]:
+        for bullet in report_bullets(pm)[:_MAX_LESSON_BULLETS]:
             lines.append(f"  - {bullet}")
     return "\n".join(lines)
 
@@ -328,18 +336,15 @@ def _sector_for_ticker(ticker: str) -> str:
     return sector or ""
 
 
-def _distilled_lessons_block(ticker: str) -> str:
+def _distilled_lessons_block(ticker: str, top: Any = _UNSET) -> str:
     """Distilled recurring lessons (M14 F2) matching the current situation's tags:
     same direction (leading open thesis) and/or same sector. Cross-ticker by
     design — surfaces "you've been too bullish on biotech into earnings" even on a
     name with no prior theses on it. "" when nothing matches or no lesson recurs."""
-    from apps.thesis.models import Lesson, Thesis
+    from apps.thesis.models import Lesson
 
-    top = (
-        Thesis.objects.filter(ticker=ticker, status="open")
-        .order_by("-conviction", "-opened_at")
-        .first()
-    )
+    if top is _UNSET:
+        top = _open_theses_qs(ticker).first()
     direction = top.direction if top else None
     sector = _sector_for_ticker(ticker)
     if not direction and not sector:
@@ -429,14 +434,13 @@ def _calibration_block(profile) -> str:
     return "\n".join(lines)
 
 
-def _situation_query(snapshot, ticker: str) -> str:
+def _situation_query(ticker: str, last) -> str:
     """A short free-text query describing the current situation for recall.
 
-    Ticker + a couple of headline numbers from the snapshot's own quotes section
-    (no fetch). Bounded to _RECALL_QUERY_MAX_CHARS so the embed/FTS call stays cheap.
+    Ticker + the snapshot's last price (passed in by the caller; no fetch). Bounded
+    to _RECALL_QUERY_MAX_CHARS so the embed/FTS call stays cheap.
     """
     parts = [ticker]
-    last = _snapshot_last(snapshot, ticker)
     if last is not None:
         parts.append(f"last {_fmt_num(last)}")
     return " ".join(parts)[:_RECALL_QUERY_MAX_CHARS]
@@ -460,10 +464,12 @@ def _format_recall_hits(hits: list[dict]) -> str:
     return "\n".join(lines)
 
 
-def _recall_block(snapshot, ticker: str) -> str:
+def _recall_block(snapshot, ticker: str, last: Any = _UNSET) -> str:
     if not ticker:
         return ""
-    query = _situation_query(snapshot, ticker)
+    if last is _UNSET:
+        last = _snapshot_last(snapshot, ticker)
+    query = _situation_query(ticker, last)
     hits = related_to_situation(ticker, query, k=_MAX_RECALL_ITEMS, kinds=list(_RECALL_KINDS))
     return _format_recall_hits(hits)
 
@@ -532,15 +538,21 @@ def assemble_coach_context(snapshot, profile) -> str:
     ticker = getattr(snapshot, "primary_ticker", None)
     if not ticker:
         return ""
+    # Resolve the two shared lookups ONCE and thread them into the blocks that key
+    # off them (each previously re-ran its own query/scan). On a lookup error
+    # _safe_value yields _UNSET, so the block self-recomputes and its own _safe still
+    # isolates the failure — same behavior, fewer queries on the happy path.
+    top = _safe_value(lambda: _open_theses_qs(ticker).first())
+    last = _safe_value(lambda: _snapshot_last(snapshot, ticker))
     sections = [
         _safe(_regime_block),
-        _safe(lambda: _theses_block(ticker, snapshot)),
+        _safe(lambda: _theses_block(ticker, snapshot, last)),
         _safe(lambda: _diff_block(snapshot)),
-        _safe(lambda: _track_record_block(ticker)),
-        _safe(lambda: _cohort_block(ticker)),
-        _safe(lambda: _recall_block(snapshot, ticker)),
+        _safe(lambda: _track_record_block(ticker, top)),
+        _safe(lambda: _cohort_block(ticker, top)),
+        _safe(lambda: _recall_block(snapshot, ticker, last)),
         _safe(lambda: _lessons_block(ticker)),
-        _safe(lambda: _distilled_lessons_block(ticker)),
+        _safe(lambda: _distilled_lessons_block(ticker, top)),
         _safe(lambda: _ai_track_record_block(ticker, profile)),
         _safe(lambda: _calibration_block(profile)),
     ]
