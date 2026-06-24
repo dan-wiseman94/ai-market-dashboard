@@ -36,7 +36,7 @@ def distill_lessons() -> dict:
         .select_related("thesis")
         .distinct()
     )
-    items: list[tuple] = [(pm, bullet) for pm in pending for bullet in _bullets(pm)]
+    items: list[tuple] = [(pm, bullet) for pm in pending for bullet in report_bullets(pm)]
     if not items:
         return {"processed": 0, "created": 0, "merged": 0}
 
@@ -64,7 +64,14 @@ def distill_lessons() -> dict:
     return {"processed": len(items), "created": created, "merged": merged}
 
 
-def _bullets(pm) -> list[str]:
+def report_bullets(pm) -> list[str]:
+    """Lesson bullets from a post-mortem's report — the ``lessons`` / ``what_missed``
+    free-text lists, read defensively (report is free-form JSON).
+
+    Single source for which report keys count as lessons, shared by this clusterer
+    and the coach's lessons block (imported there function-locally) so the two can't
+    disagree on what a lesson is.
+    """
     report = pm.report if isinstance(pm.report, dict) else {}
     out: list[str] = []
     for key in _LESSON_REPORT_KEYS:
