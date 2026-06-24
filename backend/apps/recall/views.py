@@ -22,8 +22,8 @@ def recall_search(request: Request) -> Response:
     kinds_raw = request.query_params.get("kind", "")
     kinds = [x.strip() for x in kinds_raw.split(",") if x.strip()] if kinds_raw else None
     ticker = request.query_params.get("ticker", "").strip() or None
-    results = S.search(q, k=k, kinds=kinds, ticker=ticker)
-    return Response({"results": results, "mode": S.mode()})
+    results, mode = S.search_with_mode(q, k=k, kinds=kinds, ticker=ticker)
+    return Response({"results": results, "mode": mode})
 
 
 @api_view(["GET"])
