@@ -56,9 +56,7 @@ def test_act_convenes_warroom(monkeypatch):
 
     def _fake_convene(**kwargs):
         th = Thread.objects.create(kind="warroom", title="t")
-        return WarRoomRun.objects.create(
-            thread=th, subject_kind="free", subject_label="x", confidence=0.5
-        )
+        return WarRoomRun.objects.create(thread=th, subject_kind="free", subject_label="x")
 
     monkeypatch.setattr(views, "convene", _fake_convene)
     resp = APIClient().post(f"/api/desk/{e.id}/act/", {"action": "convene_warroom"}, format="json")
