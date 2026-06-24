@@ -28,7 +28,6 @@ export interface PostMortemReport {
   what_missed: string[];
   lessons: string[];
   would_repeat: boolean;
-  narrative_verdict: PostMortemVerdict;
 }
 
 export interface PostMortem {
