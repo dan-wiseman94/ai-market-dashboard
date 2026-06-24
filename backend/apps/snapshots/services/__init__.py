@@ -9,7 +9,7 @@ from collections.abc import Iterable
 from django.utils import timezone
 
 from apps.core.realtime import group_broadcast
-from apps.market.calendar import any_market_open, calendar_for, market_state
+from apps.market.calendar import calendar_for, market_state
 from apps.market.services.chain import fetch_chain
 from apps.market.services.context import fetch_market_context
 from apps.market.services.edgar import fetch_filings as edgar_fetch_filings
@@ -88,11 +88,14 @@ def _representative_tickers(
 def _build_market_state(tickers: list[str]) -> dict:
     markets = {calendar_for(t) for t in tickers} or {"us_equity"}
     states = {m: market_state(market=m).to_json() for m in sorted(markets)}
+    # any_open over the SAME market set any_market_open() uses (falsy symbols
+    # dropped; empty -> us_equity), read from the states we already computed rather
+    # than recomputing every market's is_open a second time.
+    syms = [t for t in tickers if t]
+    open_markets = {calendar_for(t) for t in syms} if syms else {"us_equity"}
     return {
-        "captured_at": timezone.now().isoformat(),
-        "any_open": any_market_open(tickers),
+        "any_open": any(states[m]["is_open"] for m in open_markets),
         "markets": states,
-        "representative_tickers": list(tickers),
     }
 
 
