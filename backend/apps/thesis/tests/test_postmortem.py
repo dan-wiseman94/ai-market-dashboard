@@ -366,9 +366,11 @@ def test_run_postmortem_ai_path_populates_report_and_posts_message(thesis, fake_
     assert msg.role == "assistant"
     assert msg.status == "done"
     assert msg.content["kind"] == "postmortem_report"
-    assert msg.content["horizon_days"] == 30
-    assert msg.content["verdict"] == "correct"
-    assert msg.content["forward_return_pct"] == pytest.approx(15.0)
+    # horizon_days / verdict / forward_return_pct are read off the PostMortem row
+    # (asserted above), not duplicated into the review message.
+    assert "verdict" not in msg.content
+    assert "forward_return_pct" not in msg.content
+    assert "horizon_days" not in msg.content
 
     # The review thread was linked back onto the thesis.
     thesis.refresh_from_db()
