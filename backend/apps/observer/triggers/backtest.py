@@ -27,19 +27,9 @@ from statistics import mean
 
 from apps.market.models import OHLCBar
 from apps.observer.triggers import indicators as ind
-from apps.observer.triggers.dsl import PARAMS_SPEC
+from apps.observer.triggers.dsl import INDICATOR_METRICS, resolved_params
 from apps.observer.triggers.evaluator import evaluate as evaluate_condition
 from apps.observer.triggers.evaluator import iter_leaves, leaf_key
-
-ind_supported = {
-    "rsi",
-    "sma_spread_pct",
-    "atr_pct",
-    "dist_from_sma_pct",
-    "dist_from_52w_high",
-    "dist_from_52w_low",
-    "gap_pct",
-}
 
 
 @dataclass
@@ -48,43 +38,6 @@ class BacktestMatch:
     values: dict[str, float | None]
     fwd_1d_pct: float | None = field(default=None)
     fwd_5d_pct: float | None = field(default=None)
-
-
-def _resolved_params(leaf: dict) -> dict:
-    """Return params dict with defaults filled in from PARAMS_SPEC."""
-    spec = PARAMS_SPEC.get(leaf["metric"], {})
-    p = dict(leaf.get("params") or {})
-    for k, (_t, default, *_r) in spec.items():
-        p.setdefault(k, default)
-    return p
-
-
-def _bar_indicator(
-    leaf: dict,
-    closes: list[float],
-    bars: list[dict],
-    last: float,
-    today_open: float,
-    prev_close: float | None,
-) -> float | None:
-    """Compute the indicator value for a single bar given its rolling history."""
-    m = leaf["metric"]
-    p = _resolved_params(leaf)
-    if m == "rsi":
-        return ind.rsi(closes, p["period"])
-    if m == "atr_pct":
-        return ind.atr_pct(bars, period=p["period"], last=last)
-    if m == "sma_spread_pct":
-        return ind.sma_spread_pct(closes, fast=p["fast"], slow=p["slow"])
-    if m == "dist_from_sma_pct":
-        return ind.dist_from_sma_pct(closes, period=p["period"], last=last)
-    if m == "dist_from_52w_high":
-        return ind.dist_from_high([b["high"] for b in bars], last=last)
-    if m == "dist_from_52w_low":
-        return ind.dist_from_low([b["low"] for b in bars], last=last)
-    if m == "gap_pct":
-        return ind.gap_pct(today_open=today_open, prev_close=prev_close) if prev_close else None
-    return None
 
 
 def _load_vix_aligned(start: datetime, end: datetime) -> tuple[list[datetime], list[float]]:
@@ -207,17 +160,18 @@ def backtest(
                     snapshot[f"pct_change:{ticker}:{window}"] = pct
             # indicator leaves for this ticker
             for leaf in leaves:
-                if leaf.get("ticker") != ticker or leaf["metric"] not in ind_supported:
+                if leaf.get("ticker") != ticker or leaf["metric"] not in INDICATOR_METRICS:
                     continue
-                resolved = _resolved_params(leaf)
+                resolved = resolved_params(leaf)
                 key = leaf_key({**leaf, "params": resolved})
-                snapshot[key] = _bar_indicator(
-                    leaf,
-                    closes_hist[ticker],
-                    bars_hist[ticker],
-                    close,
-                    op_price,
-                    prev,
+                snapshot[key] = ind.indicator_value(
+                    leaf["metric"],
+                    resolved,
+                    closes=closes_hist[ticker],
+                    bars=bars_hist[ticker],
+                    last=close,
+                    today_open=op_price,
+                    prev_close=prev,
                 )
             prev_closes[ticker] = close
 

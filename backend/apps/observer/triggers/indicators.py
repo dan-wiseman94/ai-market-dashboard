@@ -53,3 +53,46 @@ def atr_pct(bars: list[dict], *, period: int, last: float) -> float | None:
     if atr is None or not last:
         return None
     return atr / last
+
+
+def indicator_value(
+    metric: str,
+    params: dict,
+    *,
+    closes: list[float],
+    bars: list[dict],
+    last: float | None,
+    today_open: float | None = None,
+    prev_close: float | None = None,
+) -> float | None:
+    """Metric -> indicator dispatch shared by the live metrics path and backtest
+    replay, so the two cannot compute the same indicator differently.
+
+    Guard order mirrors the original live path: the closes-only indicators
+    (``rsi``/``sma_spread_pct``) tolerate a missing ``last``; everything else
+    requires it. ``gap_pct`` needs the current bar's open and the prior close
+    (``ind.gap_pct`` itself returns ``None`` on a zero/None prior close, so the
+    backtest's old truthy guard and the live path's ``len(bars) < 2`` guard both
+    collapse to passing ``None`` here).
+    """
+    if last is None and metric not in ("rsi", "sma_spread_pct"):
+        return None
+    if metric == "rsi":
+        return rsi(closes, params["period"])
+    if metric == "sma_spread_pct":
+        return sma_spread_pct(closes, fast=params["fast"], slow=params["slow"])
+    if last is None:
+        return None
+    if metric == "atr_pct":
+        return atr_pct(bars, period=params["period"], last=last)
+    if metric == "dist_from_sma_pct":
+        return dist_from_sma_pct(closes, period=params["period"], last=last)
+    if metric == "dist_from_52w_high":
+        return dist_from_high([float(b["high"]) for b in bars], last=last)
+    if metric == "dist_from_52w_low":
+        return dist_from_low([float(b["low"]) for b in bars], last=last)
+    if metric == "gap_pct":
+        if today_open is None or prev_close is None:
+            return None
+        return gap_pct(today_open=today_open, prev_close=prev_close)
+    return None
