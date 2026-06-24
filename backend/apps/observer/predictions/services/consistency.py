@@ -18,6 +18,17 @@ _OPP_DIR = {"bullish": "bearish", "bearish": "bullish"}
 _DIR_TO_STANCE = {"bullish": "bull", "bearish": "bear", "neutral": "neutral"}
 
 
+def _stance_conflicts(stance: str | None, direction: str) -> bool:
+    """True when a directional call opposes a committed house-view stance.
+
+    A conflict needs a committed stance (``bull``/``bear`` — never ``neutral``/
+    ``None``) and a ``direction`` (``bullish``/``bearish``) whose mapped stance
+    differs. Single definition so the per-fire sentinel and the Scorecard
+    reconcile-list agree on what "contradicts" means.
+    """
+    return stance in ("bull", "bear") and _DIR_TO_STANCE[direction] != stance
+
+
 def find_contradictions(ticker: str, direction: str) -> list[dict]:
     """Conflicting prior views for a ``(ticker, direction)`` call. ``[]`` for a
     neutral call, a blank ticker, or when nothing opposes."""
@@ -32,7 +43,7 @@ def find_contradictions(ticker: str, direction: str) -> list[dict]:
         from apps.strategy.models import CoverageNote
 
         note = CoverageNote.objects.filter(ticker=ticker).first()
-        if note and note.stance in ("bull", "bear") and _DIR_TO_STANCE[direction] != note.stance:
+        if note and _stance_conflicts(note.stance, direction):
             out.append({"source": "coverage", "stance": note.stance, "ticker": ticker})
     except Exception:
         log.debug("consistency: lookup failed", exc_info=True)
@@ -62,7 +73,7 @@ def open_contradictions() -> list[dict]:
         .values("id", "ticker", "direction", "predicted_at")
     ):
         stance = stances.get(p["ticker"])
-        if stance in ("bull", "bear") and _DIR_TO_STANCE[p["direction"]] != stance:
+        if _stance_conflicts(stance, p["direction"]):
             out.append(
                 {
                     "ticker": p["ticker"],
