@@ -61,7 +61,6 @@ const DONE_PM: PostMortem = {
     what_missed: ["Underestimated volatility"],
     lessons: ["Size appropriately given macro backdrop"],
     would_repeat: true,
-    narrative_verdict: "correct",
   },
   message_id: 99,
   created_at: "2026-05-01T00:00:00Z",
