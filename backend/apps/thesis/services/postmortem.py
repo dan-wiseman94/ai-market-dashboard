@@ -24,7 +24,7 @@ from django.utils import timezone
 from apps.ai.catalog import DEFAULT_CLAUDE_MODEL
 from apps.ai.cost import CostCapExceededError, check_daily_cap, check_monthly_cap
 from apps.ai.providers.claude_structured import run_structured
-from apps.market.returns import direction_verdict, forward_return_pct, price_path_summary
+from apps.market.returns import direction_verdict, price_path_summary
 from apps.observer.services.notifications import notify
 from apps.secrets.models import ProviderConfig
 from apps.threads.models import Message
@@ -155,12 +155,12 @@ def _attempt_ai_narrative(
     msg = Message.objects.create(
         thread=thread,
         role="assistant",
+        # Only kind + report are consumed (FE useLiveMessages reads content.report).
+        # horizon_days / forward_return_pct / verdict live on the PostMortem row;
+        # duplicating them here only created a second copy that could go stale.
         content={
             "kind": "postmortem_report",
             "report": pm.report,
-            "horizon_days": pm.horizon_days,
-            "forward_return_pct": fwd,
-            "verdict": pm.verdict,
         },
         status="done",
     )
@@ -187,8 +187,12 @@ def run_postmortem(pm_id: int) -> None:
     thesis = pm.thesis
 
     # 1) Objective outcome — deterministic, no AI. This is the loop-closing core.
-    fwd = forward_return_pct(thesis.ticker, thesis.opened_at, pm.due_at)
+    # price_path_summary already computes the corporate-action-corrected forward
+    # return as path["return_pct"] (identical to forward_return_pct over the same
+    # endpoints — pinned by test_return_pct_matches_forward_return_pct), so reuse it
+    # rather than a second forward_return_pct pass that re-runs the same queries.
     path = price_path_summary(thesis.ticker, thesis.opened_at, pm.due_at)
+    fwd = path["return_pct"]
     pm.forward_return_pct = fwd
     pm.verdict = objective_verdict(thesis, fwd)
 
