@@ -3830,15 +3830,12 @@ components:
         narrative:
           type: string
           readOnly: true
-        coverage:
-          readOnly: true
         var_beta:
           readOnly: true
       required:
       - as_of_date
       - clusters
       - concentration
-      - coverage
       - created_at
       - exposures
       - id

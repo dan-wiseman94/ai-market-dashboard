@@ -42,7 +42,6 @@ export interface BookSnapshot {
   regime_fit: { regime?: string | null; alignment?: string; note?: string };
   near_invalidation: { ticker: string; pct_to_invalidation: number }[];
   narrative: string;
-  coverage: Record<string, number>;
   var_beta?: BookVarBeta;
 }
 
