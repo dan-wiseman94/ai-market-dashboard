@@ -16,8 +16,7 @@ def test_convene_endpoint(monkeypatch):
             thread=th,
             subject_kind="free",
             subject_label="q",
-            verdict={"verdict": "balanced"},
-            confidence=0.5,
+            verdict={"verdict": "balanced", "confidence": 0.5},
             status="done",
         )
 
@@ -29,6 +28,8 @@ def test_convene_endpoint(monkeypatch):
     )
     assert resp.status_code == 200
     assert resp.json()["verdict"]["verdict"] == "balanced"
+    # confidence is now derived from verdict["confidence"] (no stored column).
+    assert resp.json()["confidence"] == 0.5
 
 
 def test_list_and_detail_runs():
@@ -38,9 +39,7 @@ def test_list_and_detail_runs():
     Message.objects.create(
         thread=th, role="assistant", content={"persona": "bull", "argument": "a"}
     )
-    run = WarRoomRun.objects.create(
-        thread=th, subject_kind="free", subject_label="q", confidence=0.5
-    )
+    run = WarRoomRun.objects.create(thread=th, subject_kind="free", subject_label="q")
     assert len(APIClient().get("/api/warroom/runs/").json()) == 1
     body = APIClient().get(f"/api/warroom/runs/{run.id}/").json()
     assert "messages" in body and len(body["messages"]) == 1
