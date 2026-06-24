@@ -7,7 +7,7 @@ path data.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 
 from django.conf import settings
 from django.db.models import Count, Max, Min
@@ -59,6 +59,24 @@ def _corporate_actions(ticker: str, start: datetime, end: datetime) -> list:
     return corporate_actions_for(ticker, start, end)
 
 
+def _split_product(actions: list, *, on_or_before: date | None = None) -> float:
+    """Product of split ratios (``shares_after/shares_before``) over *actions*.
+
+    ``1.0`` when there are no qualifying splits. With ``on_or_before`` set, only
+    splits whose ``ex_date`` is on or before that date count — used to scale a
+    dividend onto the start-share basis by the splits that precede its ex-date.
+    """
+    factor = 1.0
+    for a in actions:
+        if (
+            a.kind == "split"
+            and a.ratio is not None
+            and (on_or_before is None or a.ex_date <= on_or_before)
+        ):
+            factor *= float(a.ratio)
+    return factor
+
+
 def split_factor(ticker: str, after: datetime, until: datetime) -> float:
     """Product of split ratios (``shares_after/shares_before``) for ex-dates in
     ``(after, until]``. ``1.0`` when there are no splits — the common path, leaving
@@ -67,11 +85,7 @@ def split_factor(ticker: str, after: datetime, until: datetime) -> float:
     Multiplying an ``until``-basis close by this factor restores it to the
     ``after``-basis, so a 3:1 split (ratio 3) no longer reads as a -66% crash.
     """
-    factor = 1.0
-    for a in _corporate_actions(ticker, after, until):
-        if a.kind == "split" and a.ratio is not None:
-            factor *= float(a.ratio)
-    return factor
+    return _split_product(_corporate_actions(ticker, after, until))
 
 
 def _adjusted_end_value(
@@ -85,10 +99,7 @@ def _adjusted_end_value(
     by the split ratios that precede its ex-date.
     """
     actions = _corporate_actions(ticker, start, end)
-    factor = 1.0
-    for a in actions:
-        if a.kind == "split" and a.ratio is not None:
-            factor *= float(a.ratio)
+    factor = _split_product(actions)
     if end_close is None:
         return None, factor
     value = end_close * factor
@@ -96,11 +107,7 @@ def _adjusted_end_value(
         for a in actions:
             if a.kind != "dividend" or a.amount is None:
                 continue
-            div_factor = 1.0
-            for s in actions:
-                if s.kind == "split" and s.ratio is not None and s.ex_date <= a.ex_date:
-                    div_factor *= float(s.ratio)
-            value += float(a.amount) * div_factor
+            value += float(a.amount) * _split_product(actions, on_or_before=a.ex_date)
     return value, factor
 
 
@@ -127,7 +134,7 @@ def forward_return_pct(ticker: str, start: datetime, end: datetime) -> float | N
 
     Uses :func:`nearest_bar_close` at each endpoint. A stock split between *start*
     and *end* would otherwise read as a crash (the end close is on a divided-price
-    basis); the end close is restored to the start basis via :func:`split_factor`.
+    basis); the end close is restored to the start basis via :func:`_adjusted_end_value`.
     Returns ``None`` if either endpoint has no bar or if the start close is zero.
     """
     start_close = nearest_bar_close(ticker, start)
@@ -256,20 +263,13 @@ def _adjust_end_value_inmem(
     if end_close is None:
         return None
     window = [a for a in actions if start.date() < a.ex_date <= end.date()]
-    factor = 1.0
-    for a in window:
-        if a.kind == "split" and a.ratio is not None:
-            factor *= float(a.ratio)
+    factor = _split_product(window)
     value = end_close * factor
     if getattr(settings, "RETURNS_ADJUST_DIVIDENDS", False):
         for a in window:
             if a.kind != "dividend" or a.amount is None:
                 continue
-            div_factor = 1.0
-            for s in window:
-                if s.kind == "split" and s.ratio is not None and s.ex_date <= a.ex_date:
-                    div_factor *= float(s.ratio)
-            value += float(a.amount) * div_factor
+            value += float(a.amount) * _split_product(window, on_or_before=a.ex_date)
     return value
 
 
