@@ -18,7 +18,6 @@ class BookSnapshotSerializer(serializers.ModelSerializer):
             "regime_fit",
             "near_invalidation",
             "narrative",
-            "coverage",
             "var_beta",
         ]
         read_only_fields: ClassVar = fields

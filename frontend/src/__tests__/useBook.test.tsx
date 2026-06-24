@@ -10,7 +10,7 @@ describe("useCurrentBook", () => {
     vi.spyOn(client, "apiGet").mockResolvedValue({
       id: 1, created_at: "x", as_of_date: "2026-06-01",
       exposures: [], concentration: { hhi: 0.4 }, clusters: [],
-      regime_fit: { alignment: "misaligned" }, near_invalidation: [], narrative: "", coverage: {},
+      regime_fit: { alignment: "misaligned" }, near_invalidation: [], narrative: "",
     });
     const { result } = renderHook(() => useCurrentBook(), { wrapper: hookWrapper() });
     await waitFor(() => expect(result.current.data?.concentration.hhi).toBe(0.4));

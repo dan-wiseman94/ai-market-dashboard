@@ -16,7 +16,6 @@ class BookSnapshot(models.Model):
     regime_fit = models.JSONField(default=dict)
     near_invalidation = models.JSONField(default=list)
     narrative = models.TextField(blank=True, default="")
-    coverage = models.JSONField(default=dict)
     var_beta = models.JSONField(default=dict)  # dollar VaR + factor-beta-to-$SPX lens
 
     class Meta:
