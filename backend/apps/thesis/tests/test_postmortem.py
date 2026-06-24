@@ -329,7 +329,6 @@ def fake_report() -> PostMortemReport:
         what_missed=["sized too small"],
         lessons=["press winners"],
         would_repeat=True,
-        narrative_verdict="correct",
     )
 
 
@@ -358,7 +357,8 @@ def test_run_postmortem_ai_path_populates_report_and_posts_message(thesis, fake_
     # Report populated from the mocked structured output.
     assert pm.report["summary"] == fake_report.summary
     assert pm.report["would_repeat"] is True
-    assert pm.report["narrative_verdict"] == "correct"
+    # The verdict is deterministic (objective_verdict), not an AI-emitted field.
+    assert "narrative_verdict" not in pm.report
 
     # An assistant Message was posted into the per-thesis review thread.
     assert pm.message is not None
