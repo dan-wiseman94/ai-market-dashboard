@@ -90,11 +90,10 @@ for the current session." The token budget trims if the series is large.
   - Cache key `market:ohlc:{ticker}:{tf}:24h`, TTL `cache.ttl_for_kind(f"ohlc_{tf}")`
     (mirrors the existing session/overnight cache pattern; window depends on `now`, same
     as today).
-  - **Free-provider fallback** (Schwab not connected): request a count sized to the window
-    span (`window_minutes ÷ timeframe_minutes`, with a floor and a sane cap) via
-    `fallback.alt_bars`, then clamp best-effort to `[start, end]`. For the `1m` blend,
-    request 1m and 5m counts for the two segments. Same degrade-or-raise behavior as the
-    current session/overnight fallbacks.
+  - **Free-provider fallback** (Schwab not connected): `fallback.alt_bars(ticker, timeframe,
+    limit=N)` where `N` is a per-timeframe count sized to ~24h. Single-resolution at the
+    requested timeframe — **not** blended (free providers are count-based; this matches the
+    current session/overnight fallback behavior). Same degrade-or-raise as today.
 - **Delete (dead after this change):** `fetch_ohlc_session`, `_session_window`,
   `_fetch_session_from_schwab`, `fetch_ohlc_overnight`, `_overnight_window`,
   `_fetch_overnight_from_schwab`. (Their only callers are the snapshot capture branches
@@ -108,7 +107,8 @@ for the current session." The token budget trims if the series is large.
 
 - `_fetch_ohlc_section`: drop the `overnight` branch. Intraday → `fetch_ohlc_24h`; daily →
   `fetch_ohlc(..., bars=ohlc_bars)` unchanged. Payload gains `"window": "24h"` and, for the
-  `1m` blend, `"coarse_before": <session_open ISO>` + `"coarse_timeframe": "5m"`.
+  `1m` blend, `"coarse_timeframe": "5m"` (its presence signals the blend; the 5m→1m boundary
+  is visible in the bar timestamps).
 - `_fetch_news_section`: always `fetch_news(tickers)` (24h default). Remove the `overnight`
   branch and delete the `_overnight_news_lookback_hours` helper.
 - Remove the `overnight` parameter from `capture`/`capture_for_existing` plumbing and the
@@ -132,6 +132,16 @@ for the current session." The token budget trims if the series is large.
 - **Views** `backend/apps/snapshots/views.py`: remove the `?overnight=true` listing filter
   (64–65), the `create` field (84), and the `capture_task` arg (99).
 - **Tasks** `backend/apps/snapshots/tasks.py`: remove the `overnight` param and pass-through.
+- **Capture pipeline couplings** `backend/apps/snapshots/services/__init__.py`: the flag has three
+  further effects that disappear with it — all intended consequences of removing the mode:
+  - It auto-added the `overnight` **board** section to `includes` and set `snap.overnight = True`
+    (`capture_for_existing`). After removal, the board section is included only when the user
+    explicitly lists `"overnight"` in `includes` (cleaner / explicit).
+  - It computed `as_of` (from `market_state`) solely to widen the news lookback. `as_of` becomes
+    dead and is dropped along with the overnight news branch.
+  - It toggled the `quotes` section's `gap_context` (`fetch_quotes(..., gap_context=overnight)`).
+    With the flag gone, quotes use the default `gap_context=False`. (The quotes renderer still
+    shows gap columns when a payload happens to carry them — only the auto-toggle goes.)
 - **Serializers** `backend/apps/snapshots/serializers.py`: remove `overnight` from both
   serializers (lines 40, 77).
 - **Schema:** regenerate `backend/schema.yml` (`make schema`) and
@@ -158,14 +168,13 @@ OHLC section payload (blended `1m` example):
     "ticker": "NVDA",
     "timeframe": "1m",
     "window": "24h",
-    "coarse_before": "2026-06-24T13:30:00+00:00",
     "coarse_timeframe": "5m",
     "bars": [ {"ts": "...", "open": 0, "high": 0, "low": 0, "close": 0, "volume": 0}, ... ]
   }
 }
 ```
 
-Non-blended intraday (`5m`/`15m`/`1h`): same shape without `coarse_before`/`coarse_timeframe`.
+Non-blended intraday (`5m`/`15m`/`1h`): same shape without `coarse_timeframe`.
 Daily (`1d`): unchanged (no `window`).
 
 ## 6. Data flow
@@ -216,4 +225,11 @@ returns `[]` and the section completes empty rather than raising.
 - Migration touches a `db_index=True` column; the migration-safety gate (squawk) runs on
   migration PRs — a plain `RemoveField` is expected to pass.
 - Blended `1m` series mixes resolutions; downstream consumers read bars by `ts` only, so
-  monotonic ordering is the invariant to preserve.
+  monotonic ordering (and no duplicate `ts` at the 5m→1m boundary) is the invariant to preserve.
+- Removing the overnight flag also turns off the `quotes` `gap_context` auto-toggle and the
+  auto-add of the overnight board section. Both are intended (the mode is gone), but they are
+  user-visible: a capture that previously set `overnight=true` to *also* get the board must now
+  list `"overnight"` in `includes`.
+- The free-provider fallback (Schwab not connected) is count-based and single-resolution: it
+  returns recent bars at the requested timeframe sized to ~24h and is **not** blended. This
+  matches today's session/overnight fallback behavior.
