@@ -32,6 +32,17 @@ _METHOD_BY_TIMEFRAME = {
 # keeps the fixed bar-count behavior.
 SESSION_TIMEFRAMES = frozenset({"1m", "5m", "15m", "1h"})
 
+# Intraday timeframes for which the rolling 24h window is meaningful; daily keeps
+# the fixed bar-count behavior.
+INTRADAY_TIMEFRAMES = frozenset({"1m", "5m", "15m", "1h"})
+
+# A 1m request keeps the current session at 1m and coarsens the older part of the
+# 24h window to this (24h of 1m extended-hours bars is too many).
+_COARSE_TIMEFRAME = "5m"
+
+# Free-provider fallback is count-based and single-resolution; size ~24h per timeframe.
+_ALT_24H_LIMIT = {"1m": 480, "5m": 288, "15m": 96, "1h": 48}
+
 
 def fetch_ohlc(ticker: str, *, timeframe: str, bars: int = 60) -> list[dict]:
     if timeframe not in _METHOD_BY_TIMEFRAME:
@@ -198,6 +209,73 @@ def _union_window(
         return None
     start = min(now - timedelta(hours=24), session_open)
     return start, now, session_open
+
+
+def fetch_ohlc_24h(ticker: str, *, timeframe: str) -> list[dict]:
+    """Intraday OHLC over a rolling 24h window, never thinner than the current
+    session (start = min(now-24h, session_open); end = now), extended hours
+    included. A 1m request keeps the current session at 1m and coarsens the older
+    portion of the window to 5m. Use this for snapshot capture; ``fetch_ohlc``
+    (fixed count) stays the path for charts and tools.
+    """
+    if timeframe not in _METHOD_BY_TIMEFRAME:
+        raise ValueError(f"Unsupported timeframe: {timeframe}")
+    ticker = normalize_symbol(ticker)
+    try:
+        return cache.get_or_fetch(
+            f"market:ohlc:{ticker}:{timeframe}:24h",
+            ttl_seconds=cache.ttl_for_kind(f"ohlc_{timeframe}"),
+            fetcher=lambda: _fetch_24h_from_schwab(ticker, timeframe),
+        )
+    except SchwabNotConnectedError:
+        from apps.market.services import fallback
+
+        alt = fallback.alt_bars(ticker, timeframe, limit=_ALT_24H_LIMIT.get(timeframe, 288))
+        if alt is None:
+            raise
+        return alt
+
+
+def _fetch_window_from_schwab(
+    ticker: str, timeframe: str, start_dt: datetime, end_dt: datetime
+) -> list[dict]:
+    """Fetch one resolution over [start_dt, end_dt] with extended hours, clamp rows
+    to the window (Schwab honors it loosely), persist, and return rows."""
+    client = get_schwab_client()
+    method = getattr(client, _METHOD_BY_TIMEFRAME[timeframe])
+    candles = schwab_json(
+        method(
+            ticker,
+            start_datetime=start_dt,
+            end_datetime=end_dt,
+            need_extended_hours_data=True,
+        )
+    ).get("candles", [])
+    rows = [
+        r
+        for r in _rows_from_candles(candles)
+        if start_dt <= datetime.fromisoformat(r["ts"]) <= end_dt
+    ]
+    _persist_bars(ticker, timeframe, rows)
+    return rows
+
+
+def _fetch_24h_from_schwab(ticker: str, timeframe: str) -> list[dict]:
+    window = _union_window(ticker)
+    if window is None:
+        return []
+    start_dt, end_dt, session_open = window
+    if timeframe != "1m" or session_open <= start_dt:
+        # Non-1m, or no older portion (weekend / pre-market): single resolution.
+        return _fetch_window_from_schwab(ticker, timeframe, start_dt, end_dt)
+    # 1m request: coarsen the pre-session portion to 5m, keep the current session at 1m.
+    older = [
+        b
+        for b in _fetch_window_from_schwab(ticker, _COARSE_TIMEFRAME, start_dt, session_open)
+        if datetime.fromisoformat(b["ts"]) < session_open  # drop the boundary bar (belongs to 1m)
+    ]
+    recent = _fetch_window_from_schwab(ticker, "1m", session_open, end_dt)
+    return older + recent
 
 
 def _session_window(

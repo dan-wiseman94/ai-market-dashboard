@@ -1,4 +1,5 @@
 from datetime import UTC, datetime, timedelta
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -45,3 +46,58 @@ def test_union_window_stretches_back_to_session_over_weekend():
     assert session_open == _FRI_OPEN
     assert start == _FRI_OPEN  # now-24h (Sun) is after Fri open -> snaps back to session
     assert end == now
+
+
+from apps.market.schwab_client import SchwabNotConnectedError  # noqa: E402
+from apps.market.services.ohlc import fetch_ohlc_24h  # noqa: E402
+
+
+@pytest.mark.django_db
+def test_fetch_ohlc_24h_passes_union_window_and_clamps_extended_hours():
+    start = datetime(2026, 5, 27, 18, 0, tzinfo=UTC)
+    end = datetime(2026, 5, 28, 18, 0, tzinfo=UTC)
+    session_open = datetime(2026, 5, 28, 13, 30, tzinfo=UTC)
+    in_window = int(datetime(2026, 5, 28, 2, 0, tzinfo=UTC).timestamp() * 1000)
+    out_of_window = int(datetime(2026, 5, 28, 19, 0, tzinfo=UTC).timestamp() * 1000)
+    resp = MagicMock()
+    resp.json.return_value = {
+        "candles": [
+            {"open": 1, "high": 2, "low": 1, "close": 1.5, "volume": 10, "datetime": in_window},
+            {"open": 1, "high": 2, "low": 1, "close": 1.5, "volume": 10, "datetime": out_of_window},
+        ]
+    }
+    client = MagicMock()
+    client.get_price_history_every_five_minutes.return_value = resp
+    with (
+        patch("apps.market.services.ohlc.get_schwab_client", return_value=client),
+        patch("apps.market.services.ohlc._union_window", return_value=(start, end, session_open)),
+    ):
+        bars = fetch_ohlc_24h("SPY", timeframe="5m")
+    assert len(bars) == 1  # out-of-window candle clamped away
+    _, kwargs = client.get_price_history_every_five_minutes.call_args
+    assert kwargs["need_extended_hours_data"] is True
+    assert kwargs["start_datetime"] == start
+    assert kwargs["end_datetime"] == end
+
+
+@pytest.mark.django_db
+def test_fetch_ohlc_24h_returns_empty_when_no_window():
+    with patch("apps.market.services.ohlc._union_window", return_value=None):
+        assert fetch_ohlc_24h("SPY", timeframe="5m") == []
+
+
+@pytest.mark.django_db
+def test_fetch_ohlc_24h_falls_back_to_alt_bars_when_schwab_not_connected():
+    with (
+        patch(
+            "apps.market.services.ohlc.get_schwab_client",
+            side_effect=SchwabNotConnectedError(),
+        ),
+        patch(
+            "apps.market.services.fallback.alt_bars",
+            return_value=[{"ts": "x", "close": 9}],
+        ) as alt,
+    ):
+        assert fetch_ohlc_24h("SPY", timeframe="5m") == [{"ts": "x", "close": 9}]
+    alt.assert_called_once()
+    assert alt.call_args.kwargs["limit"] == 288  # _ALT_24H_LIMIT["5m"]
