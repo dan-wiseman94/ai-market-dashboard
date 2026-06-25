@@ -51,7 +51,6 @@ interface CaptureFields {
   candidatePositions: string;
   tickers: string[];
   stagedIds: number[];
-  overnight: boolean;
   title: string;
 }
 
@@ -80,7 +79,6 @@ async function runCapture(deps: RunCaptureDeps): Promise<void> {
     ohlc_timeframe: "1m",
     ohlc_bars: 60,
     image_ids: fields.stagedIds,
-    overnight: fields.overnight,
   });
   // Subscribe to the WS channel for live per-section progress. The HTTP
   // poll below remains the terminal source of truth — WS is progress-only.
@@ -176,33 +174,6 @@ function WatchlistField({
   );
 }
 
-function OvernightField({
-  overnight,
-  onChange,
-}: {
-  overnight: boolean;
-  onChange: (v: boolean) => void;
-}) {
-  return (
-    <div>
-      <label className="flex items-center gap-2 text-sm text-ink-300">
-        <input
-          type="checkbox"
-          checked={overnight}
-          onChange={(e) => onChange(e.target.checked)}
-          className="accent-gain-500"
-        />
-        Overnight (pre-market)
-      </label>
-      {overnight && (
-        <p className="text-xs text-ink-500 mt-1">
-          OHLC, quotes, and news shift to extended hours; adds a futures + overseas board.
-        </p>
-      )}
-    </div>
-  );
-}
-
 function PresetField({
   presets,
   onSetIncludes,
@@ -281,7 +252,6 @@ export default function SnapshotComposerPage() {
   const [watchlistId, setWatchlistId] = useState<number | null>(null);
   const [customTickers, setCustomTickers] = useState<string[]>([]);
   const [includes, setIncludes] = useState<string[]>(["quotes", "positions", "breadth"]);
-  const [overnight, setOvernight] = useState(false);
   const [objective, setObjective] = useState("");
   const [notes, setNotes] = useState("");
   const [manualPositions, setManualPositions] = useState("");
@@ -336,7 +306,7 @@ export default function SnapshotComposerPage() {
       await runCapture({
         fields: {
           profileId, objective, notes, includes, manualPositions,
-          candidatePositions, tickers, stagedIds, overnight, title,
+          candidatePositions, tickers, stagedIds, title,
         },
         createSnap,
         createThread,
@@ -383,8 +353,6 @@ export default function SnapshotComposerPage() {
           <label className="block text-xs text-ink-500 mb-1">Sections</label>
           <SnapshotSectionPicker value={includes} onChange={setIncludes} />
         </div>
-
-        <OvernightField overnight={overnight} onChange={setOvernight} />
 
         <PresetField presets={presets} onSetIncludes={setIncludes} onSetObjective={setObjective} />
 

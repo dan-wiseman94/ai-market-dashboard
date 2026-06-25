@@ -11,7 +11,6 @@ export type Snapshot = {
   candidate_positions: string;
   status: "pending" | "ready" | "failed";
   includes: string[]; source: string; captured_at: string;
-  overnight: boolean;
   sections: SnapshotSection[];
 };
 
@@ -27,7 +26,6 @@ export type CreateSnapshotBody = {
   ohlc_timeframe?: string;
   ohlc_bars?: number;
   image_ids?: number[];
-  overnight?: boolean;
 };
 
 export const createSnapshot = (body: CreateSnapshotBody) =>
@@ -84,7 +82,6 @@ export type SnapshotListRow = {
   objective: string; status: string; source: string; primary_ticker: string | null;
   section_kinds: string[]; section_statuses: Record<string, string>;
   has_image: boolean; total_payload_tokens: number; headline_delta_pct?: number | null;
-  overnight: boolean;
 };
 export const fetchSnapshots = (params: Record<string, string> = {}) =>
   apiGet<{ results: SnapshotListRow[]; count?: number }>(
