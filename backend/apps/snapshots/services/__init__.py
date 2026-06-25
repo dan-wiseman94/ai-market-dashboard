@@ -18,10 +18,9 @@ from apps.market.services.fred import fetch_macro as fred_fetch_macro
 from apps.market.services.fundamentals import fetch_fundamentals
 from apps.market.services.news import fetch_news
 from apps.market.services.ohlc import (
-    SESSION_TIMEFRAMES,
+    INTRADAY_TIMEFRAMES,
     fetch_ohlc,
-    fetch_ohlc_overnight,
-    fetch_ohlc_session,
+    fetch_ohlc_24h,
 )
 from apps.market.services.overnight import overnight_board
 from apps.market.services.positions import fetch_positions
@@ -105,28 +104,20 @@ def _fetch_ohlc_section(
     ohlc_ticker: str | None = None,
     ohlc_timeframe: str = "1m",
     ohlc_bars: int = 60,
-    overnight: bool = False,
     **_,
 ) -> dict:
     ticker = _pick_ticker(ohlc_ticker, watchlist_tickers)
-    if overnight:
-        # 1m over the ~17h+ overnight window is too many bars; coarsen to 5m.
-        tf = "5m" if ohlc_timeframe == "1m" else ohlc_timeframe
-        bars = fetch_ohlc_overnight(ticker, timeframe=tf)
-        return {"data": {"ticker": ticker, "timeframe": tf, "bars": bars, "window": "overnight"}}
-    # Intraday: send the whole session + 1h premarket so the AI sees the full day.
-    # Daily: keep the fixed bar count (a "session window" of daily bars is moot).
-    if ohlc_timeframe in SESSION_TIMEFRAMES:
-        bars = fetch_ohlc_session(ticker, timeframe=ohlc_timeframe)
-    else:
-        bars = fetch_ohlc(ticker, timeframe=ohlc_timeframe, bars=ohlc_bars)
-    return {
-        "data": {
-            "ticker": ticker,
-            "timeframe": ohlc_timeframe,
-            "bars": bars,
-        }
-    }
+    if ohlc_timeframe in INTRADAY_TIMEFRAMES:
+        # Always the rolling last-24h window; 1m blends the current session (1m)
+        # with the older portion coarsened to 5m (see apps.market.services.ohlc).
+        bars = fetch_ohlc_24h(ticker, timeframe=ohlc_timeframe)
+        data = {"ticker": ticker, "timeframe": ohlc_timeframe, "bars": bars, "window": "24h"}
+        if ohlc_timeframe == "1m":
+            data["coarse_timeframe"] = "5m"
+        return {"data": data}
+    # Daily: keep the fixed bar count (a 24h window of daily bars is a single bar).
+    bars = fetch_ohlc(ticker, timeframe=ohlc_timeframe, bars=ohlc_bars)
+    return {"data": {"ticker": ticker, "timeframe": ohlc_timeframe, "bars": bars}}
 
 
 def _fetch_news_section(
