@@ -166,6 +166,40 @@ def _rows_from_candles(candles: list[dict]) -> list[dict]:
     ]
 
 
+def _most_recent_session_open(ticker: str, *, at: datetime) -> datetime | None:
+    """Regular open of the latest session that has opened at/before `at`. None when
+    no session falls in the 7-day lookback (calendar failure / empty schedule)."""
+    cal = get_market_calendar(calendar_for(ticker))
+    try:
+        sched = cal.schedule(
+            start_date=(at - timedelta(days=7)).date(),
+            end_date=(at + timedelta(days=1)).date(),
+        )
+    except Exception as exc:  # mcal can raise on odd ranges; treat as no data
+        log.warning("ohlc.session_open schedule failed for %s: %s", ticker, exc)
+        return None
+    chosen = None
+    for _idx, row in sched.iterrows():
+        o = row["market_open"].to_pydatetime()
+        if o <= at:  # keep the latest session already opened
+            chosen = o
+    return chosen
+
+
+def _union_window(
+    ticker: str, *, at: datetime | None = None
+) -> tuple[datetime, datetime, datetime] | None:
+    """(start, end, session_open) for the rolling 24h window, never thinner than the
+    current session: start = min(at - 24h, session_open); end = at. None when no
+    session falls in the lookback."""
+    now = at or timezone.now()
+    session_open = _most_recent_session_open(ticker, at=now)
+    if session_open is None:
+        return None
+    start = min(now - timedelta(hours=24), session_open)
+    return start, now, session_open
+
+
 def _session_window(
     ticker: str, *, premarket_minutes: int, at: datetime | None = None
 ) -> tuple[datetime, datetime] | None:
