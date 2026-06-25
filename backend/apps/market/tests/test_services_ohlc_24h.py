@@ -101,3 +101,73 @@ def test_fetch_ohlc_24h_falls_back_to_alt_bars_when_schwab_not_connected():
         assert fetch_ohlc_24h("SPY", timeframe="5m") == [{"ts": "x", "close": 9}]
     alt.assert_called_once()
     assert alt.call_args.kwargs["limit"] == 288  # _ALT_24H_LIMIT["5m"]
+
+
+def _candle(dt: datetime, close: float) -> dict:
+    return {
+        "open": close,
+        "high": close,
+        "low": close,
+        "close": close,
+        "volume": 1,
+        "datetime": int(dt.timestamp() * 1000),
+    }
+
+
+@pytest.mark.django_db
+def test_fetch_ohlc_24h_blends_5m_older_and_1m_current_session():
+    start = datetime(2026, 5, 27, 18, 0, tzinfo=UTC)
+    end = datetime(2026, 5, 28, 18, 0, tzinfo=UTC)
+    session_open = datetime(2026, 5, 28, 13, 30, tzinfo=UTC)
+
+    def five_min(*_a, **_k):
+        r = MagicMock()
+        r.json.return_value = {
+            "candles": [
+                _candle(datetime(2026, 5, 28, 12, 0, tzinfo=UTC), 1),  # pre-session -> kept (5m)
+                _candle(session_open, 9),  # at open -> dropped from series
+            ]
+        }
+        return r
+
+    def one_min(*_a, **_k):
+        r = MagicMock()
+        r.json.return_value = {
+            "candles": [
+                _candle(datetime(2026, 5, 28, 14, 0, tzinfo=UTC), 2),  # in session -> kept (1m)
+            ]
+        }
+        return r
+
+    client = MagicMock()
+    client.get_price_history_every_five_minutes.side_effect = five_min
+    client.get_price_history_every_minute.side_effect = one_min
+    with (
+        patch("apps.market.services.ohlc.get_schwab_client", return_value=client),
+        patch("apps.market.services.ohlc._union_window", return_value=(start, end, session_open)),
+    ):
+        bars = fetch_ohlc_24h("SPY", timeframe="1m")
+
+    assert [b["close"] for b in bars] == [1, 2]  # 5m pre-session, then 1m session; boundary dropped
+    _, k5 = client.get_price_history_every_five_minutes.call_args
+    assert (k5["start_datetime"], k5["end_datetime"]) == (start, session_open)
+    _, k1 = client.get_price_history_every_minute.call_args
+    assert (k1["start_datetime"], k1["end_datetime"]) == (session_open, end)
+
+
+@pytest.mark.django_db
+def test_fetch_ohlc_24h_1m_no_older_segment_when_window_starts_at_session_open():
+    session_open = datetime(2026, 5, 29, 13, 30, tzinfo=UTC)
+    start = session_open  # weekend/pre-market: now-24h is after the session open
+    end = datetime(2026, 6, 1, 12, 0, tzinfo=UTC)
+    resp = MagicMock()
+    resp.json.return_value = {"candles": [_candle(datetime(2026, 5, 29, 14, 0, tzinfo=UTC), 2)]}
+    client = MagicMock()
+    client.get_price_history_every_minute.return_value = resp
+    with (
+        patch("apps.market.services.ohlc.get_schwab_client", return_value=client),
+        patch("apps.market.services.ohlc._union_window", return_value=(start, end, session_open)),
+    ):
+        bars = fetch_ohlc_24h("SPY", timeframe="1m")
+    assert [b["close"] for b in bars] == [2]
+    client.get_price_history_every_five_minutes.assert_not_called()
