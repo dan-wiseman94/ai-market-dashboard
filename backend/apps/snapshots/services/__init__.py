@@ -3,10 +3,7 @@
 from __future__ import annotations
 
 import json
-import math
 from collections.abc import Iterable
-
-from django.utils import timezone
 
 from apps.core.realtime import group_broadcast
 from apps.market.calendar import calendar_for, market_state
@@ -64,13 +61,6 @@ def _pick_ticker(ohlc_ticker: str | None, watchlist_tickers: list[str]) -> str:
     return ohlc_ticker or (watchlist_tickers[0] if watchlist_tickers else "SPY")
 
 
-def _overnight_news_lookback_hours(as_of, *, now=None) -> int:
-    """Hours from the prior session close (`as_of`) to now, rounded up, clamped [1, 48]."""
-    now = now or timezone.now()
-    hours = math.ceil((now - as_of).total_seconds() / 3600)
-    return max(1, min(48, hours))
-
-
 def _representative_tickers(
     snap: Snapshot, watchlist_tickers: list[str], ohlc_ticker: str | None
 ) -> list[str]:
@@ -120,14 +110,8 @@ def _fetch_ohlc_section(
     return {"data": {"ticker": ticker, "timeframe": ohlc_timeframe, "bars": bars}}
 
 
-def _fetch_news_section(
-    *, watchlist_tickers: list[str], overnight: bool = False, as_of=None, **_
-) -> dict:
-    tickers = list(watchlist_tickers)
-    if overnight and as_of is not None:
-        items = fetch_news(tickers, lookback_hours=_overnight_news_lookback_hours(as_of))
-        return {"data": {"items": items, "window": "overnight", "since": as_of.isoformat()}}
-    return {"data": {"items": fetch_news(tickers)}}
+def _fetch_news_section(*, watchlist_tickers: list[str], **_) -> dict:
+    return {"data": {"items": fetch_news(list(watchlist_tickers))}}
 
 
 _FETCHERS = {
