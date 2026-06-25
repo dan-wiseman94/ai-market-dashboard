@@ -144,9 +144,7 @@ _FETCHERS = {
     "ohlc": _fetch_ohlc_section,
     "overnight": lambda **_: {"data": overnight_board()},
     "positions": lambda **_: {"data": fetch_positions()},
-    "quotes": lambda *, watchlist_tickers, overnight=False, **_: {
-        "data": fetch_quotes(watchlist_tickers, gap_context=overnight)
-    },
+    "quotes": lambda *, watchlist_tickers, **_: {"data": fetch_quotes(watchlist_tickers)},
     "macro": lambda **_: {"data": fred_fetch_macro()},
     "filings": lambda *, watchlist_tickers, **_: {
         "data": {t: edgar_fetch_filings(t) for t in (list(watchlist_tickers) or [])[:6]},
@@ -200,19 +198,8 @@ def capture_for_existing(
     ohlc_ticker: str | None = None,
     ohlc_timeframe: str = "1m",
     ohlc_bars: int = 60,
-    overnight: bool = False,
 ) -> Snapshot:
     """Fill in sections for an already-created Snapshot. Broadcasts progress over WS."""
-    if overnight and "overnight" not in snap.includes:
-        snap.includes = [*snap.includes, "overnight"]
-        snap.save(update_fields=["includes"])
-        snap.overnight = True
-        snap.save(update_fields=["overnight"])
-    as_of = None
-    if overnight:
-        rep = _pick_ticker(ohlc_ticker, list(watchlist_tickers))
-        as_of = market_state(symbol=rep).as_of
-
     _broadcast(snap.id, {"event": "pending", "snapshot_id": snap.id, "includes": snap.includes})
     ok_count = 0
     _primary: str | None = None
@@ -238,8 +225,6 @@ def capture_for_existing(
                 ohlc_ticker=ohlc_ticker,
                 ohlc_timeframe=ohlc_timeframe,
                 ohlc_bars=ohlc_bars,
-                overnight=overnight,
-                as_of=as_of,
             )
             section.payload = result["data"] or {}
             section.status = "done"
@@ -279,7 +264,6 @@ def capture(
     ohlc_ticker: str | None = None,
     ohlc_timeframe: str = "1m",
     ohlc_bars: int = 60,
-    overnight: bool = False,
 ) -> Snapshot:
     """Create a Snapshot row and immediately fill it."""
     snap = Snapshot.objects.create(
@@ -289,7 +273,6 @@ def capture(
         includes=includes,
         source=source,
         status="pending",
-        overnight=overnight,
     )
     return capture_for_existing(
         snap,
@@ -297,5 +280,4 @@ def capture(
         ohlc_ticker=ohlc_ticker,
         ohlc_timeframe=ohlc_timeframe,
         ohlc_bars=ohlc_bars,
-        overnight=overnight,
     )
