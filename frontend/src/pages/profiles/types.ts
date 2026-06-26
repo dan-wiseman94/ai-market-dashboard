@@ -1,5 +1,4 @@
 export const SECTION_OPTIONS = ["quotes", "ohlc", "positions", "breadth", "notes"] as const;
-export const PRESET_SECTION_OPTIONS = ["quotes", "positions", "breadth", "ohlc", "news", "chain", "image"] as const;
 
 export type Draft = {
   name: string;
