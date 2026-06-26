@@ -20,7 +20,6 @@ def capture_task(
     ohlc_ticker: str | None = None,
     ohlc_timeframe: str = "1m",
     ohlc_bars: int = 60,
-    overnight: bool = False,
     scenario: str | None = None,
 ) -> int:
     """Fill in sections for the given Snapshot id.
@@ -43,7 +42,6 @@ def capture_task(
             ohlc_ticker=ohlc_ticker,
             ohlc_timeframe=ohlc_timeframe,
             ohlc_bars=ohlc_bars,
-            overnight=overnight,
         )
         return snap.id
     finally:
