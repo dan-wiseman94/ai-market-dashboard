@@ -6,7 +6,6 @@ export type AgentPreset = {
   slug: string;
   description: string;
   objective_template: string;
-  default_includes: string[];
   structured: boolean;
   builtin: boolean;
   active: boolean;
@@ -18,7 +17,6 @@ export type CreatePresetBody = {
   name: string;
   description?: string;
   objective_template: string;
-  default_includes: string[];
   structured?: boolean;
   active?: boolean;
 };

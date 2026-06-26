@@ -326,7 +326,6 @@ const PRESET_A: AgentPreset = {
   slug: "morning-scan",
   description: "Daily morning market scan",
   objective_template: "What are the key moves this morning?",
-  default_includes: ["quotes", "ohlc", "news"],
   structured: false,
   builtin: false,
   active: true,
@@ -340,7 +339,6 @@ const BUILTIN_PRESET: AgentPreset = {
   slug: "options-screener",
   description: "Built-in options scan",
   objective_template: "Screen unusual options activity",
-  default_includes: ["chain"],
   structured: true,
   builtin: true,
   active: true,
@@ -354,12 +352,11 @@ describe("ProfilesPage – preset management", () => {
     expect(screen.getByRole("heading", { name: /agent presets/i })).toBeInTheDocument();
   });
 
-  it("lists presets with name and includes", () => {
+  it("lists presets with name", () => {
     mockUseAgentPresets.mockReturnValue({ data: [PRESET_A] } as never);
     renderWithProviders(<ProfilesPage />);
     expect(screen.getByTestId("preset-row-Morning Scan")).toBeInTheDocument();
     expect(screen.getByText("Morning Scan")).toBeInTheDocument();
-    expect(screen.getByText(/quotes.*ohlc.*news/)).toBeInTheDocument();
   });
 
   it("shows 'builtin' badge for builtin presets", () => {
@@ -394,7 +391,6 @@ describe("ProfilesPage – preset management", () => {
     expect(body).toMatchObject({
       name: "Earnings Check",
       objective_template: "Any earnings surprises today?",
-      default_includes: expect.arrayContaining(["quotes"]),
     });
   });
 
