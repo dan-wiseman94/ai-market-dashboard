@@ -226,8 +226,12 @@ def _render_ohlc(payload: dict) -> str:
     if not bars:
         return "## OHLC\n_(empty)_"
     header = f"## OHLC ({payload.get('ticker', '?')} @ {payload.get('timeframe', '?')})"
-    if payload.get("window") == "overnight":
-        header += " — overnight (extended hours)"
+    if payload.get("window") == "24h":
+        header += (
+            " — last 24h (1m current session, 5m prior)"
+            if payload.get("coarse_timeframe")
+            else " — last 24h"
+        )
     csv_lines = ["ts,open,high,low,close,volume"]
     for b in bars:
         csv_lines.append(f"{b['ts']},{b['open']},{b['high']},{b['low']},{b['close']},{b['volume']}")
@@ -335,8 +339,7 @@ def _format_news_ts(it: dict) -> str:
 def _render_news(payload) -> str:
     # Trusts upstream ordering (newest-first) — see fetch_news in apps/market/services/news.py.
     items = payload.get("items", []) if isinstance(payload, dict) else (payload or [])
-    overnight = isinstance(payload, dict) and payload.get("window") == "overnight"
-    title = "## News (overnight, since the prior close)" if overnight else "## News (last 24h)"
+    title = "## News (last 24h)"
     if not items:
         return f"{title}\n_(no headlines)_"
     lines = [title, ""]

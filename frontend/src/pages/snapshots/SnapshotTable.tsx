@@ -47,11 +47,6 @@ export default function SnapshotTable({ rows, selected, onToggle }: Props) {
                 </td>
                 <td className="py-2 pr-4 font-mono font-medium text-copper-300">
                   {row.primary_ticker ?? "—"}
-                  {row.overnight && (
-                    <span className="ml-2 px-1.5 py-0.5 rounded text-[10px] font-sans bg-indigo-900/40 text-indigo-300 align-middle">
-                      overnight
-                    </span>
-                  )}
                 </td>
                 <td className="py-2 pr-4 max-w-xs truncate text-ink-200">
                   {row.objective || "—"}

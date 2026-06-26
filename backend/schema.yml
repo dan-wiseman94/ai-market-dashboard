@@ -5512,8 +5512,6 @@ components:
           type: string
           nullable: true
           maxLength: 16
-        overnight:
-          type: boolean
         sections:
           type: array
           items:
@@ -5553,8 +5551,6 @@ components:
           type: string
           nullable: true
           maxLength: 16
-        overnight:
-          type: boolean
         section_kinds:
           type: string
           readOnly: true

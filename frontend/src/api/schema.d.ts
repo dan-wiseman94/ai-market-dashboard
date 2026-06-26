@@ -2742,7 +2742,6 @@ export interface components {
             /** Format: date-time */
             readonly captured_at: string;
             primary_ticker?: string | null;
-            overnight?: boolean;
             readonly sections: components["schemas"]["SnapshotSection"][];
         };
         SnapshotList: {
@@ -2756,7 +2755,6 @@ export interface components {
             status?: components["schemas"]["Status95aEnum"];
             source?: components["schemas"]["Source7c9Enum"];
             primary_ticker?: string | null;
-            overnight?: boolean;
             readonly section_kinds: string;
             readonly section_statuses: string;
             readonly has_image: string;

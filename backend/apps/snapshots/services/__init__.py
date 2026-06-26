@@ -3,10 +3,7 @@
 from __future__ import annotations
 
 import json
-import math
 from collections.abc import Iterable
-
-from django.utils import timezone
 
 from apps.core.realtime import group_broadcast
 from apps.market.calendar import calendar_for, market_state
@@ -18,10 +15,9 @@ from apps.market.services.fred import fetch_macro as fred_fetch_macro
 from apps.market.services.fundamentals import fetch_fundamentals
 from apps.market.services.news import fetch_news
 from apps.market.services.ohlc import (
-    SESSION_TIMEFRAMES,
+    INTRADAY_TIMEFRAMES,
     fetch_ohlc,
-    fetch_ohlc_overnight,
-    fetch_ohlc_session,
+    fetch_ohlc_24h,
 )
 from apps.market.services.overnight import overnight_board
 from apps.market.services.positions import fetch_positions
@@ -65,13 +61,6 @@ def _pick_ticker(ohlc_ticker: str | None, watchlist_tickers: list[str]) -> str:
     return ohlc_ticker or (watchlist_tickers[0] if watchlist_tickers else "SPY")
 
 
-def _overnight_news_lookback_hours(as_of, *, now=None) -> int:
-    """Hours from the prior session close (`as_of`) to now, rounded up, clamped [1, 48]."""
-    now = now or timezone.now()
-    hours = math.ceil((now - as_of).total_seconds() / 3600)
-    return max(1, min(48, hours))
-
-
 def _representative_tickers(
     snap: Snapshot, watchlist_tickers: list[str], ohlc_ticker: str | None
 ) -> list[str]:
@@ -105,38 +94,24 @@ def _fetch_ohlc_section(
     ohlc_ticker: str | None = None,
     ohlc_timeframe: str = "1m",
     ohlc_bars: int = 60,
-    overnight: bool = False,
     **_,
 ) -> dict:
     ticker = _pick_ticker(ohlc_ticker, watchlist_tickers)
-    if overnight:
-        # 1m over the ~17h+ overnight window is too many bars; coarsen to 5m.
-        tf = "5m" if ohlc_timeframe == "1m" else ohlc_timeframe
-        bars = fetch_ohlc_overnight(ticker, timeframe=tf)
-        return {"data": {"ticker": ticker, "timeframe": tf, "bars": bars, "window": "overnight"}}
-    # Intraday: send the whole session + 1h premarket so the AI sees the full day.
-    # Daily: keep the fixed bar count (a "session window" of daily bars is moot).
-    if ohlc_timeframe in SESSION_TIMEFRAMES:
-        bars = fetch_ohlc_session(ticker, timeframe=ohlc_timeframe)
-    else:
-        bars = fetch_ohlc(ticker, timeframe=ohlc_timeframe, bars=ohlc_bars)
-    return {
-        "data": {
-            "ticker": ticker,
-            "timeframe": ohlc_timeframe,
-            "bars": bars,
-        }
-    }
+    if ohlc_timeframe in INTRADAY_TIMEFRAMES:
+        # Always the rolling last-24h window; 1m blends the current session (1m)
+        # with the older portion coarsened to 5m (see apps.market.services.ohlc).
+        bars = fetch_ohlc_24h(ticker, timeframe=ohlc_timeframe)
+        data = {"ticker": ticker, "timeframe": ohlc_timeframe, "bars": bars, "window": "24h"}
+        if ohlc_timeframe == "1m":
+            data["coarse_timeframe"] = "5m"
+        return {"data": data}
+    # Daily: keep the fixed bar count (a 24h window of daily bars is a single bar).
+    bars = fetch_ohlc(ticker, timeframe=ohlc_timeframe, bars=ohlc_bars)
+    return {"data": {"ticker": ticker, "timeframe": ohlc_timeframe, "bars": bars}}
 
 
-def _fetch_news_section(
-    *, watchlist_tickers: list[str], overnight: bool = False, as_of=None, **_
-) -> dict:
-    tickers = list(watchlist_tickers)
-    if overnight and as_of is not None:
-        items = fetch_news(tickers, lookback_hours=_overnight_news_lookback_hours(as_of))
-        return {"data": {"items": items, "window": "overnight", "since": as_of.isoformat()}}
-    return {"data": {"items": fetch_news(tickers)}}
+def _fetch_news_section(*, watchlist_tickers: list[str], **_) -> dict:
+    return {"data": {"items": fetch_news(list(watchlist_tickers))}}
 
 
 _FETCHERS = {
@@ -169,9 +144,7 @@ _FETCHERS = {
     "ohlc": _fetch_ohlc_section,
     "overnight": lambda **_: {"data": overnight_board()},
     "positions": lambda **_: {"data": fetch_positions()},
-    "quotes": lambda *, watchlist_tickers, overnight=False, **_: {
-        "data": fetch_quotes(watchlist_tickers, gap_context=overnight)
-    },
+    "quotes": lambda *, watchlist_tickers, **_: {"data": fetch_quotes(watchlist_tickers)},
     "macro": lambda **_: {"data": fred_fetch_macro()},
     "filings": lambda *, watchlist_tickers, **_: {
         "data": {t: edgar_fetch_filings(t) for t in (list(watchlist_tickers) or [])[:6]},
@@ -225,19 +198,8 @@ def capture_for_existing(
     ohlc_ticker: str | None = None,
     ohlc_timeframe: str = "1m",
     ohlc_bars: int = 60,
-    overnight: bool = False,
 ) -> Snapshot:
     """Fill in sections for an already-created Snapshot. Broadcasts progress over WS."""
-    if overnight and "overnight" not in snap.includes:
-        snap.includes = [*snap.includes, "overnight"]
-        snap.save(update_fields=["includes"])
-        snap.overnight = True
-        snap.save(update_fields=["overnight"])
-    as_of = None
-    if overnight:
-        rep = _pick_ticker(ohlc_ticker, list(watchlist_tickers))
-        as_of = market_state(symbol=rep).as_of
-
     _broadcast(snap.id, {"event": "pending", "snapshot_id": snap.id, "includes": snap.includes})
     ok_count = 0
     _primary: str | None = None
@@ -263,8 +225,6 @@ def capture_for_existing(
                 ohlc_ticker=ohlc_ticker,
                 ohlc_timeframe=ohlc_timeframe,
                 ohlc_bars=ohlc_bars,
-                overnight=overnight,
-                as_of=as_of,
             )
             section.payload = result["data"] or {}
             section.status = "done"
@@ -304,7 +264,6 @@ def capture(
     ohlc_ticker: str | None = None,
     ohlc_timeframe: str = "1m",
     ohlc_bars: int = 60,
-    overnight: bool = False,
 ) -> Snapshot:
     """Create a Snapshot row and immediately fill it."""
     snap = Snapshot.objects.create(
@@ -314,7 +273,6 @@ def capture(
         includes=includes,
         source=source,
         status="pending",
-        overnight=overnight,
     )
     return capture_for_existing(
         snap,
@@ -322,5 +280,4 @@ def capture(
         ohlc_ticker=ohlc_ticker,
         ohlc_timeframe=ohlc_timeframe,
         ohlc_bars=ohlc_bars,
-        overnight=overnight,
     )
