@@ -93,13 +93,12 @@ class TradingProfile(models.Model):
 
 
 class AgentPreset(models.Model):
-    """A capture template that pre-fills the snapshot composer's objective text and section includes."""
+    """A capture template that pre-fills the snapshot composer's objective text."""
 
     name = models.CharField(max_length=100)
     slug = models.SlugField(unique=True)
     description = models.CharField(max_length=300, blank=True, default="")
     objective_template = models.TextField()
-    default_includes = models.JSONField(default=list)
     structured = models.BooleanField(default=False)
     builtin = models.BooleanField(default=False)
     active = models.BooleanField(default=True)
