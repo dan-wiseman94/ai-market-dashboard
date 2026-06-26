@@ -162,7 +162,7 @@ In `frontend/src/__tests__/SnapshotComposerPage.test.tsx`:
 
 (a) Remove `default_includes: ["quotes", "news"],` from the `PRESET_A` fixture (~line 442).
 
-(b) Replace the test `"selecting a preset fills objective and sections"` (~lines 475-495) with one that asserts the objective is filled and the section boxes are NOT changed by the preset. The composer's initial boxes are `["quotes", "positions", "breadth"]` (the `useState` default) when no profile overrides them; assert a box the preset would previously have unchecked (`positions`) stays checked and one it would have added (`news`) stays unchecked:
+(b) Replace the test `"selecting a preset fills objective and sections"` (~lines 475-495) with one that asserts the objective is filled and the section boxes are NOT changed by the preset. Note: the test's `useProfiles` mock auto-selects profile 1 (`Day Trader`, `default_includes: ["quotes","ohlc"]`) on render, overriding the `useState` default — so the effective initial boxes are `["quotes","ohlc"]`; the hardened test asserts a profile-checked box like `ohlc` is preserved after applying the preset:
 ```tsx
   it("selecting a preset fills objective only, leaving section boxes unchanged", async () => {
     const user = userEvent.setup();
