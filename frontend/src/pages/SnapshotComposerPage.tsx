@@ -205,11 +205,9 @@ function OvernightField({
 
 function PresetField({
   presets,
-  onSetIncludes,
   onSetObjective,
 }: {
   presets: ReturnType<typeof useAgentPresets>["data"];
-  onSetIncludes: (v: string[]) => void;
   onSetObjective: (v: string) => void;
 }) {
   const activePresets = (presets ?? []).filter((p) => p.active);
@@ -222,7 +220,6 @@ function PresetField({
         onChange={(e) => {
           const preset = activePresets.find((p) => String(p.id) === e.target.value);
           if (preset) {
-            onSetIncludes(preset.default_includes);
             onSetObjective(preset.objective_template);
           }
           // Reset to placeholder so the user can re-apply the same preset
@@ -386,7 +383,7 @@ export default function SnapshotComposerPage() {
 
         <OvernightField overnight={overnight} onChange={setOvernight} />
 
-        <PresetField presets={presets} onSetIncludes={setIncludes} onSetObjective={setObjective} />
+        <PresetField presets={presets} onSetObjective={setObjective} />
 
         <div>
           <label className="block text-xs text-ink-500 mb-1">Thread title (optional)</label>

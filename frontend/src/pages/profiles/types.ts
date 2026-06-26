@@ -18,7 +18,6 @@ export type PresetDraft = {
   name: string;
   description: string;
   objective_template: string;
-  default_includes: string[];
   structured: boolean;
   active: boolean;
 };
@@ -27,7 +26,6 @@ export const BLANK_PRESET_DRAFT: PresetDraft = {
   name: "",
   description: "",
   objective_template: "",
-  default_includes: ["quotes", "positions", "breadth"],
   structured: false,
   active: true,
 };
