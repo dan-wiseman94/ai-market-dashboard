@@ -479,12 +479,21 @@ describe("SnapshotComposerPage – preset dropdown", () => {
     // Capture which section boxes are checked before applying the preset.
     const positionsBefore = (screen.getByRole("checkbox", { name: /positions/i }) as HTMLInputElement).checked;
 
+    // The auto-selected profile (Day Trader, default_includes: ["quotes","ohlc"]) has
+    // already checked ohlc on render — verify a CURRENTLY-CHECKED box exists before
+    // the preset is applied so the subsequent assertion is a genuine guard.
+    expect((screen.getByRole("checkbox", { name: /ohlc/i }) as HTMLInputElement).checked).toBe(true);
+
     const presetSelect = screen.getByLabelText("Apply a preset");
     await user.selectOptions(presetSelect, String(PRESET_A.id));
 
     // Objective is filled from the preset's template.
     const objectiveTextarea = screen.getByPlaceholderText(/what do you want/i);
     expect(objectiveTextarea).toHaveValue(PRESET_A.objective_template);
+
+    // ohlc was checked before the preset; it must remain checked after (the headline
+    // behavior: preset apply must NOT touch section boxes).
+    expect((screen.getByRole("checkbox", { name: /ohlc/i }) as HTMLInputElement).checked).toBe(true);
 
     // Section boxes are untouched by the preset.
     expect((screen.getByRole("checkbox", { name: /positions/i }) as HTMLInputElement).checked).toBe(positionsBefore);
