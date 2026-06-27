@@ -10,6 +10,7 @@ from rest_framework.decorators import action
 from rest_framework.request import Request
 from rest_framework.response import Response
 
+from apps.market.returns import latest_closes
 from apps.thesis.portfolio_serializers import PositionSerializer
 from apps.thesis.portfolio_service import realized_pnl
 
@@ -51,6 +52,22 @@ class PositionViewSet(viewsets.ModelViewSet):
                 return qs.none()
 
         return qs
+
+    def list(self, request: Request, *args, **kwargs) -> Response:  # type: ignore[override]
+        """Serialize positions with a single batched mark-to-market price lookup.
+
+        Resolving the latest OHLC close once for all tickers (instead of one query
+        per row in the serializer) keeps the query count constant in the number of
+        positions returned.
+        """
+        positions = list(self.filter_queryset(self.get_queryset()))
+        prices = latest_closes({p.ticker for p in positions}, timezone.now())
+        serializer = self.get_serializer(
+            positions,
+            many=True,
+            context={**self.get_serializer_context(), "position_prices": prices},
+        )
+        return Response(serializer.data)
 
     @action(detail=True, methods=["post"])
     def close(self, request: Request, pk: str | None = None) -> Response:
