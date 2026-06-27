@@ -3724,7 +3724,6 @@ components:
           maxLength: 300
         objective_template:
           type: string
-        default_includes: {}
         structured:
           type: boolean
         builtin:
@@ -4706,7 +4705,6 @@ components:
           maxLength: 300
         objective_template:
           type: string
-        default_includes: {}
         structured:
           type: boolean
         builtin:

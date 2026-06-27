@@ -1,8 +1,7 @@
-import { PRESET_SECTION_OPTIONS } from "./types";
 import type { usePresetForm } from "./usePresetForm";
 
 export function PresetForm({ form }: { form: ReturnType<typeof usePresetForm> }) {
-  const { editing, draft, setDraft, submit, toggleSection, close } = form;
+  const { editing, draft, setDraft, submit, close } = form;
 
   return (
     <form data-testid="preset-form" onSubmit={submit} className="space-y-3 p-4 border border-slate-800 rounded">
@@ -24,21 +23,6 @@ export function PresetForm({ form }: { form: ReturnType<typeof usePresetForm> })
         placeholder="Objective template (filled into the composer)" rows={3} required
         className="w-full px-3 py-1.5 rounded bg-slate-900 border border-slate-700"
       />
-      <div>
-        <div className="text-xs text-slate-500 mb-1">Default sections</div>
-        <div className="flex flex-wrap gap-2">
-          {PRESET_SECTION_OPTIONS.map((sec) => (
-            <label key={sec} className="flex items-center gap-1 text-sm">
-              <input
-                type="checkbox"
-                checked={draft.default_includes.includes(sec)}
-                onChange={() => toggleSection(sec)}
-              />
-              {sec}
-            </label>
-          ))}
-        </div>
-      </div>
       <div className="flex items-center gap-4">
         <label className="flex items-center gap-1 text-sm">
           <input

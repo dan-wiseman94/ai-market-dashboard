@@ -1961,7 +1961,6 @@ export interface components {
             slug: string;
             description?: string;
             objective_template: string;
-            default_includes?: unknown;
             structured?: boolean;
             readonly builtin: boolean;
             active?: boolean;
@@ -2387,7 +2386,6 @@ export interface components {
             slug: string;
             description?: string;
             objective_template?: string;
-            default_includes?: unknown;
             structured?: boolean;
             readonly builtin?: boolean;
             active?: boolean;

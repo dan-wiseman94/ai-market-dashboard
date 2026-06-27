@@ -49,7 +49,6 @@ def test_defaults():
     assert preset.structured is False
     assert preset.builtin is False
     assert preset.active is True
-    assert preset.default_includes == []
     assert preset.description == ""
 
 
@@ -99,40 +98,12 @@ EXPECTED_BUILTIN_SLUGS = {
     "macro-fundamentals-brief",
 }
 
-EXPECTED_INCLUDES: dict[str, list[str]] = {
-    # 0005_seed_agent_presets
-    "earnings-prep": ["quotes", "ohlc", "news", "chain"],
-    "devils-advocate": ["quotes", "positions", "ohlc"],
-    "pre-trade-bias-check": ["quotes", "ohlc", "breadth"],
-    "triage-pass": ["quotes", "positions", "breadth", "news"],
-    # 0006_seed_more_agent_presets
-    "morning-gameplan": ["quotes", "ohlc", "news", "events", "breadth"],
-    "closing-wrap": ["quotes", "positions", "ohlc", "news"],
-    "risk-audit": ["quotes", "positions", "breadth"],
-    "income-setup": ["quotes", "ohlc", "chain"],
-    "macro-read": ["breadth", "events", "news"],
-    "catalyst-scan": ["news", "events", "quotes"],
-    "breakout-scan": ["quotes", "ohlc", "breadth"],
-    "trade-postmortem": ["quotes", "ohlc", "news"],
-    # 0008_seed_macro_fundamentals_preset
-    "macro-fundamentals-brief": ["quotes", "macro", "treasury", "fundamentals", "filings", "news"],
-}
-
 
 @pytest.mark.django_db
 def test_seed_migration_creates_builtins():
     builtins = AgentPreset.objects.filter(builtin=True)
     slugs = set(builtins.values_list("slug", flat=True))
     assert slugs == EXPECTED_BUILTIN_SLUGS
-
-
-@pytest.mark.django_db
-def test_seed_migration_includes_correct():
-    for slug, expected_includes in EXPECTED_INCLUDES.items():
-        preset = AgentPreset.objects.get(slug=slug)
-        assert preset.default_includes == expected_includes, (
-            f"{slug}: expected {expected_includes}, got {preset.default_includes}"
-        )
 
 
 @pytest.mark.django_db
@@ -161,7 +132,6 @@ def test_create_custom_preset(api):
     payload = {
         "name": "Custom Preset",
         "objective_template": "Do something custom.",
-        "default_includes": ["quotes", "ohlc"],
         "structured": True,
     }
     resp = api.post("/api/presets/", payload, format="json")
@@ -170,7 +140,6 @@ def test_create_custom_preset(api):
     assert body["name"] == "Custom Preset"
     assert body["slug"] == "custom-preset"
     assert body["structured"] is True
-    assert body["default_includes"] == ["quotes", "ohlc"]
     # Client must NOT be able to forge builtin=True
     assert body["builtin"] is False
 
@@ -193,17 +162,15 @@ def test_patch_preset(api):
     preset = AgentPreset.objects.create(
         name="Editable",
         objective_template="Original objective.",
-        default_includes=["quotes"],
     )
     resp = api.patch(
         f"/api/presets/{preset.id}/",
-        {"objective_template": "Updated objective.", "default_includes": ["quotes", "news"]},
+        {"objective_template": "Updated objective."},
         format="json",
     )
     assert resp.status_code == 200
     preset.refresh_from_db()
     assert preset.objective_template == "Updated objective."
-    assert preset.default_includes == ["quotes", "news"]
 
 
 @pytest.mark.django_db
@@ -226,7 +193,6 @@ def test_retrieve_single_preset(api):
     assert body["slug"] == "earnings-prep"
     assert body["builtin"] is True
     assert "objective_template" in body
-    assert "default_includes" in body
 
 
 @pytest.mark.django_db

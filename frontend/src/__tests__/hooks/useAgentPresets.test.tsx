@@ -14,7 +14,6 @@ const presetFixture = {
   slug: "morning-scan",
   description: "Daily morning market scan",
   objective_template: "What are the key moves this morning?",
-  default_includes: ["quotes", "ohlc", "news"],
   structured: false,
   builtin: false,
   active: true,
@@ -61,7 +60,6 @@ describe("useCreatePreset", () => {
       await result.current.mutateAsync({
         name: "Morning Scan",
         objective_template: "What are the key moves?",
-        default_includes: ["quotes", "ohlc"],
       });
     });
     expect(calls.some((c) => c.url.endsWith("/api/presets/") && c.method === "POST")).toBe(true);
@@ -75,7 +73,6 @@ describe("useCreatePreset", () => {
       await result.current.mutateAsync({
         name: "Bad",
         objective_template: "",
-        default_includes: [],
       }).catch(() => {});
     });
     await waitFor(() => expect(result.current.isError).toBe(true));
