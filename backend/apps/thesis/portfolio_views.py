@@ -54,12 +54,10 @@ class PositionViewSet(viewsets.ModelViewSet):
         return qs
 
     def list(self, request: Request, *args, **kwargs) -> Response:  # type: ignore[override]
-        """Serialize positions with a single batched mark-to-market price lookup.
-
-        Resolving the latest OHLC close once for all tickers (instead of one query
-        per row in the serializer) keeps the query count constant in the number of
-        positions returned.
-        """
+        # Resolve the latest OHLC close once for all tickers (instead of one query per
+        # row in the serializer) so the query count stays constant in the number of
+        # positions returned. Kept as a comment, not a docstring, so it does not override
+        # the ViewSet's OpenAPI operation description (which would drift backend/schema.yml).
         positions = list(self.filter_queryset(self.get_queryset()))
         prices = latest_closes({p.ticker for p in positions}, timezone.now())
         serializer = self.get_serializer(
