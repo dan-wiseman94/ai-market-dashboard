@@ -65,3 +65,7 @@ storybook-static
 # CodeQL local security scans (see codeql-config.yml; DB built under /tmp)
 codeql-dbs/
 *.sarif
+
+# Visual-diff failure artifacts — written next to the baseline on mismatch by
+# e2e/helpers/visual.capture_or_compare; inspect locally, never commit.
+e2e/visual/__screenshots__/*.actual.png
