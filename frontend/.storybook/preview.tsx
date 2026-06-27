@@ -45,7 +45,7 @@ const preview: Preview = {
     options: {
       storySort: {
         method: "alphabetical",
-        order: ["Primitives", "Thread", "Market", "Snapshot", "Observer", "Content", "*"],
+        order: ["Primitives", "Layout", "Thread", "Market", "Snapshot", "Observer", "Content", "*"],
       },
     },
   },
