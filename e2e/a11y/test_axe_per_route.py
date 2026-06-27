@@ -31,6 +31,22 @@ ROUTES: list[tuple[str, str, str]] = [
     ("/settings/export", "threads", "export"),
     ("/briefing", "minimal", "briefing"),
     ("/events", "minimal", "events"),
+    # Previously-uncovered routes (M15 strategy surface + secondary pages).
+    ("/settings/system", "minimal", "settings_system"),
+    ("/settings/connections", "minimal", "settings_connections"),
+    ("/market-data", "market", "market_data"),
+    ("/snapshots", "snapshots", "snapshots_list"),
+    ("/scorecard", "thesis", "scorecard"),
+    ("/mirror", "thesis", "mirror"),
+    ("/regime", "minimal", "regime"),
+    ("/book", "minimal", "book"),
+    ("/themes", "minimal", "themes"),
+    ("/warroom", "minimal", "warroom"),
+    ("/desk", "minimal", "desk"),
+    ("/portfolio", "thesis", "portfolio"),
+    ("/theses/new", "minimal", "new_thesis"),
+    ("/recall", "minimal", "recall"),
+    ("/errors", "minimal", "errors"),
 ]
 
 
@@ -41,22 +57,22 @@ def _resolve_path(path: str) -> str:
     if path == "/threads/<thread>":
         from apps.threads.models import Thread
 
-        t = Thread.objects.first()
+        t = Thread.objects.order_by("id").first()
         return f"/threads/{t.id}" if t else "/threads"
     if path == "/watchlists/<wl>":
         from apps.profiles.models import Watchlist
 
-        w = Watchlist.objects.first()
+        w = Watchlist.objects.order_by("id").first()
         return f"/watchlists/{w.id}" if w else "/watchlists"
     if path == "/threads/observer/<profile>":
         from apps.profiles.models import TradingProfile
 
-        p = TradingProfile.objects.first()
+        p = TradingProfile.objects.order_by("id").first()
         return f"/threads/observer/{p.id}" if p else "/threads"
     if path == "/theses/<thesis>":
         from apps.thesis.models import Thesis
 
-        th = Thesis.objects.first()
+        th = Thesis.objects.order_by("id").first()
         return f"/theses/{th.id}" if th else "/theses"
     return path
 
