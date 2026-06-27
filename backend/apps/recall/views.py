@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from django.db.models import Count
 from rest_framework.decorators import api_view
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -54,8 +55,8 @@ def recall_related(request: Request) -> Response:
 
 @api_view(["GET"])
 def recall_status(request: Request) -> Response:
-    counts: dict[str, int] = {}
-    for kind, _ in RecallDocument.KIND_CHOICES:
-        counts[kind] = RecallDocument.objects.filter(kind=kind).count()
-    counts["total"] = RecallDocument.objects.count()
+    # One GROUP BY instead of a COUNT round-trip per kind plus a total.
+    by_kind = dict(RecallDocument.objects.values_list("kind").annotate(n=Count("id")))
+    counts: dict[str, int] = {kind: by_kind.get(kind, 0) for kind, _ in RecallDocument.KIND_CHOICES}
+    counts["total"] = sum(by_kind.values())
     return Response({"counts": counts, "mode": S.mode()})
