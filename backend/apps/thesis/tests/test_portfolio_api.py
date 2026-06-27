@@ -127,6 +127,36 @@ def test_list_positions(api, open_position):
 
 
 @pytest.mark.django_db
+def test_list_positions_query_count_is_constant(api, profile, django_assert_max_num_queries):
+    """The list endpoint must not issue one OHLCBar query per row (N+1). Query count
+    stays bounded regardless of how many positions/tickers are returned."""
+    for i in range(6):
+        ticker = f"TKR{i}"
+        Position.objects.create(
+            ticker=ticker, direction="long", quantity="10", avg_cost="100", profile=profile
+        )
+        _seed_bar(ticker, 100.0 + i)
+    with django_assert_max_num_queries(5):
+        resp = api.get("/api/portfolio/positions/")
+    assert resp.status_code == 200
+    assert len(resp.json()) >= 6
+
+
+@pytest.mark.django_db
+def test_list_unrealized_uses_batched_price(api, profile):
+    """The batched price path yields the same mark-to-market as the per-row path."""
+    Position.objects.create(
+        ticker="NVDA", direction="long", quantity="100", avg_cost="450", profile=profile
+    )
+    _seed_bar("NVDA", 480.0)
+    resp = api.get("/api/portfolio/positions/")
+    assert resp.status_code == 200
+    row = next(p for p in resp.json() if p["ticker"] == "NVDA")
+    assert row["unrealized"]["last"] == pytest.approx(480.0)
+    assert row["unrealized"]["unrealized_pnl"] == pytest.approx(3_000.0)
+
+
+@pytest.mark.django_db
 def test_filter_by_status_open(api, db, profile):
     """?status=open returns only open positions."""
     pos_open = Position.objects.create(

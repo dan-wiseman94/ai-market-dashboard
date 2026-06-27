@@ -20,9 +20,20 @@ from django.conf import settings
 _TTL_SECONDS = 3600
 _MAX_EVENTS = 256
 
+_client: redis.Redis | None = None
+
 
 def _redis() -> redis.Redis:
-    return redis.Redis.from_url(settings.REDIS_URL)
+    """One shared client (and its bounded ConnectionPool) reused across calls.
+
+    ``record`` runs once per streamed token — the hottest path in the app — so a
+    fresh ``Redis.from_url`` (which builds a new ConnectionPool) per call would churn
+    pools/sockets. redis-py clients are safe to share across threads.
+    """
+    global _client
+    if _client is None:
+        _client = redis.Redis.from_url(settings.REDIS_URL)
+    return _client
 
 
 def _seq_key(thread_id: int) -> str:
