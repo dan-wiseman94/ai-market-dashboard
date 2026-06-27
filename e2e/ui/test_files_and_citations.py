@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 from playwright.sync_api import expect
 
+from e2e.helpers.waits import wait_for_app_ready
 from e2e.pages.files import FilesPage
 
 
@@ -65,7 +66,7 @@ def test_citation_renders_news_link(page, frontend_base_url, threads) -> None:
 
     t = Thread.objects.get(title="E2E tool-use thread")
     page.goto(f"{frontend_base_url}/threads/{t.id}")
-    page.wait_for_load_state("networkidle")
+    wait_for_app_ready(page)
     expect(page.get_by_text("Something went wrong")).to_have_count(0)
     # The thread renders its transcript (at least one message bubble).
     expect(page.locator("[data-testid^='message-']").first).to_be_visible(timeout=10_000)

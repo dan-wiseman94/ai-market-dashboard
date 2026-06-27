@@ -11,6 +11,8 @@ from __future__ import annotations
 import pytest
 from playwright.sync_api import expect
 
+from e2e.helpers.waits import wait_for_app_ready
+
 _FOCUS_RING_JS = """
 () => {
     const el = document.activeElement;
@@ -34,7 +36,7 @@ _FOCUS_RING_JS = """
 @pytest.mark.a11y
 def test_keyboard_only_journey(page, frontend_base_url, minimal) -> None:
     page.goto(frontend_base_url)
-    page.wait_for_load_state("networkidle")
+    wait_for_app_ready(page)
 
     # Tab forward up to 25x looking for the Snapshot nav link. Reaching it is a
     # requirement, so a miss is a hard failure (not a skip that hides regressions).
@@ -47,7 +49,9 @@ def test_keyboard_only_journey(page, frontend_base_url, minimal) -> None:
         if focused_text and "snapshot" in focused_text.lower():
             found = True
             break
-    assert found, "Snapshot nav link not reachable via Tab within 25 steps (keyboard-nav regression)"
+    assert found, (
+        "Snapshot nav link not reachable via Tab within 25 steps (keyboard-nav regression)"
+    )
 
     # A keyboard user must SEE where focus is: the focused link needs a visible
     # focus indicator (outline with width, or a box-shadow ring). Asserted on the

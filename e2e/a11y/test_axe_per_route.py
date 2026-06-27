@@ -9,6 +9,7 @@ import pytest
 
 from e2e.a11y.a11y_ignores import IGNORED_RULES
 from e2e.helpers import axe_runner
+from e2e.helpers.waits import wait_for_app_ready
 
 ROUTES: list[tuple[str, str, str]] = [
     ("/", "minimal", "dashboard"),
@@ -67,7 +68,7 @@ def test_axe_per_route(page, frontend_base_url, path, rung, name, request) -> No
     request.getfixturevalue(rung)
     resolved = _resolve_path(path)
     page.goto(f"{frontend_base_url}{resolved}")
-    page.wait_for_load_state("networkidle")
+    wait_for_app_ready(page)
     violations = axe_runner.scan(page, ignore_rule_ids=IGNORED_RULES)
     ARTIFACTS.mkdir(parents=True, exist_ok=True)
     if violations:

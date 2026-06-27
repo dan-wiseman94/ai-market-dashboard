@@ -19,12 +19,13 @@ charts, notification counts) so they never enter the comparison at all.
 
 from __future__ import annotations
 
-import contextlib
 import io
 from pathlib import Path
 
 from PIL import Image, ImageChops
 from playwright.sync_api import Locator, Page
+
+from e2e.helpers.waits import wait_for_app_ready
 
 
 def disable_animations(page: Page) -> None:
@@ -50,11 +51,9 @@ def suppress_pointer_effects(page: Page) -> None:
     )
 
 
-def wait_for_stable(page: Page, timeout_ms: int = 5_000) -> None:
-    page.wait_for_load_state("networkidle")
+def wait_for_stable(page: Page, timeout_ms: int = 10_000) -> None:
+    wait_for_app_ready(page, timeout_ms=timeout_ms)
     page.evaluate("() => document.fonts.ready")
-    with contextlib.suppress(Exception):
-        page.wait_for_selector("[data-testid^='skeleton-']", state="detached", timeout=timeout_ms)
     disable_animations(page)
     suppress_pointer_effects(page)
 
@@ -82,7 +81,9 @@ _BASELINE_ROOT = Path("e2e/visual/__screenshots__")
 _PER_CHANNEL_THRESHOLD = 16
 
 
-def _fraction_differing(baseline: Image.Image, actual: Image.Image, channel_threshold: int) -> float:
+def _fraction_differing(
+    baseline: Image.Image, actual: Image.Image, channel_threshold: int
+) -> float:
     """Fraction of pixels whose max per-channel |delta| exceeds ``channel_threshold``.
 
     Both images must already be the same size and mode ``RGB``.
