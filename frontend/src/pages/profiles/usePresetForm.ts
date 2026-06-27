@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { AgentPreset } from "@/api/presets";
 import { useCreatePreset, useUpdatePreset } from "@/hooks/useAgentPresets";
-import { BLANK_PRESET_DRAFT, type PresetDraft, toggleInArray } from "./types";
+import { BLANK_PRESET_DRAFT, type PresetDraft } from "./types";
 
 export function usePresetForm() {
   const createPreset = useCreatePreset();
@@ -22,7 +22,6 @@ export function usePresetForm() {
       name: p.name,
       description: p.description,
       objective_template: p.objective_template,
-      default_includes: p.default_includes,
       structured: p.structured,
       active: p.active,
     });
@@ -42,8 +41,5 @@ export function usePresetForm() {
     }
   };
 
-  const toggleSection = (sec: string) =>
-    setDraft((d) => ({ ...d, default_includes: toggleInArray(d.default_includes, sec) }));
-
-  return { editing, draft, setDraft, showForm, setShowForm, submit, toggleSection, startEdit, close };
+  return { editing, draft, setDraft, showForm, setShowForm, submit, startEdit, close };
 }

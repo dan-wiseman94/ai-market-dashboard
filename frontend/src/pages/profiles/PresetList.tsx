@@ -29,7 +29,6 @@ export function PresetList({
                   </span>
                 )}
               </div>
-              <div className="text-xs text-slate-400">{p.default_includes.join(", ")}</div>
               <div className="text-xs text-slate-500 mt-1 line-clamp-2">{p.objective_template}</div>
             </div>
             <div className="flex gap-2 text-sm shrink-0">

@@ -417,7 +417,6 @@ const PRESET_A: AgentPreset = {
   slug: "morning-scan",
   description: "Daily morning check",
   objective_template: "What are the key market moves this morning?",
-  default_includes: ["quotes", "news"],
   structured: false,
   builtin: false,
   active: true,
@@ -450,25 +449,31 @@ describe("SnapshotComposerPage – preset dropdown", () => {
     expect(screen.getByRole("option", { name: "Morning Scan" })).toBeInTheDocument();
   });
 
-  it("selecting a preset fills objective and sections", async () => {
+  it("selecting a preset fills objective only, leaving section boxes unchanged", async () => {
     const user = userEvent.setup();
     mockUseAgentPresets.mockReturnValue({ data: [PRESET_A] } as never);
     renderComposer();
 
+    // Capture which section boxes are checked before applying the preset.
+    const positionsBefore = (screen.getByRole("checkbox", { name: /positions/i }) as HTMLInputElement).checked;
+
+    // The auto-selected profile (Day Trader, default_includes: ["quotes","ohlc"]) has
+    // already checked ohlc on render — verify a CURRENTLY-CHECKED box exists before
+    // the preset is applied so the subsequent assertion is a genuine guard.
+    expect((screen.getByRole("checkbox", { name: /ohlc/i }) as HTMLInputElement).checked).toBe(true);
+
     const presetSelect = screen.getByLabelText("Apply a preset");
     await user.selectOptions(presetSelect, String(PRESET_A.id));
 
-    // Objective textarea should now have the template text
+    // Objective is filled from the preset's template.
     const objectiveTextarea = screen.getByPlaceholderText(/what do you want/i);
     expect(objectiveTextarea).toHaveValue(PRESET_A.objective_template);
 
-    // The preset's default_includes should be reflected in section checkboxes:
-    // "quotes" and "news" should be checked (preset's includes)
-    // "positions" should NOT be checked (was in default but not in preset)
-    await waitFor(() => {
-      expect(screen.getByRole("checkbox", { name: /quotes/i })).toBeChecked();
-    });
-    expect(screen.getByRole("checkbox", { name: /news/i })).toBeChecked();
-    expect(screen.getByRole("checkbox", { name: /positions/i })).not.toBeChecked();
+    // ohlc was checked before the preset; it must remain checked after (the headline
+    // behavior: preset apply must NOT touch section boxes).
+    expect((screen.getByRole("checkbox", { name: /ohlc/i }) as HTMLInputElement).checked).toBe(true);
+
+    // Section boxes are untouched by the preset.
+    expect((screen.getByRole("checkbox", { name: /positions/i }) as HTMLInputElement).checked).toBe(positionsBefore);
   });
 });

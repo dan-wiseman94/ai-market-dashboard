@@ -1,5 +1,4 @@
 export const SECTION_OPTIONS = ["quotes", "ohlc", "positions", "breadth", "notes"] as const;
-export const PRESET_SECTION_OPTIONS = ["quotes", "positions", "breadth", "ohlc", "news", "chain", "image"] as const;
 
 export type Draft = {
   name: string;
@@ -18,7 +17,6 @@ export type PresetDraft = {
   name: string;
   description: string;
   objective_template: string;
-  default_includes: string[];
   structured: boolean;
   active: boolean;
 };
@@ -27,7 +25,6 @@ export const BLANK_PRESET_DRAFT: PresetDraft = {
   name: "",
   description: "",
   objective_template: "",
-  default_includes: ["quotes", "positions", "breadth"],
   structured: false,
   active: true,
 };

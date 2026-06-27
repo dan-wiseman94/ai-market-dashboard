@@ -57,7 +57,6 @@ class AgentPresetSerializer(serializers.ModelSerializer):
             "slug",
             "description",
             "objective_template",
-            "default_includes",
             "structured",
             "builtin",
             "active",
