@@ -7,10 +7,11 @@ Assertions live in tests — POMs never call ``expect(...)`` themselves.
 
 from __future__ import annotations
 
-import contextlib
 import platform
 
 from playwright.sync_api import Locator, Page, expect
+
+from e2e.helpers.waits import wait_for_app_ready
 
 
 class BasePage:
@@ -23,11 +24,7 @@ class BasePage:
         self.wait_ready()
 
     def wait_ready(self) -> None:
-        self.page.wait_for_load_state("networkidle")
-        with contextlib.suppress(Exception):
-            self.page.wait_for_selector(
-                "[data-testid^='skeleton-']", state="detached", timeout=2_000
-            )
+        wait_for_app_ready(self.page)
 
     # --- shared locator properties ---
     @property

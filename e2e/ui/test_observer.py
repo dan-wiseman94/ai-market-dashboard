@@ -5,6 +5,7 @@ from __future__ import annotations
 import pytest
 from playwright.sync_api import expect
 
+from e2e.helpers.waits import wait_for_app_ready
 from e2e.pages.schedules import SchedulesPage
 
 
@@ -56,7 +57,7 @@ def test_observer_structured_mode_produces_typed_card(
 
     pid = TradingProfile.objects.get(name="E2E Default").id
     page.goto(f"{frontend_base_url}/threads/observer/{pid}")
-    page.wait_for_load_state("networkidle")
+    wait_for_app_ready(page)
     # The observer thread page renders without crashing and shows the thread surface.
     expect(page.get_by_text("Something went wrong")).to_have_count(0)
     expect(page.get_by_text("Loading")).to_have_count(0, timeout=10_000)
@@ -71,7 +72,7 @@ def test_observer_diff_mode_sends_only_delta(page, frontend_base_url, observer) 
 
     pid = TradingProfile.objects.get(name="E2E Default").id
     page.goto(f"{frontend_base_url}/threads/observer/{pid}")
-    page.wait_for_load_state("networkidle")
+    wait_for_app_ready(page)
     expect(page.get_by_text("Something went wrong")).to_have_count(0)
     # The seeded observer thread renders its title heading.
     expect(page.get_by_role("heading", level=1)).to_be_visible(timeout=10_000)
@@ -91,7 +92,7 @@ def test_observer_cost_cap_skip_emits_system_message(page, frontend_base_url, ob
 
     profile = TradingProfile.objects.get(name="E2E Default")
     page.goto(f"{frontend_base_url}/threads/observer/{profile.id}")
-    page.wait_for_load_state("networkidle")
+    wait_for_app_ready(page)
     expect(page.get_by_role("heading", name=f"Observer: {profile.name}")).to_be_visible(
         timeout=10_000
     )
