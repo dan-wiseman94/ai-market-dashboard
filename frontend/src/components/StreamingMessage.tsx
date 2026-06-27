@@ -189,7 +189,11 @@ function Message({ role, text, status, error, cost, model, provider, bare = fals
   const innerClass = bare ? "px-0 py-0" : "ledger-surface px-6 py-5";
 
   return (
-    <article className="relative group ledger-reveal">
+    <article
+      className="relative group ledger-reveal"
+      data-testid="assistant-message"
+      data-status={status}
+    >
       <div className={innerClass}>
         <AssistantHeader label={label} model={model} isStreaming={isStreaming} cost={cost} />
         <AssistantBody

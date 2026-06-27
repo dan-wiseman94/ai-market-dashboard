@@ -42,4 +42,14 @@ class ThreadDetailPage(BasePage):
         self.page.set_input_files("input[type=file]", str(path))
 
     def wait_for_done(self, timeout: int = 15_000) -> None:
-        expect(self.page.get_by_text("Mocked response")).to_be_visible(timeout=timeout)
+        """Wait for the latest assistant reply to finish streaming.
+
+        Anchors on the message status (``data-status``) rather than the mock's
+        literal output text — keying on "Mocked response" coupled the whole
+        send/stream suite to the mock provider's canned string. The send-flow
+        tests start from a fresh thread, so the last assistant bubble reaching
+        ``done`` is the completed reply.
+        """
+        last = self.page.get_by_test_id("assistant-message").last
+        last.wait_for(state="visible", timeout=timeout)
+        expect(last).to_have_attribute("data-status", "done", timeout=timeout)
