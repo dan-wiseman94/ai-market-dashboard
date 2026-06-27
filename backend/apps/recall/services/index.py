@@ -64,32 +64,32 @@ def index_one(kind: str, object_id: int) -> None:
 
 
 def pending(*, cap: int = 200):
-    """Yield (kind, object_id) for indexable sources not current in RecallDocument."""
+    """Return up to ``cap`` (kind, object_id) for indexable sources not yet indexed.
+
+    Already-indexed rows are excluded **at the DB** (``NOT IN`` the per-kind
+    ``RecallDocument.object_id`` set) and each source is taken newest-first with a
+    ``LIMIT``, so the work scales with the (usually small) un-indexed backlog rather
+    than total history — no full-table ``seen`` set materialized on every tick.
+    """
     from apps.snapshots.models import Snapshot
     from apps.thesis.models import DecisionJournalEntry, PostMortem, Thesis
     from apps.threads.models import Message
 
-    seen = {(k, o) for k, o in RecallDocument.objects.values_list("kind", "object_id")}
-    out, n = [], 0
+    out: list[tuple[str, int]] = []
 
-    def add(kind, ids):
-        nonlocal n
-        for i in ids:
-            if (kind, i) not in seen and n < cap:
-                out.append((kind, i))
-                n += 1
+    def add(kind, qs):
+        remaining = cap - len(out)
+        if remaining <= 0:
+            return
+        indexed = RecallDocument.objects.filter(kind=kind).values_list("object_id", flat=True)
+        fresh = qs.exclude(id__in=indexed).order_by("-id").values_list("id", flat=True)[:remaining]
+        out.extend((kind, i) for i in fresh)
 
-    add(
-        "message",
-        Message.objects.filter(role="assistant", status="done").values_list("id", flat=True),
-    )
-    add("snapshot", Snapshot.objects.filter(status="ready").values_list("id", flat=True))
-    add("thesis", Thesis.objects.values_list("id", flat=True))
-    add("journal", DecisionJournalEntry.objects.values_list("id", flat=True))
-    add(
-        "postmortem",
-        PostMortem.objects.filter(status="done").values_list("id", flat=True),
-    )
+    add("message", Message.objects.filter(role="assistant", status="done"))
+    add("snapshot", Snapshot.objects.filter(status="ready"))
+    add("thesis", Thesis.objects.all())
+    add("journal", DecisionJournalEntry.objects.all())
+    add("postmortem", PostMortem.objects.filter(status="done"))
     return out
 
 
