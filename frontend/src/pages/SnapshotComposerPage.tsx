@@ -351,7 +351,7 @@ export default function SnapshotComposerPage() {
           <SnapshotSectionPicker value={includes} onChange={setIncludes} />
         </div>
 
-        <PresetField presets={presets} onSetIncludes={setIncludes} onSetObjective={setObjective} />
+        <PresetField presets={presets} onSetObjective={setObjective} />
 
         <div>
           <label className="block text-xs text-ink-500 mb-1">Thread title (optional)</label>
