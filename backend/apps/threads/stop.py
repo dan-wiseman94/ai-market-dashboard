@@ -15,9 +15,17 @@ from django.conf import settings
 
 _TTL_SECONDS = 600
 
+_client: redis.Redis | None = None
+
 
 def _redis() -> redis.Redis:
-    return redis.Redis.from_url(settings.REDIS_URL)
+    """One shared client reused across calls — ``is_stop_requested`` polls ~4x/sec
+    per in-flight stream, so a fresh client+ConnectionPool per call would churn
+    connections. redis-py clients are safe to share across threads."""
+    global _client
+    if _client is None:
+        _client = redis.Redis.from_url(settings.REDIS_URL)
+    return _client
 
 
 def _key(message_id: int) -> str:
