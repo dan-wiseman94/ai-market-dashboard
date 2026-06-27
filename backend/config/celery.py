@@ -51,6 +51,10 @@ app.conf.update(
     # test_*acks*.py tests next to each task.
     task_acks_late=True,
     task_reject_on_worker_lost=True,
+    # With acks_late + long tasks (streaming AI runs, war-room, pg_dump), reserve only
+    # the task actively running so a wedged head-of-line task can't hold prefetched
+    # siblings and delay short maintenance ticks (Celery's guidance for long tasks).
+    worker_prefetch_multiplier=1,
     # Recycle workers to bound chromium/fastembed memory creep.
     worker_max_tasks_per_child=200,
     # Don't let the Redis result backend accumulate forever.

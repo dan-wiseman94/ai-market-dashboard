@@ -36,6 +36,11 @@ class PositionSerializer(serializers.ModelSerializer):
     unrealized = serializers.SerializerMethodField()
 
     def get_unrealized(self, obj: Position) -> dict:  # type: ignore[type-arg]
+        # On the list path the view injects a batched {ticker: close} map so each row
+        # reads its mark from memory instead of issuing its own OHLCBar query (N+1).
+        prices = self.context.get("position_prices")
+        if prices is not None and obj.ticker in prices:
+            return unrealized_pnl(obj, last=prices[obj.ticker])
         return unrealized_pnl(obj)
 
     class Meta:

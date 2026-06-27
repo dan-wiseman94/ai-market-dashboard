@@ -7,6 +7,7 @@ path data.
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from datetime import date, datetime, timedelta
 
 from django.conf import settings
@@ -126,6 +127,29 @@ def nearest_bar_close(ticker: str, at: datetime) -> float | None:
     if bar is None:
         return None
     return float(bar.close)
+
+
+def latest_closes(tickers: Iterable[str], at: datetime) -> dict[str, float | None]:
+    """Latest bar close at-or-before ``at + 1h`` for each ticker, in ONE query.
+
+    Batched form of :func:`nearest_bar_close` (same ticker-only filter and +1h grace
+    window) so a list of positions can be marked-to-market without an OHLCBar query
+    per row. Returns ``{ticker: close | None}`` covering every input ticker, ``None``
+    where the ticker has no bar.
+    """
+    keys = {t for t in tickers if t}
+    result: dict[str, float | None] = dict.fromkeys(keys)
+    if not keys:
+        return result
+    rows = (
+        OHLCBar.objects.filter(ticker__in=keys, ts__lte=at + timedelta(hours=1))
+        .order_by("ticker", "-ts")
+        .distinct("ticker")  # Postgres DISTINCT ON: the most-recent bar per ticker
+        .values_list("ticker", "close")
+    )
+    for ticker, close in rows:
+        result[ticker] = float(close)
+    return result
 
 
 def forward_return_pct(ticker: str, start: datetime, end: datetime) -> float | None:

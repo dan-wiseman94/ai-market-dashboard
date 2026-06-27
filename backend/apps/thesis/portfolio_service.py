@@ -16,13 +16,16 @@ close (buy-to-cover) at the mark; cost_basis is what was received on the open.
 from __future__ import annotations
 
 from decimal import Decimal
+from typing import cast
 
 from django.utils import timezone
 
 from apps.market.returns import nearest_bar_close
 
+_UNSET = object()
 
-def unrealized_pnl(position) -> dict:  # type: ignore[type-arg]
+
+def unrealized_pnl(position, *, last: float | None | object = _UNSET) -> dict:  # type: ignore[type-arg]
     """Mark-to-market P&L for an OPEN position using the latest stored OHLC close.
 
     Returns a dict with keys:
@@ -33,13 +36,20 @@ def unrealized_pnl(position) -> dict:  # type: ignore[type-arg]
 
     All computed fields are None when no bar is available (honest coverage gap).
     Never raises.
-    """
-    try:
-        last = nearest_bar_close(position.ticker, timezone.now())
-    except Exception:
-        last = None
 
-    if last is None:
+    ``last`` may be passed in (a price already resolved by a batched
+    :func:`~apps.market.returns.latest_closes` lookup) to avoid a per-position
+    OHLCBar query when serializing a list; omit it for the single-object path.
+    """
+    if last is _UNSET:
+        try:
+            resolved = nearest_bar_close(position.ticker, timezone.now())
+        except Exception:
+            resolved = None
+    else:
+        resolved = cast("float | None", last)
+
+    if resolved is None:
         return {
             "last": None,
             "market_value": None,
@@ -52,12 +62,12 @@ def unrealized_pnl(position) -> dict:  # type: ignore[type-arg]
     sign = -1.0 if position.direction == "short" else 1.0
 
     cost_basis = avg_cost * quantity
-    market_value = last * quantity
-    upnl = (last - avg_cost) * quantity * sign
+    market_value = resolved * quantity
+    upnl = (resolved - avg_cost) * quantity * sign
     upct = (upnl / cost_basis * 100.0) if cost_basis != 0 else None
 
     return {
-        "last": last,
+        "last": resolved,
         "market_value": market_value,
         "unrealized_pnl": upnl,
         "unrealized_pct": upct,
