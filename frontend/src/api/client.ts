@@ -34,7 +34,12 @@ function request<T>(method: string, path: string, body?: unknown): Promise<T> {
 }
 
 export function apiGet<T>(path: string): Promise<T> {
-  return request<T>("GET", path);
+  // react-query rejects a query function that returns `undefined` ("Query data
+  // cannot be undefined"). A "latest"-style GET that 204s on no-data (e.g.
+  // /api/aieval/runs/latest/, /api/briefings/latest/) is handled as `undefined`
+  // by request(); coalesce to `null` so "no content" reads as a real value.
+  // apiDelete keeps its `void`/undefined contract — only GETs feed react-query.
+  return request<T>("GET", path).then((v) => (v === undefined ? (null as T) : v));
 }
 
 export function apiPost<T>(path: string, body?: unknown): Promise<T> {
