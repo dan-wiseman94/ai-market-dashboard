@@ -83,7 +83,7 @@ services:
     volumes:
       - ./backend:/app/backend
       - app_data:/data
-    command: ["uv", "run", "celery", "-A", "config", "worker", "-l", "INFO"]
+    command: ["uv", "run", "celery", "-A", "config", "worker", "-l", "INFO", "--concurrency=3"]
     develop:
       watch:
         - action: sync+restart
