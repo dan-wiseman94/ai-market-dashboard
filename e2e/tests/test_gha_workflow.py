@@ -61,5 +61,19 @@ def test_e2e_workflow_runs_ws_lane() -> None:
     assert any("pytest e2e/ws/" in c for c in _all_run_commands()), "missing the ws lane step"
 
 
+def test_e2e_workflow_ws_lane_is_a_gate() -> None:
+    """The ws lane must block on failure — it was promoted off continue-on-error
+    once the real run-now market-hours bug was fixed. Guards against silently
+    re-adding continue-on-error and turning the gate back into a no-op."""
+    for job in _wf()["jobs"].values():
+        for step in job.get("steps", []):
+            if "pytest e2e/ws/" in (step.get("run") or ""):
+                assert step.get("continue-on-error") is not True, (
+                    "ws lane regressed to continue-on-error; it is a gate now"
+                )
+                return
+    raise AssertionError("ws lane step not found")
+
+
 def test_e2e_workflow_tears_down() -> None:
     assert any("down" in c for c in _all_run_commands()), "missing the compose teardown step"
