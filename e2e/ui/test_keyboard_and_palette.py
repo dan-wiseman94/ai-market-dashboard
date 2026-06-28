@@ -67,3 +67,20 @@ def test_cmd_k_palette_opens(page, frontend_base_url, minimal) -> None:
     # CommandPalette is mounted in AppLayout; Cmd/Ctrl-K opens it.
     # open_command_palette() asserts the palette becomes visible.
     d.open_command_palette()
+
+
+@pytest.mark.integration
+@pytest.mark.ui
+def test_command_palette_executes_navigation(page, frontend_base_url, minimal) -> None:
+    """Open the palette, filter to a command, run it, and assert it navigates.
+
+    Previously only the open was asserted; this drives an actual command
+    (the default commands are nav actions, e.g. "Go to Costs" -> /costs).
+    """
+    d = DashboardPage(page, frontend_base_url)
+    d.go()
+    d.open_command_palette()
+    palette = page.get_by_test_id("command-palette")
+    palette.get_by_placeholder("Search commands", exact=False).fill("Costs")
+    palette.get_by_text("Go to Costs").click()
+    page.wait_for_url(lambda u: u.rstrip("/").endswith("/costs"), timeout=5_000)
