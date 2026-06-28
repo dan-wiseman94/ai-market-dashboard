@@ -37,7 +37,13 @@ const preview: Preview = {
       matchers: { color: /(background|color)$/i, date: /Date$/i },
       expanded: true,
     },
-    // 'todo' surfaces a11y violations in the test UI without failing the run.
+    // a11y violations are surfaced but do NOT yet fail the lane ('todo' not
+    // 'error'). Flipping to 'error' currently fails 17/35 story files (40
+    // tests) — predominantly axe `color-contrast` on the intentional muted
+    // secondary text (text-neutral-400 / text-ink-500). That is real a11y debt,
+    // not a false positive, so gating it is blocked on a maintainer decision:
+    // raise the muted-text contrast (a design change) OR deliberately exclude
+    // the color-contrast rule here. Until then, keep surfacing, not gating.
     a11y: { test: "todo" },
     // The Theme toolbar owns the canvas background, so disable the separate switcher.
     backgrounds: { disable: true },
@@ -45,7 +51,7 @@ const preview: Preview = {
     options: {
       storySort: {
         method: "alphabetical",
-        order: ["Primitives", "Thread", "Market", "Snapshot", "Observer", "Content", "*"],
+        order: ["Primitives", "Layout", "Thread", "Market", "Snapshot", "Observer", "Content", "*"],
       },
     },
   },

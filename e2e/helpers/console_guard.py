@@ -28,14 +28,16 @@ ALLOWED_CONSOLE_PATTERNS: list[re.Pattern[str]] = [
     re.compile(r"WebSocket is closed before the connection is established"),
     re.compile(r"Failed to load resource.*websocket", re.IGNORECASE),
     re.compile(r"Failed to load resource:.*ERR_CONNECTION_REFUSED"),
-    # Same-origin proxy 4xx during page mount (esp. /api/files/ before files
-    # exist) appears as a console.error from the fetch wrapper. The UI handles
-    # the 404 gracefully via EmptyState.
-    re.compile(r"\b404\b.*Not Found"),
-    # React Router ErrorBoundary fires when a test navigates to a route that
-    # isn't (yet) registered in the SPA. The test body should still observe
-    # the body and skip its specific assertion — the console error is benign.
-    re.compile(r"Error handled by React Router default ErrorBoundary"),
+    # Same-origin proxy 404s during page mount appear as a console.error from the
+    # fetch wrapper. Scope the allowance to the specific endpoints that legitimately
+    # 404 before their first row exists (the UI degrades to EmptyState) — an
+    # UNEXPECTED 404 (e.g. a broken route hitting a missing endpoint) must still
+    # fail the test, so do NOT allow a blanket "404 Not Found".
+    re.compile(r"404 \(Not Found\).*/api/files/"),
+    re.compile(r"404 \(Not Found\).*/api/(recall|predictions)/"),
+    # NOTE: the React Router default-ErrorBoundary console error is intentionally
+    # NOT allow-listed — it is the signature of navigating to a broken/unregistered
+    # route, and must fail the test (was previously masked).
     # Cross-origin font preflights fail when ``scenario.use(...)`` sets the
     # X-E2E-Scenario header on every request — Google Fonts' CORS policy
     # doesn't whitelist it. The page falls back to system fonts cleanly.

@@ -108,6 +108,18 @@ jobs:
         # ~11 min serially, comfortably inside the job timeout. Revisit raising
         # parallelism once this is reliably green in CI.
         run: docker compose -f compose.yaml -f compose.e2e.yaml exec -T --workdir /app worker uv run pytest e2e/ui/ -n 1 -m integration -v --tracing=retain-on-failure
+      - name: Run e2e/a11y lane
+        # axe-core scans (critical/serious wcag2a/2aa) over every route, in `worker`
+        # (chromium). Now green across all routes and GATING on PRs. -n 1: the
+        # shared-DB seed contention races under parallelism (the visual lane hits
+        # psycopg "another command is already in progress" under -n 2).
+        run: docker compose -f compose.yaml -f compose.e2e.yaml exec -T --workdir /app worker uv run pytest e2e/a11y/ -n 1 -m integration -v
+      - name: Run e2e/ws lane (advisory)
+        # Streaming delta events can time out waiting on Channels delivery in CI
+        # (documented pre-existing issue), so surface ws regressions without
+        # blocking the PR. Drop continue-on-error once Channels delivery is stable.
+        continue-on-error: true
+        run: docker compose -f compose.yaml -f compose.e2e.yaml exec -T --workdir /app web uv run pytest e2e/ws/ -n 1 -m integration -v
       - if: failure()
         uses: actions/upload-artifact@v7
         with:

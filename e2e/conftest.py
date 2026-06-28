@@ -138,8 +138,11 @@ def frontend_base_url() -> str:
 
 
 # ---------------------------------------------------------------------------
-# Seed ladder — 7 rungs, each depends on the previous. Tests declare only the
-# highest rung they need; everything below runs automatically.
+# Seed ladder — 8 seed functions. The linear chain is minimal → market →
+# snapshots → threads → observer → triggers → analytics (each depends on the
+# previous); `thesis` is a SIDE-BRANCH off `threads` (so `analytics` does NOT
+# pull in `thesis`). Tests declare only the highest rung they need; everything
+# below it on its path runs automatically.
 #
 # The seed functions are idempotent *serially*, but their get_or_create() calls
 # key on non-unique titles, so two xdist workers seeding the shared Postgres at

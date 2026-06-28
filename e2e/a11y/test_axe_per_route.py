@@ -9,6 +9,7 @@ import pytest
 
 from e2e.a11y.a11y_ignores import IGNORED_RULES
 from e2e.helpers import axe_runner
+from e2e.helpers.waits import wait_for_app_ready
 
 ROUTES: list[tuple[str, str, str]] = [
     ("/", "minimal", "dashboard"),
@@ -30,6 +31,22 @@ ROUTES: list[tuple[str, str, str]] = [
     ("/settings/export", "threads", "export"),
     ("/briefing", "minimal", "briefing"),
     ("/events", "minimal", "events"),
+    # Previously-uncovered routes (M15 strategy surface + secondary pages).
+    ("/settings/system", "minimal", "settings_system"),
+    ("/settings/connections", "minimal", "settings_connections"),
+    ("/market-data", "market", "market_data"),
+    ("/snapshots", "snapshots", "snapshots_list"),
+    ("/scorecard", "thesis", "scorecard"),
+    ("/mirror", "thesis", "mirror"),
+    ("/regime", "minimal", "regime"),
+    ("/book", "minimal", "book"),
+    ("/themes", "minimal", "themes"),
+    ("/warroom", "minimal", "warroom"),
+    ("/desk", "minimal", "desk"),
+    ("/portfolio", "thesis", "portfolio"),
+    ("/theses/new", "minimal", "new_thesis"),
+    ("/recall", "minimal", "recall"),
+    ("/errors", "minimal", "errors"),
 ]
 
 
@@ -40,22 +57,22 @@ def _resolve_path(path: str) -> str:
     if path == "/threads/<thread>":
         from apps.threads.models import Thread
 
-        t = Thread.objects.first()
+        t = Thread.objects.order_by("id").first()
         return f"/threads/{t.id}" if t else "/threads"
     if path == "/watchlists/<wl>":
         from apps.profiles.models import Watchlist
 
-        w = Watchlist.objects.first()
+        w = Watchlist.objects.order_by("id").first()
         return f"/watchlists/{w.id}" if w else "/watchlists"
     if path == "/threads/observer/<profile>":
         from apps.profiles.models import TradingProfile
 
-        p = TradingProfile.objects.first()
+        p = TradingProfile.objects.order_by("id").first()
         return f"/threads/observer/{p.id}" if p else "/threads"
     if path == "/theses/<thesis>":
         from apps.thesis.models import Thesis
 
-        th = Thesis.objects.first()
+        th = Thesis.objects.order_by("id").first()
         return f"/theses/{th.id}" if th else "/theses"
     return path
 
@@ -67,7 +84,7 @@ def test_axe_per_route(page, frontend_base_url, path, rung, name, request) -> No
     request.getfixturevalue(rung)
     resolved = _resolve_path(path)
     page.goto(f"{frontend_base_url}{resolved}")
-    page.wait_for_load_state("networkidle")
+    wait_for_app_ready(page)
     violations = axe_runner.scan(page, ignore_rule_ids=IGNORED_RULES)
     ARTIFACTS.mkdir(parents=True, exist_ok=True)
     if violations:

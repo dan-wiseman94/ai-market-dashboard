@@ -161,7 +161,7 @@ export default function AppLayout() {
         <TopNav />
         <div className="flex flex-1 min-h-0">
           <SideNav />
-          <main className="flex-1 min-w-0 relative">
+          <main data-testid="app-shell" className="flex-1 min-w-0 relative">
             <Breadcrumbs />
             <ErrorBoundary resetKey={location.pathname}>
               <Outlet />

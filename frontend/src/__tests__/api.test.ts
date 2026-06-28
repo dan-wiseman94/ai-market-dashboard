@@ -36,6 +36,14 @@ describe("api client", () => {
     await expect(apiDelete("/api/y/")).resolves.toBeUndefined();
   });
 
+  it("apiGet resolves null (not undefined) on 204 so react-query accepts it", async () => {
+    // A "latest"-style GET that 204s on no-data (e.g. /api/aieval/runs/latest/)
+    // must not hand react-query `undefined` — it throws "Query data cannot be
+    // undefined". apiGet coalesces the empty 204 body to null.
+    stubFetchOnce({ ok: true, status: 204 });
+    await expect(apiGet("/api/y/")).resolves.toBeNull();
+  });
+
   it("serializes the request body as JSON on POST", async () => {
     const fetchMock = stubFetchOnce({ ok: true, status: 201, json: async () => ({ id: 1 }) });
     await apiPost("/api/x/", { name: "A" });
