@@ -35,15 +35,24 @@ def _stamp_fired(sched: ObserverSchedule) -> None:
     sched.save(update_fields=["last_fired_at"])
 
 
-def run_observer(schedule_id: int) -> int | None:
-    """Fire one observer iteration. Returns snapshot_id, or None on skip."""
+def run_observer(schedule_id: int, *, force: bool = False) -> int | None:
+    """Fire one observer iteration. Returns snapshot_id, or None on skip.
+
+    ``force`` bypasses the market-hours gate: a manual "Run now" is explicit user
+    intent and must fire (and emit its notification) regardless of session hours.
+    Only scheduled (cron) fires honour ``market_hours_only``.
+    """
     sched = ObserverSchedule.objects.select_related("profile").get(id=schedule_id)
 
     if not sched.enabled:
         log.info("observer %s skipped: disabled", schedule_id)
         return None
 
-    if sched.market_hours_only and not any_market_open(sched.default_watchlist_tickers):
+    if (
+        sched.market_hours_only
+        and not force
+        and not any_market_open(sched.default_watchlist_tickers)
+    ):
         log.info("observer %s skipped: all watched markets closed", schedule_id)
         return None
 
