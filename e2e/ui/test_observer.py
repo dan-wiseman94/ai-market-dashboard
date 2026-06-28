@@ -105,7 +105,12 @@ def test_observer_cost_cap_skip_emits_system_message(page, frontend_base_url, ob
     profile = TradingProfile.objects.get(name="E2E Default")
     page.goto(f"{frontend_base_url}/threads/observer/{profile.id}")
     wait_for_app_ready(page)
+    # Gate on the thread fetch resolving before asserting content: wait_for_app_ready
+    # only waits for the app shell + skeleton detach, but this page signals loading
+    # with "Loading" text (not a skeleton-* testid), so the heading otherwise races a
+    # tight budget under CI load. Mirrors the passing structured-mode test.
+    expect(page.get_by_text("Loading")).to_have_count(0, timeout=15_000)
     expect(page.get_by_role("heading", name=f"Observer: {profile.name}")).to_be_visible(
-        timeout=10_000
+        timeout=15_000
     )
-    expect(page.get_by_text("cost cap", exact=False).first).to_be_visible(timeout=10_000)
+    expect(page.get_by_text("cost cap", exact=False).first).to_be_visible(timeout=15_000)
