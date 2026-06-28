@@ -11,7 +11,7 @@ Six-lane comprehensive suite. Full design: `docs/superpowers/specs/2026-04-18-e2
 | WS       | `e2e/ws/`         | Channels WebSocket event assertions         | `web`      | `make e2e-ws`        |
 | Visual   | `e2e/visual/`     | Page-level screenshot diffs                 | `worker`   | `make e2e-visual`    |
 | A11y     | `e2e/a11y/`       | axe-core scans per route + keyboard-only    | `worker`   | `make e2e-a11y`      |
-| Perf     | `e2e/perf/`       | Lighthouse budgets (prod overlay)           | `frontend` | `make e2e-perf`      |
+| Perf     | `e2e/perf/`       | Lighthouse budgets (prod overlay)           | `worker`   | `make e2e-perf`      |
 
 `make e2e` runs ui/api/ws/visual/a11y together. Perf is separate because it
 needs the prod overlay.
@@ -105,12 +105,11 @@ dynamic regions (timestamps, chart tooltips, notification counts) are masked in
 | `ui` test fails with "CONSOLE" error         | JS error in the frontend                              | Fix it. Add to `ALLOWED_CONSOLE_PATTERNS` only if benign. |
 | `visual` test fails with masked region       | New dynamic region rendered outside mask              | Add it to `default_masks()` in `helpers/visual.py`.       |
 | `a11y` axe violation on new page             | Missing aria-label / heading / focus style            | Fix the DOM. Don't add to `a11y_ignores` without an issue link. |
-| `perf` LCP over budget                       | Blocking JS / large image on critical path            | Check `e2e/perf/artifacts/<route>/median.html`.           |
+| `perf` LCP over budget                       | Blocking JS / large image on critical path            | Check `e2e/perf/artifacts/<route>/median.html`; budgets in `budgets.json`. |
 | `ws` test hangs                              | Backend not producing the event or wrong scenario     | Inspect `docker compose logs web worker`.                 |
 | "Mocked response" appears in a non-mock test | E2E overlay left running                              | `make e2e-down`.                                          |
 | Visual baseline missing                      | First run on this route                               | Create with `make e2e-visual-update`; commit new PNGs.    |
 | New test failing only in CI                  | Likely timing/flake                                   | Check `flake_audit.json` on latest main.                  |
-| Perf test fails on LCP                       | Resource regression — see report                      | `e2e/perf/artifacts/`; budgets in `budgets.json`.         |
 
 ## When to open an issue vs. fix in-flight
 
@@ -168,6 +167,10 @@ tests.
 
 ## CI surface
 
-`.github/workflows/e2e.yml` posts a single consolidated PR comment via
-`tools/aggregate_artifacts.py` — one row per lane with pass/fail, test count,
-and artifact links. A11y violations are listed under their own subsection.
+`.github/workflows/e2e.yml` runs on PRs, merges to `main`, and manual dispatch.
+A single job builds the e2e stack (`compose.e2e.yaml`) and runs the lanes in
+sequence — api, schemathesis fuzz, the `/render/chart` chromium test, ui, a11y,
+ws — then tears down (`down -v`). **Visual and perf are off the PR gate** (visual
+needs committed byte-diff baselines, perf needs a Lighthouse runner); run those
+via `make e2e` locally or on merge. On failure, Playwright traces upload as the
+`ui-traces` artifact (`--tracing=retain-on-failure`, 7-day retention).

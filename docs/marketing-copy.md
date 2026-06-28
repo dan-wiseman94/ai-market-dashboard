@@ -24,9 +24,7 @@ Local-first AI co-analyst for the markets that grades its own calls: snapshot �
 
 ### README header bullets (the three-line pitch)
 
-- 🔁 **Closes the loop:** theses → deterministic post-mortems → a track record that's fed back into every new analysis via the Decision Coach.
-- 🧠 **Bring your own AI:** Claude, OpenAI, or any local OpenAI-compatible model — compare them side-by-side, and measure which is actually right with a look-ahead-safe eval harness.
-- 🔒 **Local & private:** runs in Docker on `127.0.0.1`, encrypted keys, no telemetry, no broker write path.
+The three-line pitch lives in [`README.md`](../README.md) — edit it there to avoid drift.
 
 ### Suggested repo topics
 
