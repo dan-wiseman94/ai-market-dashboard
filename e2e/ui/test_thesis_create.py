@@ -20,6 +20,10 @@ from e2e.pages.base import BasePage
 def test_create_thesis_persists_and_navigates(page, frontend_base_url, minimal) -> None:
     from apps.thesis.models import Thesis
 
+    # Idempotent on the shared, never-rolled-back e2e DB (a prior run's thesis
+    # would make the get() below raise MultipleObjectsReturned).
+    Thesis.objects.filter(title="E2E NVDA thesis").delete()
+
     base = BasePage(page, frontend_base_url)
     base.goto("/theses/new")
     base.expect_error_boundary_absent()
