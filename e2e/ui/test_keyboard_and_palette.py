@@ -12,6 +12,7 @@ from __future__ import annotations
 from urllib.parse import urlparse
 
 import pytest
+from playwright.sync_api import expect
 
 from e2e.pages.dashboard import DashboardPage
 
@@ -84,3 +85,14 @@ def test_command_palette_executes_navigation(page, frontend_base_url, minimal) -
     palette.get_by_placeholder("Search commands", exact=False).fill("Costs")
     palette.get_by_text("Go to Costs").click()
     page.wait_for_url(lambda u: u.rstrip("/").endswith("/costs"), timeout=5_000)
+
+
+@pytest.mark.integration
+@pytest.mark.ui
+def test_command_palette_closes_on_escape(page, frontend_base_url, minimal) -> None:
+    """Esc dismisses the palette (keyboard-overlay focus discipline)."""
+    d = DashboardPage(page, frontend_base_url)
+    d.go()
+    d.open_command_palette()
+    page.keyboard.press("Escape")
+    expect(page.get_by_test_id("command-palette")).to_be_hidden(timeout=5_000)
