@@ -14,12 +14,12 @@ Everything runs in Docker; Make targets wrap Compose.
 
 | Command | What it does |
 |---|---|
-| `make dev` | Whole stack with `compose up --watch` (hot reload). First run 3–8 min. |
+| `make dev` | Whole stack, `compose up --watch` (hot reload). First run 3–8 min. |
 | `make shell` | Bash in `web` (ad-hoc `manage.py`). |
 | `make migrate` / `make makemigrations` | Migrations inside `web`. |
 | `make test` | `pytest` (web) + `vitest --run` (frontend). |
 | `make lint` | Backend `ruff` + `ty` (advisory) + `lint-imports` + `typecheck` (mypy, zero-baseline) + `deptry` + `semgrep-rules`; frontend `pnpm run lint` + `depcruise` + `type-coverage`. |
-| `make check` | `lint` + `test` (CI; CI runs tests `-p no:randomly`). |
+| `make check` | `lint` + `test` (CI runs tests `-p no:randomly`). |
 | `make check-migrations` | Fail if a model changed without a migration. |
 | `make schema` | Regenerate `backend/schema.yml` (OpenAPI). FE types: `pnpm gen:api`. |
 | `make e2e-schemathesis` | Fuzz every endpoint for 5xx (under `MOCK_EXTERNAL`). |
@@ -40,7 +40,7 @@ Fresh rebuild (catches reproducibility bugs): `docker compose down -v && docker 
 
 **Six-service compose stack** (dev): `web` (Django+DRF+Channels/Daphne), `worker` (Celery), `beat` (Celery beat, `DatabaseScheduler`), `redis` (broker+Channels layer+cache), `db` (Postgres 16), `frontend` (Vite). All bind `127.0.0.1` only.
 
-**Django project** is `backend/config/`, settings `base.py`/`dev.py`/`prod.py`. Apps are `backend/apps/<name>/`, imported as `apps.<name>` (PYTHONPATH `/app/backend`). Celery app at `config.celery`, re-exported from `config/__init__.py`. Channels routing `config.routing`, mounted by `config.asgi`. **Celery task packages are listed explicitly in `config/celery.py` (`TASK_PACKAGES`, not autodiscovered)** — add new task modules there. Every scheduled task is also inventoried in `apps/core/scheduled_tasks.py` (drift-gated) and asserted registered by `apps/core/tests/test_celery_registration.py`.
+**Django project** `backend/config/`, settings `base.py`/`dev.py`/`prod.py`. Apps `backend/apps/<name>/`, imported `apps.<name>` (PYTHONPATH `/app/backend`). Celery app `config.celery`, re-exported from `config/__init__.py`. Channels routing `config.routing`, mounted by `config.asgi`. **Celery task packages are listed explicitly in `config/celery.py` (`TASK_PACKAGES`, not autodiscovered)** — add new task modules there. Every scheduled task is also inventoried in `apps/core/scheduled_tasks.py` (drift-gated) and asserted registered by `apps/core/tests/test_celery_registration.py`.
 
 **App roster** (`backend/apps/` — 15 apps):
 - `core` — health, base consumer, logging, `MOCK_EXTERNAL`, `SystemSettings`+`runtime_config()`; shared abstract bases in `model_bases.py` (`Resolution`/`DirectionalCall`/`TimeStamped` + idempotent `claim()`); drift-gated inventories `feature_flags.py`/`scheduled_tasks.py`.
@@ -59,9 +59,9 @@ Fresh rebuild (catches reproducibility bugs): `docker compose down -v && docker 
 - `book` — daily whole-book risk reading; append-only `BookSnapshot`; `book.snapshot_daily` beat.
 - `strategy` — M15 Strategist subpackages: `coverage/` (living per-ticker house view), `warroom/` (multi-agent debate streaming over `thread.<id>`), `desk/` (anomaly sweep), `regime/` (append-only readings, latest=current).
 
-**Consolidation merge-map (27→15, 2026-06).** Only modules moved — **every `/api/<x>/` route is unchanged**. Absorbed: `costs`→`ai`; `dashboard`,`aieval`→`analytics`; `files`→`threads`; `portfolio`,`lessons`→`thesis`; `predictions`,`triggers`,`briefing`→`observer`; `coverage`,`warroom`,`desk`,`regime`→ new `strategy`. **Beat tasks were renamed to their owning app** (the `test_celery_registration` prefix guard): e.g. `aieval.run_scheduled`→`analytics.aieval_run_scheduled`, `briefing.run_scheduled`→`observer.briefing_run_scheduled`, `regime.refresh`→`strategy.regime_refresh`, `desk.sweep`→`strategy.sweep`, `lessons.distill`→`thesis.distill`. **Queued/DB-seeded tasks kept their names** (no beat-guard): `triggers.evaluate_triggers`/`fire_trigger`, `coverage.revise_from_observation`, `warroom.run_debate`. **Inbound-FK clusters must move as a unit** — a kept app's migration depending on a removed app dangles the graph (so `coverage`+`warroom`+`desk`→`strategy` moved together). Each moved table preserves `db_table` (`SeparateDatabaseAndState` for ORM state + `RunPython` create-if-missing).
+**Consolidation merge-map (27→15, 2026-06).** Only modules moved — **every `/api/<x>/` route is unchanged**. Absorbed: `costs`→`ai`; `dashboard`,`aieval`→`analytics`; `files`→`threads`; `portfolio`,`lessons`→`thesis`; `predictions`,`triggers`,`briefing`→`observer`; `coverage`,`warroom`,`desk`,`regime`→ new `strategy`. **Beat tasks renamed to their owning app** (the `test_celery_registration` prefix guard): e.g. `aieval.run_scheduled`→`analytics.aieval_run_scheduled`, `briefing.run_scheduled`→`observer.briefing_run_scheduled`, `regime.refresh`→`strategy.regime_refresh`, `desk.sweep`→`strategy.sweep`, `lessons.distill`→`thesis.distill`. **Queued/DB-seeded tasks kept their names** (no beat-guard): `triggers.evaluate_triggers`/`fire_trigger`, `coverage.revise_from_observation`, `warroom.run_debate`. **Inbound-FK clusters must move as a unit** — a kept app's migration depending on a removed app dangles the graph (so `coverage`+`warroom`+`desk`→`strategy` moved together). Each moved table preserves `db_table` (`SeparateDatabaseAndState` for ORM state + `RunPython` create-if-missing).
 
-**Adding a Django app:** use the `new-django-app` skill. Key wiring: `AppConfig` with `name="apps.<name>"` + short `label`; add to `INSTALLED_APPS` (`config/settings/base.py`); include in `config/urls.py` **before** the generic `/api/` include; consumers in `consumers.py`, routes in `config/routing.py`.
+**Adding a Django app:** use the `new-django-app` skill. Wiring: `AppConfig` with `name="apps.<name>"` + short `label`; add to `INSTALLED_APPS` (`config/settings/base.py`); include in `config/urls.py` **before** the generic `/api/` include; consumers in `consumers.py`, routes in `config/routing.py`.
 
 **Realtime channels (WS)** — Channels groups joined in `connect()`, left in `disconnect()` (ref: `apps/core/consumers.py`):
 - `user.<id>.notifications` — trigger fires, observer completions, backup/export, errors.
@@ -72,9 +72,9 @@ Fresh rebuild (catches reproducibility bugs): `docker compose down -v && docker 
 
 **Provider abstraction** — `apps/ai/providers/base.py` `Provider` protocol; `ClaudeProvider`/`OpenAIProvider`/`LocalProvider`. `run()` emits a normalized event union so the consumer is provider-agnostic. **Selection flows through `apps/ai/router.py` + `get_provider()` — do not instantiate providers directly from views/tasks.** Cost calc in `apps/ai/cost.py` against `catalog.py`.
 
-**Multi-provider fan-out** — `POST /api/threads/<id>/compare` runs one prompt across provider+model pairs in parallel, each its own branch. Stop: `POST .../messages/<id>/stop` sets a Redis flag (`stop.py`); the streaming loop polls it (~0.25s) and `gen.aclose()`s the provider, actually halting generation+billing.
+**Multi-provider fan-out** — `POST /api/threads/<id>/compare` runs one prompt across provider+model pairs in parallel, each its own branch. Stop: `POST .../messages/<id>/stop` sets a Redis flag (`stop.py`); the streaming loop polls it (~0.25s) and `gen.aclose()`s the provider, halting generation+billing.
 
-**Capture pipeline** — `apps/snapshots/services/` fills sections in one `snapshots.capture` task as a **synchronous loop** over `snap.includes` (quotes/chain/ohlc/positions/breadth/news/image + opt-in macro/filings/treasury/events/overnight; market fetchers fall back to free providers). A raising section is caught + marked `failed` (no retry); partial failures are OK and marked in the payload. `token_budget.py` trims before the model. (Spec §5 describes a Celery chord; the real impl is this loop — prefer this.)
+**Capture pipeline** — `apps/snapshots/services/` fills sections in one `snapshots.capture` task as a **synchronous loop** over `snap.includes` (quotes/chain/ohlc/positions/breadth/news/image + opt-in macro/filings/treasury/events/overnight; market fetchers fall back to free providers). A raising section is caught + marked `failed` (no retry); partial failures are OK and marked in the payload. `token_budget.py` trims before the model. (Spec §5 says a Celery chord; real impl is this loop — prefer it.)
 
 **Event-trigger evaluator** — beat task `evaluate_triggers` every ~10s (NOT a long-running process/container). DSL is JSON: top-level `all/any/not` + leaves `{metric,ticker,op,value,window}`. Spec §4.8, §7.2.
 
@@ -85,17 +85,16 @@ Fresh rebuild (catches reproducibility bugs): `docker compose down -v && docker 
 **Landmines** (silent failures) are the highest-value entries — preserve them when editing.
 
 ### Docker, tooling & tests
-- **Everything runs in Docker.** Editor errors about missing modules are expected; lint via `make lint`.
+- **Editor errors about missing modules are expected** (everything runs in Docker); lint via `make lint`.
 - **`beat` depends on `web` health** in `compose.yaml` — else `DatabaseScheduler` races `migrate` and crashes on an empty schema. Don't remove.
 - **`ty` is advisory** (CI `continue-on-error`; ~900 false-positive Django diagnostics). Real gates: `ruff` + `pytest` + FE `eslint`/`tsc` + `vitest`.
 - **All tool config is in `pyproject.toml`**; no `ruff.toml`/`pytest.ini`. **`uv.lock` is committed** (`uv sync --frozen`); regenerate with `uv lock` on host.
 - **Only `web`/`frontend` hot-reload.** After adding/renaming a task module or `beat_schedule` entry, `docker compose restart worker beat` or it won't fire (fresh `up`/CI unaffected).
-- **Worker image carries chromium** (Playwright; slower cold builds); `web`/`beat` use the smaller image.
-- **Integration tests excluded by default** (`-m 'not integration'`). The Playwright render test passes only from `worker`. E2E = six lanes under `e2e/`.
+- **Worker image carries chromium** (Playwright; slower cold builds); the render test passes only from `worker`. `web`/`beat` use the smaller image. **Integration tests excluded by default** (`-m 'not integration'`).
 - **`MOCK_EXTERNAL=true`** (set by `compose.e2e.yaml`) short-circuits Claude/OpenAI/Local/Schwab/Finnhub to fixtures. **Never set it on the dev stack** — `respx` provider tests will silently hit the mock. If you see "Mocked response" in dev, recreate containers (`docker compose stop web worker beat && rm -f … && up -d`).
 
 ### Backend wiring & security
-- **URL include ordering matters** — `config/urls.py` registers specific prefixes (e.g. `/api/costs/`) **before** generic `/api/`. Don't reorder without checking.
+- **URL include order** — `config/urls.py` registers specific prefixes (e.g. `/api/costs/`) **before** generic `/api/`. Don't reorder.
 - **DRF exposes FK ids as `*_id`, not nested objects** — FE TS must use `thread_id` etc. verbatim (`thread` reads `undefined`).
 - **Security is network isolation, not auth.** Binds `127.0.0.1`; DRF defaults `AllowAny`, no user token; WS is Origin-validated. **Do not bind `0.0.0.0` without adding real auth first.**
 - **Encrypted secrets at rest** — Schwab/provider keys in `ProviderConfig`/`ApiCredential` (django-cryptography). Don't log them or expose without `write_only`. **All reads go through `apps/secrets/credentials.py::decrypt_token`** (degrades to skip on undecryptable token). Keep the `ApiCredential` import location — moving it breaks `<module>.ApiCredential` patch sites.
@@ -103,7 +102,7 @@ Fresh rebuild (catches reproducibility bugs): `docker compose down -v && docker 
 
 ### Snapshots, images & rendering
 - **Section terminal state is `"done"`; only the parent `Snapshot` uses `"ready"`.** Mixing them silently drops images (`_snapshot_image_ids()` filters `status="done"`).
-- **Pinned snapshots reach the LLM as a synthetic first user turn** — `ThreadViewSet.create()` synthesizes a `done` user `Message` (`content["text"]=serialize_for_ai(snap)`, `snapshot_ref=snap`); observer/trigger paths do the same per fire. **Do not load the snapshot inside `_build_request()`** — the synthetic-message pattern keeps the pipeline provider-agnostic and visible in the UI. Images attach separately via `_snapshot_image_ids()`.
+- **Pinned snapshots reach the LLM as a synthetic first user turn** — `ThreadViewSet.create()` synthesizes a `done` user `Message` (`content["text"]=serialize_for_ai(snap)`, `snapshot_ref=snap`); observer/trigger paths do the same per fire. **Do not load the snapshot inside `_build_request()`** (the synthetic-message pattern keeps the pipeline provider-agnostic + UI-visible). Images attach separately via `_snapshot_image_ids()`.
 - **Snapshot image bytes are offloaded to `/data`** (new rows: `file_path`, `data` NULL; legacy: in-DB). **Always read via `apps.snapshots.image_store.read_image_bytes(img)`, not `bytes(img.data)`.** Captures go through `image_store.create_image` (volume-write failure degrades to in-DB). `DATA_UPLOAD_MAX_MEMORY_SIZE` aligns with the 5MB cap → clean 413.
 - **`/render/chart` is deterministic** — URL params fully specify the render; `render_chart_png` captures via headless chromium.
 - **Snapshot diff** — `GET /api/snapshots/<id>/diff/?against=<id>` → `{delta, prev_id, curr_id}`.
@@ -140,7 +139,7 @@ Fresh rebuild (catches reproducibility bugs): `docker compose down -v && docker 
 - **`DecisionJournalEntry` lives in `apps.thesis`, not `apps.threads`** (avoids a `threads→thesis` import cycle). `/api/journal/?thread=<id>`.
 - **`get_or_create_review_thread(thesis)` uses `kind="consult"`** — one review thread per thesis via `Thesis.review_thread` FK.
 - **`apps/market/returns.py` is the shared price-path helper** — both analytics and post-mortems import from there; don't inline.
-- **`AgentPreset` builtins are seeded by a data migration**; `builtin` is read-only; duplicate slug → 400.
+- **`AgentPreset` builtins are seeded by a data migration**; `builtin` is read-only; duplicate slug → 400. **pytest-django `serialized_rollback` does NOT restore data-migration-seeded rows under `--reuse-db`** — a `transaction=True` test wipes the seeded builtins, so `apps/profiles/tests/conftest.py` re-seeds them via an autouse fixture; mirror that for any migration-seeded table.
 
 ### Analytics, Coach & scorecards
 - **Analytics are on-demand, never scheduled** — DRF views under `/api/analytics/` aggregating off indexed columns at request time. No Celery tasks/materialized views. (`cohort_base_rate` is Coach-internal, not an endpoint.)
@@ -155,12 +154,12 @@ Fresh rebuild (catches reproducibility bugs): `docker compose down -v && docker 
 ### Data sources, predictions & coverage
 - **Free data sources + graceful fallback** — `apps/market/services/` ships keyed/keyless clients; `services/fallback.py` routes quotes/OHLC/chain/news to a free provider when Schwab isn't connected. Keys are `ApiCredential` rows at `/api/schwab/data-sources/…`; all reads via `decrypt_token`.
 - **Prediction Ledger** — `apps.observer.AIPrediction` is the AI's directional call, **auto-extracted** from a structured `ObservationReport` by `observer/predictions/services/extract.py` (zero added cost; `None` never breaks the fire). Dedup: ≤1 `open` per `(ticker, horizon, profile)` — a same-direction re-fire is a no-op (call stays frozen for honest calibration), a flip invalidates+reopens. Beat (300s): `observer.resolve_due_predictions` + `observer.check_prediction_invalidations`.
-- **COVERAGE — living per-ticker house view** — `apps.strategy.CoverageNote` revised **with a reason** by `strategy/coverage/services/revise.py` behind a **hysteresis gate** (writes a `CoverageRevision` only on created OR material_change OR stance/conviction delta; else reaffirm, no churn). Best-effort, `None` on no-key/cap/error. Observer auto-revises **by existence** (`hooks.py::maybe_revise_from_snapshot` queues only if the primary ticker already has a note). `CoverageRevision.source_snapshot` is `SET_NULL`. **Gotcha:** a broad `coverage/` line in `.gitignore` swallowed `backend/apps/strategy/coverage/`; kept tracked via a `!backend/apps/strategy/coverage/` negation that had to be **relocated** when the app moved. Any new app/dir colliding with a common ignore pattern hits this.
+- **COVERAGE — living per-ticker house view** — `apps.strategy.CoverageNote` revised **with a reason** by `strategy/coverage/services/revise.py` behind a **hysteresis gate** (writes a `CoverageRevision` only on created OR material_change OR stance/conviction delta; else reaffirm, no churn). Best-effort, `None` on no-key/cap/error. Observer auto-revises **by existence** (`hooks.py::maybe_revise_from_snapshot` queues only if the primary ticker already has a note). `CoverageRevision.source_snapshot` is `SET_NULL`. **Gotcha:** a broad `coverage/` line in `.gitignore` swallowed `backend/apps/strategy/coverage/`; a `!backend/apps/strategy/coverage/` negation keeps it tracked (relocate it when moving the app). Any new app/dir colliding with a common ignore pattern hits this.
 
 ### Frontend & runtime config
 - **Frontend primitives** — reach for `Skeleton`/`SkeletonRows`/`EmptyState`/`ErrorBoundary`/`Toasts` before ad-hoc spinners/text/try-catch. Toasts need a `<ToastProvider>` (AppLayout provides one).
 - **Command palette is Cmd/Ctrl-K** — `useCommandPaletteTrigger(cb)`; defaults in `useDefaultCommands()`.
-- **Notifications are user-anonymous in v1** — `Notification.user` nullable; consumer on `user.anonymous.notifications`. Switch to `user.<id>.notifications` when auth lands.
+- **Notifications are user-anonymous in v1** — `Notification.user` nullable; consumer on `user.anonymous.notifications`. Switch to `user.<id>.notifications` when auth lands. **`Notification.kind` is `varchar(16)`** (`apps/observer/models.py`) — a kind string >16 chars silently overflows at write time; keep new kinds ≤16 (`cal_drift`/`contra`, not `calibration_drift`).
 - **Watchlist "what changed"** — per-ticker expander lazily fetches the latest snapshot diff (only when expanded).
 - **UI-configurable runtime settings** — `apps.core.SystemSettings` (singleton `.load()`, `pk=1`); `runtime_config()` resolves `SystemSettings.<field> ?? settings.<DEFAULT>` (no restart). **Sync-context knobs only** (retention windows, AI failover, observer response cache, scheduled-eval); the async-ORM boundary keeps per-stream knobs env-only. `GET/PATCH /api/settings/` (PATCH `null` clears).
 - **Local provider needs `host.docker.internal`** (mapped in `compose.yaml`) **+ lists its own models** — `POST /api/schwab/providers/<p>/probe/` calls `list_models()` and persists `discovered_models`. **Do not add SSRF private-IP filtering to the probe** — local endpoints are on localhost/private addresses by design.
@@ -176,7 +175,7 @@ Fresh rebuild (catches reproducibility bugs): `docker compose down -v && docker 
 
 ### Quality gates (CI) — landmines
 
-`make lint`/`make check` run them (config in `.github/workflows/`, `pyproject.toml`, `semgrep.yml`). mypy is a real gate (zero baseline — the legacy `mypy-baseline.txt` was driven to 0 and removed; fails on any error); `ty` advisory. Supply-chain `pip-audit`/`pnpm audit` are **BLOCKING**.
+`make lint`/`make check` run them (config in `.github/workflows/`, `pyproject.toml`, `semgrep.yml`). mypy is a real gate (zero baseline — legacy `mypy-baseline.txt` driven to 0 and removed; fails on any error); `ty` advisory. Supply-chain `pip-audit`/`pnpm audit` are **BLOCKING**.
 
 - **Architecture contracts** (`import-linter` + FE `dependency-cruiser`) — concrete AI providers private to `apps.ai` (use `get_provider`/router); crypto (`apps.secrets.{fields,keys}`) private to `apps.secrets`; FE `src/api` must not import `src/{pages,components}`. A direct import elsewhere reds CI. (`depcruise` needs a glob, not a bare dir.)
 - **OpenAPI contract** — `backend/schema.yml` + `frontend/src/api/schema.d.ts` are committed + drift-gated (source of the `*_id` contract); `schemathesis` fuzzes for 5xx under `MOCK_EXTERNAL`.
@@ -199,7 +198,5 @@ Planning uses the superpowers skills (`brainstorming` → `writing-plans` → `s
 
 ## Design references
 
-- System design + roadmap (§16): `docs/superpowers/specs/2026-04-16-ai-dashboard-design.md`
-- Milestone plans (M1→M15, all shipped): `docs/superpowers/plans/`
-- Per-feature specs + milestone addenda: `docs/superpowers/specs/`
-- E2E + FE-coverage design: `docs/superpowers/specs/2026-04-18-e2e-comprehensive-design.md`, `…-frontend-test-coverage-design.md`
+- System design + roadmap (§16): `docs/superpowers/specs/2026-04-16-ai-dashboard-design.md`; milestone plans (M1→M15): `docs/superpowers/plans/`.
+- Per-feature specs + milestone addenda: `docs/superpowers/specs/`. E2E + FE-coverage design: `docs/superpowers/specs/2026-04-18-e2e-comprehensive-design.md`, `…-frontend-test-coverage-design.md`.

@@ -36,6 +36,7 @@ These are `env.bool` switches but not product features. They stay as-is.
 | `AI_FAILOVER_ENABLED` | **graduate candidate** — resilience win once exercised | Retry once on a secondary provider when the primary errors before emitting a token. |
 | `AI_CALIBRATION_ROUTING_ENABLED` | keep opt-in — needs more `EvalRun` evidence | Router fallback tier picks the best-measured `(provider, model)` from recent evals. |
 | `AIEVAL_SCHEDULED_ENABLED` | **keep opt-in (permanent)** — spends real AI $ on a schedule | Run the calibration eval on a beat (no `MOCK_EXTERNAL` short-circuit). |
+| `CALIBRATION_DRIFT_SENTINEL_ENABLED` | keep opt-in — reads only, no AI $ | Daily sentinel that notifies once per episode when a model's `calibration_error` drifts (over/under-confident). |
 | `ANOMALY_SWEEP_ENABLED` | **keep opt-in (permanent)** — autonomy that spends $ | Arm the beat-scheduled Desk sweep; auto-originate `DeskEntry` investigations. |
 | `RETURNS_ADJUST_DIVIDENDS` | **decide-and-delete candidate** — a methodology choice, not a perpetual toggle | Dividend-adjust forward-return math (price-return → total-return) across all calibration. |
 

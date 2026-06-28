@@ -135,6 +135,7 @@ around a complete, closing feedback loop:
   computed from stored history and the call is scored correct / incorrect / mixed,
   deterministically and with no AI. You get an **invalidation alert** the moment a
   live call is being proven wrong, before its horizon is even up.
+- **Beat the straddle.** Every observation is also framed against what the *options market priced* — the 1σ implied move read from the chain — and each prediction freezes that expected move at decision time, so the scorecard can report how often the actual move beat the straddle, and how often it did so in the right direction.
 - **Is your AI actually any good?** The scorecard shows the AI's live hit-rate by
   confidence band and Brier score, per provider and model — its own track record, measured.
 - **A second opinion at decision time.** Open a thesis and see whether the AI
@@ -202,6 +203,8 @@ the whole book and the market regime — and convenes a structured debate before
   returns, with an honest coverage figure when price history is thin.
 - **Unusual-options detector** — flags chain lines on volume/OI or IV outliers and
   tells you *why* each was flagged. A reasoning surface, not just a scanner.
+- **Calibration-drift sentinel** *(opt-in)* — trends each model's calibration error over time and notifies once when it drifts to over- or under-confident, re-arming on recovery (reads eval history only — no AI spend).
+- **Consistency sentinel** — flags any new directional call that contradicts the AI's own house view or an open opposite-direction prediction, the moment it's made.
 - **Cost-per-insight, trigger heatmap, and observer timeline** round out the picture.
 
 ### ⏰ Observer — scheduled AI runs
@@ -228,11 +231,12 @@ the whole book and the market regime — and convenes a structured debate before
 - **Once-a-day and reliable** — fires automatically past your send time; every
   section degrades gracefully so the briefing always renders, even with no AI key.
 
-### 📅 Forward calendar, portfolio & command centre
+### 📅 Forward calendar, themes, portfolio & command centre
 
 - **Forward calendar** — upcoming earnings (with estimates) and curated US macro
   events (FOMC / CPI / NFP / PCE / GDP), surfaced in snapshots, triggers, and its own page.
 - **Portfolio** — lightweight manual position tracking with realized P&L, linkable to the thesis behind each trade.
+- **Narrative themes** — group tickers into a narrative (AI-capex, GLP-1, …) and read its health: breadth (participation), leadership (leader vs laggard), and relative strength vs `$SPX`, from split-corrected returns, with honest coverage below two priced members. Browse it on its own page.
 - **Command-centre dashboard** — the day's tape at a glance, every panel
   fault-isolated so one slow data source never breaks the page.
 
@@ -246,6 +250,7 @@ the whole book and the market regime — and convenes a structured debate before
 
 - **Automated backups** — scheduled database dumps with rotation and one-command restore.
 - **Full data export** — async zip bundles of your threads, snapshots, observations, triggers, profiles, and watchlists. Your data is yours.
+- **MCP server** *(opt-in)* — expose your second brain (house view, theses, predictions, semantic recall) to external agents like Claude Desktop over a read-only JSON-RPC endpoint at `/api/mcp/`, shared-token-gated before you reach past localhost.
 - **Built for speed** — a **command palette** (`⌘/Ctrl-K`) and `g`-then-key
   shortcuts jump to any screen instantly; a polished app shell with breadcrumbs,
   notifications, and a live connection indicator.
@@ -279,30 +284,12 @@ the whole book and the market regime — and convenes a structured debate before
 
 ---
 
-## Under the hood
-
-| Layer | Built with |
-|---|---|
-| **Backend** | Python 3.13 · Django 6 + DRF · Channels over Daphne (real-time WebSockets) |
-| **Async** | Celery worker + beat · Redis |
-| **Data** | PostgreSQL 16 + `pgvector` (semantic recall) |
-| **AI** | Anthropic & OpenAI SDKs · local OpenAI-compatible endpoints · `fastembed` embeddings |
-| **Market** | Charles Schwab API · Finnhub · Alpaca · Tiingo · Twelve Data · Polygon · Tradier · FRED · SEC EDGAR · Marketaux · US Treasury · `pandas-market-calendars` · headless Chromium chart rendering |
-| **Frontend** | React 19 + TypeScript · Vite · TanStack Query · lightweight-charts + Recharts |
-| **Security** | `django-cryptography` encrypted secrets at rest |
-
----
-
 ## Status
 
-**Feature-complete.** Fifteen milestones shipped (M1 → M15), from the Compose
-skeleton through market data, snapshots, streaming threads, multi-model compare,
-the observer, event triggers, the full AI platform (tool use, thinking, memory,
-files, citations, batch), the second-brain (theses, post-mortems, journal), the
-Decision Coach, semantic recall, the eval-calibration loop, the morning briefing,
-the analytics suite, free data sources, the Prediction Ledger, the Resident
-Analyst (autonomous investigation, calibration-weighted routing, COVERAGE, and The
-Mirror), and the Strategist (market regime, book risk X-ray, war room, and desk).
-All fifteen milestones are shipped end to end.
+**Feature-complete** — fifteen milestones (M1 → M15) shipped end to end, plus
+several untagged additions layered on top: free data sources, the Prediction
+Ledger, the Morning Briefing, the Resident Analyst, the Strategist, expected-move
+grading, the calibration-drift and consistency sentinels, narrative themes, and an
+MCP server. The README's milestone table carries the release-tagged breakdown.
 
 *One person. One machine. Every call on the record.*
