@@ -21,6 +21,10 @@ def test_create_trigger_then_fire_now(page, frontend_base_url, minimal) -> None:
     """
     from apps.observer.models import EventTrigger
 
+    # Idempotent on the shared, never-rolled-back e2e DB: a prior run's trigger
+    # would otherwise make the get() below raise MultipleObjectsReturned.
+    EventTrigger.objects.filter(name="E2E created trigger").delete()
+
     e = TriggerEditorPage(page, frontend_base_url)
     e.go_new()
     e.expect_error_boundary_absent()
