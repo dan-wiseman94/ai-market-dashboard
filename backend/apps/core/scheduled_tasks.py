@@ -122,6 +122,13 @@ SCHEDULED_WORK: list[ScheduledTask] = [
         "",
     ),
     ScheduledTask(
+        "backups.verify_latest",
+        "weekly Sun 05:00 UTC",
+        "Restore-drill: pg_restore --list the newest backup to confirm it is restorable "
+        "(records a CRITICAL ErrorEvent on failure; never raises).",
+        "",
+    ),
+    ScheduledTask(
         "thesis.distill",
         "daily 05:30",
         "Cluster recurring post-mortem lessons (deterministic embeddings, no AI call).",
