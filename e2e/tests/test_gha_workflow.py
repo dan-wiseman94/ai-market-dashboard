@@ -51,5 +51,13 @@ def test_e2e_workflow_runs_render_chart() -> None:
     )
 
 
+def test_e2e_workflow_runs_a11y_lane() -> None:
+    assert any("pytest e2e/a11y/" in c for c in _all_run_commands()), "missing the a11y lane gate"
+
+
+def test_e2e_workflow_runs_ws_lane() -> None:
+    assert any("pytest e2e/ws/" in c for c in _all_run_commands()), "missing the ws lane step"
+
+
 def test_e2e_workflow_tears_down() -> None:
     assert any("down" in c for c in _all_run_commands()), "missing the compose teardown step"
