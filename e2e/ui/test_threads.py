@@ -49,10 +49,13 @@ def test_threads_list_shows_seeded_rows(page, frontend_base_url, threads) -> Non
     just-made thread is always at the top, which still proves the list renders real rows.
     """
     title = "E2E list-render probe thread"
-    _fresh_chat_thread(title)
+    tid = _fresh_chat_thread(title)
     p = ThreadsListPage(page, frontend_base_url)
     p.go()
-    expect(page.get_by_text(title)).to_be_visible(timeout=10_000)
+    # Assert the specific row by id, not get_by_text(title): the shared, never-
+    # rolled-back e2e DB accumulates same-named probes across runs, so matching by
+    # text hits a strict-mode violation. The just-made thread is newest → page 1.
+    expect(page.get_by_test_id(f"thread-row-{tid}")).to_be_visible(timeout=10_000)
 
 
 @pytest.mark.integration

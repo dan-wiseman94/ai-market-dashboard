@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useThreadsPage } from "@/hooks/useThread";
-import { formatDistanceToNow } from "date-fns";
+import { RelativeTime } from "@/components/RelativeTime";
 import { SkeletonRows } from "@/components/Skeleton";
 import { EmptyState } from "@/components/EmptyState";
 
@@ -45,7 +45,7 @@ export default function ThreadsPage() {
             <Link to={`/threads/${t.id}`} className="hover:underline">
               <div className="font-medium">{t.title || `Thread #${t.id}`}</div>
               <div className="text-xs text-ink-500">
-                {t.kind} · {t.profile?.name ?? "no profile"} · {formatDistanceToNow(new Date(t.created_at))} ago
+                {t.kind} · {t.profile?.name ?? "no profile"} · <RelativeTime iso={t.created_at} suffix=" ago" />
               </div>
             </Link>
           </li>

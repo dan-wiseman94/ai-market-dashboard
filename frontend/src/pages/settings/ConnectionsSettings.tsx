@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSchwabStatus, useSchwabAppConfig } from "@/hooks/useSchwabStatus";
 import { fetchSchwabAuthorizeUrl, updateSchwabAppConfig } from "@/api/schwab";
-import { formatDistanceToNow } from "date-fns";
+import { RelativeTime } from "@/components/RelativeTime";
 import SettingsSection from "@/components/settings/SettingsSection";
 import DataSourcesPanel from "@/components/settings/DataSourcesPanel";
 import SymbolCalendarOverridesCard from "@/components/SymbolCalendarOverridesCard";
@@ -87,7 +87,7 @@ function SchwabConnectControls({
     <>
       {connected && expiresAt && (
         <p className="mt-2 font-mono text-[11px] text-ink-400">
-          token refreshes in {formatDistanceToNow(new Date(expiresAt))}
+          token refreshes in <RelativeTime iso={expiresAt} />
         </p>
       )}
       {!configured && (

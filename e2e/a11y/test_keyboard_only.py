@@ -1,7 +1,9 @@
-"""Keyboard-only journey: dashboard → snapshot composer → thread.
+"""Keyboard-only journey: dashboard → snapshot composer.
 
-Uses only Tab/Enter/Esc/Arrow/Space. Asserts a visible focus indicator is
-present at every step (outline or box-shadow on the active element).
+Uses only Tab/Enter. Reaching the Snapshot nav link via Tab and activating it
+are REQUIREMENTS for a keyboard user, so a miss is a hard failure — not a skip.
+(Previously both failure paths called ``pytest.skip``, so a broken keyboard
+path silently skipped instead of failing.)
 """
 
 from __future__ import annotations
@@ -9,14 +11,35 @@ from __future__ import annotations
 import pytest
 from playwright.sync_api import expect
 
+from e2e.helpers.waits import wait_for_app_ready
+
+_FOCUS_RING_JS = """
+() => {
+    const el = document.activeElement;
+    if (!el) return { ok: false, reason: 'no active element' };
+    const s = getComputedStyle(el);
+    const outlineW = parseFloat(s.outlineWidth) || 0;
+    const hasOutline = s.outlineStyle !== 'none' && outlineW > 0;
+    const hasShadow = !!s.boxShadow && s.boxShadow !== 'none';
+    return {
+        ok: hasOutline || hasShadow,
+        outlineStyle: s.outlineStyle,
+        outlineWidth: s.outlineWidth,
+        boxShadow: s.boxShadow,
+        tag: el.tagName,
+    };
+}
+"""
+
 
 @pytest.mark.integration
 @pytest.mark.a11y
 def test_keyboard_only_journey(page, frontend_base_url, minimal) -> None:
     page.goto(frontend_base_url)
-    page.wait_for_load_state("networkidle")
+    wait_for_app_ready(page)
 
-    # Tab forward up to 25x looking for the Snapshot link.
+    # Tab forward up to 25x looking for the Snapshot nav link. Reaching it is a
+    # requirement, so a miss is a hard failure (not a skip that hides regressions).
     found = False
     for _ in range(25):
         page.keyboard.press("Tab")
@@ -26,24 +49,17 @@ def test_keyboard_only_journey(page, frontend_base_url, minimal) -> None:
         if focused_text and "snapshot" in focused_text.lower():
             found = True
             break
-    if not found:
-        pytest.skip("Could not reach Snapshot nav link via Tab in 25 steps")
+    assert found, (
+        "Snapshot nav link not reachable via Tab within 25 steps (keyboard-nav regression)"
+    )
+
+    # A keyboard user must SEE where focus is: the focused link needs a visible
+    # focus indicator (outline with width, or a box-shadow ring). Asserted on the
+    # link itself, before activation — a bare UA default with outline-width 0 fails.
+    ring = page.evaluate(_FOCUS_RING_JS)
+    assert ring["ok"], f"no visible focus indicator on the focused nav link: {ring}"
 
     page.keyboard.press("Enter")
-    try:
-        page.wait_for_url(lambda u: "/snapshot" in u, timeout=5_000)
-    except Exception:
-        pytest.skip("Snapshot nav target not reachable via Enter on focused link")
-
-    has_focus_ring = page.evaluate(
-        """
-        () => {
-            const el = document.activeElement;
-            if (!el) return false;
-            const s = getComputedStyle(el);
-            return s.outlineStyle !== 'none' || s.boxShadow !== 'none';
-        }
-        """
-    )
-    assert has_focus_ring, "no visible focus indicator on active element"
+    # Raising on timeout IS the assertion — the link must navigate.
+    page.wait_for_url(lambda u: "/snapshot" in u, timeout=5_000)
     expect(page.locator("body")).to_be_visible()

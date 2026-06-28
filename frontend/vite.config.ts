@@ -57,6 +57,7 @@ export default defineConfig({
       include: ["src/**/*.{ts,tsx}"],
       exclude: [
         "src/__tests__/**",
+        "src/**/*.stories.tsx", // exercised by the storybook project, not the unit suite
         "src/main.tsx",
         "src/vite-env.d.ts",
         "src/router.tsx",

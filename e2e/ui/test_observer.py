@@ -5,21 +5,34 @@ from __future__ import annotations
 import pytest
 from playwright.sync_api import expect
 
+from e2e.helpers.waits import wait_for_app_ready
 from e2e.pages.schedules import SchedulesPage
 
 
 @pytest.mark.integration
 @pytest.mark.ui
-def test_create_schedule_and_run_now(page, frontend_base_url, observer) -> None:
+def test_schedule_run_now_dispatches(page, frontend_base_url, observer) -> None:
+    """Drive the per-row Run-now action on a seeded schedule.
+
+    Run-now POSTs /run-now/ to queue the observation; the run has no UI toast
+    and its async effect (a new observation message + notification) is asserted
+    on the ws lane (test_notifications.py). Here we assert the action dispatches
+    from the UI without error — the autouse console guard fails on any 5xx.
+    (Renamed from test_create_schedule_and_run_now, which only asserted the row
+    and button were visible; the cron-based create form is covered separately.)
+    """
     from apps.observer.models import ObserverSchedule
 
     s = SchedulesPage(page, frontend_base_url)
     s.go()
     s.expect_error_boundary_absent()
-    sched = ObserverSchedule.objects.filter(name="E2E active schedule").first()
+    sched = ObserverSchedule.objects.filter(name="E2E active schedule").order_by("id").first()
     assert sched is not None
     expect(s.schedule_row(sched.id)).to_be_visible(timeout=10_000)
-    expect(s.run_now_btn(sched.id)).to_be_visible()
+
+    s.run_now(sched.id)
+    s.expect_error_boundary_absent()
+    expect(s.schedule_row(sched.id)).to_be_visible()
 
 
 @pytest.mark.integration
@@ -56,7 +69,7 @@ def test_observer_structured_mode_produces_typed_card(
 
     pid = TradingProfile.objects.get(name="E2E Default").id
     page.goto(f"{frontend_base_url}/threads/observer/{pid}")
-    page.wait_for_load_state("networkidle")
+    wait_for_app_ready(page)
     # The observer thread page renders without crashing and shows the thread surface.
     expect(page.get_by_text("Something went wrong")).to_have_count(0)
     expect(page.get_by_text("Loading")).to_have_count(0, timeout=10_000)
@@ -71,7 +84,7 @@ def test_observer_diff_mode_sends_only_delta(page, frontend_base_url, observer) 
 
     pid = TradingProfile.objects.get(name="E2E Default").id
     page.goto(f"{frontend_base_url}/threads/observer/{pid}")
-    page.wait_for_load_state("networkidle")
+    wait_for_app_ready(page)
     expect(page.get_by_text("Something went wrong")).to_have_count(0)
     # The seeded observer thread renders its title heading.
     expect(page.get_by_role("heading", level=1)).to_be_visible(timeout=10_000)
@@ -91,8 +104,13 @@ def test_observer_cost_cap_skip_emits_system_message(page, frontend_base_url, ob
 
     profile = TradingProfile.objects.get(name="E2E Default")
     page.goto(f"{frontend_base_url}/threads/observer/{profile.id}")
-    page.wait_for_load_state("networkidle")
+    wait_for_app_ready(page)
+    # Gate on the thread fetch resolving before asserting content: wait_for_app_ready
+    # only waits for the app shell + skeleton detach, but this page signals loading
+    # with "Loading" text (not a skeleton-* testid), so the heading otherwise races a
+    # tight budget under CI load. Mirrors the passing structured-mode test.
+    expect(page.get_by_text("Loading")).to_have_count(0, timeout=15_000)
     expect(page.get_by_role("heading", name=f"Observer: {profile.name}")).to_be_visible(
-        timeout=10_000
+        timeout=15_000
     )
-    expect(page.get_by_text("cost cap", exact=False).first).to_be_visible(timeout=10_000)
+    expect(page.get_by_text("cost cap", exact=False).first).to_be_visible(timeout=15_000)

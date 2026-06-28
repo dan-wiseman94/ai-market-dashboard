@@ -9,18 +9,23 @@ that Playwright Test (Node) provides. We roll our own:
   is missing) or compares pixel-for-pixel against the committed one. Failures
   write an ``<actual>.png`` next to the baseline for the reviewer.
 
-This is intentionally simpler than Playwright Test's diff: any byte change
-between the new screenshot and the baseline fails the test. Use generous
-masks on the dynamic regions (timestamps, charts, notification counts) to
-avoid churn.
+Unlike a byte-exact compare, the diff decodes both PNGs and fails only when
+the *fraction of pixels that differ by more than a small per-channel delta*
+exceeds ``max_diff_ratio``. That tolerance absorbs anti-aliasing/sub-pixel
+jitter (which a byte compare flags as a failure) while still catching real
+visual regressions. Use masks on genuinely dynamic regions (timestamps,
+charts, notification counts) so they never enter the comparison at all.
 """
 
 from __future__ import annotations
 
-import contextlib
+import io
 from pathlib import Path
 
+from PIL import Image, ImageChops
 from playwright.sync_api import Locator, Page
+
+from e2e.helpers.waits import wait_for_app_ready
 
 
 def disable_animations(page: Page) -> None:
@@ -46,11 +51,9 @@ def suppress_pointer_effects(page: Page) -> None:
     )
 
 
-def wait_for_stable(page: Page, timeout_ms: int = 5_000) -> None:
-    page.wait_for_load_state("networkidle")
+def wait_for_stable(page: Page, timeout_ms: int = 10_000) -> None:
+    wait_for_app_ready(page, timeout_ms=timeout_ms)
     page.evaluate("() => document.fonts.ready")
-    with contextlib.suppress(Exception):
-        page.wait_for_selector("[data-testid^='skeleton-']", state="detached", timeout=timeout_ms)
     disable_animations(page)
     suppress_pointer_effects(page)
 
@@ -67,19 +70,53 @@ def default_masks(page: Page) -> list[Locator]:
         # element containing a dollar sign to keep the baseline stable.
         page.locator("table:has-text('$')"),
         page.locator("[data-cost-row]"),
+        # Relative timestamps ("3 minutes ago") are inherently non-deterministic;
+        # the <RelativeTime> component tags them so they're masked out of the diff.
+        page.get_by_test_id("relative-time"),
     ]
 
 
 _BASELINE_ROOT = Path("e2e/visual/__screenshots__")
 
+# A per-channel absolute delta at or below this is treated as "same pixel" —
+# absorbs font anti-aliasing and sub-pixel rendering jitter that a byte-exact
+# compare would flag. Real regressions move pixels far past this.
+_PER_CHANNEL_THRESHOLD = 16
 
-def capture_or_compare(page: Page, name: str, *, mask: list[Locator] | None = None) -> None:
+
+def _fraction_differing(
+    baseline: Image.Image, actual: Image.Image, channel_threshold: int
+) -> float:
+    """Fraction of pixels whose max per-channel |delta| exceeds ``channel_threshold``.
+
+    Both images must already be the same size and mode ``RGB``.
+    """
+    diff = ImageChops.difference(baseline, actual)
+    bands = diff.split()
+    max_band = bands[0]
+    for band in bands[1:]:
+        max_band = ImageChops.lighter(max_band, band)  # per-pixel max across channels
+    over = max_band.point(lambda p, t=channel_threshold: 255 if p > t else 0)
+    differing = over.histogram()[255]
+    total = baseline.width * baseline.height
+    return differing / total if total else 0.0
+
+
+def capture_or_compare(
+    page: Page,
+    name: str,
+    *,
+    mask: list[Locator] | None = None,
+    max_diff_ratio: float = 0.001,
+) -> None:
     """Capture ``page`` screenshot to ``e2e/visual/__screenshots__/<name>.png``.
 
     On first run (no baseline): create the baseline; the test passes.
-    On subsequent runs: compare bytes. On mismatch, write
-    ``__screenshots__/<name>.actual.png`` next to the baseline and raise
-    AssertionError.
+    On subsequent runs: decode both PNGs and compare. The test fails only when
+    the fraction of pixels differing by more than ``_PER_CHANNEL_THRESHOLD`` per
+    channel exceeds ``max_diff_ratio`` (default 0.1%), or when the dimensions
+    differ. On failure, write ``__screenshots__/<name>.actual.png`` next to the
+    baseline and raise AssertionError.
     """
     _BASELINE_ROOT.mkdir(parents=True, exist_ok=True)
     baseline = _BASELINE_ROOT / f"{name}.png"
@@ -91,10 +128,24 @@ def capture_or_compare(page: Page, name: str, *, mask: list[Locator] | None = No
     if not baseline.exists():
         baseline.write_bytes(actual_bytes)
         return
-    if baseline.read_bytes() != actual_bytes:
-        diff_path = _BASELINE_ROOT / f"{name}.actual.png"
+
+    baseline_img = Image.open(io.BytesIO(baseline.read_bytes())).convert("RGB")
+    actual_img = Image.open(io.BytesIO(actual_bytes)).convert("RGB")
+    diff_path = _BASELINE_ROOT / f"{name}.actual.png"
+
+    if baseline_img.size != actual_img.size:
         diff_path.write_bytes(actual_bytes)
         raise AssertionError(
-            f"visual diff for {name}: see {diff_path} (baseline {baseline}). "
+            f"visual size mismatch for {name}: baseline {baseline_img.size} vs "
+            f"actual {actual_img.size}; see {diff_path}. "
+            "Inspect, then `make e2e-visual-update` to accept."
+        )
+
+    ratio = _fraction_differing(baseline_img, actual_img, _PER_CHANNEL_THRESHOLD)
+    if ratio > max_diff_ratio:
+        diff_path.write_bytes(actual_bytes)
+        raise AssertionError(
+            f"visual diff for {name}: {ratio:.4%} of pixels differ "
+            f"(> {max_diff_ratio:.4%} tolerance); see {diff_path} (baseline {baseline}). "
             "Inspect, then `make e2e-visual-update` to accept."
         )

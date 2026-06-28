@@ -1,5 +1,5 @@
 import type { SnapshotListRow } from "@/api/snapshots";
-import { formatDistanceToNow } from "date-fns";
+import { RelativeTime } from "@/components/RelativeTime";
 
 type Props = {
   rows: SnapshotListRow[];
@@ -71,7 +71,7 @@ export default function SnapshotTable({ rows, selected, onToggle }: Props) {
                   </span>
                 </td>
                 <td className="py-2 text-ink-500 text-xs whitespace-nowrap">
-                  {formatDistanceToNow(new Date(row.captured_at))} ago
+                  <RelativeTime iso={row.captured_at} suffix=" ago" />
                 </td>
               </tr>
             );

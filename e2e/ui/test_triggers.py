@@ -11,14 +11,42 @@ from e2e.pages.triggers import TriggersListPage
 
 @pytest.mark.integration
 @pytest.mark.ui
-def test_create_simple_trigger_and_fire_now(page, frontend_base_url, minimal) -> None:
+def test_create_trigger_then_fire_now(page, frontend_base_url, minimal) -> None:
+    """Drive the real create flow (name → Save → persisted + listed), then fire it.
+
+    The profile auto-selects to the first profile on load and the default
+    condition is already valid, so a basic trigger needs only a name. The
+    list's per-row "Fire now" opens a window.confirm; accept it and assert the
+    queued toast.
+    """
+    from apps.observer.models import EventTrigger
+
+    # Idempotent on the shared, never-rolled-back e2e DB: a prior run's trigger
+    # would otherwise make the get() below raise MultipleObjectsReturned.
+    EventTrigger.objects.filter(name="E2E created trigger").delete()
+
     e = TriggerEditorPage(page, frontend_base_url)
     e.go_new()
     e.expect_error_boundary_absent()
-    # The editor form is interactive: the Save button exists and is gated until named.
+
+    # Save is gated until named (and a profile is selected — auto-selected on load).
     save = page.get_by_role("button", name="Save")
     expect(save).to_be_disabled()
-    expect(e.name).to_be_visible(timeout=10_000)
+    e.name.fill("E2E created trigger")
+    expect(save).to_be_enabled(timeout=10_000)
+    save.click()
+
+    # Success navigates back to the list; the trigger persisted and is listed.
+    page.wait_for_url(lambda u: u.rstrip("/").endswith("/triggers"), timeout=10_000)
+    trig = EventTrigger.objects.get(name="E2E created trigger")
+    tl = TriggersListPage(page, frontend_base_url)
+    expect(tl.row(trig.id)).to_be_visible(timeout=10_000)
+
+    # Fire-now: the row button opens a window.confirm — accept it, then the
+    # POST /fire/ is queued and a toast confirms.
+    page.on("dialog", lambda d: d.accept())
+    tl.row(trig.id).get_by_role("button", name="Fire now").click()
+    tl.expect_toast("fire queued", kind="info")
 
 
 @pytest.mark.integration
