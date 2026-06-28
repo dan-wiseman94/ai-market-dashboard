@@ -132,6 +132,7 @@ function ProfileField({
     <div>
       <label className="block text-xs text-ink-500 mb-1">Profile</label>
       <select
+        aria-label="Profile"
         value={profileId ?? ""}
         onChange={(e) => onChange(parseInt(e.target.value, 10) || null)}
         className="w-full px-2 py-1.5 rounded bg-ink-900 border border-rule"
