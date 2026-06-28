@@ -188,7 +188,7 @@ class PostMortem(Resolution):
 
 class Position(models.Model):
     """Manually maintained position record (moved from the former apps.portfolio per
-    the 27→12 consolidation — it's the broker-position leg of the thesis loop).
+    the 27→15 consolidation — it's the broker-position leg of the thesis loop).
     Strictly observational — no broker write path. ``db_table`` pinned to its
     original name (see migration 0008). P&L is computed off stored OHLC bars.
     """
@@ -240,7 +240,7 @@ class Position(models.Model):
 
 
 class Lesson(models.Model):
-    """Distilled recurring lesson (moved from the former apps.lessons per the 27→12
+    """Distilled recurring lesson (moved from the former apps.lessons per the 27→15
     consolidation): clustered from decisive post-mortems, fed to the Coach. The
     embedding is a plain JSON float list (few lessons → cosine in Python). ``db_table``
     pinned to ``lessons_lesson`` so the move preserves the table + its M2M.

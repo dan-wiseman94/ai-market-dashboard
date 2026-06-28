@@ -1,7 +1,7 @@
 """Strategy domain — the AI's active deliberation + house-view surfaces.
 
 Consolidates the former apps.coverage (per-ticker house view), apps.warroom
-(multi-agent debate), and apps.desk (anomaly sweep) per the 27→12 plan. These three
+(multi-agent debate), and apps.desk (anomaly sweep) per the 27→15 plan. These three
 formed a closed FK-connected component (warroom→coverage, desk→warroom), so they had
 to merge together — co-locating them turns those cross-app FKs into intra-app ones.
 Every model pins ``db_table`` to its original name so the move preserves the tables.
