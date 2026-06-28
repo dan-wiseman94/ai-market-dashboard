@@ -127,4 +127,5 @@ def test_run_now_calls_run_observer(api, profile):
     with patch("apps.observer.views.run_observer_task") as fake:
         resp2 = api.post(f"/api/observer/schedules/{sid}/run-now/")
     assert resp2.status_code == 202
-    fake.delay.assert_called_once_with(schedule_id=sid)
+    # run-now forces past the market-hours gate (manual fire is explicit intent).
+    fake.delay.assert_called_once_with(schedule_id=sid, force=True)
