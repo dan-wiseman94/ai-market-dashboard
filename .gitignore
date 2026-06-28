@@ -27,7 +27,7 @@ dist/
 .turbo/
 coverage/
 # ...but apps/strategy/coverage/ is the COVERAGE source package (moved from apps/coverage/
-# in the 27→17 app consolidation), not a report dir — negate it so `git add` still tracks it.
+# in the 27→15 app consolidation), not a report dir — negate it so `git add` still tracks it.
 !backend/apps/strategy/coverage/
 .pnpm-store/
 
@@ -58,6 +58,10 @@ Thumbs.db
 # Git worktrees
 .worktrees/
 .clone/
+.claude/worktrees/
+
+# MCP server scratch / session artifacts
+.playwright-mcp/
 
 *storybook.log
 storybook-static
