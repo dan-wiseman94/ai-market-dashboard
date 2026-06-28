@@ -80,16 +80,11 @@ jobs:
       - name: import-linter (architecture contracts)
         # cwd is repo root (pyproject here); job env PYTHONPATH=backend makes `apps` importable.
         run: uv run lint-imports
-      - name: mypy (ORM-aware, baseline ratchet)
-        # `set +o pipefail`: mypy exits non-zero on baselined errors under Actions' default
-        # pipefail; mypy-baseline filter exits 1 only on NEW (unbaselined) errors — that governs.
-        # PIPESTATUS guard: a mypy CRASH (exit >=2: bad config, plugin/import failure) produces
-        # no error lines, so the filter would see empty input and exit 0 — masking that nothing
-        # was type-checked. Fail explicitly on >=2; otherwise the filter's verdict governs.
-        shell: bash
-        run: |
-          set +o pipefail
-          uv run mypy backend/apps backend/config | uv run mypy-baseline filter
+      - name: mypy (ORM-aware, zero-baseline)
+        # Zero-baseline gate: mypy must report no errors. mypy exits 1 on type errors and >=2 on
+        # a crash (bad config / plugin / import failure) — either fails the step. (The legacy
+        # mypy-baseline.txt ratchet was driven to 0 and removed, so no filter is needed.)
+        run: uv run mypy backend/apps backend/config
       - name: deptry (dependency hygiene — unused / missing / transitively-used deps)
         # Runs AFTER uv sync (deps installed), so import→distribution mapping is accurate.
         run: uv run deptry backend

@@ -95,11 +95,11 @@ mutate: ## Mutation-test the money paths (slow; nightly in CI). Surviving mutant
 		sh -c 'uv run mutmut run || true; uv run mutmut results'
 
 .PHONY: typecheck
-typecheck: ## ORM-aware mypy, gated against mypy-baseline.txt (fails on NEW errors only)
-	# Capture mypy's exit separately (sh has no PIPESTATUS): baselined errors (exit 1) are fine
-	# and the filter governs NEW errors, but a CRASH (exit >=2) would otherwise pipe empty output
-	# to the filter, which exits 0 — masking that nothing was type-checked.
-	$(COMPOSE) exec -w /app web sh -c 'uv run mypy backend/apps backend/config >/tmp/mypy.out 2>/tmp/mypy.err; rc=$$?; uv run mypy-baseline filter </tmp/mypy.out; frc=$$?; [ $$rc -ge 2 ] && { cat /tmp/mypy.err >&2; echo "mypy crashed (exit $$rc) — type-checking did not run" >&2; exit $$rc; }; exit $$frc'
+typecheck: ## ORM-aware mypy, zero-baseline (fails on any type error)
+	# Zero-baseline: mypy must report no errors. mypy exits 1 on type errors and >=2 on a
+	# crash (bad config / plugin / import failure); either fails. (The legacy mypy-baseline.txt
+	# ratchet was driven to 0 and removed — no filter needed.)
+	$(COMPOSE) exec -w /app web uv run mypy backend/apps backend/config
 
 .PHONY: lint-frontend
 lint-frontend: ## eslint + tsc
