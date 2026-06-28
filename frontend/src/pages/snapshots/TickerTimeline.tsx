@@ -5,7 +5,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/useToast";
 import { useState } from "react";
-import { formatDistanceToNow } from "date-fns";
+import { RelativeTime } from "@/components/RelativeTime";
 
 type Props = { ticker: string };
 
@@ -82,7 +82,7 @@ export default function TickerTimeline({ ticker }: Props) {
                     {new Date(row.captured_at).toLocaleString()}
                   </span>
                   <span className="text-ink-500 text-xs">
-                    ({formatDistanceToNow(new Date(row.captured_at))} ago)
+                    (<RelativeTime iso={row.captured_at} suffix=" ago" />)
                   </span>
                 </div>
                 <DeltaBadge pct={row.headline_delta_pct} />
