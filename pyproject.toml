@@ -1,6 +1,6 @@
 [project]
 name = "ai-dashboard"
-version = "0.4.0"
+version = "0.5.0"
 description = "AI-powered trading dashboard (single-user, Docker)"
 requires-python = ">=3.13,<3.14"
 dependencies = [
