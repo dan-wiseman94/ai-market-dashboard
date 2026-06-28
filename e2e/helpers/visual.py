@@ -70,6 +70,9 @@ def default_masks(page: Page) -> list[Locator]:
         # element containing a dollar sign to keep the baseline stable.
         page.locator("table:has-text('$')"),
         page.locator("[data-cost-row]"),
+        # Relative timestamps ("3 minutes ago") are inherently non-deterministic;
+        # the <RelativeTime> component tags them so they're masked out of the diff.
+        page.get_by_test_id("relative-time"),
     ]
 
 
