@@ -42,7 +42,8 @@ their own per-provider cost caps; see CLAUDE.md → "Cost caps".)
   `market.ingest_daily_bars` (22:30), `book.snapshot_daily` (22:45),
   `core.prune_retention` (04:00 UTC), `thesis.distill` (05:30),
   `analytics.calibration_drift_sentinel` (06:00)
-- **Weekly:** `analytics.aieval_run_scheduled` (Mon 05:00) *(gated)*
+- **Weekly:** `analytics.aieval_run_scheduled` (Mon 05:00) *(gated)*, `backups.verify_latest`
+  (Sun 05:00 — restore-drill: `pg_restore --list` the newest backup, critical ErrorEvent on failure)
 
 See the registry for the per-task summary and owner. Note `beat` does not hot-reload —
 after editing the schedule, `docker compose restart worker beat` (CLAUDE.md → Docker).
