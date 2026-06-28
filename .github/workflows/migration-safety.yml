@@ -43,7 +43,7 @@ jobs:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
-      - uses: astral-sh/setup-uv@v7
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
         with:
           version: "0.8"
       - run: uv python install 3.13
@@ -70,7 +70,7 @@ jobs:
         id: render
       - name: squawk lint
         if: steps.render.outputs.rendered != '0'
-        uses: sbdchd/squawk-action@v2
+        uses: sbdchd/squawk-action@8d113898e16c6cfd417ceba848b0edad97882be3 # v2
         with:
           pattern: "/tmp/migsql/*.sql"
           version: "latest"
