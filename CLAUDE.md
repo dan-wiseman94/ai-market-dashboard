@@ -38,7 +38,7 @@ Fresh rebuild (catches reproducibility bugs): `docker compose down -v && docker 
 
 ## Architecture big picture
 
-**Six-service compose stack** (dev): `web` (Django+DRF+Channels/Daphne), `worker` (Celery), `beat` (Celery beat, `DatabaseScheduler`), `redis` (broker+Channels layer+cache), `db` (Postgres 16), `frontend` (Vite). All bind `127.0.0.1` only.
+**Six-service compose stack** (dev): `web` (Django+DRF+Channels/Daphne), `worker` (Celery), `beat` (Celery beat, `DatabaseScheduler`), `redis` (broker+Channels layer+cache), `db` (Postgres 17), `frontend` (Vite). All bind `127.0.0.1` only.
 
 **Django project** `backend/config/`, settings `base.py`/`dev.py`/`prod.py`. Apps `backend/apps/<name>/`, imported `apps.<name>` (PYTHONPATH `/app/backend`). Celery app `config.celery`, re-exported from `config/__init__.py`. Channels routing `config.routing`, mounted by `config.asgi`. **Celery task packages are listed explicitly in `config/celery.py` (`TASK_PACKAGES`, not autodiscovered)** — add new task modules there. Every scheduled task is also inventoried in `apps/core/scheduled_tasks.py` (drift-gated) and asserted registered by `apps/core/tests/test_celery_registration.py`.
 
@@ -179,7 +179,7 @@ Fresh rebuild (catches reproducibility bugs): `docker compose down -v && docker 
 
 - **Architecture contracts** (`import-linter` + FE `dependency-cruiser`) — concrete AI providers private to `apps.ai` (use `get_provider`/router); crypto (`apps.secrets.{fields,keys}`) private to `apps.secrets`; FE `src/api` must not import `src/{pages,components}`. A direct import elsewhere reds CI. (`depcruise` needs a glob, not a bare dir.)
 - **OpenAPI contract** — `backend/schema.yml` + `frontend/src/api/schema.d.ts` are committed + drift-gated (source of the `*_id` contract); `schemathesis` fuzzes for 5xx under `MOCK_EXTERNAL`.
-- **Coverage floors** — backend `fail_under=88`, FE vitest 80/74/77/82; `type-coverage` FE `any`-ratchet (floor 99). Property tests (Hypothesis) cover DSL/token-budget/cost/market-hours; `gitleaks` scans staged + CI history; `mutmut` nightly (non-gate).
+- **Coverage floors** — backend `fail_under=86` (branch coverage enabled), FE vitest 80/74/77/82; `type-coverage` FE `any`-ratchet (floor 99). Property tests (Hypothesis) cover DSL/token-budget/cost/market-hours; `gitleaks` scans staged + CI history; `mutmut` nightly (non-gate).
 - **Semgrep landmine rules** (`tools/semgrep/rules/`) — CLAUDE.md silent-failures as executable rules (`bytes(img.data)`, `0.0.0.0` bind, `_safe(_, {})`, secret logging); image-bytes rule exempts `image_store.py`; `make semgrep-rules-test` validates fixtures. Plus the Semgrep registry (`semgrep ci`).
 - **`deptry`** (gate) — **run after `uv sync`** (needs installed metadata to map `rest_framework`→`djangorestframework`); `uvx deptry` is noisy. **`vulture`**/**`knip`**/**`guarddog`**/**`trivy`** advisory.
 - **`ruff C901`** complexity ≤15 (gate); **`ruff S`** (bandit, gate) — no hardcoded secrets/weak hashes/shipped `assert` (sha256 not sha1; real guards survive `python -O`; `S101/5/6` ignored in tests/e2e).

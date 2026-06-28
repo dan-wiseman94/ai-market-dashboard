@@ -187,7 +187,7 @@ Where the Resident Analyst works one name at a time, the Strategist steps back t
 |---|---|
 | Backend | Python 3.13 · Django 6 + Django REST Framework · Channels 4 over Daphne (ASGI/WebSockets) |
 | Async | Celery 5 worker + beat (`DatabaseScheduler`), Redis broker |
-| Data | Postgres 16 (psycopg 3) + `pgvector` (recall embeddings) · Redis (broker, Channels layer, cache) |
+| Data | Postgres 17 (psycopg 3) + `pgvector` (recall embeddings) · Redis (broker, Channels layer, cache) |
 | AI | `anthropic` + `openai` SDKs · `tiktoken` for token counting · `fastembed` (`bge-small-en-v1.5`) for semantic recall |
 | Market | `schwab-py` · `pandas` · `pandas-market-calendars` · Playwright / headless Chromium for chart PNGs |
 | Secrets | `django-cryptography` (key derived from `DJANGO_SECRET_KEY` + `/data/secret.salt`) |
@@ -284,7 +284,7 @@ web       Django + DRF + Channels (Daphne ASGI)   :8000
 worker    Celery worker (has chromium for chart renders)
 beat      Celery beat (DatabaseScheduler)
 redis     Broker + Channels layer + cache         :6379
-db        Postgres 16                             :5432
+db        Postgres 17                             :5432
 frontend  Vite dev server (React + TS)            :5173
 ```
 
@@ -355,4 +355,4 @@ The SPA is served at <http://localhost:8000>. Prod `/` serves `index.html` via W
 
 - **No app-level authentication.** Security is network isolation: the stack binds to `127.0.0.1` only and every API/WS endpoint defaults to `AllowAny`. WebSocket connections are Origin-validated against `ALLOWED_HOSTS` (`AllowedHostsOriginValidator`). **Do not bind to `0.0.0.0` without first adding real authentication** — and do not expose this stack publicly.
 - Schwab OAuth tokens and provider API keys are encrypted at rest via `django-cryptography`; the key is derived from `DJANGO_SECRET_KEY` + `/data/secret.salt`. Rotating `DJANGO_SECRET_KEY` invalidates stored secrets.
-- Image payloads (chart PNGs) live in Postgres (`SnapshotImage.data`), capped at 5 MB.
+- Image payloads (chart PNGs) are offloaded to the `/data` volume (`SnapshotImage.file_path`; the in-DB `data` column stays NULL) and read back via `image_store.read_image_bytes`, capped at 5 MB. Legacy rows may still hold bytes in Postgres.
