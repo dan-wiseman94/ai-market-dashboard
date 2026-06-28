@@ -11,16 +11,28 @@ from e2e.pages.schedules import SchedulesPage
 
 @pytest.mark.integration
 @pytest.mark.ui
-def test_create_schedule_and_run_now(page, frontend_base_url, observer) -> None:
+def test_schedule_run_now_dispatches(page, frontend_base_url, observer) -> None:
+    """Drive the per-row Run-now action on a seeded schedule.
+
+    Run-now POSTs /run-now/ to queue the observation; the run has no UI toast
+    and its async effect (a new observation message + notification) is asserted
+    on the ws lane (test_notifications.py). Here we assert the action dispatches
+    from the UI without error — the autouse console guard fails on any 5xx.
+    (Renamed from test_create_schedule_and_run_now, which only asserted the row
+    and button were visible; the cron-based create form is covered separately.)
+    """
     from apps.observer.models import ObserverSchedule
 
     s = SchedulesPage(page, frontend_base_url)
     s.go()
     s.expect_error_boundary_absent()
-    sched = ObserverSchedule.objects.filter(name="E2E active schedule").first()
+    sched = ObserverSchedule.objects.filter(name="E2E active schedule").order_by("id").first()
     assert sched is not None
     expect(s.schedule_row(sched.id)).to_be_visible(timeout=10_000)
-    expect(s.run_now_btn(sched.id)).to_be_visible()
+
+    s.run_now(sched.id)
+    s.expect_error_boundary_absent()
+    expect(s.schedule_row(sched.id)).to_be_visible()
 
 
 @pytest.mark.integration
