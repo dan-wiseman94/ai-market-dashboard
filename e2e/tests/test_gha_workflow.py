@@ -42,7 +42,9 @@ def test_e2e_workflow_runs_ui_lane() -> None:
 
 
 def test_e2e_workflow_runs_schemathesis() -> None:
-    assert any("schemathesis" in c for c in _all_run_commands()), "missing the schemathesis fuzz step"
+    assert any("schemathesis" in c for c in _all_run_commands()), (
+        "missing the schemathesis fuzz step"
+    )
 
 
 def test_e2e_workflow_runs_render_chart() -> None:
