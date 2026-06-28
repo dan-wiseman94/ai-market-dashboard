@@ -19,8 +19,8 @@ from apps.observer.triggers import tasks as _trigger_tasks  # noqa: F401
 # re-capturing the snapshot + re-billing. A lost fire is covered by the next
 # periodic fire. See apps/observer/tests/test_task_acks.py.
 @shared_task(name="observer.run_observer", acks_late=False, reject_on_worker_lost=False)
-def run_observer_task(schedule_id: int, force: bool = False) -> int | None:
-    return run_observer(schedule_id, force=force)
+def run_observer_task(schedule_id: int) -> int | None:
+    return run_observer(schedule_id)
 
 
 @shared_task(name="observer.fire_close_relative_schedules")

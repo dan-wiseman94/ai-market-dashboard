@@ -46,9 +46,7 @@ class ObserverScheduleViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"], url_path="run-now")
     def run_now(self, request, pk=None):
-        # Manual run-now is explicit user intent: force past the market-hours gate
-        # so it always fires (and notifies), unlike scheduled cron fires.
-        run_observer_task.delay(schedule_id=int(pk), force=True)
+        run_observer_task.delay(schedule_id=int(pk))
         return Response(status=status.HTTP_202_ACCEPTED)
 
 

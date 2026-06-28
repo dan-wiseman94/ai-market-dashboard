@@ -43,30 +43,3 @@ def test_proceeds_when_a_watched_market_open():
     ):
         run_observer(sched.id)
         cap.assert_called_once()
-
-
-@pytest.mark.django_db
-@freeze_time("2026-04-18 14:00:00")  # Saturday — all equities closed
-def test_force_bypasses_market_closed_gate_and_notifies():
-    """A manual run-now (force=True) fires even when all watched markets are closed,
-    and emits the observer_done notification (the WS-delivery path). Scheduled cron
-    fires still honour the gate (force defaults False — covered above)."""
-    profile = TradingProfile.objects.create(name="p", style="s")
-    sched = ObserverSchedule.objects.create(
-        name="eq",
-        profile=profile,
-        market_hours_only=True,
-        default_watchlist_tickers=["SPY"],
-        default_includes=[],
-    )
-    from apps.snapshots.models import Snapshot
-
-    snap = Snapshot.objects.create(profile=profile, includes=[], status="ready")
-    with (
-        patch("apps.observer.services.run.capture", return_value=snap) as cap,
-        patch("apps.observer.services.run.run_ai_on_message"),
-        patch("apps.observer.services.run.notify") as notify,
-    ):
-        assert run_observer(sched.id, force=True) == snap.id
-        cap.assert_called_once()
-        notify.assert_called_once()
