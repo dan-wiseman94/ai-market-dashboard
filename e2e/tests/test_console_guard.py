@@ -65,7 +65,6 @@ def test_known_benign_files_404_is_allowed() -> None:
     page = _FakePage()
     errors = console_guard.attach(page)
     page.emit_console(
-        "Failed to load resource: the server responded with a status of "
-        "404 (Not Found) /api/files/"
+        "Failed to load resource: the server responded with a status of 404 (Not Found) /api/files/"
     )
     assert not errors, "the documented benign /api/files/ 404 stays allow-listed"

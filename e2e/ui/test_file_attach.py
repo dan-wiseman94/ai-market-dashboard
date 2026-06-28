@@ -38,9 +38,7 @@ def test_attach_file_to_thread(page, frontend_base_url, threads) -> None:
     page.get_by_text("Attach a file").click()
     row = page.get_by_test_id(f"file-row-{uf.id}")
     expect(row).to_be_visible(timeout=10_000)
-    with page.expect_response(
-        lambda r: "/attach-file/" in r.url and r.request.method == "POST"
-    ):
+    with page.expect_response(lambda r: "/attach-file/" in r.url and r.request.method == "POST"):
         row.get_by_role("button", name="Attach").click()
 
     # The UI click (panel + Attach button) drove the attach: a new Message
@@ -50,6 +48,6 @@ def test_attach_file_to_thread(page, frontend_base_url, threads) -> None:
     # assert the backend effect of the UI action.)
     assert Message.objects.filter(thread=thread).count() > before
     contents = [json.dumps(m.content) for m in Message.objects.filter(thread=thread)]
-    assert any(
-        "Please review this document" in c for c in contents
-    ), "the attached message carries the prompt"
+    assert any("Please review this document" in c for c in contents), (
+        "the attached message carries the prompt"
+    )
