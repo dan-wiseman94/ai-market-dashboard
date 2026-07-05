@@ -1,9 +1,10 @@
-"""A2: coach on snapshot-free chat (message-keyed) + per-turn refresh.
+"""Coach on snapshot-free chat (message-keyed) + per-turn refresh.
 
-The snapshot-bearing coach returns "" with no primary_ticker, so a bare chat was
-un-coached. assemble_coach_context_for_message sources the situation from the
-message text instead, and _build_request injects it per turn — but only for
-threads with no snapshot-bearing turn, so it never double-injects.
+The snapshot-bearing coach returns "" with no primary_ticker, so without a
+message-keyed block a snapshot-free chat would get no coach context.
+assemble_coach_context_for_message sources the situation from the message text
+instead, and _build_request injects it per turn — but only for threads with no
+snapshot-bearing turn, so it never double-injects.
 """
 
 from __future__ import annotations

@@ -1,7 +1,6 @@
 """Thesis (second-brain) journeys — list, detail, run-postmortem, close form.
 
-Closes the M11 E2E gap: theses / post-mortems / decision journal previously had
-zero end-to-end coverage.
+E2E coverage for theses / post-mortems / decision journal.
 """
 
 from __future__ import annotations

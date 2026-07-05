@@ -35,7 +35,7 @@ class Thesis(models.Model):
     entry_price = models.DecimalField(max_digits=14, decimal_places=4, null=True, blank=True)
     target_price = models.DecimalField(max_digits=14, decimal_places=4, null=True, blank=True)
     invalidation_price = models.DecimalField(max_digits=14, decimal_places=4, null=True, blank=True)
-    # Written "what would prove me wrong" — the pre-trade discipline field (C4).
+    # Written "what would prove me wrong" — the pre-trade discipline field.
     # Optional at the model layer (existing rows / ORM creates); required on API
     # create by ThesisSerializer.validate, alongside a non-empty rationale.
     invalidation_note = models.TextField(blank=True, default="")
@@ -72,7 +72,7 @@ class Thesis(models.Model):
         blank=True,
         on_delete=models.SET_NULL,
         related_name="review_theses",
-        help_text="Thread where post-mortems will be posted (Phase 2).",
+        help_text="Thread where post-mortems are posted.",
     )
 
     guard_enabled = models.BooleanField(default=False)
@@ -187,10 +187,9 @@ class PostMortem(Resolution):
 
 
 class Position(models.Model):
-    """Manually maintained position record (moved from the former apps.portfolio per
-    the 27→15 consolidation — it's the broker-position leg of the thesis loop).
-    Strictly observational — no broker write path. ``db_table`` pinned to its
-    original name (see migration 0008). P&L is computed off stored OHLC bars.
+    """Manually maintained position record — the broker-position leg of the thesis
+    loop. Strictly observational — no broker write path. ``db_table`` pinned to
+    ``portfolio_position`` (see migration 0008). P&L is computed off stored OHLC bars.
     """
 
     DIRECTION_CHOICES: ClassVar = [("long", "Long"), ("short", "Short")]
@@ -240,10 +239,9 @@ class Position(models.Model):
 
 
 class Lesson(models.Model):
-    """Distilled recurring lesson (moved from the former apps.lessons per the 27→15
-    consolidation): clustered from decisive post-mortems, fed to the Coach. The
-    embedding is a plain JSON float list (few lessons → cosine in Python). ``db_table``
-    pinned to ``lessons_lesson`` so the move preserves the table + its M2M.
+    """Distilled recurring lesson: clustered from decisive post-mortems, fed to the
+    Coach. The embedding is a plain JSON float list (few lessons → cosine in Python).
+    ``db_table`` pinned to ``lessons_lesson`` (preserves the table + its M2M).
     """
 
     text = models.TextField(help_text="Representative bullet of the cluster.")

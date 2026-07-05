@@ -29,8 +29,7 @@ def test_daily_and_monthly_cap_edit(page, frontend_base_url, minimal) -> None:
 
     Caps live on the ProviderCard (/settings), not /costs — the daily/monthly
     cap fields write ProviderConfig.{daily,monthly}_cost_cap_usd via the card's
-    Save (which toasts "Saved"). (Previously this only asserted the fields were
-    visible.)
+    Save (which toasts "Saved").
     """
     from decimal import Decimal
 

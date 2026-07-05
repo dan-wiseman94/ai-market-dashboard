@@ -1,9 +1,9 @@
-"""Regression test for the diff-mode prior-snapshot lookup.
+"""Diff-mode prior-snapshot lookup contract.
 
-`_build_payload_text` ordered Snapshots by a non-existent ``created_at`` field,
-which raises ``FieldError`` at runtime on every diff-mode fire (Snapshot's
-timestamp is ``captured_at``). mypy + django-stubs surfaced it; this locks the
-behavior. Diff-mode had no test, which is why the bug shipped.
+`_build_payload_text` must order Snapshots by ``captured_at`` (Snapshot's
+timestamp field). ``created_at`` is not a Snapshot field — ordering by it
+raises ``FieldError`` at runtime on every diff-mode fire. This pins the
+behavior.
 """
 
 import pytest
@@ -36,7 +36,7 @@ def test_build_payload_text_diff_mode_finds_prior_snapshot():
     prev = _ready_snap(profile, 100)
     curr = _ready_snap(profile, 110)
 
-    # Before the fix this raised FieldError("Cannot resolve keyword 'created_at'").
+    # Ordering by created_at would raise FieldError("Cannot resolve keyword 'created_at'").
     text = _build_payload_text(sched, curr, "claude", "claude-sonnet-4-6")
 
     assert f"Delta since snapshot #{prev.id}" in text

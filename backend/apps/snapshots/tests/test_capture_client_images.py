@@ -1,10 +1,10 @@
 """Staged client-capture screenshots must reach the AI.
 
-Regression tests for the gap where a client-uploaded screenshot was FK-attached
-to a Snapshot (SnapshotViewSet.create) but never entered the image section's
-payload["image_ids"] — the only thing the AI-delivery path (_snapshot_image_ids)
-reads. Server-rendered charts were delivered; user screenshots were silently
-dropped. See M5 design (client captures + server renders both delivered).
+A client-uploaded screenshot is FK-attached to a Snapshot (SnapshotViewSet.create)
+but does not enter the image section's payload["image_ids"] on its own — the only
+thing the AI-delivery path (_snapshot_image_ids) reads. Without the merge,
+server-rendered charts would be delivered while user screenshots were silently
+dropped. The design delivers client captures + server renders both.
 """
 
 from unittest.mock import patch

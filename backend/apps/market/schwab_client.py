@@ -126,7 +126,7 @@ def _write_token(token: Any, *_args: Any, **_kwargs: Any) -> None:
     persist_token(inner)
 
 
-# Back-compat factory; tests import _make_write_func and call it.
+# Test seam: tests import _make_write_func and call it.
 def _make_write_func():
     return _write_token
 

@@ -15,7 +15,7 @@ export interface AIView {
   agreement?: "agree" | "diverge" | "partial" | null;
 }
 
-/** The AI's current live call on a ticker (M13), reconciled against a thesis direction. */
+/** The AI's current live call on a ticker, reconciled against a thesis direction. */
 export function useAIView(ticker: string, against?: string) {
   return useQuery({
     queryKey: ["predictions/ai-view", ticker, against ?? null],
@@ -44,7 +44,7 @@ export interface DivergencesResponse {
   rows: Divergence[];
 }
 
-/** Open theses that conflict with the AI's current call (M13 F7 dashboard rollup). */
+/** Open theses that conflict with the AI's current call (dashboard rollup). */
 export function useDivergences() {
   return useQuery({
     queryKey: ["predictions/divergences"],

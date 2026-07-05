@@ -59,4 +59,4 @@ def test_backtest_price_crossing_now_matches():
         end=datetime(2026, 2, 1, tzinfo=UTC),
         timeframe="1d",
     )
-    assert len(matches) == 1  # previously zero — crossing never fired in backtest
+    assert len(matches) == 1  # exactly one crossing must fire

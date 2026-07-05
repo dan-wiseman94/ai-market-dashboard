@@ -1,8 +1,9 @@
 """Stop must actually abort an in-flight stream, not just discard the final write.
 
-Before: the drive loop drained the provider to completion (full generation + billing)
-and only suppressed the DB write. These tests pin the real behavior: the loop checks
-a stop predicate, breaks early, and closes the provider stream.
+Without the stop predicate the drive loop would drain the provider to completion
+(full generation + billing) and only suppress the DB write. These tests pin the
+invariant: the loop checks a stop predicate, breaks early, and closes the provider
+stream.
 """
 
 import asyncio

@@ -1,10 +1,9 @@
 """Strategy domain — the AI's active deliberation + house-view surfaces.
 
-Consolidates the former apps.coverage (per-ticker house view), apps.warroom
-(multi-agent debate), and apps.desk (anomaly sweep) per the 27→15 plan. These three
-formed a closed FK-connected component (warroom→coverage, desk→warroom), so they had
-to merge together — co-locating them turns those cross-app FKs into intra-app ones.
-Every model pins ``db_table`` to its original name so the move preserves the tables.
+The coverage (per-ticker house view), warroom (multi-agent debate), and desk
+(anomaly sweep) subdomains form a closed FK-connected component (warroom→coverage,
+desk→warroom), so they live together in one app and those FKs stay intra-app.
+Every model pins ``db_table``; the stored table names are load-bearing — keep them.
 """
 
 from __future__ import annotations
@@ -15,7 +14,7 @@ from django.db import models
 
 
 class CoverageNote(models.Model):
-    """Living per-ticker house view the AI revises with a reason (was apps.coverage)."""
+    """Living per-ticker house view the AI revises with a reason."""
 
     STANCE_CHOICES: ClassVar = [("bull", "Bull"), ("bear", "Bear"), ("neutral", "Neutral")]
 
@@ -38,7 +37,7 @@ class CoverageNote(models.Model):
 
 
 class CoverageRevision(models.Model):
-    """Append-only revision audit of a CoverageNote (was apps.coverage)."""
+    """Append-only revision audit of a CoverageNote."""
 
     note = models.ForeignKey(CoverageNote, on_delete=models.CASCADE, related_name="revisions")
     prior = models.JSONField(default=dict)
@@ -62,8 +61,8 @@ class CoverageRevision(models.Model):
 
 
 class WarRoomRun(models.Model):
-    """Multi-agent 'courtroom' debate run (was apps.warroom). Streams over
-    thread.<id> via run_ai_on_message; persists the synthesized verdict."""
+    """Multi-agent 'courtroom' debate run. Streams over thread.<id> via
+    run_ai_on_message; persists the synthesized verdict."""
 
     STATUS_CHOICES: ClassVar = [("running", "Running"), ("done", "Done"), ("error", "Error")]
 
@@ -97,7 +96,7 @@ class WarRoomRun(models.Model):
 
 
 class DeskEntry(models.Model):
-    """Agentic anomaly-sweep finding (was apps.desk)."""
+    """Agentic anomaly-sweep finding."""
 
     STATUS_CHOICES: ClassVar = [("new", "New"), ("acted", "Acted"), ("dismissed", "Dismissed")]
 
@@ -132,8 +131,8 @@ class DeskEntry(models.Model):
 
 
 class RegimeReading(models.Model):
-    """Append-only market-regime reading (moved from apps.regime); the latest row is
-    the current regime. Completes the M15 strategist cluster here. No FKs — a leaf."""
+    """Append-only market-regime reading; the latest row is the current regime.
+    No FKs — a leaf."""
 
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     composite = models.CharField(max_length=20)

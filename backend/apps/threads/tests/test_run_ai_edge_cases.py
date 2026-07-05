@@ -28,7 +28,7 @@ from apps.threads.tasks import (
 
 def test_extract_text_reads_block_text_not_repr():
     # A "blocks" content (e.g. a Files-API document attach) surfaces its text
-    # blocks — never the Python repr of the dict (which used to leak to the model).
+    # blocks — the Python repr of the dict must never reach the model.
     content = {"blocks": [{"type": "text", "text": "hi"}]}  # no top-level "text" key
     assert _extract_text(Message(content=content)) == "hi"
 

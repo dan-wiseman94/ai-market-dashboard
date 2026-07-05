@@ -2,13 +2,12 @@
 
 Every ``from apps.<x>`` / ``import apps.<x>`` across the backend + e2e trees must name a
 REAL installed app. Catches the "moved/removed an app but left a stale import" class of
-bug — e.g. the e2e lane silently importing ``apps.triggers`` after triggers merged into
-``observer`` during the 27→15 consolidation, which only surfaced in CI (the `ui` lane),
-never in the backend suite.
+bug — an e2e-only stale import surfaces only in CI (the `ui` lane), never in the
+backend suite, so this guard has to scan the e2e tree too.
 
 Why a STATIC scan (regex over import lines) rather than importing every module:
-function-local imports (``def f(): from apps.triggers.models import ...``) don't execute
-at import time, so an import-based check misses exactly the cases that bit us. A static
+function-local imports (``def f(): from apps.foo.models import ...``) don't execute
+at import time, so an import-based check misses exactly those cases. A static
 scan of import statements catches them wherever they live (module- or function-level).
 
 The first dotted segment after ``apps.`` is the app; subpackages like

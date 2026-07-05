@@ -43,7 +43,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Live calibration of the AI's own resolved predictions (M13 F3). */
+        /** @description Live calibration of the AI's own resolved predictions. */
         get: operations["analytics_ai_calibration_retrieve"];
         put?: never;
         post?: never;
@@ -209,7 +209,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * @description M14 F4 "The Mirror" — grades the TRADER's own behavior from journal + thesis
+         * @description "The Mirror" — grades the TRADER's own behavior from journal + thesis
          *     + post-mortem data. `?horizon=` (7/30/90, default 30).
          */
         get: operations["analytics_trader_calibration_retrieve"];
@@ -763,7 +763,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Read + prune/mute the distilled lessons — the hygiene surface for M14 F2. */
+        /** @description Read + prune/mute the distilled lessons — the lessons hygiene surface. */
         get: operations["lessons_list"];
         put?: never;
         post?: never;
@@ -781,14 +781,14 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** @description Read + prune/mute the distilled lessons — the hygiene surface for M14 F2. */
+        /** @description Read + prune/mute the distilled lessons — the lessons hygiene surface. */
         put: operations["lessons_update"];
         post?: never;
-        /** @description Read + prune/mute the distilled lessons — the hygiene surface for M14 F2. */
+        /** @description Read + prune/mute the distilled lessons — the lessons hygiene surface. */
         delete: operations["lessons_destroy"];
         options?: never;
         head?: never;
-        /** @description Read + prune/mute the distilled lessons — the hygiene surface for M14 F2. */
+        /** @description Read + prune/mute the distilled lessons — the lessons hygiene surface. */
         patch: operations["lessons_partial_update"];
         trace?: never;
     };
@@ -1051,7 +1051,7 @@ export interface paths {
         };
         /**
          * @description The AI's current live call on a ticker, optionally reconciled against a
-         *     thesis direction (``?against=bullish``). Powers the thesis-detail tile (F7).
+         *     thesis direction (``?against=bullish``). Powers the thesis-detail tile.
          */
         get: operations["predictions_ai_view_retrieve"];
         put?: never;
@@ -1071,7 +1071,7 @@ export interface paths {
         };
         /**
          * @description Open theses that conflict with the AI's current call — the dashboard
-         *     divergence rollup (F7). ``?partial=false`` to show only hard diverges.
+         *     divergence rollup. ``?partial=false`` to show only hard diverges.
          */
         get: operations["predictions_divergences_retrieve"];
         put?: never;
@@ -2560,7 +2560,7 @@ export interface components {
             readonly thread_id?: number | null;
             /** @description Market state at the time the thesis was opened. */
             readonly snapshot_id?: number | null;
-            /** @description Thread where post-mortems will be posted (Phase 2). */
+            /** @description Thread where post-mortems are posted. */
             readonly review_thread_id?: number | null;
             guard_enabled?: boolean;
             readonly guard_trigger_id?: string;
@@ -2601,7 +2601,7 @@ export interface components {
             thinking_budget?: number;
             /** @description Expose the Memory tool with a per-profile namespace under /data/memory/<profile_id>/. */
             enable_memory?: boolean;
-            /** @description Inject the Decision Coach context (prior theses, diff-vs-last snapshot, per-ticker track record, recall) plus a base observational system prompt. Off = legacy behavior (system prompt is just the style). */
+            /** @description Inject the Decision Coach context (prior theses, diff-vs-last snapshot, per-ticker track record, recall) plus a base observational system prompt. Off = the system prompt is just the style. */
             enable_coach?: boolean;
             active?: boolean;
             /** Format: date-time */
@@ -2851,7 +2851,7 @@ export interface components {
             readonly thread_id: number | null;
             /** @description Market state at the time the thesis was opened. */
             readonly snapshot_id: number | null;
-            /** @description Thread where post-mortems will be posted (Phase 2). */
+            /** @description Thread where post-mortems are posted. */
             readonly review_thread_id: number | null;
             guard_enabled?: boolean;
             readonly guard_trigger_id: string;
@@ -2938,7 +2938,7 @@ export interface components {
             thinking_budget?: number;
             /** @description Expose the Memory tool with a per-profile namespace under /data/memory/<profile_id>/. */
             enable_memory?: boolean;
-            /** @description Inject the Decision Coach context (prior theses, diff-vs-last snapshot, per-ticker track record, recall) plus a base observational system prompt. Off = legacy behavior (system prompt is just the style). */
+            /** @description Inject the Decision Coach context (prior theses, diff-vs-last snapshot, per-ticker track record, recall) plus a base observational system prompt. Off = the system prompt is just the style. */
             enable_coach?: boolean;
             active?: boolean;
             /** Format: date-time */

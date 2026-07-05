@@ -1,4 +1,4 @@
-"""Consistency sentinel (#15): a new directional call vs the AI's stated view."""
+"""Consistency sentinel: a new directional call vs the AI's stated view."""
 
 from __future__ import annotations
 

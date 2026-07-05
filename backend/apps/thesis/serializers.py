@@ -38,7 +38,7 @@ class ThesisSerializer(serializers.ModelSerializer):
         return g.id if g else None
 
     def validate(self, attrs: dict) -> dict:
-        """Pre-trade discipline (C4): a new thesis must state its rationale AND
+        """Pre-trade discipline: a new thesis must state its rationale AND
         what would invalidate it (a price level or a written note). Enforced on
         CREATE only — existing theses can be edited freely (and ORM creates,
         e.g. fixtures, bypass the serializer entirely)."""

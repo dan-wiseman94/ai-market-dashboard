@@ -121,15 +121,15 @@ CELERY_TIMEZONE = "UTC"
 CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
 OBSERVER_BEAT_TIMEZONE = env("OBSERVER_BEAT_TIMEZONE", default="UTC")
 TRIGGER_TICK_SECONDS = env.int("TRIGGER_TICK_SECONDS", default=10)
-# Observer response cache (C2): reuse a recent prior observation when a fire's
+# Observer response cache: reuse a recent prior observation when a fire's
 # assembled prompt is byte-identical (e.g. a quiet/closed market with mode=diff),
 # instead of paying for another AI call. OFF by default; opt-in cost lever.
 OBSERVER_RESPONSE_CACHE_ENABLED = env.bool("OBSERVER_RESPONSE_CACHE_ENABLED", default=False)
 OBSERVER_RESPONSE_CACHE_TTL_SECONDS = env.int("OBSERVER_RESPONSE_CACHE_TTL_SECONDS", default=1800)
-# M11 — Thesis post-mortem horizons in days. Phase 2 will schedule AI replays at each.
+# Thesis post-mortem horizons in days; run_due_postmortems schedules an AI replay at each.
 THESIS_POSTMORTEM_HORIZONS: list[int] = [7, 30, 90]
 
-# Corporate-action adjustment (C3): stock splits are ALWAYS adjusted in the returns
+# Corporate-action adjustment: stock splits are ALWAYS adjusted in the returns
 # math (a split is a non-event for the holder, so an unadjusted return is wrong).
 # Dividends are different — adding them back converts price-return to total-return,
 # a semantic change — so they're opt-in here. OFF by default; see apps.market.returns.
@@ -156,7 +156,7 @@ STATICFILES_DIRS = (
 DATA_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024  # 5 MB
 
 # Snapshot image bytes are written here (on the persistent app_data:/data volume)
-# instead of into Postgres, keeping pg_dump small (C7). See apps.snapshots.image_store.
+# instead of into Postgres, keeping pg_dump small. See apps.snapshots.image_store.
 SNAPSHOT_IMAGE_DIR = env.str("SNAPSHOT_IMAGE_DIR", default="/data/images")
 
 # DRF
@@ -227,7 +227,7 @@ AI_PROVIDER_TIMEOUT_SECONDS = env.float("AI_PROVIDER_TIMEOUT_SECONDS", default=6
 AI_FAILOVER_ENABLED = env.bool("AI_FAILOVER_ENABLED", default=False)
 AI_FAILOVER_PROVIDER = env.str("AI_FAILOVER_PROVIDER", default="")
 
-# Autonomous investigation (M14 F1): a trigger/observer fire can run a BOUNDED
+# Autonomous investigation: a trigger/observer fire can run a BOUNDED
 # tool-using investigation instead of a single observation. Max tool rounds per
 # run, then one tool-less concluding turn. The autonomous daily cap is a separate,
 # lower ceiling that GATES autonomous runs against total provider spend today
@@ -248,14 +248,14 @@ CALIBRATION_DRIFT_SENTINEL_ENABLED = env.bool("CALIBRATION_DRIFT_SENTINEL_ENABLE
 # before exposing the MCP endpoint to external agents beyond localhost.
 MCP_AUTH_TOKEN = env.str("MCP_AUTH_TOKEN", default="")
 
-# Calibration-weighted routing (M14 F2/F6, opt-in): when ON, the provider/model
+# Calibration-weighted routing (opt-in): when ON, the provider/model
 # FALLBACK (no per-send override, no profile pin) picks the best-MEASURED enabled
 # model from the eval harness instead of the first ProviderConfig by id. Per-send
 # overrides and profile pins still win. Gated by a min decisive-call floor + a
 # recency window so a stale or thin eval never pins routing.
 AI_CALIBRATION_ROUTING_ENABLED = env.bool("AI_CALIBRATION_ROUTING_ENABLED", default=False)
 
-# Anomaly-sweep / Desk (M15 F4, opt-in): when ON, the beat-scheduled sweep
+# Anomaly-sweep / Desk (opt-in): when ON, the beat-scheduled sweep
 # scans watched tickers for anomalies and auto-originates DeskEntry investigations.
 ANOMALY_SWEEP_ENABLED = env.bool("ANOMALY_SWEEP_ENABLED", default=False)
 AI_CALIBRATION_ROUTING_MIN_SCORED = env.int("AI_CALIBRATION_ROUTING_MIN_SCORED", default=5)

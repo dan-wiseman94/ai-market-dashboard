@@ -1,10 +1,8 @@
 """Shared abstract model bases — the lowest import layer; any app may import these.
 
-Unifies the duplicated "directional call + how it scored" domain that was modelled
-separately on thesis.PostMortem and predictions.AIPrediction (byte-identical
-forward_return_pct/verdict columns + parallel resolution logic). Concrete models
-inherit the relevant base(s); the columns are unchanged, so retrofitting an
-existing model is a state-only migration.
+Models the "directional call + how it scored" domain shared by thesis.PostMortem
+and observer.AIPrediction: common forward_return_pct/verdict columns plus the
+parallel resolution logic. Concrete models inherit the relevant base(s).
 """
 
 from __future__ import annotations

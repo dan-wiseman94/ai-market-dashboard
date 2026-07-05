@@ -56,7 +56,7 @@ def _as_dict(payload: Any) -> dict:
 
 
 def _news_items(payload: Any) -> list:
-    """News is stored as {"items": [...]}; tolerate a bare list for back-compat."""
+    """News is stored as {"items": [...]}; tolerate a bare list."""
     if isinstance(payload, dict):
         return payload.get("items") or []
     return payload or []
@@ -200,8 +200,8 @@ def _diff_overnight(prev: dict, curr: dict) -> str:
 def _diff_chain(prev: dict, curr: dict) -> str:
     # Compact: report change in the count of expiries; deep greek diffs deferred.
     # The chain payload stores expiries as a DICT keyed by expiry date
-    # ({"expiries": {date: section}}). The old code read a non-existent
-    # "expirations" list, so chain changes were silently never reported.
+    # ({"expiries": {date: section}}) — reading a non-existent "expirations"
+    # list would silently never report chain changes.
     def n(blob: dict) -> int | None:
         exp = blob.get("expiries")
         if exp is None:

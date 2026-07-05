@@ -1,17 +1,17 @@
-"""Trader calibration (M14 F4, "The Mirror"): turn the calibration apparatus on the
+"""Trader calibration ("The Mirror"): turn the calibration apparatus on the
 TRADER's own behavior, using decision-journal + thesis + post-mortem data the
 product otherwise never reads. On-demand, indexed-column aggregation, ZERO new
 models. Look-ahead-safe — reads decisive, completed post-mortems only.
 
-Two signals (v1):
+Two signals:
 - decision_outcomes: how each journal decision (acted/passed/watching/hedged)
   correlates with the underlying thesis's realized verdict — e.g. "you PASSED on
   theses that resolved correct 7/9 times" = passing on winners.
 - conviction_reliability: is the trader's conviction predictive, flat, or INVERTED
   (high-conviction calls resolving worse than low-conviction ones)?
 
-(AI-vs-you divergence — where you overrode the AI and lost — is a v2 follow-on; it
-needs the sparse thesis↔thread↔AIPrediction join.)
+(AI-vs-you divergence — where you overrode the AI and lost — is a possible follow-on;
+it needs the sparse thesis↔thread↔AIPrediction join.)
 """
 
 from __future__ import annotations

@@ -1,9 +1,9 @@
 """Extended thinking: thinking_delta* precedes text_delta*.
 
-Uses the ``thinking-heavy`` scenario, which now reaches the worker because
-``run_ai_on_message`` re-applies the request's scenario in the worker process
-(threads/tasks.py + views.py forward ``scenario=``). Real ``/send/`` endpoint,
-HTTP id lookup (no sync-ORM-in-async on web).
+Uses the ``thinking-heavy`` scenario; ``run_ai_on_message`` re-applies the
+request's scenario in the worker process (threads/tasks.py + views.py forward
+``scenario=``). Real ``/send/`` endpoint, HTTP id lookup (no sync-ORM-in-async
+on web).
 """
 
 from __future__ import annotations

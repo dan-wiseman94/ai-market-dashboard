@@ -44,12 +44,12 @@ def _rs_payload(*, int_keys: bool = True) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# Backward-compat: payload without RS/rotation keys
+# Tolerates payloads missing RS/rotation keys
 # ---------------------------------------------------------------------------
 
 
 def test_render_breadth_without_rs_unchanged():
-    """Payload with no relative_strength or sector_rotation renders exactly as before."""
+    """Payload with no relative_strength or sector_rotation renders the base breadth block."""
     payload = _base_payload()
     result = _render_breadth(payload)
     assert result.startswith("## Market breadth")

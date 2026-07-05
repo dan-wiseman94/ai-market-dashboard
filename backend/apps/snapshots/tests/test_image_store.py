@@ -1,5 +1,5 @@
-"""Image byte offload (C7): new SnapshotImages store bytes on the /data volume,
-not in Postgres; reads are disk-first with a legacy in-DB fallback."""
+"""Image byte offload: new SnapshotImages store bytes on the /data volume,
+not in Postgres; reads are disk-first with an in-DB fallback."""
 
 from __future__ import annotations
 
@@ -39,10 +39,10 @@ def test_create_image_offloads_bytes_to_disk(image_dir):
 
 
 @pytest.mark.django_db
-def test_read_falls_back_to_legacy_db_bytes(image_dir):
-    # A legacy row: bytes in the BinaryField, no file_path.
-    legacy = SnapshotImage.objects.create(kind="client_capture", data=PNG, file_path="")
-    assert read_image_bytes(legacy) == PNG
+def test_read_falls_back_to_in_db_bytes(image_dir):
+    # An in-DB row: bytes in the BinaryField, no file_path.
+    indb = SnapshotImage.objects.create(kind="client_capture", data=PNG, file_path="")
+    assert read_image_bytes(indb) == PNG
 
 
 @pytest.mark.django_db
@@ -100,7 +100,7 @@ def test_image_file_unlinked_on_queryset_delete(image_dir):
 
 
 @pytest.mark.django_db
-def test_legacy_in_db_row_delete_is_safe(image_dir):
-    # A legacy row (bytes in DB, no file_path) deletes without trying to unlink.
-    legacy = SnapshotImage.objects.create(kind="client_capture", data=PNG, file_path="")
-    legacy.delete()  # must not raise
+def test_in_db_row_delete_is_safe(image_dir):
+    # An in-DB row (bytes in DB, no file_path) deletes without trying to unlink.
+    indb = SnapshotImage.objects.create(kind="client_capture", data=PNG, file_path="")
+    indb.delete()  # must not raise

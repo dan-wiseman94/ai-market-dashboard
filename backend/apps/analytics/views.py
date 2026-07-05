@@ -172,7 +172,7 @@ def _opt_horizon(request: Request) -> int | None:
 
 
 class AICalibrationView(APIView):
-    """Live calibration of the AI's own resolved predictions (M13 F3)."""
+    """Live calibration of the AI's own resolved predictions."""
 
     def get(self, request: Request) -> Response:
         from apps.analytics.services.ai_calibration import ai_calibration
@@ -213,7 +213,7 @@ class AICalibrationDrilldownView(APIView):
 
 
 class TraderCalibrationView(APIView):
-    """M14 F4 "The Mirror" — grades the TRADER's own behavior from journal + thesis
+    """ "The Mirror" — grades the TRADER's own behavior from journal + thesis
     + post-mortem data. `?horizon=` (7/30/90, default 30)."""
 
     def get(self, request: Request) -> Response:

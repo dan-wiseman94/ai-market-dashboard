@@ -1,4 +1,4 @@
-"""Contract tests for GET /api/ready/ — readiness endpoint (M3-5).
+"""Contract tests for GET /api/ready/ — readiness endpoint.
 
 These tests lock the public contract so a refactor cannot silently break it.
 We do NOT change the compose healthcheck to point at /api/ready/ because

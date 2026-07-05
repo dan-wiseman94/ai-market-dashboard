@@ -1,4 +1,4 @@
-"""Calibration-drift detection (#14).
+"""Calibration-drift detection.
 
 Trend ``EvalRun.calibration_error`` per model and flag a model that has drifted
 from well-calibrated to over/under-confident. Pure read; honest about thin data

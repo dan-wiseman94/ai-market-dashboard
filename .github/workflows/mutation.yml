@@ -58,8 +58,8 @@ jobs:
       # PYTHONPATH so only the mutated copy under mutants/ is importable (DJANGO_SETTINGS_MODULE
       # is config.settings.test from the job env). See backend/setup.cfg for the full rationale.
       # A stale test-selection path makes pytest exit 4 -> mutmut crashes -> the `|| true`
-      # below would swallow it green, silently no-op-ing the whole gate (the apps/triggers ->
-      # apps/observer/triggers consolidation did exactly this). Fail loudly here instead.
+      # below would swallow it green, silently no-op-ing the whole gate. Fail loudly here
+      # instead.
       # apps/core/tests/test_mutmut_config.py is the per-commit twin of this guard.
       - name: Guard — mutmut paths exist (else the run silently no-ops)
         working-directory: backend
@@ -76,7 +76,7 @@ jobs:
           PY
       # `|| true`: surviving mutants are informational (non-gating nightly job, and a few
       # money-path survivors flip between runs due to time-dependent code) — but the guard step
-      # above ensures `|| true` can no longer mask a config/collection *crash* as a green run.
+      # above ensures `|| true` cannot mask a config/collection *crash* as a green run.
       - name: mutmut run (money paths) — informational
         working-directory: backend
         env:

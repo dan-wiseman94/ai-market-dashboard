@@ -56,10 +56,11 @@ describe("Toasts", () => {
   });
 
   it("clears pending auto-dismiss timers on unmount (no leak past teardown)", () => {
-    // Regression: a toast pushed shortly before unmount used to leave its 4s
-    // dismiss() timer running, firing a setState after the tree was gone — which
-    // surfaced as a stray "window is not defined" once vitest tore down the jsdom
-    // env between test files.
+    // The provider must clear pending auto-dismiss timers on unmount: a toast
+    // pushed shortly before unmount would otherwise leave its 4s dismiss() timer
+    // running, firing a setState after the tree is gone — surfacing as a stray
+    // "window is not defined" when vitest tears down the jsdom env between test
+    // files.
     vi.useFakeTimers();
     try {
       const { unmount } = render(

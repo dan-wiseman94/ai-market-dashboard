@@ -17,7 +17,7 @@ def test_lane_packages_importable() -> None:
 
 
 def test_ui_journeys_importable() -> None:
-    """Phase 3+4 UI lane modules are importable.
+    """UI lane modules are importable.
 
     Each file should at least parse — actual journey wiring is exercised at
     collection time when pytest discovers tests.

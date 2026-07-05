@@ -1,4 +1,4 @@
-"""News fetching from Finnhub. One concrete impl, no abstraction (M5 scope)."""
+"""News fetching from Finnhub. One concrete impl, no abstraction."""
 
 from __future__ import annotations
 

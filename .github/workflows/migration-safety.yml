@@ -50,7 +50,7 @@ jobs:
       - run: uv sync --frozen --dev
       - name: Render SQL for changed migrations
         # sqlmigrate emits the SQL Django would run; squawk lints THAT. Scoped to the
-        # files this PR changed so legacy migrations aren't re-litigated. Defensive: a
+        # files this PR changed so pre-existing migrations aren't re-litigated. Defensive: a
         # migration with no SQL (e.g. pure data/state ops) is skipped, not failed.
         run: |
           set -euo pipefail

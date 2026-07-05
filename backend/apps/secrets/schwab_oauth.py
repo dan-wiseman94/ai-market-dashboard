@@ -31,8 +31,8 @@ log = logging.getLogger(__name__)
 # callback need not be the same web process, and Django's default cache is per-process
 # LocMemCache. A short TTL bounds the consent round-trip. Per-nonce keys (rather than one
 # shared key) let several "Connect" clicks have independent outstanding flows: completing
-# an earlier one stays valid instead of being clobbered by a later mint (which previously
-# surfaced as a spurious 400 invalid_state with the new token never persisting).
+# an earlier one stays valid instead of being clobbered by a later mint (a clobbered state
+# surfaces as a spurious 400 invalid_state and the new token never persists).
 _OAUTH_STATE_KEY_PREFIX = "schwab:oauth:state:"
 _OAUTH_STATE_TTL_SECONDS = 600  # 10 min: ample for user consent, short enough to bound replay
 
@@ -85,7 +85,7 @@ def schwab_app_credentials() -> tuple[str, str]:
     """Return (client_id, client_secret) for the registered Schwab app.
 
     DB-first (set via Settings → Connections), falling back to the SCHWAB_CLIENT_ID /
-    SCHWAB_CLIENT_SECRET env settings so existing env-based and CI setups keep working.
+    SCHWAB_CLIENT_SECRET env settings (env-based and CI setups configure creds there).
     A blank DB value falls through to env per-field. Undecryptable DB creds (key rotated)
     degrade to the env values rather than raising.
     """

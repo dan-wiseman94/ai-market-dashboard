@@ -14,7 +14,7 @@ def test_classify_volatility(vix, expected):
 @pytest.mark.parametrize(
     "vix,pct,expected",
     [
-        # None percentile -> pure absolute thresholds (unchanged legacy behaviour)
+        # None percentile -> pure absolute thresholds
         (16.0, None, "Normal"),
         (12.0, None, "Low"),
         # low / moderate percentile -> NO escalation (must match test_compute fixtures)

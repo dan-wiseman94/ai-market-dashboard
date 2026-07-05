@@ -2,9 +2,9 @@
 
 CLAUDE.md landmine: specific ``/api/<prefix>/`` includes are registered **before**
 the generic ``path("api/", include(...))`` catch-alls (profiles / snapshots /
-threads / thesis).  A past regression reordered them and routed ``/api/costs/today``
-into the wrong app.  URL resolution is first-match-wins and entirely silent when it
-goes wrong — nothing errors, requests just land in the wrong view.
+threads / thesis).  Reordering them routes ``/api/costs/today`` into the wrong
+app.  URL resolution is first-match-wins and entirely silent when it goes
+wrong — nothing errors, requests just land in the wrong view.
 
 This pins the expected resolution for each specific prefix, so a reorder, a removed
 include, or a new greedy pattern in a generic app turns red instead of mis-routing.
@@ -31,7 +31,7 @@ def _resolved_module(path: str) -> str:
 # that precedes the generic /api/ includes and could be swallowed by a reorder.
 SPECIFIC_ROUTES = [
     ("/api/schema/", "drf_spectacular"),  # the schema endpoint the drift gate depends on
-    ("/api/costs/today/", "apps.ai"),  # the documented past regression
+    ("/api/costs/today/", "apps.ai"),  # include-ordering-sensitive route
     ("/api/observer/market-status/", "apps.observer"),
     ("/api/analytics/calibration/", "apps.analytics"),
     ("/api/market/quotes/", "apps.market"),

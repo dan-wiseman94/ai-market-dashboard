@@ -1,8 +1,8 @@
 """RejectNullBytesMiddleware — NUL (0x00) bytes must 400, not 500.
 
-schemathesis fuzzing reached Postgres text columns with NUL bytes (via path params,
-a fuzzed Authorization header reaching BasicAuthentication, and JSON bodies), raising
-DataError and surfacing as a 500. These must be 400s.
+NUL bytes in any ingress path (path params, an Authorization header reaching
+BasicAuthentication, JSON bodies) must 400 before reaching Postgres text columns —
+otherwise Postgres raises DataError and it surfaces as a 500.
 """
 
 import pytest

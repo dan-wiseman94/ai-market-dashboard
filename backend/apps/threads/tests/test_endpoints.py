@@ -63,7 +63,7 @@ def test_auto_reply_enqueues_ai_run_on_synthetic_snapshot_message(
 
 @pytest.mark.django_db
 def test_create_without_auto_reply_does_not_enqueue(api, django_capture_on_commit_callbacks):
-    """Default thread-create (no auto_reply) stays silent — backward compatible."""
+    """Default thread-create (no auto_reply) stays silent."""
     p = TradingProfile.objects.create(name="P", style="x")
     s = Snapshot.objects.create(profile=p, includes=["quotes"], source="manual", status="ready")
     with (

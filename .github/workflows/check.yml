@@ -82,8 +82,7 @@ jobs:
         run: uv run lint-imports
       - name: mypy (ORM-aware, zero-baseline)
         # Zero-baseline gate: mypy must report no errors. mypy exits 1 on type errors and >=2 on
-        # a crash (bad config / plugin / import failure) — either fails the step. (The legacy
-        # mypy-baseline.txt ratchet was driven to 0 and removed, so no filter is needed.)
+        # a crash (bad config / plugin / import failure) — either fails the step.
         run: uv run mypy backend/apps backend/config
       - name: deptry (dependency hygiene — unused / missing / transitively-used deps)
         # Runs AFTER uv sync (deps installed), so import→distribution mapping is accurate.

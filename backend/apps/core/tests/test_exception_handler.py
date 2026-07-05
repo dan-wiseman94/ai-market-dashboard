@@ -1,4 +1,4 @@
-"""Malformed-input exceptions map to 4xx, not 500 (schemathesis fuzz findings)."""
+"""Malformed-input exceptions map to 4xx, not 500."""
 
 import pytest
 from rest_framework.test import APIClient

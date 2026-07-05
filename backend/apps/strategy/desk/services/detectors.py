@@ -1,6 +1,6 @@
 """Deterministic anomaly detectors over existing data + services. Each returns a
 list of candidate dicts {anomaly_type, ticker, severity, evidence}. Best-effort;
-a failing detector contributes nothing. Composes F1 (regime) + F2 (book)."""
+a failing detector contributes nothing. Composes the regime + book readings."""
 
 from __future__ import annotations
 

@@ -202,7 +202,7 @@ describe("ScorecardPage", () => {
     expect(screen.getByTestId("beat-the-straddle")).toHaveTextContent(/beyond the/i);
   });
 
-  it("renders a calibration-drift warning for a drifting model (#14)", () => {
+  it("renders a calibration-drift warning for a drifting model", () => {
     mock(POPULATED);
     mockDrill();
     mockEval();
@@ -221,7 +221,7 @@ describe("ScorecardPage", () => {
     expect(drift).not.toHaveTextContent(/sonnet/); // non-drifting models are hidden
   });
 
-  it("renders open contradictions vs the house view (#15)", () => {
+  it("renders open contradictions vs the house view", () => {
     mock(POPULATED);
     mockDrill();
     mockEval();

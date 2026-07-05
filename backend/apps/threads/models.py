@@ -158,9 +158,8 @@ class ToolCall(models.Model):
 
 
 class UserFile(models.Model):
-    """An Anthropic Files API upload (moved from the former apps.files per the
-    27→15 consolidation). ``db_table`` is pinned to the original ``files_userfile``
-    so the move preserves the table (see migration 0009)."""
+    """An Anthropic Files API upload. ``db_table`` is pinned to ``files_userfile``
+    (see migration 0009)."""
 
     KIND_CHOICES: ClassVar[list[tuple[str, str]]] = [
         ("filing", "SEC filing"),

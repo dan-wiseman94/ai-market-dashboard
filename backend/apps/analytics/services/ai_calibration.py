@@ -1,4 +1,4 @@
-"""Live AI prediction calibration (M13 F3).
+"""Live AI prediction calibration.
 
 The AI's OWN track record, aggregated from resolved ``AIPrediction`` rows — the
 third calibration source on the scorecard, alongside trader-thesis calibration

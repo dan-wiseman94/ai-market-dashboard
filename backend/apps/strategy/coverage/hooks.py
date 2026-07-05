@@ -1,4 +1,4 @@
-"""Observer → coverage integration (M14 F3).
+"""Observer → coverage integration.
 
 An observer fire on a ticker you already cover (a ``CoverageNote`` exists) queues
 a house-view revision. Opt-in by virtue of the note existing; bounded to the

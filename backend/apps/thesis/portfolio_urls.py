@@ -1,7 +1,7 @@
 """URLConf for manual position tracking (/api/portfolio/positions/).
 
-Position moved into apps.thesis (the broker-position leg of the thesis loop) per the
-27→15 consolidation; the /api/portfolio/ path is unchanged (no OpenAPI drift).
+Position is served by apps.thesis (the broker-position leg of the thesis loop)
+at the /api/portfolio/ path.
 """
 
 from rest_framework.routers import DefaultRouter

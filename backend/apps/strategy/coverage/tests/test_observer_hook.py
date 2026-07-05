@@ -1,4 +1,4 @@
-"""The observer auto-revises a covered ticker's house view after a fire (M14 F3).
+"""The observer auto-revises a covered ticker's house view after a fire.
 
 The hook is *opt-in by virtue of the CoverageNote already existing* — you opt in
 by covering a name. It is bounded to the snapshot's primary ticker and is

@@ -1,9 +1,10 @@
 """Resolve (provider, model) for an AI run per spec §6.5 precedence:
 
 1. Per-send override
-2. Thread.default_provider / .default_model (not present until M5 — threads don't have these yet)
+2. Thread.default_provider / .default_model (not implemented — Thread has no
+   default_provider/default_model fields)
 3. Profile.default_provider / .default_model
-4. Calibration-weighted fallback (M14 F2/F6, opt-in) — best-measured enabled model
+4. Calibration-weighted fallback (opt-in) — best-measured enabled model
 5. First enabled ProviderConfig (+ its default_model)
 """
 
@@ -58,7 +59,7 @@ def resolve_provider_and_model(
 
 
 def _calibration_choice() -> tuple[str, str] | None:
-    """Best-MEASURED (provider, model) among enabled providers, or None (M14 F6).
+    """Best-MEASURED (provider, model) among enabled providers, or None.
 
     Considers each enabled ProviderConfig's default_model, looks up its most
     recent EvalRun, and keeps those with >= MIN_SCORED decisive calls inside the

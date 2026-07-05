@@ -222,10 +222,10 @@ async def test_openai_tool_loop_dispatches_and_continues():
 
 
 def test_openai_dispatches_tools_off_the_loop_thread():
-    """Regression: the provider must dispatch tools OFF the asyncio loop thread, so a
+    """The provider must dispatch tools OFF the asyncio loop thread, so a
     tool's sync ORM never trips Django's @async_unsafe guard on a reconnect. A tool
-    that records its thread proves dispatch was offloaded; if it ran inline on the
-    loop thread (the pre-fix behavior) the two thread ids match and this fails.
+    that records its thread proves dispatch was offloaded; if dispatch ran inline
+    on the loop thread the two thread ids match and this fails.
     """
     import threading
 

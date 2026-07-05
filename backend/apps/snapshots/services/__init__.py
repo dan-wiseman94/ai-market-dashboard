@@ -163,9 +163,9 @@ def _attach_client_captures(snap: Snapshot) -> bool:
     Client uploads are FK-attached to the Snapshot by ``SnapshotViewSet.create``
     but never enter ``payload["image_ids"]`` — the only ids the AI-delivery path
     (``apps.threads._request._snapshot_image_ids``) and the markdown serializer
-    (``_render_image``) read. Without this merge, server-rendered charts were
-    delivered while user screenshots were silently dropped (M5 design intends
-    both). The ``image`` section may not exist yet — the composer does not add
+    (``_render_image``) read. Without this merge, server-rendered charts would
+    be delivered while user screenshots were silently dropped (the design
+    intends both). The ``image`` section may not exist yet — the composer does not add
     ``"image"`` to ``includes`` just because a screenshot was staged — so create
     it when needed. Returns True when any client capture was attached.
     """

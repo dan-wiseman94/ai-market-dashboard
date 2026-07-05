@@ -7,7 +7,7 @@ const AGREEMENT: Record<string, { label: string; cls: string }> = {
 };
 
 /**
- * The AI's current live call on this ticker (M13 F7), reconciled against the
+ * The AI's current live call on this ticker, reconciled against the
  * trader's thesis direction — a second opinion at decision time. Renders nothing
  * until the AI has an open prediction on the ticker.
  */

@@ -26,8 +26,8 @@ dist/
 .vite/
 .turbo/
 coverage/
-# ...but apps/strategy/coverage/ is the COVERAGE source package (moved from apps/coverage/
-# in the 27→15 app consolidation), not a report dir — negate it so `git add` still tracks it.
+# ...but apps/strategy/coverage/ is the COVERAGE source package, not a report dir —
+# negate it so `git add` still tracks it.
 !backend/apps/strategy/coverage/
 .pnpm-store/
 

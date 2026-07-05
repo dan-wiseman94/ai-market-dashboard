@@ -1,4 +1,4 @@
-"""Setup-cohort base rates (M14 F2): the OUTSIDE view — how calls resembling the
+"""Setup-cohort base rates: the OUTSIDE view — how calls resembling the
 current situation (same direction, same sector when known) have resolved across
 the whole book, excluding the ticker in question. The base-rate corrective the
 per-ticker track record doesn't provide ("you've been too bullish on this KIND of

@@ -66,7 +66,7 @@ def test_no_change_returns_nothing_meaningful() -> None:
 def test_malformed_section_does_not_raise_or_400_the_whole_diff() -> None:
     """A single bad section payload must be skipped, not raise (which core's
     exception_handler turns into a 400 'Invalid input.'). Regression: a new
-    'quotes' section whose value isn't a dict used to AttributeError out."""
+    'quotes' section whose value isn't a dict would AttributeError out."""
     prev = {"ohlc": {"data": {"ticker": "SPY", "bars": [{"close": 100.0}]}}}
     curr = {
         "ohlc": {"data": {"ticker": "SPY", "bars": [{"close": 101.0}]}},

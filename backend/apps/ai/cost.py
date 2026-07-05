@@ -62,10 +62,10 @@ def record_ai_run(
 
     The streaming chat path records its own AIRun inline (threads.tasks); this is
     the shared recorder for the one-shot ``run_structured`` path (post-mortems,
-    coverage revisions, regime/book narratives, war-room, eval, predictions),
-    whose spend was previously invisible to check_daily_cap / check_monthly_cap
-    (both sum AIRun.cost_usd). ``message`` is None for runs not tied to a chat
-    Message — AIRun.message is nullable for exactly this reason.
+    coverage revisions, regime/book narratives, war-room, eval, predictions) so
+    that spend counts toward check_daily_cap / check_monthly_cap (both sum
+    AIRun.cost_usd). ``message`` is None for runs not tied to a chat Message —
+    AIRun.message is nullable for exactly this reason.
     """
     from apps.threads.models import AIRun
 

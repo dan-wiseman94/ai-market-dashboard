@@ -20,7 +20,7 @@ _TOKEN_AGG = {
 
 
 def cost_breakdown_today() -> dict:
-    """Legacy shape for the existing /api/costs/today/ endpoint. Kept for back-compat."""
+    """Response shape for /api/costs/today/."""
     start = datetime.now(tz=UTC).replace(hour=0, minute=0, second=0, microsecond=0)
     by_provider = _provider_breakdown(start=start)
     return {
@@ -30,7 +30,7 @@ def cost_breakdown_today() -> dict:
 
 
 def summary(*, start: datetime, end: datetime) -> dict:
-    """Rich summary used by the new /api/costs/summary/ endpoint.
+    """Rich summary used by the /api/costs/summary/ endpoint.
 
     Returns:
       {

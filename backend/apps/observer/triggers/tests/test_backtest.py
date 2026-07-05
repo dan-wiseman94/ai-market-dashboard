@@ -83,7 +83,7 @@ def test_backtest_bad_dates_400(db) -> None:
 
 
 # ---------------------------------------------------------------------------
-# M2-7: Forward-return scoring fixtures and tests
+# Forward-return scoring fixtures and tests
 #
 # We seed 10 consecutive trading-day bars for MSFT at 20:00 UTC (the NYSE
 # session-close time used by session_close_on / nearest_bar_close_within).

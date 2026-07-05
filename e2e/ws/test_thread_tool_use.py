@@ -1,9 +1,9 @@
 """Tool-use loop: tool_call → tool_result → text_delta → message_done.
 
-Uses the ``tool-use-loop`` scenario, which now reaches the worker because
-``run_ai_on_message`` re-applies the request's scenario in the worker process
-(threads/tasks.py + views.py forward ``scenario=``). Real ``/send/`` endpoint,
-HTTP id lookup (no sync-ORM-in-async on web).
+Uses the ``tool-use-loop`` scenario; ``run_ai_on_message`` re-applies the
+request's scenario in the worker process (threads/tasks.py + views.py forward
+``scenario=``). Real ``/send/`` endpoint, HTTP id lookup (no sync-ORM-in-async
+on web).
 """
 
 from __future__ import annotations

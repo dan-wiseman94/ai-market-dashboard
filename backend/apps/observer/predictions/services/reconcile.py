@@ -1,4 +1,4 @@
-"""Thesis ↔ AI-prediction reconciliation (M13 F7).
+"""Thesis ↔ AI-prediction reconciliation.
 
 A read-side join over existing data: where the trader holds a Thesis on a ticker
 and the AI has a live call on the same ticker, surface whether they agree. Gives
@@ -32,7 +32,7 @@ def current_ai_view(ticker: str):
 
 def open_divergences(*, include_partial: bool = True) -> list[dict]:
     """Open theses whose direction conflicts with the AI's CURRENT live call on
-    the same ticker — a proactive risk surface (M13 F7 dashboard rollup).
+    the same ticker — a proactive risk surface (dashboard rollup).
 
     ``diverge`` (opposite calls) is always included; ``partial`` (one side
     neutral) is included unless ``include_partial`` is False. Theses with no

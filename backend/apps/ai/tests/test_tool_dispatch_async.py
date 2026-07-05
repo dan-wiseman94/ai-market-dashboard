@@ -1,17 +1,19 @@
 """Tool dispatch must run its (sync, ORM-touching) work OFF the asyncio loop thread.
 
-Root cause of the documented streaming flake (CLAUDE.md "Determinism + flakes"):
-the providers run tools by calling the synchronous ``Toolset.run`` (which calls
-ORM-touching tool fns like recall/track_record/get_quote) *directly inside*
+The providers run tools via the synchronous ``Toolset.run`` (which calls
+ORM-touching tool fns like recall/track_record/get_quote) from inside
 ``asyncio.run(drive())`` on the worker thread. Django guards DB ``connect()`` with
 ``@async_unsafe``: a warm connection sails through, but whenever the connection
-must reconnect (a prior task/test closed it, a recycled worker) the reconnect
-happens ON the loop thread and raises ``SynchronousOnlyOperation`` — the ~1/8,
-connection-state-dependent flake.
+must reconnect (a prior task/test closed it, a recycled worker) a reconnect ON the
+loop thread raises ``SynchronousOnlyOperation`` — an intermittent,
+connection-state-dependent failure (CLAUDE.md "Determinism + flakes"). Dispatch
+must therefore go through ``sync_to_async(thread_sensitive=True)``; and
+``DJANGO_ALLOW_ASYNC_UNSAFE`` must never be set (it corrupts the shared connection
+and cascades ``OperationalError``).
 
 These tests pin the structural distinction without touching the DB (so they can't
-wipe data-migration seed rows): the sync path runs the tool ON the loop thread;
-the fix (``sync_to_async(thread_sensitive=True)``, mirroring the partial-flush
+wipe data-migration seed rows): a direct sync call runs the tool ON the loop
+thread; ``sync_to_async(thread_sensitive=True)`` (mirroring the partial-flush
 write in ``apps.threads.tasks``) runs it OFF the loop thread, where no event loop
 is running and an ORM reconnect is therefore safe.
 """

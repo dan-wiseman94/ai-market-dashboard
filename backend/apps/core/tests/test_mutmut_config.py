@@ -5,11 +5,10 @@ The nightly mutation gate silently no-ops the *entire* run if `setup.cfg`'s
 with code 4 (usage error) on a missing collection path and bails *before*
 running the valid paths, mutmut crashes on that exit, and
 `.github/workflows/mutation.yml`'s `|| true` swallows the crash into a green
-check. This exact regression happened when the 27->15 app consolidation moved
-`apps/triggers` -> `apps/observer/triggers` without updating `setup.cfg`, so the
-money-path mutation gate (ai/cost, ai/catalog, market/returns, thesis/postmortem)
-went dead and unreported. This guard turns a stale path into a loud per-commit
-failure in the normal suite instead of a silent nightly no-op.
+check — leaving the money-path mutation gate (ai/cost, ai/catalog,
+market/returns, thesis/postmortem) dead and unreported. This guard turns a
+stale path into a loud per-commit failure in the normal suite instead of a
+silent nightly no-op.
 """
 
 import configparser

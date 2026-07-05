@@ -1,9 +1,8 @@
 """Analytics models.
 
-EvalRun (offline calibration-harness results) was moved here from the former
-apps.aieval per the 27→15 consolidation — eval calibration belongs with the rest
-of the calibration analytics. ``db_table`` is pinned to its original name so the
-move preserves the table (see migration 0001).
+EvalRun (offline calibration-harness results) lives here — eval calibration
+belongs with the rest of the calibration analytics. ``db_table`` is pinned to
+``aieval_evalrun`` (see migration 0001).
 """
 
 from __future__ import annotations

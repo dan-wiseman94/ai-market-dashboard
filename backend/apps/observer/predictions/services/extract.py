@@ -1,4 +1,4 @@
-"""Promote a structured observation's directional call into an AIPrediction (M13 F1).
+"""Promote a structured observation's directional call into an AIPrediction.
 
 Zero added AI cost — this reads the ``ObservationReport`` the observer already
 produced. Best-effort and side-effect-isolated: the observer wraps the call so a
@@ -58,7 +58,7 @@ def _current_price(snapshot, ticker: str) -> float | None:
 
 
 def _invalidation_price_from_levels(report, direction: str, current_price: float | None):
-    """Heuristic invalidation level from the report's ``key_levels`` (M13 F5):
+    """Heuristic invalidation level from the report's ``key_levels``:
     a bullish call is invalidated by breaking the nearest **support below** the
     current price; a bearish call by breaking the nearest **resistance above**.
     Neutral calls get no price. ``None`` when no qualifying level exists. When the

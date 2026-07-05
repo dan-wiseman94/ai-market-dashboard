@@ -1,9 +1,8 @@
 """Shared OHLCBar upsert for provider bar-fetchers.
 
-Every provider that fetches OHLC (alpaca, twelvedata, tiingo, polygon, and the
-Schwab `ohlc` path) had a byte-identical `_persist_bars` differing only by its
-log prefix. This is the single implementation; each provider keeps a thin
-`_persist_bars` delegator (so existing patch/import targets still resolve) that
+The single implementation behind every provider that fetches OHLC (alpaca,
+twelvedata, tiingo, polygon, and the Schwab `ohlc` path). Each provider keeps
+a thin `_persist_bars` delegator (so patch/import targets stay stable) that
 passes its own `source` for the skip-bar log line.
 """
 

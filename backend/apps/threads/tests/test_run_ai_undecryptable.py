@@ -1,10 +1,11 @@
-"""Regression: an undecryptable ProviderConfig key must fail the run cleanly.
+"""An undecryptable ProviderConfig key must fail the run cleanly.
 
 If DJANGO_SECRET_KEY or /data/secret.salt changes after a provider key was saved,
 the stored ciphertext can no longer be decrypted. The decryption happens lazily in
 `EncryptedJSONField.from_db_value` during the ORM fetch, so `ProviderConfig.objects.get(...)`
-raises `InvalidToken` deep inside `_resolve_run_config`. Before this fix that crashed the
-Celery task with no user-visible feedback — the UI just hung after capturing a snapshot.
+raises `InvalidToken` deep inside `_resolve_run_config`. Unhandled, that would crash the
+Celery task with no user-visible feedback — the UI would just hang after capturing a
+snapshot.
 """
 
 from __future__ import annotations

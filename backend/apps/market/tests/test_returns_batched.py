@@ -1,8 +1,8 @@
 """``trading_day_forward_returns`` (batched) must equal ``trading_day_forward_return_pct``.
 
-The provider leaderboard switched to the batched, O(1)-query variant. This pins that the
-batched result is byte-identical to the per-run function on the same data — across the
-split-adjustment and coverage-gap paths — so only the query count changed, not the numbers.
+The provider leaderboard uses the batched, O(1)-query variant. This pins that the
+batched result is byte-identical to the per-row helper on the same data — across the
+split-adjustment and coverage-gap paths — so only the query count differs, not the numbers.
 """
 
 from __future__ import annotations

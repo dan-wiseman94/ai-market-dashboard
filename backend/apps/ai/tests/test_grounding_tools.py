@@ -1,4 +1,4 @@
-"""Tests for M6-5 grounding tools: recall filters + track_record tool."""
+"""Tests for grounding tools: recall filters + track_record tool."""
 
 from __future__ import annotations
 

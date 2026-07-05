@@ -1,4 +1,4 @@
-"""Tests for the offline AI evaluation harness (apps.aieval).
+"""Tests for the offline AI evaluation harness (apps.analytics.services.aieval).
 
 Mock-only: ``run_structured`` is patched to a controlled ``ObservationReport``
 so scoring is hand-checkable and no real model is ever called (free + deterministic).
@@ -282,7 +282,7 @@ def test_command_zero_data_friendly_message(db):
 
 
 # --------------------------------------------------------------------------- #
-# M6-3 — confidence_calibration reliability curve
+# confidence_calibration reliability curve
 # --------------------------------------------------------------------------- #
 
 
@@ -453,7 +453,7 @@ def test_predicted_confidence_field_accepted():
         predicted_confidence=0.73,
     )
     assert r.predicted_confidence == 0.73
-    # Default is None (additive / backward-compatible)
+    # Default is None (additive)
     r2 = ObservationReport(headline="h", bias="bullish", summary="s", next_check_in="t")
     assert r2.predicted_confidence is None
 
@@ -466,7 +466,7 @@ def test_confidence_prefers_predicted_confidence_over_signal_mean():
 
 
 def test_confidence_falls_back_to_signal_mean_when_unset():
-    """predicted_confidence=None -> mean of per-signal confidences (legacy behavior)."""
+    """predicted_confidence=None -> mean of per-signal confidences (fallback behavior)."""
     r = _report("bullish", confs=(0.6, 1.0))  # mean 0.8
     assert r.predicted_confidence is None
     assert _confidence_from_report(r) == 0.8

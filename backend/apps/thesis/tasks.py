@@ -42,9 +42,8 @@ def run_due_postmortems() -> dict:
 
 @shared_task(name="thesis.distill")
 def distill() -> dict:
-    """Cluster recurring lessons from decisive post-mortems (moved from the removed
-    apps.lessons; renamed lessons.distill -> thesis.distill so the registration
-    guard's name-prefix == owning-app convention holds).
+    """Cluster recurring lessons from decisive post-mortems. Named ``thesis.distill``
+    per the registration guard's name-prefix == owning-app convention.
     """
     from apps.thesis.services.lessons_distill import distill_lessons
 

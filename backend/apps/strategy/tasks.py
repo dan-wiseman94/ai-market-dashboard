@@ -1,12 +1,12 @@
-"""Celery tasks for the strategy domain (merged from the former coverage / warroom /
-desk apps). Registered via "apps.strategy" in config/celery.py's TASK_PACKAGES.
+"""Celery tasks for the strategy domain. Registered via "apps.strategy" in
+config/celery.py's TASK_PACKAGES.
 
 - ``coverage.revise_from_observation`` (queued by the observer hook) and
-  ``warroom.run_debate`` (queued on convene) keep their names — they aren't beat
-  tasks, so the name-prefix==owning-app guard doesn't apply and callers use the
-  function reference.
-- ``desk.sweep`` IS beat-scheduled, so it is renamed ``strategy.sweep`` to keep the
-  registration + scheduled-work-inventory guards valid.
+  ``warroom.run_debate`` (queued on convene) carry subdomain names — they aren't
+  beat tasks, so the name-prefix==owning-app guard doesn't apply and callers use
+  the function reference.
+- The anomaly sweep IS beat-scheduled, so it is named ``strategy.sweep`` to keep
+  the registration + scheduled-work-inventory guards valid.
 """
 
 from __future__ import annotations
@@ -141,8 +141,8 @@ def sweep_now() -> int | None:
 # the row. A lost reading is just a missing 30-min sample. See tests/test_task_acks.py.
 @shared_task(name="strategy.regime_refresh", acks_late=False, reject_on_worker_lost=False)
 def refresh(force: bool = False) -> int | None:
-    """Compute + persist one RegimeReading (was regime.refresh). Skips when the market
-    is closed unless ``force`` (the pre-open / post-close forced readings pass True).
+    """Compute + persist one RegimeReading. Skips when the market is closed unless
+    ``force`` (the pre-open / post-close forced readings pass True).
     """
     if not force and not is_market_open():
         log.info("regime.refresh: market closed, skipping")

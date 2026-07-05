@@ -5,9 +5,9 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
-# Runs on PRs now that the worker/browser-host wiring is correct (pytest-xdist +
-# pytest-playwright are in the lockfile, and the lanes exec in `worker`, which
-# carries chromium). Also runs on merge to main and via manual dispatch.
+# Runs on PRs, on merge to main, and via manual dispatch. Browser lanes exec in
+# `worker`, which carries chromium; pytest-xdist + pytest-playwright are in the
+# lockfile.
 
 permissions:
   contents: read
@@ -22,9 +22,8 @@ jobs:
   #     needs a Lighthouse runner; run those via `make e2e` locally or on merge.
   ui:
     runs-on: ubuntu-latest
-    # 35 (was 25): the Playwright e2e/ui suite had been skipped for months because
-    # schemathesis ate the whole budget (see the schemathesis step). With schemathesis now
-    # bounded, give the long-dormant ui suite real headroom so the lane can complete.
+    # 35 minutes: schemathesis is bounded to ~5 min (see that step), leaving the
+    # Playwright e2e/ui suite real headroom to complete.
     timeout-minutes: 35
     steps:
       - uses: actions/checkout@v6
@@ -53,32 +52,29 @@ jobs:
       - name: Run e2e/api lane
         # No browser needed — exec in `web`. --workdir /app so the e2e/ paths resolve
         # (web's WORKDIR is /app/backend); -m integration overrides the default
-        # `-m 'not integration'` addopts. -n 2 is safe now that the seed ladder
+        # `-m 'not integration'` addopts. -n 2 is safe because the seed ladder
         # serializes via a Postgres advisory lock (see e2e/conftest.py).
         run: docker compose -f compose.yaml -f compose.e2e.yaml exec -T --workdir /app web uv run pytest e2e/api/ -n 2 -m integration -v
       - name: schemathesis — no endpoint 5xx-crashes under fuzzing
         # MOCK_EXTERNAL is on in the e2e overlay, so fuzzing every method is safe.
         # -c not_a_server_error: gate on crashes (real bugs), not strict response-schema
         # conformance (noisy against drf-spectacular's graceful-fallback schemas).
-        # -w 6: concurrent workers. NOTE schemathesis 4.x repurposed `-n` (was "workers"
-        # in 3.x) to mean --max-examples, so the old `-n 6` silently dropped all parallelism
-        # AND ran the combinatorial `stateful` phase serially — ~20 min, blowing the 25-min
-        # job cap before the e2e/ui suite ever ran. Restore parallelism (-w), bound examples
-        # (-n 20), and run only the crash-relevant phases: `fuzzing` (the actual "no 5xx"
-        # check) + `examples`. `coverage` (~70% of cases, deterministic boundary gen) and the
-        # combinatorial `stateful` link-walk are dropped to keep this ~5 min, leaving the
-        # 35-min job budget for the e2e/ui Playwright suite. See PR #121/#122.
+        # NOTE schemathesis 4.x repurposed `-n` ("workers" in 3.x) to mean --max-examples,
+        # so `-n <k>` bounds examples and adds no parallelism (workers are `-w`).
+        # -w 1 (single worker): schemathesis's parameter generator has a THREAD-SAFETY
+        # race — concurrent workers mutate Hypothesis's shared strategy caches
+        # mid-iteration and crash EVERY run (on a different operation each time; a 3×
+        # retry does not help). One worker is race-free. To hold the time budget,
+        # examples are bounded (-n 8) and only the crash-relevant phases run: `fuzzing`
+        # (the actual "no 5xx" check) + `examples`. `coverage` (~70% of cases,
+        # deterministic boundary gen) and the combinatorial `stateful` link-walk are
+        # dropped to keep this ~5 min, leaving the 35-min job budget for the e2e/ui
+        # Playwright suite.
         # --exclude-path: skip two operations that crash schemathesis's OWN parameter
         # generator (hypothesis "dictionary changed size during iteration" in
         # _hypothesis.generate_parameter, a tooling bug — the app never receives a request).
         # These are not app failures; revisit when schemathesis fixes the generator.
-        #
-        # -w 1 (single worker), NOT -w 6: that generator bug is a THREAD-SAFETY race —
-        # concurrent workers mutate Hypothesis's shared strategy caches mid-iteration, so
-        # under -w 6 it crashed EVERY run (on a different pre-existing operation each time;
-        # a 3× retry did not help — see PR #123). One worker is race-free. To hold the time
-        # budget we drop examples 20→8 and keep only the crash-relevant `fuzzing`+`examples`
-        # phases. Retry 2× only guards a genuinely-transient infra hiccup.
+        # Retry 2× only guards a genuinely-transient infra hiccup.
         run: |
           sx() {
             docker compose -f compose.yaml -f compose.e2e.yaml exec -T --workdir /app web \
@@ -95,8 +91,8 @@ jobs:
       - name: render-chart integration test (the /render/chart chromium path)
         # apps.snapshots.services.render.render_chart_png is the headless-chromium chart-image
         # pipeline. Its test is marked `integration`, so check.yml deselects it (`-m 'not
-        # integration'`) and the other e2e steps only run the e2e/ dir — it was gated nowhere.
-        # Exercise it here: `worker` carries chromium and the e2e overlay serves frontend:5173.
+        # integration'`) and the other e2e steps only run the e2e/ dir — this step is its
+        # only gate. `worker` carries chromium and the e2e overlay serves frontend:5173.
         run: docker compose -f compose.yaml -f compose.e2e.yaml exec -T --workdir /app worker uv run pytest backend/apps/snapshots/tests/test_render_chart.py -m integration -v
       - name: Run e2e/ui suite
         # Must exec in `worker` (carries the chromium playwright build), with --workdir /app
@@ -110,7 +106,7 @@ jobs:
         run: docker compose -f compose.yaml -f compose.e2e.yaml exec -T --workdir /app worker uv run pytest e2e/ui/ -n 1 -m integration -v --tracing=retain-on-failure
       - name: Run e2e/a11y lane
         # axe-core scans (critical/serious wcag2a/2aa) over every route, in `worker`
-        # (chromium). Now green across all routes and GATING on PRs. -n 1: the
+        # (chromium). Green across all routes and GATING on PRs. -n 1: the
         # shared-DB seed contention races under parallelism (the visual lane hits
         # psycopg "another command is already in progress" under -n 2).
         run: docker compose -f compose.yaml -f compose.e2e.yaml exec -T --workdir /app worker uv run pytest e2e/a11y/ -n 1 -m integration -v

@@ -19,7 +19,7 @@ def test_create_and_list_override():
 def test_calendar_override_case_variant_duplicate_returns_400_not_500():
     """symbol is unique AND normalized (strip().upper()) in Model.save() — AFTER the
     serializer's UniqueValidator runs on the *raw* value. So a case-variant of an existing
-    symbol slips past validation and used to 500 on the DB unique constraint (a
+    symbol slips past validation and would 500 on the DB unique constraint (a
     schemathesis-found IntegrityError). It must be a clean 400, not a server error."""
     c = APIClient()
     r1 = c.post(

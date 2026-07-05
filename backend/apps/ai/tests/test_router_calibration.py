@@ -1,5 +1,5 @@
-"""Calibration-weighted routing (M14 F2/F6): the opt-in fallback picks the
-best-MEASURED enabled model, while per-send override and profile pins still win."""
+"""Calibration-weighted routing: the opt-in fallback picks the best-MEASURED
+enabled model, while per-send override and profile pins still win."""
 
 import pytest
 

@@ -26,27 +26,9 @@ A single-user desktop dashboard that captures point-in-time **stock-market snaps
 
 ## Status
 
-**Feature-complete — fifteen milestones shipped (M1 → M15).** The newest addition is the **M15 Strategist** — an append-only market-regime read, a daily whole-book risk X-ray, a multi-agent war-room debate, and an agentic anomaly-sweep desk.
+**Feature-complete.** The dashboard spans market data + snapshots, streaming AI threads with multi-provider compare, scheduled observers + event triggers, a second brain (theses, post-mortems, decision journal), analytics + calibration scorecards, the **Prediction Ledger**, the **Resident Analyst** (autonomous investigation, calibration-weighted routing, COVERAGE, The Mirror), and the **Strategist** — an append-only market-regime read, a daily whole-book risk X-ray, a multi-agent war-room debate, and an agentic anomaly-sweep desk.
 
-| Milestone | Scope | Tag |
-|---|---|---|
-| M1 | Compose skeleton | `m1-skeleton` |
-| M2 | Market data (Schwab) | `m2-market-data` |
-| M3 | Snapshots + AI routing | `m3-snapshots-ai` |
-| M4 | Threads + streaming + compare | `m4-full-threads` |
-| M5 | Option chains, news, chart images | `m5-chains-news-images` |
-| M6 | Observer (scheduled AI runs) | `m6-observer` |
-| M7 | Event triggers + condition DSL | `m7-event-triggers` |
-| M8 | Polish (layout, cost caps, backups, export) | `m8-polish` |
-| M9 | AI platform v2 (tool use, extended thinking, memory) | `m9-ai-platform-v2` |
-| M10 | AI platform v2.5 (files, citations, structured, batch) | `m10-ai-platform-v25` |
-| M11 | Second brain (theses, post-mortems, decision journal) | — |
-| M12 | Analytics (leaderboard, heatmap, unusual options) | `m12-analytics` |
-| M13 | Prediction Ledger (the AI's own auto-graded forecasts) | — |
-| M14 | Resident Analyst (autonomous investigation, calibration routing, COVERAGE, The Mirror) | — |
-| M15 | Strategist (market regime · book risk X-ray · war room · desk) | — |
-
-> M11–M15 merged without release tags. Several capabilities ship untagged: **free data sources** (run with no brokerage login), **provider tool parity** (tool use on all three providers, with visible capability warnings), a **Decision Coach** that feeds prior theses / snapshot diffs / your track record / setup-cohort base rates / distilled lessons / measured eval calibration / semantic recall into the prompt, the **Prediction Ledger** (the AI's own auto-graded calls), the **Resident Analyst** (autonomous investigations + calibration-weighted routing + The Mirror), **semantic recall**, a daily **Morning Briefing**, a **forward earnings + macro calendar**, **overnight (pre-market) snapshots**, and a **calibration scorecard**. All of M14 has shipped, including **F3 COVERAGE** — a living, version-controlled per-ticker house view the AI revises with a reason. The **M15 Strategist** layer then adds an append-only market-regime reading, a daily whole-book risk X-ray, a multi-agent "war room" debate that streams over a thread, and an agentic anomaly-sweep desk. A 2026-06 review-driven batch then adds an **expected-move / beat-the-straddle** overlay, a **calibration-drift** sentinel, a **consistency** sentinel, a **themes / narrative** tracker, and an **MCP server** that exposes the second brain to external agents.
+> Also on board: **free data sources** (run with no brokerage login), **provider tool parity** (tool use on all three providers, with visible capability warnings), a **Decision Coach** that feeds prior theses / snapshot diffs / your track record / setup-cohort base rates / distilled lessons / measured eval calibration / semantic recall into the prompt, **semantic recall**, a daily **Morning Briefing**, a **forward earnings + macro calendar**, **overnight (pre-market) snapshots**, an **expected-move / beat-the-straddle** overlay, a **calibration-drift** sentinel, a **consistency** sentinel, a **themes / narrative** tracker, and an **MCP server** that exposes the second brain to external agents.
 
 ## Features
 
@@ -89,13 +71,13 @@ A single-user desktop dashboard that captures point-in-time **stock-market snaps
 - **Prompt caching** *(Claude)* — multi-turn runs cache the prior message for ~0.1× input cost on a hit.
 - **Structured observations** *(Claude)* — observer runs can return a typed `ObservationReport` for structured UI cards.
 
-> **Capability warnings, not silent no-ops.** Extended thinking and memory are Claude-only; tool use needs a credential that supports it. Enabling one of these on a provider that can't honor it no longer fails quietly — `run_ai_on_message` posts a visible `capability_warning` system message and a `warning` WebSocket event, then continues the run with whatever the provider *can* do.
+> **Capability warnings, not silent no-ops.** Extended thinking and memory are Claude-only; tool use needs a credential that supports it. Enabling one of these on a provider that can't honor it doesn't fail quietly — `run_ai_on_message` posts a visible `capability_warning` system message and a `warning` WebSocket event, then continues the run with whatever the provider *can* do.
 
 ### Decision Coach & semantic recall
 
-This is what wires the "second brain" into the *generation* path — the model no longer reasons from a blank slate.
+This is what wires the "second brain" into the *generation* path — the model doesn't reason from a blank slate.
 
-- **Decision Coach** *(per profile, on by default — `TradingProfile.enable_coach`)* — pairs a base observational system prompt with an auto-assembled **"what you already know"** context block injected into snapshot and observer runs: open theses on the primary ticker (conviction, direction, entry / target / invalidation with % distance), the **diff vs. the prior snapshot**, your **per-ticker track record** (closed theses, win/loss, hit-rate by conviction), **setup-cohort base rates** (how calls like this one have resolved, the outside view), **distilled lessons** clustered from your post-mortems, the latest **measured eval calibration** for the model, and the top semantic-recall hits. Off = legacy behavior (system prompt is just the style).
+- **Decision Coach** *(per profile, on by default — `TradingProfile.enable_coach`)* — pairs a base observational system prompt with an auto-assembled **"what you already know"** context block injected into snapshot and observer runs: open theses on the primary ticker (conviction, direction, entry / target / invalidation with % distance), the **diff vs. the prior snapshot**, your **per-ticker track record** (closed theses, win/loss, hit-rate by conviction), **setup-cohort base rates** (how calls like this one have resolved, the outside view), **distilled lessons** clustered from your post-mortems, the latest **measured eval calibration** for the model, and the top semantic-recall hits. Off = the system prompt is just the style.
 - **Semantic recall** — search across messages, snapshots, theses, journal entries, observations, and post-mortems. Embedding-based similarity when available (`BAAI/bge-small-en-v1.5` via fastembed + pgvector HNSW), with a keyword full-text fallback. `GET /api/recall/?q=…&k=&kind=&ticker=`, plus `/api/recall/related/` and `/api/recall/status/`; documents are indexed by the `recall.index_pending` beat task. Browse it at `/recall` (`g r`).
 
 ### Morning Briefing
@@ -122,7 +104,7 @@ Theses are *your* calls; predictions are the *AI's*. When the observer makes a s
 - **AI calibration on the scorecard** — the AI's live hit-rate by confidence band, Brier score, and per-(provider, model) track record appear on `/scorecard` alongside your own thesis calibration; a gap between the two surfaces distribution shift.
 - **A second opinion at decision time** — open a thesis and the dashboard shows whether the AI currently agrees or diverges on the same ticker (`GET /api/predictions/ai-view/`, `/divergences/`).
 
-### The Resident Analyst (M14)
+### The Resident Analyst
 
 Five features that turn the AI from a one-shot snapshot reader into a resident analyst — one that investigates, routes itself by track record, learns recurring lessons, keeps a living view on each name, and grades *you*.
 
@@ -132,7 +114,7 @@ Five features that turn the AI from a one-shot snapshot reader into a resident a
 - **The Mirror** (`/mirror`) — the calibration engine turned inward: it grades *your* decision-making from your journal, theses, and outcomes ("you pass on winners," "high conviction isn't actually more accurate"), each signal drillable and hard-gated on sample size so thin history reads "insufficient," not a verdict.
 - **COVERAGE — a living house view** (`/coverage/:ticker`) — each covered ticker gets one persistent, version-controlled research note (stance, conviction, bull / bear case, key levels, what it's watching for) that the AI **revises with a reason** — behind a hysteresis gate, so a quiet day reaffirms rather than churns — instead of re-deriving it every snapshot. Every revision is an append-only audit row you can read to see *why* the view moved, and the observer auto-revises a name once you've started covering it.
 
-### The Strategist (M15)
+### The Strategist
 
 Where the Resident Analyst works one name at a time, the Strategist steps back to the **whole book and the market regime** — and convenes a structured debate before you commit.
 
@@ -301,10 +283,10 @@ Backend code lives under `backend/apps/<name>/` (imported as `apps.<name>`) — 
 - `analytics` · on-demand aggregations (leaderboard, cost-per-insight, trigger heatmap, observer timeline, unusual options, thesis + AI + trader calibration, setup cohorts), the `GET /api/dashboard/` command-centre rollup (fault-isolated per section), and the offline, look-ahead-safe **eval/calibration** harness (`EvalRun`) replaying candidate models against frozen snapshots
 - `backups` · scheduled `pg_dump` + rotation
 - `export` · async zip bundles (threads, snapshots, observations, triggers, profiles, watchlists)
-- `thesis` · the decision loop — theses + post-mortems + decision journal (M11 "second brain"), plus manual **position** tracking with realized / unrealized P&L (thesis-linked) and recurring post-mortem **lessons** distilled into the Coach
+- `thesis` · the decision loop — theses + post-mortems + decision journal (the "second brain"), plus manual **position** tracking with realized / unrealized P&L (thesis-linked) and recurring post-mortem **lessons** distilled into the Coach
 - `recall` · semantic + keyword search across all documents; pgvector embeddings index (feeds the Decision Coach)
-- `book` · daily whole-book risk X-ray: concentration, correlation clusters, dollar VaR + factor-beta (M15)
-- `strategy` · the M15 Strategist + M14 COVERAGE, with subpackages `strategy/coverage` (living, version-controlled per-ticker "house view" the AI revises with a reason), `strategy/regime` (append-only market-regime readings; latest row = current), `strategy/warroom` (multi-agent "courtroom" debate that spins up a thread and streams the personas), and `strategy/desk` (agentic anomaly-sweep desk that can originate a finding into a thesis)
+- `book` · daily whole-book risk X-ray: concentration, correlation clusters, dollar VaR + factor-beta
+- `strategy` · the Strategist + COVERAGE, with subpackages `strategy/coverage` (living, version-controlled per-ticker "house view" the AI revises with a reason), `strategy/regime` (append-only market-regime readings; latest row = current), `strategy/warroom` (multi-agent "courtroom" debate that spins up a thread and streams the personas), and `strategy/desk` (agentic anomaly-sweep desk that can originate a finding into a thesis)
 
 WebSocket groups: `user.<id>.notifications`, `thread.<id>`, `snapshot.<id>`. See design spec §3.3.
 
@@ -355,4 +337,4 @@ The SPA is served at <http://localhost:8000>. Prod `/` serves `index.html` via W
 
 - **No app-level authentication.** Security is network isolation: the stack binds to `127.0.0.1` only and every API/WS endpoint defaults to `AllowAny`. WebSocket connections are Origin-validated against `ALLOWED_HOSTS` (`AllowedHostsOriginValidator`). **Do not bind to `0.0.0.0` without first adding real authentication** — and do not expose this stack publicly.
 - Schwab OAuth tokens and provider API keys are encrypted at rest via `django-cryptography`; the key is derived from `DJANGO_SECRET_KEY` + `/data/secret.salt`. Rotating `DJANGO_SECRET_KEY` invalidates stored secrets.
-- Image payloads (chart PNGs) are offloaded to the `/data` volume (`SnapshotImage.file_path`; the in-DB `data` column stays NULL) and read back via `image_store.read_image_bytes`, capped at 5 MB. Legacy rows may still hold bytes in Postgres.
+- Image payloads (chart PNGs) are offloaded to the `/data` volume (`SnapshotImage.file_path`; the in-DB `data` column stays NULL) and read back via `image_store.read_image_bytes`, capped at 5 MB. Some rows may instead hold their bytes in Postgres; reads fall back transparently.

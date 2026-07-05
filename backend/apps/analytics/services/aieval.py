@@ -123,7 +123,7 @@ def _direction_from_report(report: ObservationReport) -> str | None:
 
 def _confidence_from_report(report: ObservationReport) -> float | None:
     """Stated confidence: the report's own predicted_confidence when set,
-    else the mean of the per-signal confidences (legacy fallback)."""
+    else the mean of the per-signal confidences (fallback)."""
     pc = getattr(report, "predicted_confidence", None)
     if pc is not None:
         return round(float(pc), 4)

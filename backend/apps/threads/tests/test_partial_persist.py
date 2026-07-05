@@ -1,14 +1,15 @@
 """Streaming runs must persist partial text to the DB *during* the stream.
 
-Before: streamed tokens lived only in the worker's in-memory ``buffer`` and were
-written to ``Message.content`` only at the terminal write. A page reload mid-stream
-(e.g. back/forward navigation into a thread whose run is still in flight) seeded the
-bubble from the empty DB row and then re-streamed from the live socket — looking like
-the AI was "regenerating" the response on every open.
+Without the throttled flush, streamed tokens would live only in the worker's
+in-memory ``buffer`` and reach ``Message.content`` only at the terminal write:
+a worker crash would lose all streamed tokens, and a page reload mid-stream
+(e.g. back/forward navigation into a thread whose run is still in flight) would
+seed the bubble from the empty DB row and then re-stream from the live socket —
+looking like the AI was "regenerating" the response on every open.
 
-These tests pin the fix: a throttled flush persists the accumulated buffer to the
-streaming message, guarded on ``status='streaming'`` so a concurrent stop/finalize is
-never clobbered.
+These tests pin the invariant: a throttled flush persists the accumulated buffer
+to the streaming message, guarded on ``status='streaming'`` so a concurrent
+stop/finalize is never clobbered.
 """
 
 import asyncio
@@ -122,9 +123,9 @@ def test_partial_text_is_visible_mid_stream():
 
 @pytest.mark.django_db(transaction=True)
 def test_early_break_persists_partial_text():
-    """A stopped/cancelled run keeps what it streamed so far (the finally force-flush),
-    instead of discarding the buffer and leaving an empty message — the failure mode
-    that lost the cancelled run's output before this fix."""
+    """A stopped/cancelled run keeps what it streamed so far (the finally force-flush).
+    Discarding the buffer would leave an empty message and lose the cancelled run's
+    output."""
     msg = _streaming_msg()
 
     class _FakeProvider:

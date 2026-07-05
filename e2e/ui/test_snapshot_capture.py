@@ -1,10 +1,9 @@
 """Snapshot capture + ask flow — /snapshot.
 
-Drives the real capture (previously the composer was only asserted to render its
-Capture button): select a profile, set an objective, click "Capture + ask". The
-snapshot captures asynchronously in a Celery worker, then a pinned consult thread
-is created and the page navigates to it. Assert a ready snapshot was created and
-the navigation landed on a thread.
+Drives the real capture end-to-end (not just composer render): select a profile,
+set an objective, click "Capture + ask". The snapshot captures asynchronously in
+a Celery worker, then a pinned consult thread is created and the page navigates
+to it. Assert a ready snapshot was created and the navigation landed on a thread.
 """
 
 from __future__ import annotations

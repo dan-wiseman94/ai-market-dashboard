@@ -1,4 +1,4 @@
-"""Axe rule suppressions — empty at v1.
+"""Axe rule suppressions — currently empty.
 
 Adding an entry requires:
   * A TODO link (internal issue URL)

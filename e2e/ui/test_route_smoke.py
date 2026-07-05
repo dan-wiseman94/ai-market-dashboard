@@ -7,8 +7,8 @@ autouse console guard additionally fails the test on any console/5xx error, so
 a route that 404s a fetch or throws surfaces here.
 
 These are deliberately shallow — they catch "the route is broken/empty-crashes"
-regressions across the M15 strategy surface and other secondary pages that had
-zero coverage. Richer per-route flows live in their own files.
+regressions across the strategy surface and other secondary pages. Richer
+per-route flows live in their own files.
 """
 
 from __future__ import annotations

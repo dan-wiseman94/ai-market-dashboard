@@ -19,10 +19,6 @@ class BackupsPage(BasePage):
     def backup_now_btn(self) -> Locator:
         return self.page.get_by_role("button", name="Back up now")
 
-    # Back-compat with the Phase 0 method name used in older tests.
-    def backup_now_button(self) -> Locator:
-        return self.backup_now_btn
-
     def row(self, backup_id: int) -> Locator:
         return self.page.get_by_test_id(f"backup-row-{backup_id}")
 

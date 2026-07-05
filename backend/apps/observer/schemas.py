@@ -1,9 +1,9 @@
 """Pydantic schemas for structured Observer outputs.
 
 Keep these intentionally tight — the AI is free-form by default; structured
-mode is opt-in on the schedule. Adding fields is backward-compatible; removing
-them is not. When extending, add `Optional` with a default first, then make
-required in a later release after running schedules have re-emitted.
+mode is opt-in on the schedule. Adding fields keeps already-stored reports
+parseable; removing them does not. When extending, add `Optional` with a
+default first, then make required later, once running schedules have re-emitted.
 """
 
 from __future__ import annotations

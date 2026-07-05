@@ -1,11 +1,11 @@
 """Structured Claude runs must be recorded as AIRun rows so their cost counts
 against the daily/monthly caps.
 
-Regression guard for the audit finding: ``run_structured`` (used by post-mortems,
-coverage revisions, regime/book narratives, war-room, eval, predictions) recorded
-no ``AIRun`` and computed no cost, so the entire M13-M15 strategist layer spent
-money that ``check_daily_cap`` / ``check_monthly_cap`` (which sum ``AIRun.cost_usd``)
-could not see.
+``run_structured`` (used by post-mortems, coverage revisions, regime/book
+narratives, war-room, eval, predictions) is the strategist layer's spend path:
+if it recorded no ``AIRun`` and computed no cost, that entire layer would spend
+money invisibly to ``check_daily_cap`` / ``check_monthly_cap`` (which sum
+``AIRun.cost_usd``).
 """
 
 from __future__ import annotations

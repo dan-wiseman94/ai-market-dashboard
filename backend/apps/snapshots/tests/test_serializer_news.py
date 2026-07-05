@@ -54,10 +54,10 @@ def test_render_news_handles_empty():
     assert "_(no headlines)_" in _render_news({"items": []})
 
 
-def test_render_news_accepts_bare_list_legacy_shape():
+def test_render_news_accepts_bare_list():
     items = [
         {
-            "headline": "Legacy",
+            "headline": "Bare list headline",
             "source": "L",
             "summary": "",
             "datetime": 1745484720,
@@ -65,7 +65,7 @@ def test_render_news_accepts_bare_list_legacy_shape():
         },
     ]
     md = _render_news(items)
-    assert "Legacy" in md
+    assert "Bare list headline" in md
     assert "*L*" in md
 
 

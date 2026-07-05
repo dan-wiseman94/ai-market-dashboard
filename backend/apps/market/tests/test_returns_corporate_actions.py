@@ -1,8 +1,8 @@
-"""Corporate-action adjustment in the returns math (C3).
+"""Corporate-action adjustment in the returns math.
 
-The headline bug: a stock split divides the price, so an unadjusted forward
-return reads a 3:1 split as a -66% crash. These tests pin the corrected behaviour
-and prove the common no-split path is unchanged.
+The headline failure mode: a stock split divides the price, so an unadjusted
+forward return reads a 3:1 split as a -66% crash. These tests pin the
+split-adjusted behaviour and prove the common no-split path is unaffected.
 """
 
 from __future__ import annotations

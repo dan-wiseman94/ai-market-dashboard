@@ -1,9 +1,9 @@
 """GHA workflow contract checks — assert e2e.yml keeps running the lanes it must.
 
-Previously this only checked the 'ui' job + the e2e/ui step, so a refactor that
-dropped the api lane, schemathesis, the render-chart integration test, or
-teardown stayed green. Assert the full contract across ALL jobs (so it also
-survives a future fan-out into a per-lane matrix).
+Asserts the full contract across ALL jobs, not any single named job (so it also
+survives a future fan-out into a per-lane matrix): the api lane, schemathesis,
+the render-chart integration test, and teardown. A job rename or refactor that
+dropped one of these would otherwise stay silently green.
 """
 
 from __future__ import annotations

@@ -7,8 +7,8 @@ from apps.strategy.models import WarRoomRun
 
 class WarRoomRunSerializer(serializers.ModelSerializer):
     messages = serializers.SerializerMethodField()
-    # Derived from verdict["confidence"] (no longer a stored column — it duplicated
-    # the JSON). Kept on the API so the list view's confidence badge is unchanged.
+    # Derived from verdict["confidence"] (not a stored column); serialized on the
+    # API for the list view's confidence badge.
     confidence = serializers.SerializerMethodField()
 
     class Meta:

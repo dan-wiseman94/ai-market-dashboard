@@ -2,7 +2,7 @@
 // "structured_observation". These live in the data layer (src/api) so api modules
 // can reference them without importing UI, satisfying the dependency-cruiser
 // `api-stays-below-ui` contract. The presentational <ObservationReportCard/>
-// re-exports ObservationReport for back-compat with existing UI importers.
+// re-exports ObservationReport so UI code imports it from src/api.
 
 export type Bias = "bullish" | "bearish" | "neutral" | "mixed";
 

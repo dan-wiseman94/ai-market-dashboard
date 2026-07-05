@@ -2,8 +2,8 @@
 
 Uses only Tab/Enter. Reaching the Snapshot nav link via Tab and activating it
 are REQUIREMENTS for a keyboard user, so a miss is a hard failure — not a skip.
-(Previously both failure paths called ``pytest.skip``, so a broken keyboard
-path silently skipped instead of failing.)
+Both failure paths must FAIL, never ``pytest.skip`` — a skip lets a broken
+keyboard flow pass silently.
 """
 
 from __future__ import annotations

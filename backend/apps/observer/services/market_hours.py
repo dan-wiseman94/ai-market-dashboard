@@ -1,7 +1,5 @@
-"""Back-compat shim. Canonical service is apps.market.calendar.
-
-Existing callers import is_market_open / market_status (NYSE). New code should
-import from apps.market.calendar instead.
+"""NYSE market-hours convenience wrappers over apps.market.calendar
+(is_market_open / market_status without the market="us_equity" plumbing).
 """
 
 from __future__ import annotations

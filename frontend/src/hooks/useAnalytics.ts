@@ -224,7 +224,7 @@ export interface AICalibration {
   };
 }
 
-/** Live calibration of the AI's OWN resolved predictions (M13). */
+/** Live calibration of the AI's OWN resolved predictions. */
 export function useAICalibration(days = 90, horizon?: number) {
   const h = horizon != null ? `&horizon=${horizon}` : "";
   return useQuery({
@@ -302,7 +302,7 @@ export interface EvalRunSummary {
   calibration: EvalReliabilityBucket[];
 }
 
-/** Latest persisted offline eval run (M7). undefined when none has run yet (204). */
+/** Latest persisted offline eval run. undefined when none has run yet (204). */
 export function useLatestEvalRun() {
   return useQuery({
     queryKey: ["aieval/latest"],
@@ -379,7 +379,7 @@ export interface TraderCalibration {
   };
 }
 
-/** The Mirror (M14 F4): grades the trader's OWN behavior. */
+/** The Mirror: grades the trader's OWN behavior. */
 export function useTraderCalibration(horizon = 30) {
   return useQuery({
     queryKey: ["analytics/trader-calibration", horizon],

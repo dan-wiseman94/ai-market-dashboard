@@ -97,9 +97,9 @@ class SnapshotImage(models.Model):
         blank=True,
     )
     kind = models.CharField(max_length=16, choices=KIND_CHOICES)
-    # Bytes live on the /data volume (file_path) for new images (C7) — keeping
-    # pg_dump small. NULL data + a file_path is the offloaded shape; legacy rows
-    # keep their in-DB bytes. Read via apps.snapshots.image_store.read_image_bytes.
+    # Bytes live on the /data volume (file_path) for new images — keeping
+    # pg_dump small. NULL data + a file_path is the offloaded shape; rows may
+    # instead keep in-DB bytes. Read via apps.snapshots.image_store.read_image_bytes.
     data = models.BinaryField(null=True, blank=True)
     file_path = models.CharField(max_length=512, blank=True, default="")
     mime_type = models.CharField(max_length=32, default="image/png")

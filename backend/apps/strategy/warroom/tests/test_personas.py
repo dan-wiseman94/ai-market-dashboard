@@ -1,7 +1,5 @@
-"""Tests for the surviving persona prompt helpers (_FRAMING / _user_prompt).
-
-The debate path (services/debate.py) consumes these; the superseded
-run_structured-based run_persona was removed."""
+"""Tests for the persona prompt helpers (_FRAMING / _user_prompt) that the
+debate path (services/debate.py) consumes."""
 
 from apps.strategy.warroom.services import personas as P
 

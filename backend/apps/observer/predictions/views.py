@@ -1,4 +1,4 @@
-"""DRF views for apps.predictions (M13)."""
+"""DRF views for the Prediction Ledger."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ from apps.observer.predictions.services.reconcile import ai_view_payload, open_d
 
 class AIViewForTickerView(APIView):
     """The AI's current live call on a ticker, optionally reconciled against a
-    thesis direction (``?against=bullish``). Powers the thesis-detail tile (F7)."""
+    thesis direction (``?against=bullish``). Powers the thesis-detail tile."""
 
     def get(self, request: Request) -> Response:
         ticker = (request.query_params.get("ticker") or "").upper()
@@ -23,7 +23,7 @@ class AIViewForTickerView(APIView):
 
 class DivergencesView(APIView):
     """Open theses that conflict with the AI's current call — the dashboard
-    divergence rollup (F7). ``?partial=false`` to show only hard diverges."""
+    divergence rollup. ``?partial=false`` to show only hard diverges."""
 
     def get(self, request: Request) -> Response:
         include_partial = request.query_params.get("partial", "true") != "false"

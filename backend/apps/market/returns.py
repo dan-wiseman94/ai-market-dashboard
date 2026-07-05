@@ -27,8 +27,9 @@ def direction_verdict(direction: str, fwd_pct: float | None, *, deadzone: float 
     """Deterministic ``correct|incorrect|mixed|inconclusive`` from a directional
     call and the actual forward return (percent). No AI involved.
 
-    Shared by trader thesis post-mortems (``apps.thesis``) and AI predictions
-    (``apps.predictions``) so both score a directional call the same way.
+    Shared by trader thesis post-mortems (``apps.thesis``) and the observer
+    prediction ledger (``apps.observer``) so both score a directional call the
+    same way.
     ``direction`` is ``bullish|bearish|neutral``; ``deadzone`` is the symmetric
     flat band around 0% within which a directional call is treated as neither
     clearly right nor clearly wrong. ``None`` forward return → ``inconclusive``.
@@ -81,10 +82,10 @@ def _split_product(actions: list, *, on_or_before: date | None = None) -> float:
 def split_factor(ticker: str, after: datetime, until: datetime) -> float:
     """Product of split ratios (``shares_after/shares_before``) for ex-dates in
     ``(after, until]``. ``1.0`` when there are no splits — the common path, leaving
-    returns identical to the pre-adjustment behaviour.
+    returns unadjusted.
 
     Multiplying an ``until``-basis close by this factor restores it to the
-    ``after``-basis, so a 3:1 split (ratio 3) no longer reads as a -66% crash.
+    ``after``-basis, so a 3:1 split (ratio 3) doesn't read as a -66% crash.
     """
     return _split_product(_corporate_actions(ticker, after, until))
 

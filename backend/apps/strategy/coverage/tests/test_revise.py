@@ -1,4 +1,4 @@
-"""Tests for the coverage revision service (M14 F3).
+"""Tests for the coverage revision service.
 
 ``run_structured`` has NO ``MOCK_EXTERNAL`` short-circuit, so every test patches
 ``apps.strategy.coverage.services.revise.run_structured`` (the name bound in the service

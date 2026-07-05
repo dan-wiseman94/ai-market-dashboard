@@ -18,8 +18,7 @@ def test_schedule_run_now_dispatches(page, frontend_base_url, observer) -> None:
     and its async effect (a new observation message + notification) is asserted
     on the ws lane (test_notifications.py). Here we assert the action dispatches
     from the UI without error — the autouse console guard fails on any 5xx.
-    (Renamed from test_create_schedule_and_run_now, which only asserted the row
-    and button were visible; the cron-based create form is covered separately.)
+    The cron-based create form is covered separately.
     """
     from apps.observer.models import ObserverSchedule
 

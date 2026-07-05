@@ -3,7 +3,7 @@
 The /profiles create form exposes only name, trading style, and default
 provider. The per-profile capability flags (enable_tools / enable_memory /
 thinking_budget) exist on the model but are NOT editable here — see the xfail
-test in test_profiles.py and the Phase-2 gap report.
+test in test_profiles.py.
 """
 
 from __future__ import annotations

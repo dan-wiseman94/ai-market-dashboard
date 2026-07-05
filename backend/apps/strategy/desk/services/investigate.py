@@ -1,5 +1,5 @@
-"""Agentic per-anomaly investigation (M15 F4 v2). Originates a REAL bounded
-investigation via the M14 tool loop (run_ai_on_message investigate=True) in a
+"""Agentic per-anomaly investigation. Originates a REAL bounded investigation
+via the bounded investigate tool loop (run_ai_on_message investigate=True) in a
 fresh thread, then reads the assistant finding. Returns
 {finding, suggested_actions, investigation_thread_id} or None when nothing was
 produced (no provider / cap / error — run_ai_on_message degrades internally)."""
@@ -46,7 +46,7 @@ def investigate(cand: dict) -> dict | None:
     )
     try:
         # Synchronous (we're already inside the sweep worker); investigate=True forces the
-        # bounded M14 tool loop. Degrades internally (no key / cap / error) -> no assistant msg.
+        # bounded tool loop. Degrades internally (no key / cap / error) -> no assistant msg.
         run_ai_on_message(thread_id=thread.id, user_message_id=user_msg.id, investigate=True)
     except Exception:
         log.warning("desk.investigate.run_failed", exc_info=True)
@@ -84,7 +84,7 @@ def investigate(cand: dict) -> dict | None:
                 "type": "open_thesis",
                 "label": f"Open thesis on {cand['ticker']}",
                 # A deep link prefills the new-thesis form; the user still supplies the
-                # invalidation (C4 pre-trade discipline) before it can be saved.
+                # invalidation (pre-trade discipline) before it can be saved.
                 "params": {
                     "ticker": cand["ticker"],
                     "direction": _thesis_direction(cand),
