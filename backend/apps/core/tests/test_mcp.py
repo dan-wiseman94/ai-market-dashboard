@@ -1,4 +1,4 @@
-"""MCP-out server (#19): minimal JSON-RPC 2.0 over /api/mcp/ exposing the second brain."""
+"""MCP-out server: minimal JSON-RPC 2.0 over /api/mcp/ exposing the second brain."""
 
 from __future__ import annotations
 

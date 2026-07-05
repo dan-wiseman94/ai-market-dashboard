@@ -123,7 +123,7 @@ def test_create_minimal(api, profile):
 
 @pytest.mark.django_db
 def test_create_requires_rationale_and_invalidation(api, profile):
-    """Pre-trade discipline (C4): a new thesis must state a rationale AND an
+    """Pre-trade discipline: a new thesis must state a rationale AND an
     invalidation (a price level OR a written note), or the create is rejected."""
     base = {
         "title": "undisciplined",

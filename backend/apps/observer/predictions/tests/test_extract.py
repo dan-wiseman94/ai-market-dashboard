@@ -1,4 +1,4 @@
-"""AIPrediction extraction from a structured observation (M13 F1)."""
+"""AIPrediction extraction from a structured observation."""
 
 from __future__ import annotations
 
@@ -128,7 +128,7 @@ class TestExtract:
 
 
 # ---------------------------------------------------------------------------
-# Expected-move freeze (#13): the options-implied 1σ move for the prediction's
+# Expected-move freeze: the options-implied 1σ move for the prediction's
 # horizon is captured at decision time from the snapshot's own chain section.
 # ---------------------------------------------------------------------------
 

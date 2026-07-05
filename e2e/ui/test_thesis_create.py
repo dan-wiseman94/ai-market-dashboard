@@ -1,11 +1,11 @@
 """Thesis create flow — /theses/new.
 
-Drives the real create (the route previously had no ui coverage): fill the
-pre-trade-discipline-required fields (rationale + an invalidation), submit, and
-assert it persists and navigates to the new thesis. The server-side discipline
-*rejection* (empty rationale / missing invalidation) is covered at the API
-contract level (apps/thesis); the form's own ``required`` attributes make the
-rejection path unreachable through the browser anyway.
+Drives the real create: fill the pre-trade-discipline-required fields
+(rationale + an invalidation), submit, and assert it persists and navigates to
+the new thesis. The server-side discipline *rejection* (empty rationale /
+missing invalidation) is covered at the API contract level (apps/thesis); the
+form's own ``required`` attributes make the rejection path unreachable through
+the browser anyway.
 """
 
 from __future__ import annotations

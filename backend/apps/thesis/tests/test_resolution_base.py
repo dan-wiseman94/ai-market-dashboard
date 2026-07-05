@@ -1,6 +1,6 @@
 """PostMortem shares the core Resolution base (forward_return_pct + verdict) and
-its idempotent ``claim`` — the dedup of the "directional call + how it scored"
-domain (see docs/superpowers/plans/2026-06-06-directional-call-consolidation.md).
+its idempotent ``claim`` — the single home of the "directional call + how it
+scored" domain (see docs/superpowers/plans/2026-06-06-directional-call-consolidation.md).
 """
 
 from __future__ import annotations
@@ -17,7 +17,7 @@ pytestmark = pytest.mark.django_db
 def test_postmortem_inherits_resolution():
     assert issubclass(PostMortem, Resolution)
     names = {f.name for f in PostMortem._meta.get_fields()}
-    assert {"forward_return_pct", "verdict"} <= names  # still present, now from the base
+    assert {"forward_return_pct", "verdict"} <= names  # provided by the base
 
 
 def test_postmortem_claim_is_idempotent():

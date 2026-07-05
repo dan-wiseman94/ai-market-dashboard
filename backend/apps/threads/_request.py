@@ -1,8 +1,8 @@
 """Build a provider RunRequest from a Thread's message history.
 
-Split out of ``tasks.py``: pure request assembly with no broadcast/streaming
-side effects. ``tasks.py`` re-exports ``_extract_text`` and ``_build_request``
-so existing ``apps.threads.tasks.*`` import/patch sites keep working.
+Pure request assembly with no broadcast/streaming side effects. ``tasks.py``
+re-exports ``_extract_text`` and ``_build_request`` so ``apps.threads.tasks.*``
+import/patch sites resolve there.
 """
 
 from __future__ import annotations

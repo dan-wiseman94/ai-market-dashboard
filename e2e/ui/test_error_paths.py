@@ -62,7 +62,7 @@ def test_provider_disabled_blocks_send(page, frontend_base_url, threads) -> None
     effect — a failed assistant message — at the DB layer. The inline UI render of this
     particular failure is racy: a no-stream _fail(event="error") returns in ~20ms, and the
     error WS event can be clobbered by the send mutation's onSuccess refetch (the error
-    path doesn't refetch). The cost-cap path (next test) renders reliably; see the gap report.
+    path doesn't refetch). The cost-cap path (next test) renders reliably.
     """
     import time
 

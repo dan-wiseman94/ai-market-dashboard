@@ -1,7 +1,7 @@
-"""Auto-resolution of due AI predictions (M13 F2).
+"""Auto-resolution of due AI predictions.
 
 Deterministic and AI-free: when a prediction's horizon elapses, score it against
-the actual forward return (C3 corporate-action-correct, via apps.market.returns)
+the actual forward return (corporate-action-adjusted, via apps.market.returns)
 and stamp a verdict. Mirrors thesis.run_due_postmortems, including the idempotent
 ``open → resolving`` claim so a beat re-tick or a manual resolve-now can't
 double-resolve. Look-ahead-safe by construction: resolve_at = predicted_at +
@@ -70,7 +70,7 @@ def _is_breached(direction: str, price: float, invalidation: float) -> bool:
 @shared_task(name="observer.check_prediction_invalidations")
 def check_invalidations() -> dict:
     """Mark open predictions whose invalidation level has been breached BEFORE
-    their horizon, and notify (M13 F5). Only predictions carrying an
+    their horizon, and notify. Only predictions carrying an
     ``invalidation_price`` are checked, so this is low-noise by construction.
     Early-warning: 'the AI's own call is being proven wrong before it resolves.'
     """

@@ -1,4 +1,4 @@
-"""Coverage API (M14 F3).
+"""Coverage API.
 
 GET  /api/coverage/                  list of house-view notes (lean).
 GET  /api/coverage/<ticker>/         one note + its full revision history.

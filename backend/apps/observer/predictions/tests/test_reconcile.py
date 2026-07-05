@@ -1,4 +1,4 @@
-"""Thesis <-> AI-prediction reconciliation (M13 F7)."""
+"""Thesis <-> AI-prediction reconciliation."""
 
 from __future__ import annotations
 

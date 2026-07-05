@@ -55,7 +55,7 @@ def _spx_bars() -> None:
         _bar("$SPX", i, float(close))
 
 
-# ─── shape (backward-compat: no args still works) ────────────────────────────
+# ─── shape (no args still works) ─────────────────────────────────────────────
 
 
 @pytest.mark.django_db

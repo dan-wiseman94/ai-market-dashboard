@@ -1,8 +1,8 @@
 """Thread creation with a pinned snapshot must synthesize a user message whose
 text is the serialized snapshot payload, so the LLM actually sees the market data.
 
-Regression guard for the pre-fix state where `pinned_snapshot` was stored as an FK
-but its content never reached the provider call.
+Storing `pinned_snapshot` as a bare FK is not enough — without the synthetic
+message its content would never reach the provider call.
 """
 
 from __future__ import annotations
@@ -233,9 +233,9 @@ def test_build_request_attaches_snapshot_images_as_blocks(profile, ready_snapsho
     """A pinned snapshot with a captured chart image must reach the model as an
     image block, not just a text caption.
 
-    Regression guard: image sections are saved status="done" (SnapshotSection has
-    no "ready" status), but `_snapshot_image_ids` previously filtered status="ready"
-    so images were silently never attached.
+    Invariant: image sections are saved status="done" (SnapshotSection has no
+    "ready" status), so a status="ready" filter in `_snapshot_image_ids` would
+    silently drop every image; it must filter status="done".
     """
     img = SnapshotImage.objects.create(
         snapshot=ready_snapshot,

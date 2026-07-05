@@ -1,4 +1,4 @@
-"""Themes CRUD + narrative health (#18)."""
+"""Themes CRUD + narrative health."""
 
 from __future__ import annotations
 

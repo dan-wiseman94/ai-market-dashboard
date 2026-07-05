@@ -2,8 +2,7 @@
 
 Under MOCK_EXTERNAL + schwab-oauth-ok the OAuth flow runs on canned mock data (no
 real Schwab HTTP): authorize returns a stub URL; the callback exchanges a mock code
-into an encrypted, persisted token. (Before the service scenarios were wired these
-tests asserted only that a page rendered.)
+into an encrypted, persisted token.
 """
 
 from __future__ import annotations

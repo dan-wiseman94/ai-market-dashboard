@@ -1,6 +1,6 @@
 """Deterministic external-API mocks (activated when MOCK_EXTERNAL=true).
 
-In addition to the legacy ``is_mock_mode()`` / ``canned_ai_stream()`` helpers, this
+In addition to the ``is_mock_mode()`` / ``canned_ai_stream()`` helpers, this
 module exposes named *scenario handlers*. The scenario registry
 (``apps.core.mocks.scenarios``) maps ``(scenario, service)`` pairs to a handler
 function name in this module; providers consult ``current_scenario()`` then

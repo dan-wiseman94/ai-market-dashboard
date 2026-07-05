@@ -201,7 +201,7 @@ function ProviderCalibration({ data }: { data: Calibration }) {
   );
 }
 
-/* Measured model calibration from the offline eval harness (M7) — independent
+/* Measured model calibration from the offline eval harness — independent
    of thesis post-mortems, so it renders whenever an eval run exists. */
 function EvalCalibration({ evalRun }: { evalRun: EvalRunSummary }) {
   return (
@@ -245,7 +245,7 @@ function EvalCalibration({ evalRun }: { evalRun: EvalRunSummary }) {
   );
 }
 
-/* The AI's OWN live track record (M13) — resolved predictions it actually made,
+/* The AI's OWN live track record — resolved predictions it actually made,
    independent of theses and of the offline eval, so it renders on its own data. */
 function AICalibrationSection({ aiCal }: { aiCal: AICalibration }) {
   return (

@@ -1,8 +1,7 @@
 """Service error-injection scenarios surface through the real API (api lane).
 
 The scenario is selected via the X-E2E-Scenario header on the httpx client; the
-backend turns it into real behavior. (These scenarios were silently inert until the
-clients were wired to consume them.)
+backend service clients consume it and turn it into real behavior.
 
 Note: schwab-401's effect on capture is covered at the backend level
 (apps/snapshots/tests/test_capture_scenario.py) because the schwab data path is

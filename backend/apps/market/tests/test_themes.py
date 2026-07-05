@@ -1,4 +1,4 @@
-"""Theme narrative health (#18): breadth, leadership, relative strength + CRUD."""
+"""Theme narrative health: breadth, leadership, relative strength + CRUD."""
 
 from __future__ import annotations
 

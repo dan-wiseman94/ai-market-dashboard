@@ -1,4 +1,4 @@
-"""Tests for backups.services.verify_latest — restore-drill (M3-5)."""
+"""Tests for backups.services.verify_latest — restore-drill."""
 
 from __future__ import annotations
 

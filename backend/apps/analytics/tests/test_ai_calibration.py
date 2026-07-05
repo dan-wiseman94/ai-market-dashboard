@@ -1,4 +1,4 @@
-"""Live AI prediction calibration (M13 F3) — the AI's own resolved-prediction track record."""
+"""Live AI prediction calibration — the AI's own resolved-prediction track record."""
 
 from __future__ import annotations
 
@@ -101,7 +101,7 @@ def test_ai_calibration_endpoints_200():
 
 
 # ---------------------------------------------------------------------------
-# Beat-the-straddle (#13): actual move vs the options-priced 1σ move
+# Beat-the-straddle: actual move vs the options-priced 1σ move
 # ---------------------------------------------------------------------------
 
 

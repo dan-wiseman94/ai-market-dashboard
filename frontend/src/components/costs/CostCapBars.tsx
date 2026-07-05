@@ -1,8 +1,8 @@
 import type { CapRow } from "@/api/costs";
 
 function barFillClass(pct: number): string {
-  // Legacy-compat bg-* classes kept alongside our token vars so older snapshot
-  // tests and existing Tailwind JIT output remain happy.
+  // The bg-* class is the queried/fallback fill (tests assert on it); the inline
+  // gradient paints over it.
   if (pct >= 1.0) return "bg-rose-500";
   if (pct >= 0.8) return "bg-amber-500";
   return "bg-emerald-500";

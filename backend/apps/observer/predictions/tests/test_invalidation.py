@@ -1,4 +1,4 @@
-"""Invalidation-price extraction (key-levels heuristic) + early-warning alerts (M13 F5)."""
+"""Invalidation-price extraction (key-levels heuristic) + early-warning alerts."""
 
 from __future__ import annotations
 

@@ -10,12 +10,12 @@ compare-and-set claim):
 - ``strategy.regime_refresh`` — a ``run_structured`` narrative plus an
   *unconditional* ``RegimeReading.objects.create()`` append (no unique key).
 
-They inherit the GLOBAL ``task_acks_late=True`` / ``task_reject_on_worker_lost=True``
-from ``config.celery``. Before this guard, a worker killed mid-task (OOM, the 660s
-``task_time_limit`` SIGKILL on a deep grounded debate, or the routine
-``docker compose restart worker``) would redeliver and re-run the entire
-workload — re-billing every persona, posting a SECOND contradictory verdict, and
-appending a duplicate ``RegimeReading`` row. At-most-once makes a lost run a
+Without the override they would inherit the GLOBAL ``task_acks_late=True`` /
+``task_reject_on_worker_lost=True`` from ``config.celery`` — then a worker killed
+mid-task (OOM, the 660s ``task_time_limit`` SIGKILL on a deep grounded debate, or
+the routine ``docker compose restart worker``) would redeliver and re-run the
+entire workload: re-billing every persona, posting a SECOND contradictory verdict,
+and appending a duplicate ``RegimeReading`` row. At-most-once makes a lost run a
 retriable incomplete result, never a silent double-charge. Mirrors
 ``apps/threads/tests/test_run_ai_acks.py``; locks the override so the global
 default can't silently re-enable redelivery of these billing paths.

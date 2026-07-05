@@ -1,4 +1,4 @@
-"""Cross-provider failover (C1): when the PRIMARY provider errors before
+"""Cross-provider failover: when the PRIMARY provider errors before
 emitting any token, retry once on a configured secondary provider.
 
 Opt-in (AI_FAILOVER_ENABLED, default off). Never retries once a token has

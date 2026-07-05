@@ -1,4 +1,4 @@
-"""Observer response cache (C2): a fire whose assembled prompt is byte-identical
+"""Observer response cache: a fire whose assembled prompt is byte-identical
 to a recent prior fire reuses that observation instead of calling the AI again."""
 
 from __future__ import annotations

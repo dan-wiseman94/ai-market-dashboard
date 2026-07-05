@@ -1,6 +1,6 @@
 """Build a MetricsSnapshot dict for one beat tick.
 
-This is the only module in apps.triggers that talks to Schwab + Redis.
+This is the only module in apps.observer.triggers that talks to Schwab + Redis.
 The evaluator is pure and consumes whatever dict we return here.
 """
 

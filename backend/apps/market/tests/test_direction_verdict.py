@@ -1,4 +1,4 @@
-"""Shared directional-call scorer (M13) — used by both thesis post-mortems and
+"""Shared directional-call scorer — used by both thesis post-mortems and
 AI predictions, so both judge a directional call identically."""
 
 from __future__ import annotations
@@ -42,6 +42,6 @@ def test_direction_verdict_truth_table(direction, fwd, expected):
 
 
 def test_custom_deadzone_widens_the_mixed_band():
-    # With a 3% deadzone, a +2% move is no longer a bullish "correct".
+    # With a 3% deadzone, a +2% move is not a bullish "correct".
     assert direction_verdict("bullish", 2.0, deadzone=3.0) == "mixed"
     assert direction_verdict("bullish", 2.0, deadzone=1.0) == "correct"

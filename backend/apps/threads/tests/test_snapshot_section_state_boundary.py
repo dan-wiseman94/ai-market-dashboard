@@ -4,7 +4,7 @@ CLAUDE.md landmine: only the parent ``Snapshot`` uses status="ready"; sections
 terminate at "done" (``SnapshotSection.SECTION_STATUS_CHOICES`` has no "ready", and
 Django does not enforce ``choices`` at the DB layer, so a mislabeled "ready" would
 quietly persist).  ``_snapshot_image_ids`` / ``_snapshot_news_items`` filter
-status="done"; a past bug filtered "ready" and silently dropped every chart image.
+status="done"; a "ready" filter would silently drop every chart image.
 
 The existing integration tests cover the positive (done) path.  These pin the
 *discriminating* boundary: a section carrying any non-"done" status — especially the

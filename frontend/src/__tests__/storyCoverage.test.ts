@@ -16,8 +16,8 @@ const here = dirname(fileURLToPath(import.meta.url)); // src/__tests__
 const COMPONENTS_DIR = join(here, "..", "components");
 const HIGH_VALUE_DIRS = ["", "settings", "triggers", "dashboard", "analytics", "costs"];
 
-// Measured 35 on 2026-06-27 (24 stories added since the milestone began). Only
-// ever lower this — raising it means a high-value component shipped story-less.
+// Measured 35 on 2026-06-27. Only ever lower this — raising it means a
+// high-value component shipped story-less.
 const STORYLESS_BASELINE = 35;
 
 function storylessComponents(): string[] {

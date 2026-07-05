@@ -8,7 +8,7 @@ from apps.strategy.desk import constants as C
 
 
 def rank(candidates: list[dict]) -> list[dict]:
-    """Highest severity first. ('How much you care' weighting is a v2 refinement.)"""
+    """Highest severity first. ('How much you care' weighting is a possible refinement.)"""
     return sorted(candidates, key=lambda c: c.get("severity", 0.0), reverse=True)
 
 

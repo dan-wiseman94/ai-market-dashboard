@@ -37,7 +37,7 @@ ALLOWED_CONSOLE_PATTERNS: list[re.Pattern[str]] = [
     re.compile(r"404 \(Not Found\).*/api/(recall|predictions)/"),
     # NOTE: the React Router default-ErrorBoundary console error is intentionally
     # NOT allow-listed — it is the signature of navigating to a broken/unregistered
-    # route, and must fail the test (was previously masked).
+    # route, and must fail the test, not be masked.
     # Cross-origin font preflights fail when ``scenario.use(...)`` sets the
     # X-E2E-Scenario header on every request — Google Fonts' CORS policy
     # doesn't whitelist it. The page falls back to system fonts cleanly.

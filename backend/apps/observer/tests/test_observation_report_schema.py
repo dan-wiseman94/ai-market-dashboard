@@ -1,7 +1,7 @@
-"""Tests for additive ObservationReport fields (M6-5).
+"""Tests for additive ObservationReport fields.
 
 Covers:
-- Back-compat: existing reports without predicted_*/grounding still parse.
+- Already-stored reports without predicted_*/grounding still parse.
 - Round-trip: a report WITH the new fields serialises and re-parses correctly.
 """
 
@@ -11,7 +11,7 @@ import pytest
 
 from apps.observer.schemas import ObservationReport
 
-# --- minimal fixture (only the seven required/defaulted legacy fields) -------
+# --- minimal fixture (only the seven core required/defaulted fields) ---------
 
 MINIMAL_KWARGS = dict(
     headline="SPY grinding higher",
@@ -24,8 +24,8 @@ MINIMAL_KWARGS = dict(
 def test_observation_report_back_compat_no_predicted_fields() -> None:
     """An ObservationReport without predicted_*/grounding must still parse.
 
-    This is the load-bearing back-compat guarantee: existing structured runs
-    that emit reports without the new fields must not break.
+    This is the load-bearing guarantee: already-stored structured reports
+    without the new fields must not break.
     """
     report = ObservationReport(**MINIMAL_KWARGS)
     assert report.predicted_direction is None

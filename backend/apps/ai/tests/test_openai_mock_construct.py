@@ -2,7 +2,7 @@
 
 E2E (and any mock run) seeds no api_key; the SDK client demands one at
 construction, so without the mock fallback an openai branch dies before run()
-can short-circuit. Regression guard for that gap.
+can short-circuit.
 """
 
 from __future__ import annotations

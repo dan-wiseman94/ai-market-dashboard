@@ -1,4 +1,4 @@
-"""Tests for the Phase-2 post-mortem scheduler + AI replay.
+"""Tests for the post-mortem scheduler + AI replay.
 
 Covers the deterministic verdict truth table, scheduling idempotency, the
 beat-task dispatch filter, the degradation contract (no key => objective verdict

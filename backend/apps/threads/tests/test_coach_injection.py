@@ -112,7 +112,7 @@ def test_observer_fire_includes_coach_block():
 
 @pytest.mark.django_db
 def test_structured_observer_fire_feeds_coach_block_to_run_structured():
-    """Fix 1 regression guard: structured path must pass coach + payload_text to run_structured."""
+    """The structured path must pass coach + payload_text to run_structured."""
     from unittest.mock import MagicMock
 
     from apps.secrets.models import ProviderConfig

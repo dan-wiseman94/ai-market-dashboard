@@ -2,7 +2,7 @@
 
 OFF by default (AIEVAL_SCHEDULED_ENABLED). When on, it replays labeled theses
 through the real model, scores calibration, and persists an EvalRun the live
-coach (A3) reads. Guarded by the same cost-cap pre-flight as the manual command.
+coach reads. Guarded by the same cost-cap pre-flight as the manual command.
 """
 
 from __future__ import annotations

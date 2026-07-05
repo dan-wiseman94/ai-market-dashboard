@@ -125,7 +125,7 @@ def snapshot_images(snapshot) -> Iterator[tuple[str, bytes]]:
 
     for img in SnapshotImage.objects.filter(snapshot=snapshot):
         name = f"{img.kind}-{img.id}.png"  # images are always PNG in our pipeline
-        # read_image_bytes is disk-first (file_path) with legacy in-DB fallback; bytes(img.data)
+        # read_image_bytes is disk-first (file_path) with in-DB fallback; bytes(img.data)
         # would be bytes(None) -> TypeError for offloaded images (data=NULL). See the
         # snapshot-image-bytes-direct-read semgrep rule that guards this.
         yield name, read_image_bytes(img)

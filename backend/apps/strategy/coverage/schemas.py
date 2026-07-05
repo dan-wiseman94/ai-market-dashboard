@@ -1,4 +1,4 @@
-"""Pydantic schema for a structured coverage revision (M14 F3).
+"""Pydantic schema for a structured coverage revision.
 
 The AI is handed the prior house view plus the current situation and returns a
 ``CoverageRevisionDraft``. ``material_change`` is the hysteresis gate: the model

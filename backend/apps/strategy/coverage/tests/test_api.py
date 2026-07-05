@@ -1,4 +1,4 @@
-"""Endpoint shapes for the coverage API (M14 F3).
+"""Endpoint shapes for the coverage API.
 
 GET  /api/coverage/            -> list of notes (lean, no revisions inlined)
 GET  /api/coverage/<ticker>/   -> the note + its full revision history

@@ -1,5 +1,5 @@
 """AIPrediction shares the core DirectionalCall + Resolution bases and claim() —
-the dedup of the duplicated "directional call + how it scored" domain (see
+one "directional call + how it scored" domain, not two divergent copies (see
 docs/superpowers/plans/2026-06-06-directional-call-consolidation.md).
 """
 

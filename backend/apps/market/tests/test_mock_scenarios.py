@@ -1,8 +1,8 @@
 """Service error-injection scenarios are honored by the market mock clients.
 
 These exercise the wiring that turns a ``(scenario, service)`` mapping in
-``apps.core.mocks.scenarios`` into real behavior — previously the dispatch existed
-but no client consumed it, so the scenarios were silently inert.
+``apps.core.mocks.scenarios`` into real behavior — a dispatch no client
+consumes would leave the scenarios silently inert.
 """
 
 from unittest.mock import patch

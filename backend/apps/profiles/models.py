@@ -47,7 +47,7 @@ class TradingProfile(models.Model):
     default_provider = models.CharField(max_length=32, default="claude")
     default_model = models.CharField(max_length=100, default="claude-sonnet-4-6")
     active = models.BooleanField(default=True)
-    # M10 — opt-in AI platform features (Claude-only surfaces).
+    # Opt-in AI platform features (Claude-only surfaces).
     enable_tools = models.BooleanField(
         default=False,
         help_text="Expose the default Toolset (get_quote, fetch_ohlc, search_news, "
@@ -70,7 +70,7 @@ class TradingProfile(models.Model):
         default=True,
         help_text="Inject the Decision Coach context (prior theses, diff-vs-last "
         "snapshot, per-ticker track record, recall) plus a base observational "
-        "system prompt. Off = legacy behavior (system prompt is just the style).",
+        "system prompt. Off = the system prompt is just the style.",
     )
     skills = models.JSONField(
         default=list,

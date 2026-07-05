@@ -3,8 +3,8 @@
 These tests drive the real composer end-to-end against the ``MOCK_EXTERNAL``
 overlay. On the **default** scenario the AI provider streams ``"Mocked "`` +
 ``"response"`` from the worker, so a working send paints ``"Mocked response"``
-into the assistant bubble. The two regression tests below would have caught the
-bugs the old assertion-free smoke tests let through:
+into the assistant bubble. The two tests below pin failure modes an
+assertion-free smoke test would miss:
 
   * **"Send did nothing"** — the typed user turn never reaches the transcript.
   * **"Response never rendered"** — the assistant stream never paints.
@@ -13,10 +13,9 @@ Each send-flow test creates its **own** fresh thread so accumulated history in
 the shared (non-rolled-back) e2e DB can't produce strict-mode locator clashes
 on ``"Mocked response"``.
 
-The mid-stream Stop test uses the ``slow-stream`` scenario, which now reaches the
-worker (``run_ai_on_message`` re-applies the request's scenario in the worker
-process — see threads/tasks.py + views.py), so there's a real window to click
-Stop before the stream completes.
+The mid-stream Stop test uses the ``slow-stream`` scenario — ``run_ai_on_message``
+re-applies the request's scenario in the worker process (see threads/tasks.py +
+views.py) — so there's a real window to click Stop before the stream completes.
 """
 
 from __future__ import annotations

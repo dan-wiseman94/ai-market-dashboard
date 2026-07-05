@@ -58,10 +58,10 @@ def test_snapshot_images_streams_bytes() -> None:
 
 @pytest.mark.django_db
 def test_snapshot_images_reads_disk_offloaded_bytes(tmp_path) -> None:
-    """Regression: disk-offloaded images (data=NULL, file_path set — the modern default from
-    image_store.create_image) must export their real bytes via read_image_bytes. The old
-    code did bytes(img.data), i.e. bytes(None) -> TypeError, silently breaking export of
-    every snapshot captured after the /data offload landed."""
+    """Disk-offloaded images (data=NULL, file_path set — the default from
+    image_store.create_image) must export their real bytes via read_image_bytes.
+    bytes(img.data) would be bytes(None) -> TypeError, silently breaking export of
+    every snapshot with offloaded images."""
     from apps.profiles.models import TradingProfile
     from apps.snapshots.models import Snapshot, SnapshotImage
 

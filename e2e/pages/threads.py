@@ -29,7 +29,3 @@ class ThreadsListPage(BasePage):
 
     def filter(self, text: str) -> None:
         self.filter_input.fill(text)
-
-
-# Back-compat alias for existing Phase 0 tests that import ThreadsPage.
-ThreadsPage = ThreadsListPage

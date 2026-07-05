@@ -1,8 +1,8 @@
 """Shared model bases (apps.core.model_bases): canonical vocab + abstract fields.
 
-These bases unify the duplicated "directional call + how it scored" domain
-(thesis.PostMortem, predictions.AIPrediction). They live in apps.core (the lowest
-import layer) so thesis/predictions depend DOWN on core, never up on analytics.
+These bases model the shared "directional call + how it scored" domain
+(thesis.PostMortem, observer.AIPrediction). They live in apps.core (the lowest
+import layer) so thesis/observer depend DOWN on core, never up on analytics.
 """
 
 from __future__ import annotations

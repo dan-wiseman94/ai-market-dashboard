@@ -104,7 +104,7 @@ class Notification(models.Model):
         ("contra", "Consistency conflict"),
     ]
 
-    # Nullable for v1 (no user-auth surface yet). When auth lands, backfill or
+    # Nullable (no user-auth surface yet). When auth lands, backfill or
     # default to the resolved user. The FK shape keeps the model multi-user-ready.
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -130,11 +130,11 @@ class Notification(models.Model):
 
 
 class AIPrediction(DirectionalCall, Resolution):
-    """The Prediction Ledger (M13): the AI's own auto-extracted, auto-resolving
-    forecasts — moved from the former apps.predictions into observer, since they are
-    promoted from observer fires (``services.run`` → ``predictions/services/extract``).
-    ticker/direction/horizon_days/invalidation_* come from DirectionalCall;
-    forward_return_pct/verdict from Resolution. ``db_table`` pinned.
+    """The Prediction Ledger: the AI's own auto-extracted, auto-resolving
+    forecasts, promoted from observer fires (``services.run`` →
+    ``predictions/services/extract``). ticker/direction/horizon_days/invalidation_*
+    come from DirectionalCall; forward_return_pct/verdict from Resolution.
+    ``db_table`` pinned.
     """
 
     STATUSES: ClassVar = [
@@ -186,8 +186,8 @@ class AIPrediction(DirectionalCall, Resolution):
 
 
 class EventTrigger(models.Model):
-    """A user-defined condition rule; fires a snapshot + AI run when matched (was
-    apps.triggers — moved into observer, the automated-monitoring domain). db_table pinned.
+    """A user-defined condition rule; fires a snapshot + AI run when matched.
+    db_table pinned.
     """
 
     name = models.CharField(max_length=100)
@@ -232,7 +232,7 @@ class EventTrigger(models.Model):
 
 
 class TriggerFiring(models.Model):
-    """Immutable audit row: one per fire event (was apps.triggers)."""
+    """Immutable audit row: one per fire event."""
 
     trigger = models.ForeignKey(EventTrigger, on_delete=models.CASCADE, related_name="firings")
     fired_at = models.DateTimeField(auto_now_add=True)
@@ -265,7 +265,7 @@ class TriggerFiring(models.Model):
 
 
 class BriefingConfig(models.Model):
-    """Singleton config for the daily Morning Briefing (was apps.briefing). Use load()."""
+    """Singleton config for the daily Morning Briefing. Use load()."""
 
     enabled = models.BooleanField(default=True)
     send_at_local = models.TimeField(default=time(8, 30))

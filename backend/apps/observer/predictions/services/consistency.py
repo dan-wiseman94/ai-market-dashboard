@@ -1,4 +1,4 @@
-"""Consistency sentinel (#15).
+"""Consistency sentinel.
 
 Flag a new directional call that contradicts the AI's own stated view — the
 per-ticker house view (``CoverageNote.stance``) or a still-open ``AIPrediction``

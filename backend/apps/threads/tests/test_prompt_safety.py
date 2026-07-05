@@ -25,7 +25,7 @@ def test_data_boundary_present_with_coach() -> None:
     assert system.index("Data boundary") < system.index("Aggressive intraday.")
 
 
-def test_data_boundary_present_legacy_coach_off() -> None:
+def test_data_boundary_present_coach_off() -> None:
     system = build_system_prompt(_Profile(style="Plain style.", enable_coach=False), now=_NOW)
     assert "Data boundary" in system
     assert "Plain style." in system

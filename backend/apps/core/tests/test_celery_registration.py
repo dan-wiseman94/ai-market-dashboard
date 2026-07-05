@@ -1,7 +1,7 @@
 """Invariant guards for Celery task registration and the beat schedule.
 
 CLAUDE.md landmine: task modules are listed **explicitly** in config/celery.py
-because a past startup-ordering bug made bare autodiscovery untrustworthy.  That
+because bare autodiscovery is startup-ordering-sensitive.  That
 makes the list a thing a human must remember to update — exactly the kind of
 silent failure these guards turn into a red test.  Failure modes covered:
 

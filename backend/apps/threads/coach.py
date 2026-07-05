@@ -2,11 +2,11 @@
 stateful "what you already know" context block.
 
 `build_system_prompt` is pure (profile + clock). `assemble_coach_context`
-(added in a later task) composes prior theses / diff-vs-last / track record /
-recall and uses LAZY, function-local cross-app imports so importing this module
-from `apps.threads` never triggers the documented threads -> thesis cycle.
+composes prior theses / diff-vs-last / track record / recall and uses LAZY,
+function-local cross-app imports so importing this module from `apps.threads`
+never triggers the documented threads -> thesis cycle.
 
-Coverage map (verified 2026-05-30 — keep in sync if you add an AI entry point):
+Coverage map (keep in sync if you add an AI entry point):
 
 * Threads chat — apps.threads.views.ThreadViewSet.create prepends
   assemble_coach_context(snap, profile) to the synthetic pinned-snapshot user
@@ -23,7 +23,7 @@ parity is structural, not duplicated. assemble_coach_context returns "" when the
 profile is None / coach-disabled, when there is no primary ticker, or when every
 sub-section is empty.
 
-* Snapshot-FREE chat (A2) — apps.threads._request._build_request appends
+* Snapshot-FREE chat — apps.threads._request._build_request appends
   assemble_coach_context_for_message(latest_user_text, profile) to the SYSTEM
   prompt, but ONLY for threads with no snapshot-bearing turn (so it never
   double-injects on top of the create-time coach above). Because _build_request
@@ -57,7 +57,7 @@ _MAX_RECALL_ITEMS = 3
 _RECALL_QUERY_MAX_CHARS = 400
 _RECALL_KINDS = ("postmortem", "thesis", "observation")
 
-# Snapshot-free coach (A2): an explicit $cashtag in the message scopes the lessons
+# Snapshot-free coach: an explicit $cashtag in the message scopes the lessons
 # block; deliberately conservative (cashtag only) to avoid matching common words.
 _CASHTAG_RE = re.compile(r"\$([A-Za-z]{1,5})\b")
 
@@ -121,7 +121,7 @@ def build_system_prompt(profile, *, now: datetime) -> str:
     """Base framing + current date/session, wrapping `profile.style`.
 
     Always prepends the untrusted-content data boundary (prompt-injection defense).
-    Returns `profile.style` under that boundary (legacy behavior) when `profile` is None
+    Returns `profile.style` under that boundary when `profile` is None
     or `enable_coach` is False. Never raises.
     """
     style = (getattr(profile, "style", "") or "") if profile is not None else ""
@@ -258,7 +258,7 @@ def _track_record_block(ticker: str, top: Any = _UNSET) -> str:
 
 
 def _cohort_block(ticker: str, top: Any = _UNSET) -> str:
-    """Outside-view base rate (M14 F2): how calls LIKE this one (same direction,
+    """Outside-view base rate: how calls LIKE this one (same direction,
     same sector when known) have resolved across the book — the base rate the
     per-ticker block doesn't show. Keyed off the leading open thesis's direction;
     "" when there is no open thesis or not enough cohort history. Look-ahead-safe
@@ -315,7 +315,7 @@ def _lessons_block(ticker: str) -> str:
     return "\n".join(lines)
 
 
-# Distilled-lessons block (M14 F2): a lesson must recur (>= this many post-mortems)
+# Distilled-lessons block: a lesson must recur (>= this many post-mortems)
 # to count as a pattern, and we surface at most this many, highest-support first.
 _MIN_LESSON_SUPPORT = 2
 _MAX_DISTILLED = 2
@@ -337,7 +337,7 @@ def _sector_for_ticker(ticker: str) -> str:
 
 
 def _distilled_lessons_block(ticker: str, top: Any = _UNSET) -> str:
-    """Distilled recurring lessons (M14 F2) matching the current situation's tags:
+    """Distilled recurring lessons matching the current situation's tags:
     same direction (leading open thesis) and/or same sector. Cross-ticker by
     design — surfaces "you've been too bullish on biotech into earnings" even on a
     name with no prior theses on it. "" when nothing matches or no lesson recurs."""
@@ -408,7 +408,7 @@ def _regime_block() -> str:
 
 
 def _calibration_block(profile) -> str:
-    """Measured calibration of the profile's model, from the latest EvalRun (A3).
+    """Measured calibration of the profile's model, from the latest EvalRun.
 
     Lazy cross-app import (threads -> aieval) keeps the documented import-cycle
     discipline. Empty when no eval exists for this model or it scored nothing.
@@ -481,7 +481,7 @@ _AI_CONFIDENCE_GAP = 0.10
 
 
 def _ai_track_record_block(ticker: str, profile) -> str:
-    """The AI's OWN live track record on this ticker (M13 F4) — the deepest
+    """The AI's OWN live track record on this ticker — the deepest
     self-correction: the model sees its real-world accuracy here at generation
     time, the live counterpart to the offline-eval _calibration_block.
 
@@ -539,7 +539,7 @@ def assemble_coach_context(snapshot, profile) -> str:
     if not ticker:
         return ""
     # Resolve the two shared lookups ONCE and thread them into the blocks that key
-    # off them (each previously re-ran its own query/scan). On a lookup error
+    # off them (saves each block re-running its own query/scan). On a lookup error
     # _safe_value yields _UNSET, so the block self-recomputes and its own _safe still
     # isolates the failure — same behavior, fewer queries on the happy path.
     top = _safe_value(lambda: _open_theses_qs(ticker).first())
@@ -576,7 +576,7 @@ def _ticker_from_text(text: str) -> str | None:
 
 
 def _recall_block_for_text(text: str, ticker: str | None) -> str:
-    """Semantic recall against free message text (snapshot-free coach, A2).
+    """Semantic recall against free message text (snapshot-free coach).
 
     Uses ``search`` directly rather than ``related_to_situation`` (which requires
     a ticker), optionally ticker-scoped when a $cashtag was found.
@@ -589,7 +589,7 @@ def _recall_block_for_text(text: str, ticker: str | None) -> str:
 
 
 def assemble_coach_context_for_message(text: str, profile) -> str:
-    """Coach block for a SNAPSHOT-FREE thread, keyed off the user's message (A2).
+    """Coach block for a SNAPSHOT-FREE thread, keyed off the user's message.
 
     The snapshot-bearing coach (:func:`assemble_coach_context`) returns "" with no
     ``primary_ticker``, so a bare chat thread is otherwise un-coached. This mirrors

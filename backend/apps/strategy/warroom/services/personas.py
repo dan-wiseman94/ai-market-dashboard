@@ -1,9 +1,8 @@
 """Persona advocates for the War Room debate.
 
-The live debate path (services/debate.py) runs each persona as a real streaming
-run via run_ai_on_message and imports _FRAMING + _user_prompt from here. (The
-earlier run_structured-based ``run_persona`` / ``PersonaArgument`` were superseded
-by that path and removed.)"""
+Provides the persona framing (_FRAMING) and prompt builder (_user_prompt) that
+the live debate path (services/debate.py) imports; the debate runs each persona
+as a real streaming run via run_ai_on_message."""
 
 from __future__ import annotations
 

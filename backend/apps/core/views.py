@@ -217,7 +217,7 @@ def _coerce_setting(key: str, value: object, typ: type) -> tuple[object, str | N
 @csrf_exempt
 @require_POST
 def mcp_endpoint(request: HttpRequest):
-    """MCP-out server (#19): a minimal JSON-RPC 2.0 endpoint exposing the second
+    """MCP-out server: a minimal JSON-RPC 2.0 endpoint exposing the second
     brain (house view / theses / predictions / recall) as read-only MCP tools.
 
     Auth: the app's posture is network isolation (127.0.0.1 + AllowAny). This is the

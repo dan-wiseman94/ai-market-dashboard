@@ -79,7 +79,7 @@ dynamic regions (timestamps, chart tooltips, notification counts) are masked in
 - **`tools/flake_audit.py` doesn't pass `-p`.** It runs `docker compose exec`
   against the **default** project, so locally it targets the dev `ai-dashboard`
   stack, not your e2e stack. Run it with `-p <checkout>-e2e` (or rely on the
-  nightly CI run, which has a single stack). See the Phase-2 gap report.
+  nightly CI run, which has a single stack).
 - **Some failures render racily.** A no-stream `_fail(event="error")` (e.g.
   provider-disabled) returns in ~20 ms and can lose the UI render race (the error
   path doesn't refetch); `test_provider_disabled_blocks_send` asserts the gate at

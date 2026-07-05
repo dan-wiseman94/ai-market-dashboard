@@ -192,7 +192,7 @@ class CorporateAction(models.Model):
 
 class Theme(models.Model):
     """A named narrative grouping tickers (AI-capex, GLP-1, …); narrative health
-    is computed on demand from OHLCBar (#18). Tickers are flat watchlists today —
+    is computed on demand from OHLCBar. Tickers are flat watchlists today —
     this reasons at the theme level (breadth / leadership / relative strength)."""
 
     name = models.CharField(max_length=64, unique=True)

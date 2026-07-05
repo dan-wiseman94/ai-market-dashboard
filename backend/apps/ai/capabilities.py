@@ -1,9 +1,9 @@
 """Capability gap detection — which enabled profile features a provider can't honor.
 
-Claude is the only M10-aware provider. OpenAI/local support tool use only when
-the ProviderConfig opts in (supports_tools); extended thinking and memory remain
-Claude-only. This helper drives a warn-and-continue message so the gap is visible
-rather than a silent no-op.
+Claude is the only provider that honors every profile feature. OpenAI/local
+support tool use only when the ProviderConfig opts in (supports_tools);
+extended thinking and memory remain Claude-only. This helper drives a
+warn-and-continue message so the gap is visible rather than a silent no-op.
 """
 
 from __future__ import annotations

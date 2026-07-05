@@ -3,7 +3,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { useDivergences } from "@/hooks/usePredictions";
 
 /**
- * Open theses that conflict with the AI's current live call (M13 F7 rollup) —
+ * Open theses that conflict with the AI's current live call (rollup) —
  * a proactive risk surface so you don't have to open each thesis to check whether
  * the AI now disagrees. Fetches its own data; highest-conviction first.
  */

@@ -286,10 +286,9 @@ the whole book and the market regime — and convenes a structured debate before
 
 ## Status
 
-**Feature-complete** — fifteen milestones (M1 → M15) shipped end to end, plus
-several untagged additions layered on top: free data sources, the Prediction
-Ledger, the Morning Briefing, the Resident Analyst, the Strategist, expected-move
-grading, the calibration-drift and consistency sentinels, narrative themes, and an
-MCP server. The README's milestone table carries the release-tagged breakdown.
+**Feature-complete** — market data + snapshots, streaming AI threads, observers +
+triggers, the second brain, free data sources, the Prediction Ledger, the Morning
+Briefing, the Resident Analyst, the Strategist, expected-move grading, the
+calibration-drift and consistency sentinels, narrative themes, and an MCP server.
 
 *One person. One machine. Every call on the record.*

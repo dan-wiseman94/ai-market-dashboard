@@ -19,10 +19,6 @@ class ExportPage(BasePage):
     def start_btn(self) -> Locator:
         return self.page.get_by_role("button", name="Start export")
 
-    # Back-compat for existing tests.
-    def export_button(self) -> Locator:
-        return self.start_btn
-
     def row(self, export_id: int) -> Locator:
         return self.page.get_by_test_id(f"export-row-{export_id}")
 

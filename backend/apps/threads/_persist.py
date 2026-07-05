@@ -1,6 +1,6 @@
 """Persist tool_use/tool_result stream events as ToolCall audit rows.
 
-Split out of ``tasks.py``; re-exported there as ``apps.threads.tasks._persist_tool_calls``.
+Re-exported as ``apps.threads.tasks._persist_tool_calls``.
 """
 
 from __future__ import annotations

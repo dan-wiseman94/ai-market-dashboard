@@ -20,7 +20,7 @@ class LessonViewSet(
     mixins.DestroyModelMixin,  # prune a noisy lesson
     viewsets.GenericViewSet,
 ):
-    """Read + prune/mute the distilled lessons — the hygiene surface for M14 F2."""
+    """Read + prune/mute the distilled lessons — the lessons hygiene surface."""
 
     queryset = Lesson.objects.all()
     serializer_class = LessonSerializer

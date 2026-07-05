@@ -1,4 +1,4 @@
-"""Revise the living house view for a ticker (M14 F3).
+"""Revise the living house view for a ticker.
 
 The hysteresis gate is the model's ``material_change`` flag plus an actual
 stance/conviction delta: a ``CoverageRevision`` row + note update happen only

@@ -421,7 +421,7 @@ def _run_ai_on_message(
 
     _run_attempt(provider_name, cfg, req)
 
-    # Cross-provider failover (C1): the primary errored BEFORE any token streamed.
+    # Cross-provider failover: the primary errored BEFORE any token streamed.
     # Retry once on a configured secondary — never after a token (that would
     # duplicate the response). Opt-in; _failover_target returns None when off.
     secondary = _failover_target(provider_name) if (err_container and not buffer) else None

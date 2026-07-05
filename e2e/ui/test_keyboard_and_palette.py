@@ -3,8 +3,6 @@
 The ``g <x>`` chord map mirrors SHORTCUTS in
 frontend/src/hooks/useKeyboardShortcuts.ts. Each chord is asserted to actually
 navigate — a regression in any single shortcut fails its own parametrized case.
-(Previously a single test looped over a subset and swallowed failures with
-``except Exception: continue``, so it could never fail and covered only 7/13.)
 """
 
 from __future__ import annotations
@@ -75,8 +73,8 @@ def test_cmd_k_palette_opens(page, frontend_base_url, minimal) -> None:
 def test_command_palette_executes_navigation(page, frontend_base_url, minimal) -> None:
     """Open the palette, filter to a command, run it, and assert it navigates.
 
-    Previously only the open was asserted; this drives an actual command
-    (the default commands are nav actions, e.g. "Go to Costs" -> /costs).
+    Drives an actual command, not just the palette open (the default commands
+    are nav actions, e.g. "Go to Costs" -> /costs).
     """
     d = DashboardPage(page, frontend_base_url)
     d.go()

@@ -1,4 +1,4 @@
-"""Auto-resolution of AI predictions (M13 F2) — deterministic, C3-correct, idempotent."""
+"""Auto-resolution of AI predictions — deterministic, corporate-action-correct, idempotent."""
 
 from __future__ import annotations
 
@@ -71,7 +71,7 @@ class TestResolve:
 
     def test_split_in_window_resolves_flat_not_crashed(self):
         # 3:1 split divides price to 1/3; a neutral call should read FLAT (correct),
-        # not a -66% crash — proving the ledger inherits C3 corporate-action math.
+        # not a -66% crash — proving the ledger inherits corporate-action-aware math.
         _mk_bar("NVDA", START, 300.0)
         _mk_bar("NVDA", END, 100.0)
         CorporateAction.objects.create(

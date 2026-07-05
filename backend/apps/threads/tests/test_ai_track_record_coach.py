@@ -1,4 +1,4 @@
-"""Coach injects the AI's OWN live track record (M13 F4) — the loop-closing block."""
+"""Coach injects the AI's OWN live track record — the loop-closing block."""
 
 from __future__ import annotations
 

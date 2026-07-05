@@ -1,4 +1,4 @@
-"""Observer-thread lookup helper (Q4: one observer thread per profile)."""
+"""Observer-thread lookup helper (one observer thread per profile)."""
 
 from __future__ import annotations
 

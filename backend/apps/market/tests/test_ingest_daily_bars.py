@@ -1,4 +1,4 @@
-"""Tests for market.ingest_daily_bars task (M2-6).
+"""Tests for market.ingest_daily_bars task.
 
 Patching strategy: the task uses function-local imports, so we patch at the
 canonical module path (`apps.market.services.ohlc.fetch_ohlc`). Any caller

@@ -5,7 +5,7 @@ from __future__ import annotations
 from celery import shared_task
 
 # Side-effect imports: register batch + prediction + trigger + briefing tasks when
-# autodiscover loads tasks.py (merged from the former predictions/triggers/briefing apps).
+# autodiscover loads tasks.py.
 from apps.observer import tasks_batch as _tasks_batch  # noqa: F401
 from apps.observer.briefing import tasks as _briefing_tasks  # noqa: F401
 from apps.observer.predictions import tasks as _prediction_tasks  # noqa: F401

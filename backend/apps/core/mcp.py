@@ -1,4 +1,4 @@
-"""MCP-out server (#19): expose the second brain as JSON-RPC tools over HTTP.
+"""MCP-out server: expose the second brain as JSON-RPC tools over HTTP.
 
 A dependency-free, minimal MCP server — the protocol surface is just JSON-RPC 2.0
 ``initialize`` / ``tools/list`` / ``tools/call`` (+ the ``initialized``

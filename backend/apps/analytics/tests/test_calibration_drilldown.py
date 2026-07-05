@@ -1,4 +1,4 @@
-"""Scorecard drill-down (C6): calibration buckets -> underlying theses.
+"""Scorecard drill-down: calibration buckets -> underlying theses.
 
 Mirrors the fixtures in test_calibration.py. The drill-down returns the same
 PostMortem ⋈ Thesis population that builds the calibration buckets, filtered to

@@ -137,7 +137,7 @@ def run_observer(schedule_id: int) -> int | None:
         )
         if cached is not None:
             # Byte-identical prompt within the TTL — reuse the prior observation
-            # instead of paying for another AI call (C2).
+            # instead of paying for another AI call.
             Message.objects.create(
                 thread=thread,
                 role="assistant",
@@ -157,7 +157,7 @@ def run_observer(schedule_id: int) -> int | None:
                 investigate=sched.investigate,
             )
 
-    # M14 F3: auto-revise the house view when this snapshot's ticker is covered.
+    # Auto-revise the house view when this snapshot's ticker is covered.
     with contextlib.suppress(Exception):
         maybe_revise_from_snapshot(snap)
 
@@ -205,7 +205,7 @@ def _cached_observer_response(
     thread, prompt_hash: str, exclude_message_id: int, ttl: int
 ) -> str | None:
     """Text of a recent prior observation on this thread whose fire used a
-    byte-identical prompt (same hash), within ``ttl`` seconds — else None (C2).
+    byte-identical prompt (same hash), within ``ttl`` seconds — else None.
 
     The observer thread is linear (user, assistant, user, …), so the response is
     the first ``done`` assistant message after that prior user turn. The current
@@ -239,7 +239,7 @@ def _cached_observer_response(
 
 
 def _extract_prediction(report, *, snap, message, provider: str, model: str, profile) -> None:
-    """Best-effort: promote the structured call into an AIPrediction (M13 F1).
+    """Best-effort: promote the structured call into an AIPrediction.
 
     Isolated + suppressed — a failure here (or the model carrying no directional
     call) must never break the observer fire that already produced the report.

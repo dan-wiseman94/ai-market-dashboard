@@ -1,6 +1,6 @@
-"""Thesis + decision-journal API contract (M11 second brain).
+"""Thesis + decision-journal API contract.
 
-Previously the entire thesis/post-mortem/journal surface had no E2E coverage.
+Covers the thesis / post-mortem / decision-journal API surface end-to-end.
 """
 
 from __future__ import annotations

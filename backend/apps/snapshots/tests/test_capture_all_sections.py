@@ -1,4 +1,4 @@
-"""Capture a snapshot that includes every M5 section type and assert payloads.
+"""Capture a snapshot that includes every section type and assert payloads.
 
 External calls to Schwab / Finnhub / Playwright are mocked at the SDK boundary.
 """
@@ -15,7 +15,7 @@ PNG = b"\x89PNG\r\n\x1a\n" + b"\x00" * 100
 
 
 @pytest.mark.django_db
-def test_full_m5_capture_emits_all_sections():
+def test_full_capture_emits_all_sections():
     profile = TradingProfile.objects.create(name="P", style="x")
 
     fake_chain = {
@@ -58,7 +58,7 @@ def test_full_m5_capture_emits_all_sections():
     ):
         snap = capture(
             profile=profile,
-            objective="full m5",
+            objective="all sections",
             includes=["quotes", "ohlc", "positions", "breadth", "chain", "news", "image", "notes"],
             watchlist_tickers=["SPY"],
             ohlc_ticker="SPY",

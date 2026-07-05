@@ -1,5 +1,5 @@
-"""URLConf for distilled lessons (/api/lessons/). Lesson moved into apps.thesis
-(the learning leg of the thesis loop) per the 27→15 consolidation; path unchanged.
+"""URLConf for distilled lessons (/api/lessons/), served by apps.thesis
+(Lesson is the learning leg of the thesis loop).
 """
 
 from rest_framework.routers import DefaultRouter

@@ -1,8 +1,7 @@
 """Resolve a bare ticker to a market key: override -> heuristic -> default.
 
-The CalendarOverride lookup is added in Phase 2; until then this is
-heuristic + default. Results are cached per-process and invalidated by
-CalendarOverride.save()/delete() (wired in Phase 2).
+A CalendarOverride row wins over the heuristic. Results are cached
+per-process and invalidated by CalendarOverride.save()/delete().
 """
 
 from __future__ import annotations

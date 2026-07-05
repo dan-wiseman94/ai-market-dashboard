@@ -97,8 +97,7 @@ mutate: ## Mutation-test the money paths (slow; nightly in CI). Surviving mutant
 .PHONY: typecheck
 typecheck: ## ORM-aware mypy, zero-baseline (fails on any type error)
 	# Zero-baseline: mypy must report no errors. mypy exits 1 on type errors and >=2 on a
-	# crash (bad config / plugin / import failure); either fails. (The legacy mypy-baseline.txt
-	# ratchet was driven to 0 and removed — no filter needed.)
+	# crash (bad config / plugin / import failure); either fails.
 	$(COMPOSE) exec -w /app web uv run mypy backend/apps backend/config
 
 .PHONY: lint-frontend

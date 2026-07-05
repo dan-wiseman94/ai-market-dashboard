@@ -13,7 +13,7 @@ from apps.ai.memory import memory_dir_for_profile
 
 @pytest.fixture
 def tmp_data(monkeypatch):
-    tmp = tempfile.mkdtemp(prefix="m10-mem-")
+    tmp = tempfile.mkdtemp(prefix="mem-")
     monkeypatch.setenv("AI_MEMORY_ROOT", tmp)
     yield tmp
     shutil.rmtree(tmp, ignore_errors=True)

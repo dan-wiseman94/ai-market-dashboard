@@ -36,11 +36,10 @@ dependencies = [
     "fastembed>=0.4,<1.0",
     "drf-spectacular>=0.28,<1.0",
     "sentry-sdk[django,celery]>=2.0,<3.0",
-    # Imported directly by app code but previously only present transitively (surfaced by
-    # deptry DEP003). Declared explicitly so a transitive provider dropping one can't silently
-    # break the app — all already resolved in uv.lock, so this is a no-op at install time.
+    # Imported directly by app code — declared first-party, not transitive, so a transitive
+    # provider dropping one can't silently break the app.
     "requests>=2.32,<3.0",   # apps/market/services/*, apps/secrets/*
-    "pydantic>=2.9,<3.0",    # apps/{observer,regime,thesis,warroom}/schemas + personas/verdict
+    "pydantic>=2.9,<3.0",    # {observer,thesis,strategy/coverage}/schemas + narrative/verdict models
     "numpy>=1.26,<3.0",      # apps/recall/embeddings (vector math)
     "httpx>=0.27,<1.0",      # apps/secrets/schwab_oauth
     "asgiref>=3.8,<4.0",     # async_to_sync / sync_to_async in threads/secrets/snapshots
@@ -247,8 +246,8 @@ allow_indirect_imports = true
 # Config intentionally lives in backend/setup.cfg, NOT here: mutmut derives a mutant's module
 # name from its file path and reads config only from its CWD, so it must run from backend/
 # (the source root) for path-derived names (apps.ai.cost) to match the runtime import names
-# its coverage stats record. Run from the repo root with backend/apps/... paths, every mutant
-# was named backend.apps.* and silently reported "no tests" — mutation testing was a no-op.
+# its coverage stats record. Run from the repo root, every mutant would be named backend.apps.*
+# and silently report "no tests" — mutation testing would be a no-op.
 # See backend/setup.cfg, `make mutate`, and .github/workflows/mutation.yml.
 
 [tool.deptry]

@@ -1,8 +1,9 @@
-"""Regression: the snapshot diff action 500'd on a non-integer id.
+"""A non-integer id on the snapshot diff action must 404, not 500.
 
-schemathesis fuzzing hit `GET /api/snapshots/null/diff/` → 500, because the view
-used Django's get_object_or_404 (catches only DoesNotExist) on `id=<non-int>`,
-letting the PK-cast ValueError escape. DRF's get_object_or_404 maps it to 404.
+`GET /api/snapshots/null/diff/` (schemathesis fuzzes this) must use DRF's
+get_object_or_404, which maps the PK-cast ValueError to 404. Django's
+get_object_or_404 catches only DoesNotExist, so on `id=<non-int>` it would
+let the ValueError escape as a 500.
 """
 
 import pytest
@@ -15,7 +16,7 @@ from apps.snapshots.models import Snapshot
 @pytest.mark.django_db
 def test_diff_non_integer_pk_returns_404_not_500():
     r = APIClient().get("/api/snapshots/null/diff/")
-    assert r.status_code == 404  # was 500
+    assert r.status_code == 404  # not 500
 
 
 @pytest.mark.django_db
@@ -25,4 +26,4 @@ def test_diff_non_integer_against_returns_404_not_500():
         profile=profile, includes=["quotes"], status="ready", primary_ticker="NVDA"
     )
     r = APIClient().get(f"/api/snapshots/{snap.id}/diff/?against=null")
-    assert r.status_code == 404  # was 500
+    assert r.status_code == 404  # not 500

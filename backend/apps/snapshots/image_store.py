@@ -1,12 +1,11 @@
-"""Snapshot image byte storage (C7).
+"""Snapshot image byte storage.
 
-Image bytes used to live in Postgres (`SnapshotImage.data`, a BinaryField),
-which bloated every ``pg_dump``. New images are written to the ``/data`` volume
-instead and the row stores only a ``file_path`` (bytes column NULL). Reads are
-disk-first with a fallback to the legacy BinaryField, so pre-existing rows keep
-working untouched — no data migration, fully reversible.
+Image bytes live on the ``/data`` volume: images are written to disk and the
+row stores only a ``file_path`` (bytes column NULL), keeping ``pg_dump`` small.
+Some rows instead carry in-DB bytes (`SnapshotImage.data`, a BinaryField).
+Reads are disk-first with a fallback to the BinaryField, so both shapes work.
 
-Backup story: the DB dump no longer carries image bytes; the images live on the
+Backup story: the DB dump does not carry image bytes; the images live on the
 persistent ``app_data:/data`` volume (which is part of the deployment's backup
 surface, like any blob store). Restore = DB restore + that volume.
 """
@@ -36,9 +35,9 @@ def write_image_file(data: bytes, *, ext: str = "png") -> str:
 
 
 def delete_image_file(img) -> None:
-    """Unlink an offloaded SnapshotImage's /data file. No-op for legacy in-DB
-    rows (no ``file_path``). Best-effort — a unlink failure must not block the
-    row delete (the file becomes orphaned, the prior behaviour, but logged)."""
+    """Unlink an offloaded SnapshotImage's /data file. No-op for in-DB rows
+    (no ``file_path``). Best-effort — a unlink failure must not block the
+    row delete (the file becomes orphaned, but logged)."""
     fp = getattr(img, "file_path", "") or ""
     if not fp:
         return
@@ -50,7 +49,7 @@ def delete_image_file(img) -> None:
 
 def read_image_bytes(img) -> bytes:
     """Bytes for a SnapshotImage: from disk when ``file_path`` is set and the
-    file exists, else the legacy in-DB ``data`` (or empty when neither)."""
+    file exists, else the in-DB ``data`` (or empty when neither)."""
     fp = getattr(img, "file_path", "") or ""
     if fp:
         p = Path(fp)
@@ -79,7 +78,7 @@ def create_image(*, snapshot_id, kind: str, data: bytes, caption: str = "", **ex
             **extra,
         )
     except OSError:
-        # Volume not writable (misconfig) — degrade to the legacy in-DB path
+        # Volume not writable (misconfig) — degrade to the in-DB path
         # rather than dropping the image.
         return SnapshotImage.objects.create(
             snapshot_id=snapshot_id, kind=kind, data=data, caption=caption, **extra

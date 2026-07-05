@@ -1,6 +1,6 @@
 """Drive a provider stream into mutable result containers.
 
-Split out of ``tasks.py``; re-exported there as ``apps.threads.tasks._build_stream_runner``.
+Re-exported as ``apps.threads.tasks._build_stream_runner``.
 
 Broadcasts go through ``apps.threads.tasks._broadcast_async`` (resolved lazily at
 call time) so tests that patch that attribute on the ``tasks`` module still apply

@@ -1,4 +1,4 @@
-"""Calibration-drift detection (#14): recent vs baseline EvalRun.calibration_error."""
+"""Calibration-drift detection: recent vs baseline EvalRun.calibration_error."""
 
 from __future__ import annotations
 

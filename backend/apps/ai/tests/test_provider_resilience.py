@@ -1,4 +1,4 @@
-"""Tests for M3-2: bounded retry-with-backoff + read timeout on AI provider clients.
+"""Bounded retry-with-backoff + read timeout on AI provider clients.
 
 Verifies:
 - client_kwargs() returns the configured settings values (and correct defaults).
@@ -7,7 +7,7 @@ Verifies:
 - OpenAIProvider passes max_retries + timeout to AsyncOpenAI at construction.
 - LocalProvider (subclass) also passes them (via OpenAIProvider.__init__).
 - ClaudeStructured run_structured passes them to Anthropic at construction.
-- Existing streaming behaviour is unchanged (additive, not breaking).
+- Streaming behaviour is unaffected (the retry/timeout kwargs are construction-only).
 """
 
 from __future__ import annotations

@@ -25,7 +25,3 @@ class TriggersListPage(BasePage):
 
     def open(self, trigger_id: int) -> None:
         self.row(trigger_id).click()
-
-
-# Back-compat alias.
-TriggersPage = TriggersListPage

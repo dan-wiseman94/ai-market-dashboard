@@ -1,4 +1,4 @@
-"""Narrative health for a Theme (#18): participation, leadership, relative strength.
+"""Narrative health for a Theme: participation, leadership, relative strength.
 
 Deterministic, from stored OHLCBar via the split-corrected forward-return helper.
 Honest coverage — members with no price history are excluded and metrics are null

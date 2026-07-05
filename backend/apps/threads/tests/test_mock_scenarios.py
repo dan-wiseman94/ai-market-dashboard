@@ -1,5 +1,5 @@
-"""files-upload-fail scenario actually injects a 500 (and mock mode no longer
-hits the live Anthropic Files API)."""
+"""files-upload-fail scenario actually injects a 500 (and mock mode does not
+hit the live Anthropic Files API)."""
 
 import io
 from unittest.mock import patch

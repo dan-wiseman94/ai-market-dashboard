@@ -1,4 +1,4 @@
-"""Lesson distillation (M14 F2): cluster decisive post-mortem lessons into
+"""Lesson distillation: cluster decisive post-mortem lessons into
 recurring, tagged rules via embeddings (greedy cosine-threshold) — deterministic,
 no AI cost. Look-ahead-safe: reads only decisive, completed post-mortems.
 
