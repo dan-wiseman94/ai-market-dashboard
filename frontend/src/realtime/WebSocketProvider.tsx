@@ -1,9 +1,9 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useEffect, useMemo, useRef } from "react";
+import { queryClient } from "@/hooks/queryClient";
 import { Broker } from "./subscriptions";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type Handler = (msg: any) => void;
+type Handler = (msg: unknown) => void;
 type Subscribe = (channel: string, handler: Handler) => () => void;
 type Ctx = { subscribe: Subscribe };
 
@@ -23,6 +23,16 @@ function pathForChannel(channel: string): string {
 }
 
 const WS_CONNECTING = 0;
+
+// A replay_gap frame means the server's replay buffer could not cover our
+// `?since=` — events were irrecoverably lost, so the affected channel's server
+// state must be refetched instead of trusting the stream.
+function invalidateChannelQueries(channel: string): void {
+  if (channel.startsWith("thread.")) {
+    const id = Number(channel.slice("thread.".length));
+    void queryClient.invalidateQueries({ queryKey: ["thread", id] });
+  }
+}
 
 // Closing a socket mid-handshake makes the browser log a noisy (but harmless)
 // "WebSocket is closed before the connection is established" warning. Defer the
@@ -71,8 +81,17 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
         try {
           const msg = JSON.parse(ev.data);
           const seq = (msg as { seq?: unknown })?.seq;
-          if (typeof seq === "number" && seq > (lastSeq.current.get(channel) ?? -1)) {
+          if (typeof seq === "number") {
+            // Seq-carrying events are exactly-once: on reconnect the server's
+            // replay tail overlaps the live feed (record-then-broadcast,
+            // group_add-then-replay), so a duplicate (seq <= cursor) must be
+            // dropped, never re-dispatched — text_delta handlers append
+            // non-idempotently. Seq-less channels dispatch unconditionally.
+            if (seq <= (lastSeq.current.get(channel) ?? -1)) return;
             lastSeq.current.set(channel, seq);
+          }
+          if ((msg as { type?: unknown })?.type === "replay_gap") {
+            invalidateChannelQueries(channel);
           }
           broker.dispatch(channel, msg);
         } catch {

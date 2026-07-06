@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, render } from "@testing-library/react";
 import { WebSocketProvider, useWebSocket } from "@/realtime/WebSocketProvider";
+import { queryClient } from "@/hooks/queryClient";
 import { installFakeWebSocket, type FakeWebSocketController } from "../testUtils";
 
 let fake: FakeWebSocketController;
@@ -313,6 +314,97 @@ describe("WebSocketProvider", () => {
       expect(all[all.length - 1].url).toMatch(/\/ws\/notifications\/$/);
     } finally {
       vi.useRealTimers();
+    }
+  });
+
+  it("drops seq duplicates instead of re-dispatching them (client-side seq dedupe)", () => {
+    const handler = vi.fn();
+    render(
+      <WebSocketProvider>
+        <TestConsumer channel="thread.4" onMsg={handler} />
+      </WebSocketProvider>,
+    );
+    const sock = fake.find("/ws/threads/4/");
+    act(() => sock!.emitOpen());
+    act(() => {
+      sock!.emitMessage({ event: "text_delta", text: "a", seq: 1 });
+      // Replay/live overlap on reconnect delivers the same seq twice — the
+      // duplicate must be dropped (text_delta handlers append non-idempotently).
+      sock!.emitMessage({ event: "text_delta", text: "a", seq: 1 });
+      sock!.emitMessage({ event: "text_delta", text: "b", seq: 2 });
+      sock!.emitMessage({ event: "text_delta", text: "a", seq: 1 }); // stale
+    });
+    expect(handler.mock.calls.map((c) => c[0])).toEqual([
+      { event: "text_delta", text: "a", seq: 1 },
+      { event: "text_delta", text: "b", seq: 2 },
+    ]);
+  });
+
+  it("still dispatches every seq-less message (no dedupe on seq-less channels)", () => {
+    const handler = vi.fn();
+    render(
+      <WebSocketProvider>
+        <TestConsumer channel="notifications" onMsg={handler} />
+      </WebSocketProvider>,
+    );
+    const sock = fake.find("/ws/notifications/");
+    act(() => sock!.emitOpen());
+    act(() => {
+      sock!.emitMessage({ type: "notification.event", payload: { kind: "x" } });
+      sock!.emitMessage({ type: "notification.event", payload: { kind: "x" } });
+    });
+    expect(handler).toHaveBeenCalledTimes(2);
+  });
+
+  it("dedupes replayed events after a reconnect (replay tail overlaps the live feed)", () => {
+    vi.useFakeTimers();
+    try {
+      const handler = vi.fn();
+      render(
+        <WebSocketProvider>
+          <TestConsumer channel="thread.6" onMsg={handler} />
+        </WebSocketProvider>,
+      );
+      const first = fake.find("/ws/threads/6/");
+      act(() => first!.emitOpen());
+      act(() => first!.emitMessage({ event: "text_delta", text: "a", seq: 5 }));
+      act(() => first!.emitClose(1006));
+      act(() => void vi.runOnlyPendingTimers());
+      const second = fake.sockets.filter((s) => s.url.includes("/ws/threads/6/")).at(-1)!;
+      expect(second.url).toMatch(/\?since=5$/);
+      act(() => {
+        second.emitOpen();
+        // The server replays seq 5 again (recorded before the drop) then new events.
+        second.emitMessage({ event: "text_delta", text: "a", seq: 5 });
+        second.emitMessage({ event: "text_delta", text: "b", seq: 6 });
+      });
+      expect(handler.mock.calls.map((c) => c[0])).toEqual([
+        { event: "text_delta", text: "a", seq: 5 },
+        { event: "text_delta", text: "b", seq: 6 },
+      ]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("replay_gap invalidates the thread query and still reaches subscribers", () => {
+    const invalidate = vi
+      .spyOn(queryClient, "invalidateQueries")
+      .mockImplementation(() => Promise.resolve());
+    try {
+      const handler = vi.fn();
+      render(
+        <WebSocketProvider>
+          <TestConsumer channel="thread.8" onMsg={handler} />
+        </WebSocketProvider>,
+      );
+      const sock = fake.find("/ws/threads/8/");
+      act(() => sock!.emitOpen());
+      act(() => sock!.emitMessage({ type: "replay_gap" }));
+      expect(invalidate).toHaveBeenCalledWith({ queryKey: ["thread", 8] });
+      expect(handler).toHaveBeenCalledWith({ type: "replay_gap" });
+    } finally {
+      invalidate.mockRestore();
     }
   });
 
