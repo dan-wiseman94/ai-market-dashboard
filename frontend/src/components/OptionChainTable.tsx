@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-interface Contract {
+export interface Contract {
   strike: string;
   bid?: string | null;
   ask?: string | null;
@@ -10,7 +10,7 @@ interface Contract {
   oi?: number;
 }
 
-interface ChainPayload {
+export interface ChainPayload {
   ticker?: string;
   underlying_last: string | null;
   expiries: Record<string, { calls: Contract[]; puts: Contract[] }>;
