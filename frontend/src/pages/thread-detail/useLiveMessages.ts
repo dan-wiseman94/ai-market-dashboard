@@ -1,8 +1,56 @@
 import { useCallback, useMemo, useState } from "react";
 import { useChannel } from "@/hooks/useChannel";
-import type { Thread } from "@/api/threads";
+import type { Message, Thread } from "@/api/threads";
 import type { ToolCallRecord } from "@/components/ToolCallTrace";
 import type { LiveMessage, WsMsg } from "./types";
+
+function toLiveMessage(m: Message): LiveMessage {
+  return {
+    id: m.id,
+    role: m.role === "system" ? "assistant" : m.role,
+    text: m.content?.text ?? "",
+    status: m.status,
+    error: m.error,
+    cost: m.ai_run?.cost_usd,
+    model: m.ai_run?.model,
+    provider: m.ai_run?.provider,
+    parent_message_id: m.parent_message_id ?? null,
+    snapshot_id: m.snapshot_id ?? null,
+    kind: m.content?.kind,
+    report: m.content?.report,
+  };
+}
+
+/**
+ * Rebuild the live map from refetched server rows without clobbering in-flight
+ * streams. A message we are actively streaming over WS holds MORE text than
+ * its server row: the DB partial flush lags by up to 0.75s, and the deltas
+ * covering that gap were already consumed and are never re-delivered. A
+ * refetch triggered elsewhere (another Compare branch's message_done, window
+ * refocus) must therefore keep the live entry while both sides are still
+ * streaming. Server state wins once the row is terminal (done/failed) or when
+ * `replaceAll` is set (after a replay_gap the buffered stream itself has holes).
+ */
+function reseed(
+  prev: Record<number, LiveMessage>,
+  messages: Message[],
+  replaceAll: boolean,
+): Record<number, LiveMessage> {
+  const seed: Record<number, LiveMessage> = {};
+  for (const m of messages) {
+    const cur = prev[m.id];
+    const keepLive = !replaceAll && cur?.status === "streaming" && m.status === "streaming";
+    seed[m.id] = keepLive ? cur : toLiveMessage(m);
+  }
+  if (!replaceAll) {
+    // A refetch snapshot can predate a just-started stream's row — don't drop
+    // an in-flight bubble the server payload doesn't know about yet.
+    for (const cur of Object.values(prev)) {
+      if (cur.status === "streaming" && !(cur.id in seed)) seed[cur.id] = cur;
+    }
+  }
+  return seed;
+}
 
 /**
  * Owns the live conversation state for a thread: the per-message map seeded from
@@ -24,6 +72,11 @@ export function useLiveMessages(
     Record<number, Record<string, ToolCallRecord>>
   >({});
 
+  // Set by a replay_gap frame: the WS stream is known to have holes, so the
+  // next reseed must take server state wholesale instead of preserving
+  // buffered streaming text.
+  const [resync, setResync] = useState(false);
+
   // Seed the live-message map from the loaded thread. Render-phase guarded
   // update keyed on the thread object (matches the prior effect's [thread] dep)
   // instead of an effect, per react-hooks v7 (set-state-in-effect).
@@ -31,28 +84,21 @@ export function useLiveMessages(
   if (thread !== prevThread) {
     setPrevThread(thread);
     if (thread) {
-      const seed: Record<number, LiveMessage> = {};
-      for (const m of thread.messages) {
-        seed[m.id] = {
-          id: m.id,
-          role: m.role === "system" ? "assistant" : m.role,
-          text: m.content?.text ?? "",
-          status: m.status,
-          error: m.error,
-          cost: m.ai_run?.cost_usd,
-          model: m.ai_run?.model,
-          provider: m.ai_run?.provider,
-          parent_message_id: m.parent_message_id ?? null,
-          snapshot_id: m.snapshot_id ?? null,
-          kind: m.content?.kind,
-          report: m.content?.report,
-        };
-      }
-      setLive(seed);
+      const replaceAll = resync;
+      if (resync) setResync(false);
+      setLive((prev) => reseed(prev, thread.messages, replaceAll));
     }
   }
 
   const onWs = useCallback((msg: WsMsg) => {
+    if (msg.type === "replay_gap") {
+      // Events were lost beyond the server's replay buffer: refetch (the
+      // provider also invalidates the thread query) and let server state
+      // replace the buffered stream wholesale on the next reseed.
+      setResync(true);
+      refetch();
+      return;
+    }
     if (msg.event === "message_started") {
       setLive((prev) => ({
         ...prev,
