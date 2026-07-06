@@ -321,6 +321,7 @@ function AICalibrationSection({ aiCal }: { aiCal: AICalibration }) {
 function ThesisAndProvider({
   data,
   isLoading,
+  isError,
   horizon,
   selected,
   onSelect,
@@ -329,12 +330,21 @@ function ThesisAndProvider({
 }: {
   data: Calibration | undefined;
   isLoading: boolean;
+  isError: boolean;
   horizon: number;
   selected: number | null;
   onSelect: (conviction: number) => void;
   drill: CalibrationDrilldown | undefined;
   drillLoading: boolean;
 }) {
+  if (isError) {
+    return (
+      <EmptyState
+        title="Couldn’t load calibration"
+        body="The request failed. Check your connection and try again."
+      />
+    );
+  }
   if (isLoading || !data) {
     return <SkeletonRows rows={6} />;
   }
@@ -364,7 +374,7 @@ function ThesisAndProvider({
 export default function ScorecardPage() {
   const [horizon, setHorizon] = useState<number>(30);
   const [selected, setSelected] = useState<number | null>(null);
-  const { data, isLoading } = useCalibration(90, horizon);
+  const { data, isLoading, isError } = useCalibration(90, horizon);
   const { data: drill, isLoading: drillLoading } = useCalibrationDrilldown(selected, horizon, 90);
   const { data: evalRun } = useLatestEvalRun();
   const { data: aiCal } = useAICalibration(90, horizon);
@@ -390,6 +400,7 @@ export default function ScorecardPage() {
       <ThesisAndProvider
         data={data}
         isLoading={isLoading}
+        isError={isError}
         horizon={horizon}
         selected={selected}
         onSelect={toggleSelected}

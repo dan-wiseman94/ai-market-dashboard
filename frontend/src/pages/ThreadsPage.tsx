@@ -10,7 +10,7 @@ const PAGE = 50;
 export default function ThreadsPage() {
   const [offset, setOffset] = useState(0);
   const [query, setQuery] = useState("");
-  const { data, isLoading } = useThreadsPage({ limit: PAGE, offset });
+  const { data, isLoading, isError, refetch } = useThreadsPage({ limit: PAGE, offset });
 
   const rows = data?.results ?? [];
   const count = data?.count ?? 0;
@@ -27,6 +27,23 @@ export default function ThreadsPage() {
 
   function renderBody() {
     if (isLoading) return <SkeletonRows rows={4} />;
+    if (isError) {
+      return (
+        <EmptyState
+          title="Couldn’t load threads"
+          body="The request failed. Check your connection and try again."
+          action={
+            <button
+              type="button"
+              onClick={() => refetch()}
+              className="rounded border border-rule px-3 py-1 hover:text-copper-300"
+            >
+              Retry
+            </button>
+          }
+        />
+      );
+    }
     if (rows.length === 0) {
       return (
         <EmptyState
