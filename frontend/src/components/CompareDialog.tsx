@@ -1,5 +1,6 @@
 import { useState } from "react";
 import ProviderModelPicker from "./ProviderModelPicker";
+import { DEFAULT_COMPARE_BRANCH, DEFAULT_PICK } from "@/lib/modelDefaults";
 
 type Branch = { provider: string; model: string };
 type Props = {
@@ -10,8 +11,8 @@ type Props = {
 export default function CompareDialog({ onCancel, onSubmit }: Props) {
   const [text, setText] = useState("");
   const [branches, setBranches] = useState<Branch[]>([
-    { provider: "claude", model: "claude-sonnet-4-6" },
-    { provider: "openai", model: "gpt-5-mini" },
+    { ...DEFAULT_PICK },
+    { ...DEFAULT_COMPARE_BRANCH },
   ]);
 
   return (
@@ -70,7 +71,7 @@ export default function CompareDialog({ onCancel, onSubmit }: Props) {
 
           <button
             className="font-mono text-[11px] text-ink-400 hover:text-copper-300 transition-colors uppercase tracking-wider"
-            onClick={() => setBranches([...branches, { provider: "claude", model: "claude-sonnet-4-6" }])}
+            onClick={() => setBranches([...branches, { ...DEFAULT_PICK }])}
           >
             + add branch
           </button>

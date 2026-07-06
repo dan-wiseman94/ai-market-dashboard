@@ -1,3 +1,5 @@
+import { DEFAULT_PICK } from "@/lib/modelDefaults";
+
 export const SECTION_OPTIONS = ["quotes", "ohlc", "positions", "breadth", "notes"] as const;
 
 export type Draft = {
@@ -10,7 +12,7 @@ export type Draft = {
 
 export const BLANK_DRAFT: Draft = {
   name: "", style: "", default_includes: ["quotes", "positions", "breadth"],
-  default_provider: "claude", default_model: "claude-sonnet-4-6",
+  default_provider: DEFAULT_PICK.provider, default_model: DEFAULT_PICK.model,
 };
 
 export type PresetDraft = {
