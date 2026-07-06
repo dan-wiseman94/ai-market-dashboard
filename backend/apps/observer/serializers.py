@@ -84,4 +84,39 @@ class ObserverScheduleSerializer(serializers.ModelSerializer):
         has_existing_pt = bool(self.instance and self.instance.periodic_task)
         if fire_mode == "cron" and not attrs.get("cron") and not has_existing_pt:
             raise serializers.ValidationError({"cron": "cron is required for cron fire_mode"})
+        self._validate_claude_only_modes(attrs)
         return attrs
+
+    def _validate_claude_only_modes(self, attrs) -> None:
+        """structured / use_batch run through Anthropic APIs (messages.parse /
+        Messages Batches); reject at configuration time rather than letting
+        every fire 401 against api.anthropic.com with a non-Claude key."""
+        from apps.ai.catalog import CLAUDE_FAMILY_PROVIDERS
+
+        structured = self._resolved(attrs, "structured", default=False)
+        use_batch = self._resolved(attrs, "use_batch", default=False)
+        if not structured and not use_batch:
+            return
+        profile = self._resolved(attrs, "profile", default=None)
+        provider = self._resolved(attrs, "override_provider", default="") or getattr(
+            profile, "default_provider", ""
+        )
+        if provider not in CLAUDE_FAMILY_PROVIDERS:
+            field = "structured" if structured else "use_batch"
+            raise serializers.ValidationError(
+                {
+                    field: (
+                        f"{field} requires a Claude provider; this schedule "
+                        f"resolves to {provider!r}"
+                    )
+                }
+            )
+
+    def _resolved(self, attrs, field: str, *, default):
+        """The value this write resolves to: incoming attr, else the current
+        instance value (PATCH omits unchanged fields), else the default."""
+        if field in attrs:
+            return attrs[field]
+        if self.instance is not None:
+            return getattr(self.instance, field)
+        return default

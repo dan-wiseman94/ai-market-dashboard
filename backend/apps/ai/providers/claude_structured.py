@@ -55,7 +55,7 @@ def run_structured[M: BaseModel](
     return parsed
 
 
-def _token_usage_from_anthropic(usage: object):
+def token_usage_from_anthropic(usage: object):
     """Map an Anthropic usage object to TokenUsage (total-input convention).
 
     input_tokens, cache_read, and cache_creation are disjoint in the API; sum
@@ -88,7 +88,7 @@ def _record_structured_run(*, model: str, usage: object, latency_ms: int) -> Non
         record_ai_run(
             provider="claude",
             model=model,
-            usage=_token_usage_from_anthropic(usage),
+            usage=token_usage_from_anthropic(usage),
             latency_ms=latency_ms,
         )
     except Exception:  # best-effort ledger write; the parsed result is already obtained

@@ -9,6 +9,12 @@ from dataclasses import dataclass
 
 KNOWN_PROVIDERS = ["claude", "openai", "local"]
 
+# Provider names that resolve to Anthropic endpoints. Claude-only paths
+# (structured outputs, Messages Batches) must check membership before wrapping
+# an arbitrary ProviderConfig in an Anthropic client — sending another vendor's
+# key to api.anthropic.com fails every call with an opaque 401.
+CLAUDE_FAMILY_PROVIDERS = ("claude", "anthropic")
+
 # The default Claude model for best-effort / structured paths when no per-send or
 # profile/schedule override and no ProviderConfig.default_model is set. Single
 # source of truth — bump here, not in each caller (was duplicated across ~8 sites).
