@@ -117,3 +117,38 @@ def test_run_observer_happy_path_creates_snapshot_message_and_notification():
 
     s.refresh_from_db()
     assert s.last_fired_at is not None
+
+
+@pytest.mark.django_db
+def test_run_observer_batch_submit_failure_writes_failed_message():
+    """A failed batch submit must surface in the observer thread — the timeline
+    reads Messages, so a log-only failure is invisible in the UI."""
+    p = _profile()
+    s = ObserverSchedule.objects.create(
+        name="overnight",
+        profile=p,
+        market_hours_only=False,
+        use_batch=True,
+        default_watchlist_tickers=["SPY"],
+    )
+    fake_snap = Snapshot.objects.create(profile=p, source="observer", status="ready")
+
+    with (
+        patch("apps.observer.services.run.any_market_open", return_value=True),
+        patch("apps.observer.services.run.capture", return_value=fake_snap),
+        patch(
+            "apps.observer.services.batch.submit_watchlist_batch",
+            side_effect=ValueError("no claude key"),
+        ) as submit,
+    ):
+        result = run_observer(s.id)
+
+    assert result == fake_snap.id
+    # The submit is grounded in the snapshot the fire just captured.
+    submit.assert_called_once_with(s.id, snapshot_id=fake_snap.id)
+    thread = Thread.objects.get(profile=p, kind="observer")
+    msg = thread.messages.get()
+    assert msg.role == "assistant"
+    assert msg.status == "failed"
+    assert "batch submit failed" in msg.content["text"]
+    assert "no claude key" in msg.error

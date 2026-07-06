@@ -6,6 +6,7 @@ in the task code; they go through `get_provider(...)`.
 
 from __future__ import annotations
 
+from apps.ai.providers._config import client_kwargs
 from apps.ai.providers.base import Provider
 from apps.ai.providers.claude import ClaudeProvider
 from apps.ai.providers.local import LocalProvider
@@ -22,4 +23,11 @@ def get_provider(name: str, *, api_key: str, base_url: str = "") -> Provider:
     raise ValueError(f"Unknown provider: {name}")
 
 
-__all__ = ["ClaudeProvider", "LocalProvider", "OpenAIProvider", "Provider", "get_provider"]
+__all__ = [
+    "ClaudeProvider",
+    "LocalProvider",
+    "OpenAIProvider",
+    "Provider",
+    "client_kwargs",
+    "get_provider",
+]

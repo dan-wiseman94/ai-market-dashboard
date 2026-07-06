@@ -20,6 +20,9 @@ class CostCapExceededError(RuntimeError):
 _PER_MTOK = Decimal("1000000")
 # Anthropic 5-minute prompt-cache write costs 1.25x the base input rate.
 _CACHE_WRITE_MULT = Decimal("1.25")
+# Anthropic Messages Batches bill at 50% of the standard per-token rates; the
+# catalog carries only standard rates, so batch recorders apply this multiplier.
+BATCH_COST_MULTIPLIER = Decimal("0.5")
 
 
 def cost_usd_for(provider: str, model_id: str, usage: TokenUsage) -> Decimal:
@@ -57,18 +60,22 @@ def record_ai_run(
     status: str = "done",
     latency_ms: int = 0,
     error: str = "",
+    cost_multiplier: Decimal = Decimal("1"),
 ) -> AIRun:
     """Persist an AIRun so a provider call's cost counts against the caps.
 
     The streaming chat path records its own AIRun inline (threads.tasks); this is
     the shared recorder for the one-shot ``run_structured`` path (post-mortems,
-    coverage revisions, regime/book narratives, war-room, eval, predictions) so
-    that spend counts toward check_daily_cap / check_monthly_cap (both sum
-    AIRun.cost_usd). ``message`` is None for runs not tied to a chat Message —
-    AIRun.message is nullable for exactly this reason.
+    coverage revisions, regime/book narratives, war-room, eval, predictions) and
+    the observer Messages-Batch poller, so that spend counts toward
+    check_daily_cap / check_monthly_cap (both sum AIRun.cost_usd). ``message`` is
+    None for runs not tied to a chat Message — AIRun.message is nullable for
+    exactly this reason. ``cost_multiplier`` scales the catalog rate for paths
+    the provider discounts (BATCH_COST_MULTIPLIER for Messages Batches).
     """
     from apps.threads.models import AIRun
 
+    cost = (cost_usd_for(provider, model, usage) * cost_multiplier).quantize(Decimal("0.000001"))
     return AIRun.objects.create(
         message=message,
         provider=provider,
@@ -76,7 +83,7 @@ def record_ai_run(
         input_tokens=usage.input_tokens,
         output_tokens=usage.output_tokens,
         cached_tokens=usage.cached_tokens,
-        cost_usd=cost_usd_for(provider, model, usage),
+        cost_usd=cost,
         latency_ms=latency_ms,
         status=status,
         error=error,

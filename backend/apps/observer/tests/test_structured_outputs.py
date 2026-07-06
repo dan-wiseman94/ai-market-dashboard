@@ -108,3 +108,30 @@ def test_structured_undecryptable_key_records_failed_message_without_crashing(
     assert msg is not None
     assert msg.error == "undecryptable_key"
     assert "could not be decrypted" in msg.content["text"]
+
+
+def test_structured_non_claude_provider_skips_with_visible_message(
+    db,
+    schedule_structured,
+) -> None:
+    """Structured output runs through Anthropic messages.parse; a schedule that
+    resolves to openai/local must skip with a visible Message instead of sending
+    that vendor's key to api.anthropic.com (opaque 401 every fire)."""
+    from apps.observer.services import run as run_service
+    from apps.observer.services.threads import get_or_create_observer_thread
+    from apps.threads.models import Message
+
+    thread = get_or_create_observer_thread(schedule_structured.profile)
+    with patch.object(run_service, "run_structured") as run_structured:
+        run_service._run_structured_and_record(
+            schedule_structured, thread, "payload", "openai", None, snap=None
+        )
+
+    run_structured.assert_not_called()
+    msg = Message.objects.filter(thread=thread, role="system", status="failed").first()
+    assert msg is not None
+    assert msg.error == "unsupported_provider"
+    assert "Claude" in msg.content["text"]
+    # Not a capability_warning kind — those are excluded from the observer
+    # timeline, and this skip must stay visible there.
+    assert msg.content.get("kind") is None
