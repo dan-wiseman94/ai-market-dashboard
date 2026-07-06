@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 
 import { useChannel } from "@/hooks/useChannel";
+import type { ThreadWsMsg } from "@/realtime/threadEvents";
 
 export type WarRoomLiveMessage = {
   id: number;
@@ -25,8 +26,7 @@ const TERMINAL_STATUS: Record<string, "done" | "failed"> = {
 export function useWarRoomLive(threadId: number | null, enabled: boolean) {
   const [live, setLive] = useState<Record<number, WarRoomLiveMessage>>({});
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const onWs = useCallback((msg: any) => {
+  const onWs = useCallback((msg: ThreadWsMsg) => {
     const id = msg.message_id;
     if (id == null) return;
     if (msg.event === "message_started") {
@@ -34,10 +34,10 @@ export function useWarRoomLive(threadId: number | null, enabled: boolean) {
     } else if (msg.event === "text_delta") {
       setLive((prev) => {
         const cur = prev[id] ?? { id, text: "", status: "streaming" as const };
-        return { ...prev, [id]: { ...cur, text: cur.text + (msg.text ?? "") } };
+        return { ...prev, [id]: { ...cur, text: cur.text + msg.text } };
       });
     } else {
-      const status = TERMINAL_STATUS[msg.event];
+      const status = msg.event ? TERMINAL_STATUS[msg.event] : undefined;
       if (status) {
         setLive((prev) => ({
           ...prev,
