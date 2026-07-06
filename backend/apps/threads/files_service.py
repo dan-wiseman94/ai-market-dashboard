@@ -7,6 +7,7 @@ import uuid
 from anthropic import Anthropic
 from cryptography.fernet import InvalidToken
 
+from apps.ai.providers import client_kwargs
 from apps.secrets.models import ProviderConfig
 
 
@@ -21,7 +22,10 @@ def _anthropic_client() -> Anthropic:
         cfg = None  # undecryptable key (key/salt rotation) → treat as not configured
     if cfg is None or not cfg.api_key:
         raise NoKeyError("No Claude API key configured")
-    return Anthropic(api_key=cfg.api_key, base_url=cfg.base_url or None)
+    # client_kwargs applies the shared env-configured retry/timeout resilience
+    # (AI_PROVIDER_MAX_RETRIES / AI_PROVIDER_TIMEOUT_SECONDS) — uploads are
+    # bounded at 5MB (DATA_UPLOAD_MAX_MEMORY_SIZE), well within the timeout.
+    return Anthropic(api_key=cfg.api_key, base_url=cfg.base_url or None, **client_kwargs())
 
 
 def upload_to_anthropic(fileobj, filename: str, mime: str) -> tuple[str, int]:
