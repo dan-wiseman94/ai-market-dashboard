@@ -80,6 +80,19 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
       ws.addEventListener("message", (ev) => {
         try {
           const msg = JSON.parse(ev.data);
+          if ((msg as { type?: unknown })?.type === "replay_gap") {
+            // Handled BEFORE the seq filter: a gap frame must never be dropped,
+            // and it also means the server's seq counter may have restarted
+            // below our cursor (Redis flush, 1h idle expiry of the counter
+            // key). Reset the cursor so post-gap events with restarted seqs
+            // are dispatched — otherwise every subsequent event is silently
+            // dropped as a "duplicate" and the streaming UI goes dead — and so
+            // the next reconnect is a fresh first-connect, not a stale ?since=.
+            lastSeq.current.delete(channel);
+            invalidateChannelQueries(channel);
+            broker.dispatch(channel, msg);
+            return;
+          }
           const seq = (msg as { seq?: unknown })?.seq;
           if (typeof seq === "number") {
             // Seq-carrying events are exactly-once: on reconnect the server's
@@ -89,9 +102,6 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
             // non-idempotently. Seq-less channels dispatch unconditionally.
             if (seq <= (lastSeq.current.get(channel) ?? -1)) return;
             lastSeq.current.set(channel, seq);
-          }
-          if ((msg as { type?: unknown })?.type === "replay_gap") {
-            invalidateChannelQueries(channel);
           }
           broker.dispatch(channel, msg);
         } catch {
