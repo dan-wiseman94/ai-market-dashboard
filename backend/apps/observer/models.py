@@ -181,6 +181,19 @@ class AIPrediction(DirectionalCall, Resolution):
             models.Index(fields=["provider", "model", "status"]),
             models.Index(fields=["status", "resolve_at"]),
         ]
+        constraints: ClassVar = [
+            # Enforce the calibration-honesty invariant at the DB level: at most one
+            # ``open`` prediction per (ticker, horizon_days, profile). The check-then-act
+            # in extract.py races under worker concurrency; this partial unique index is
+            # the real guard (extract.py catches the IntegrityError as the race-loser
+            # no-op). nulls_distinct=False so a NULL profile still collides (PG15+).
+            models.UniqueConstraint(
+                fields=["ticker", "horizon_days", "profile"],
+                condition=models.Q(status="open"),
+                name="uniq_open_prediction_per_ticker_horizon_profile",
+                nulls_distinct=False,
+            ),
+        ]
 
     def __str__(self) -> str:
         return f"AIPrediction({self.ticker}, {self.direction}, {self.horizon_days}d, {self.status})"
