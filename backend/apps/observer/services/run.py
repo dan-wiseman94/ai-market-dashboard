@@ -8,6 +8,7 @@ import logging
 from datetime import timedelta
 from decimal import Decimal
 
+from cryptography.fernet import InvalidToken
 from django.utils import timezone
 
 from apps.ai.catalog import DEFAULT_CLAUDE_MODEL
@@ -52,8 +53,11 @@ def run_observer(schedule_id: int) -> int | None:
     model_name = sched.override_model or sched.profile.default_model
 
     # Resolve caps — Infinity daily / None monthly when no ProviderConfig row exists.
-    # defer the encrypted key: only cap fields are read here (the AI call delegates to
-    # run_ai_on_message), so decrypting would needlessly raise on a key/salt rotation.
+    # defer the encrypted key: the cap fields are read here without decrypting, so a
+    # key/salt rotation can't crash the plain path (the AI call delegates to
+    # run_ai_on_message). The structured branch DOES read cfg.api_key (in
+    # _run_structured_and_record) — deferred, so it decrypts lazily there and is
+    # guarded against InvalidToken.
     cfg = ProviderConfig.objects.filter(provider=provider_name).defer("_api_key").first()
     if cfg is None:
         log.warning(
@@ -266,7 +270,29 @@ def _run_structured_and_record(
     snap=None,
 ) -> None:
     """Invoke messages.parse with ObservationReport and persist the result."""
-    if cfg is None or not cfg.api_key:
+    try:
+        has_key = cfg is not None and bool(cfg.api_key)
+    except InvalidToken:
+        # The stored key can't be decrypted (DJANGO_SECRET_KEY / salt rotated since it
+        # was saved). cfg was fetched with .defer("_api_key"), so decryption happens
+        # lazily on this first access and raises here. Mirror the threads path
+        # (threads/tasks.py) and record an actionable failed Message instead of letting
+        # InvalidToken crash the fire silently (the observer timeline reads Messages).
+        Message.objects.create(
+            thread=thread,
+            role="assistant",
+            content={
+                "text": (
+                    f"Observer {sched.name}: {provider_name} API key could not be decrypted "
+                    "(the encryption key may have changed). Re-enter it in "
+                    "Settings → Providers."
+                )
+            },
+            status="failed",
+            error="undecryptable_key",
+        )
+        return
+    if not has_key:
         Message.objects.create(
             thread=thread,
             role="system",
