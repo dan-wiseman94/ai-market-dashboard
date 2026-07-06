@@ -2,7 +2,7 @@ import { useCallback } from "react";
 import BranchTabs from "@/components/BranchTabs";
 import CompareTotalsStrip from "@/components/CompareTotalsStrip";
 import { useChannel } from "@/hooks/useChannel";
-import { useBranchState, type BranchEvent } from "@/hooks/useBranchState";
+import { useBranchState } from "@/hooks/useBranchState";
 import type { LiveMessage, WsMsg } from "./types";
 
 type Props = {
@@ -23,7 +23,17 @@ export default function BranchGroup({
   const { state, handleEvent } = useBranchState(parentMsg.id);
 
   const onWsBranch = useCallback((msg: WsMsg) => {
-    handleEvent(msg as BranchEvent);
+    // Narrow the full thread-event union to the events the branch reducer
+    // consumes — the compiler checks each narrowed member against BranchEvent,
+    // instead of an unchecked cast letting text_delta/replay_gap slide through.
+    if (
+      msg.event === "message_started" ||
+      msg.event === "message_done" ||
+      msg.event === "cost" ||
+      msg.event === "error"
+    ) {
+      handleEvent(msg);
+    }
   }, [handleEvent]);
 
   useChannel(threadChannel, onWsBranch);
