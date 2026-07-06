@@ -52,9 +52,22 @@ def evaluate_triggers() -> dict:
     snapshot = metrics.build_snapshot(live)
     fires = 0
     for trigger in live:
+        # cooldown_blocks does live Redis I/O; a transient Redis error is an infra
+        # hiccup, NOT a bad condition — skip this tick rather than disabling a
+        # standing alert (kept out of the disable-on-exception scope below).
         try:
             if cooldown_blocks(trigger):
                 continue
+        except redis.RedisError as exc:
+            logger.warning(
+                "trigger.cooldown.redis_error",
+                trigger_id=trigger.id,
+                trigger_name=trigger.name,
+                error=str(exc),
+            )
+            continue
+
+        try:
             matched, values = evaluator.evaluate(trigger.condition, snapshot)
         except Exception as exc:
             logger.error(
@@ -70,12 +83,25 @@ def evaluate_triggers() -> dict:
             mark_rearmed(trigger.id)
             continue
         mark_fired(trigger.id)
-        # Stamp the cooldown SYNCHRONOUSLY. cooldown_blocks reads last_fired_at,
-        # but the fire path is async (_do_fire stamps it ~seconds later); without
-        # this, the next ~10s tick still sees last_fired_at unset and fires a
-        # second time (the FIRE_LOCK only stops *concurrent* dupes, not sequential).
+        # Stamp the cooldown SYNCHRONOUSLY via a compare-and-set on last_fired_at.
+        # cooldown_blocks reads last_fired_at, but the fire path is async (_do_fire
+        # stamps it ~seconds later); without a sync stamp the next ~10s tick still
+        # sees the old value and fires a second time. Two concurrent ticks each read
+        # the same stale last_fired_at and both pass cooldown_blocks, so a plain
+        # UPDATE lets both enqueue and the FIRE_LOCK (released in finally) only stops
+        # *concurrent* dupes — they then run sequentially and double-bill. The CAS
+        # (UPDATE ... WHERE last_fired_at = <the value we read>) lets exactly one
+        # racing tick win the claim and enqueue the fire.
         now = timezone.now()
-        EventTrigger.objects.filter(id=trigger.id).update(last_fired_at=now)
+        prev_fired_at = trigger.last_fired_at
+        claimed = (
+            EventTrigger.objects.filter(id=trigger.id, last_fired_at=prev_fired_at).update(
+                last_fired_at=now
+            )
+            == 1
+        )
+        if not claimed:
+            continue
         trigger.last_fired_at = now
         fire_trigger.delay(trigger_id=trigger.id, matched_values=values)
         fires += 1
@@ -97,6 +123,16 @@ def _disable_on_bad_condition(trigger: EventTrigger, exc: Exception) -> None:
         "trigger.disabled.invalid_condition",
         trigger_id=trigger.id,
         error=str(exc),
+    )
+    # Auto-disabling a standing alert must be VISIBLE — the user is the alert
+    # consumer, and a silently-off trigger is the worst failure mode here. Mirror the
+    # module's other notify() call sites (capture failure, cost cap).
+    notify(
+        user_id=None,
+        kind="error",
+        title=f"Trigger disabled: {trigger.name}",
+        body=f"Its condition failed to evaluate and it was turned off automatically: {exc}",
+        link=f"/triggers/{trigger.id}",
     )
 
 
