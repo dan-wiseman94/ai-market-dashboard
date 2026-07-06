@@ -89,6 +89,23 @@ class ThreadViewSet(
             snap = Snapshot.objects.filter(id=sid).first()
             if snap is not None and snap.status != "ready":
                 return _error("snapshot_not_ready", "Snapshot is not ready", 400)
+        synthetic_text = None
+        if snap is not None:
+            # Budget the payload for the model that will actually consume it
+            # (the profile default), not the 40k fallback — serialization is
+            # frozen into content["text"] here, so this is the only chance to
+            # size it correctly. No profile → keep the conservative default.
+            # Assembled BEFORE the atomic block: serialization token-counts via
+            # the provider API and the coach runs embedding inference — network
+            # I/O that must not hold an open Postgres transaction.
+            if profile is not None:
+                payload = serialize_for_ai(
+                    snap, provider=profile.default_provider, model=profile.default_model
+                )
+            else:
+                payload = serialize_for_ai(snap)
+            coach = assemble_coach_context(snap, profile)
+            synthetic_text = coach + payload
         synthetic_msg = None
         with transaction.atomic():
             t = Thread.objects.create(
@@ -97,22 +114,11 @@ class ThreadViewSet(
                 profile=profile,
                 pinned_snapshot=snap,
             )
-            if snap is not None:
-                # Budget the payload for the model that will actually consume it
-                # (the profile default), not the 40k fallback — serialization is
-                # frozen into content["text"] here, so this is the only chance to
-                # size it correctly. No profile → keep the conservative default.
-                if profile is not None:
-                    payload = serialize_for_ai(
-                        snap, provider=profile.default_provider, model=profile.default_model
-                    )
-                else:
-                    payload = serialize_for_ai(snap)
-                coach = assemble_coach_context(snap, profile)
+            if synthetic_text is not None:
                 synthetic_msg = Message.objects.create(
                     thread=t,
                     role="user",
-                    content={"text": coach + payload},
+                    content={"text": synthetic_text},
                     snapshot_ref=snap,
                     status="done",
                 )
