@@ -49,16 +49,29 @@ function closeSocket(ws: WebSocket): void {
 const RECONNECT_BASE_MS = 1000;
 const RECONNECT_MAX_MS = 10000;
 
+// Mirrors the backend replay buffer (event_log._MAX_EVENTS): a genuine
+// replay/live duplicate is always an event still inside the buffered tail, so
+// its seq trails the cursor by less than the buffer size.
+const REPLAY_BUFFER_EVENTS = 256;
+// Mirrors the backend seq-counter TTL (event_log._TTL_SECONDS = 1h): the
+// counter restarts only after >=1h with no recorded events, so a backwards seq
+// arriving that long after the cursor last advanced is a restart, not a
+// duplicate. Kept below the backend TTL so receipt-latency skew can't
+// misclassify (real duplicates arrive within moments of the original anyway).
+const SEQ_RESTART_IDLE_MS = 55 * 60 * 1000;
+
 export function WebSocketProvider({ children }: { children: React.ReactNode }) {
   const broker = useMemo(() => new Broker(), []);
   const sockets = useRef(new Map<string, WebSocket>());
   // Pending reconnect timers and per-channel backoff attempt counts.
   const timers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
   const attempts = useRef(new Map<string, number>());
-  // Per-channel last-received server `seq` (thread.<id> events carry one). On a
-  // reconnect we send it as `?since=` so the server replays events emitted during
-  // the gap; without it, a drop silently loses those events.
-  const lastSeq = useRef(new Map<string, number>());
+  // Per-channel last-received server `seq` (thread.<id> events carry one) plus
+  // the wall-clock time it advanced. On a reconnect we send the seq as `?since=`
+  // so the server replays events emitted during the gap; without it, a drop
+  // silently loses those events. The timestamp detects a server-side counter
+  // restart (see the message handler).
+  const lastSeq = useRef(new Map<string, { seq: number; at: number }>());
   // Set once the provider unmounts so in-flight close handlers / timers don't reopen.
   const disposed = useRef(false);
   // Empty VITE_WS_BASE_URL means same-origin: build the base from the current
@@ -73,7 +86,7 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
       // First connect: no `?since=`. Reconnect: we have a last-seen seq, so ask the
       // server to replay everything after it (ThreadConsumer keeps a capped tail).
       // The presence of a seq is itself the first-connect-vs-reconnect signal.
-      const since = lastSeq.current.get(channel);
+      const since = lastSeq.current.get(channel)?.seq;
       const path = pathForChannel(channel);
       const url = since !== undefined ? `${wsBase}${path}?since=${since}` : `${wsBase}${path}`;
       const ws = new WebSocket(url);
@@ -100,8 +113,23 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
             // group_add-then-replay), so a duplicate (seq <= cursor) must be
             // dropped, never re-dispatched — text_delta handlers append
             // non-idempotently. Seq-less channels dispatch unconditionally.
-            if (seq <= (lastSeq.current.get(channel) ?? -1)) return;
-            lastSeq.current.set(channel, seq);
+            const cursor = lastSeq.current.get(channel);
+            if (cursor !== undefined && seq <= cursor.seq) {
+              // BUT: a backwards seq on a live connection can also be the
+              // server's counter restarting under us (Redis flush, 1h idle
+              // expiry of the counter key) with no reconnect — so no
+              // replay_gap frame ever arrives to reset the cursor. A real
+              // duplicate is a just-delivered event still inside the replay
+              // buffer; a restart lands far below the cursor or after the
+              // counter's idle TTL. Treat that as a fresh stream and dispatch,
+              // or every subsequent event is silently dropped as a
+              // "duplicate" and the streaming UI goes dead.
+              const restarted =
+                cursor.seq - seq >= REPLAY_BUFFER_EVENTS ||
+                Date.now() - cursor.at >= SEQ_RESTART_IDLE_MS;
+              if (!restarted) return;
+            }
+            lastSeq.current.set(channel, { seq, at: Date.now() });
           }
           broker.dispatch(channel, msg);
         } catch {

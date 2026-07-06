@@ -356,6 +356,81 @@ describe("WebSocketProvider", () => {
     expect(handler).toHaveBeenCalledTimes(2);
   });
 
+  it("treats a backwards seq jump beyond the replay buffer as a counter restart (dispatches)", () => {
+    const handler = vi.fn();
+    render(
+      <WebSocketProvider>
+        <TestConsumer channel="thread.20" onMsg={handler} />
+      </WebSocketProvider>,
+    );
+    const sock = fake.find("/ws/threads/20/");
+    act(() => sock!.emitOpen());
+    act(() => {
+      sock!.emitMessage({ event: "text_delta", text: "a", seq: 400 });
+      // The server's seq counter restarted mid-connection (Redis flush) with no
+      // reconnect, so no replay_gap arrives. seq=1 trails the cursor by more
+      // than the 256-event replay buffer — it cannot be a replay duplicate and
+      // must be dispatched, or the whole restarted stream is silently dropped.
+      sock!.emitMessage({ event: "message_started", message_id: 9, seq: 1 });
+      sock!.emitMessage({ event: "text_delta", text: "fresh", seq: 2 });
+    });
+    expect(handler.mock.calls.map((c) => c[0])).toEqual([
+      { event: "text_delta", text: "a", seq: 400 },
+      { event: "message_started", message_id: 9, seq: 1 },
+      { event: "text_delta", text: "fresh", seq: 2 },
+    ]);
+  });
+
+  it("treats a backwards seq after >=55min idle as a counter restart (1h TTL expiry)", () => {
+    vi.useFakeTimers();
+    try {
+      const handler = vi.fn();
+      render(
+        <WebSocketProvider>
+          <TestConsumer channel="thread.21" onMsg={handler} />
+        </WebSocketProvider>,
+      );
+      const sock = fake.find("/ws/threads/21/");
+      act(() => sock!.emitOpen());
+      act(() => sock!.emitMessage({ event: "text_delta", text: "a", seq: 40 }));
+      // A thread page left open idle: the backend's counter key expires after
+      // 1h (event_log._TTL_SECONDS), so the next run restarts at seq=1..n, all
+      // <= our cursor but small enough (40-1 < 256) that only the idle rule
+      // can tell a restart from a duplicate. Without it the reply never renders.
+      act(() => void vi.advanceTimersByTime(56 * 60 * 1000));
+      act(() => {
+        sock!.emitMessage({ event: "message_started", message_id: 9, seq: 1 });
+        sock!.emitMessage({ event: "text_delta", text: "fresh", seq: 2 });
+      });
+      expect(handler.mock.calls.map((c) => c[0])).toEqual([
+        { event: "text_delta", text: "a", seq: 40 },
+        { event: "message_started", message_id: 9, seq: 1 },
+        { event: "text_delta", text: "fresh", seq: 2 },
+      ]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("still drops a small backwards seq within the idle window (a genuine duplicate)", () => {
+    const handler = vi.fn();
+    render(
+      <WebSocketProvider>
+        <TestConsumer channel="thread.22" onMsg={handler} />
+      </WebSocketProvider>,
+    );
+    const sock = fake.find("/ws/threads/22/");
+    act(() => sock!.emitOpen());
+    act(() => {
+      sock!.emitMessage({ event: "text_delta", text: "a", seq: 40 });
+      sock!.emitMessage({ event: "text_delta", text: "a", seq: 40 }); // duplicate
+      sock!.emitMessage({ event: "text_delta", text: "b", seq: 39 }); // stale
+    });
+    expect(handler.mock.calls.map((c) => c[0])).toEqual([
+      { event: "text_delta", text: "a", seq: 40 },
+    ]);
+  });
+
   it("dedupes replayed events after a reconnect (replay tail overlaps the live feed)", () => {
     vi.useFakeTimers();
     try {
