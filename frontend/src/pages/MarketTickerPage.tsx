@@ -1,10 +1,11 @@
 import { useRef } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
+import { apiGet } from "@/api/client";
 import Chart from "@/components/Chart";
 import ChartCaptureButton from "@/components/ChartCaptureButton";
-import OptionChainTable from "@/components/OptionChainTable";
-import NewsFeed from "@/components/NewsFeed";
+import OptionChainTable, { type ChainPayload } from "@/components/OptionChainTable";
+import NewsFeed, { type NewsItem } from "@/components/NewsFeed";
 
 export default function MarketTickerPage() {
   const { ticker = "SPY" } = useParams<{ ticker: string }>();
@@ -13,14 +14,20 @@ export default function MarketTickerPage() {
   const bars = Number(params.get("bars") ?? "120");
   const chartContainer = useRef<HTMLDivElement | null>(null);
 
+  // Route through the shared api client so a 5xx throws ApiError (entering the
+  // query error path + toast policy) instead of resolving an error body as data.
   const { data: chain } = useQuery({
     queryKey: ["chain", ticker],
-    queryFn: () => fetch(`/api/market/chain/?ticker=${ticker}`).then((r) => r.json()),
+    queryFn: () =>
+      apiGet<ChainPayload | null>(`/api/market/chain/?ticker=${encodeURIComponent(ticker)}`),
   });
 
   const { data: news } = useQuery({
     queryKey: ["news", ticker],
-    queryFn: () => fetch(`/api/market/news/?tickers=${ticker}`).then((r) => r.json()),
+    queryFn: () =>
+      apiGet<{ items?: NewsItem[] } | null>(
+        `/api/market/news/?tickers=${encodeURIComponent(ticker)}`,
+      ),
   });
 
   return (

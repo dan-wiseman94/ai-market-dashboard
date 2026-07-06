@@ -1,4 +1,4 @@
-interface NewsItem {
+export interface NewsItem {
   id: number | string;
   headline: string;
   summary?: string;
