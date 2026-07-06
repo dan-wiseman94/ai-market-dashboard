@@ -102,7 +102,7 @@ def _notify_invalidated(pred, price: float) -> None:
 
         notify(
             user_id=None,
-            kind="prediction_invalidated",
+            kind="pred_invalid",
             title=f"AI {pred.direction} call on {pred.ticker} invalidated",
             body=(
                 f"{pred.ticker} traded {price:g}, breaking the AI's invalidation level "

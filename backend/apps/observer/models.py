@@ -102,6 +102,7 @@ class Notification(models.Model):
         ("desk", "Desk"),
         ("cal_drift", "Calibration drift"),
         ("contra", "Consistency conflict"),
+        ("pred_invalid", "Prediction invalidated"),
     ]
 
     # Nullable (no user-auth surface yet). When auth lands, backfill or

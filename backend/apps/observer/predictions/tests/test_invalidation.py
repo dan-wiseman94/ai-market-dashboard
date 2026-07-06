@@ -9,7 +9,7 @@ import pytest
 from django.utils import timezone
 
 from apps.market.models import OHLCBar
-from apps.observer.models import AIPrediction
+from apps.observer.models import AIPrediction, Notification
 from apps.observer.predictions.services.extract import extract_from_observation
 from apps.observer.predictions.tasks import check_invalidations
 from apps.observer.schemas import KeyLevel, ObservationReport, Signal
@@ -130,13 +130,17 @@ class TestCheckInvalidations:
     def test_marks_and_notifies_on_breach(self):
         pred = _open_pred(direction="bullish", inv=90.0)
         _bar("NVDA", 85.0)  # 85 <= 90 -> breached
-        with patch("apps.observer.services.notifications.notify") as mock_notify:
-            out = check_invalidations()
+        # No mock: exercise the REAL notify() against the DB so a varchar(16)
+        # overflow (the kind literal exceeding max_length) surfaces as a failure
+        # instead of being swallowed by _notify_invalidated's best-effort wrapper.
+        out = check_invalidations()
         pred.refresh_from_db()
         assert pred.status == "invalidated"
         assert pred.invalidated_at is not None
         assert out["invalidated"] == 1
-        mock_notify.assert_called_once()
+        n = Notification.objects.get(kind="pred_invalid")
+        assert n.link == "/scorecard"
+        assert "NVDA" in n.title
 
     def test_no_breach_leaves_open(self):
         pred = _open_pred(direction="bullish", inv=90.0)
