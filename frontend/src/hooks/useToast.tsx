@@ -9,6 +9,7 @@ import {
   useState,
 } from "react";
 import type { ReactNode } from "react";
+import { registerToastHandler } from "./toastBridge";
 
 export type ToastKind = "info" | "success" | "error";
 export interface Toast {
@@ -65,6 +66,14 @@ export function ToastProvider({
       pending.clear();
     };
   }, []);
+
+  // Expose this provider's push to out-of-tree emitters (the queryClient error
+  // policy) while it is mounted; unregister on unmount so a torn-down provider
+  // never receives an emit.
+  useEffect(() => {
+    registerToastHandler(push);
+    return () => registerToastHandler(null);
+  }, [push]);
 
   const value = useMemo(
     () => ({ toasts, push, dismiss }),
