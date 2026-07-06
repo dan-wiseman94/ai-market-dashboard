@@ -42,8 +42,7 @@ export function useLiveMessages(
           cost: m.ai_run?.cost_usd,
           model: m.ai_run?.model,
           provider: m.ai_run?.provider,
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          parent_message_id: (m as any).parent_message_id ?? null,
+          parent_message_id: m.parent_message_id ?? null,
           snapshot_id: m.snapshot_id ?? null,
           kind: m.content?.kind,
           report: m.content?.report,

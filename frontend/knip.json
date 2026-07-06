@@ -1,8 +1,7 @@
 {
   "$schema": "https://unpkg.com/knip@5/schema.json",
   "ignore": [
-    "**/*.d.ts",
-    "src/api/generated.ts"
+    "**/*.d.ts"
   ],
   "ignoreExportsUsedInFile": true,
   "vitest": {
