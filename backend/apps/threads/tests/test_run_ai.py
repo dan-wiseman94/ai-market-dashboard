@@ -76,9 +76,9 @@ def test_run_ai_blocked_when_provider_disabled():
     with patch("apps.threads.tasks._broadcast"):
         result = run_ai_on_message.delay(thread_id=t.id, user_message_id=u.id).get(timeout=5)
 
-    assert result == {"ok": False, "error": "provider_disabled"}
     assert not Message.objects.filter(thread=t, role="assistant", status="done").exists()
     failed = Message.objects.filter(thread=t, role="assistant").latest("created_at")
+    assert result == {"ok": False, "error": "provider_disabled", "message_id": failed.id}
     assert "disabled" in failed.error
 
 

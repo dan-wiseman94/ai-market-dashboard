@@ -84,8 +84,10 @@ def test_run_ai_fails_when_no_provider_resolves():
         "apps.threads.tasks.resolve_provider_and_model", side_effect=ResolutionError("none")
     ):
         out = _run_ai_on_message(thread_id=t.id, user_message_id=u.id)
-    assert out == {"ok": False, "error": "no_provider"}
-    assert Message.objects.filter(thread=t, role="assistant", status="failed").exists()
+    failed = Message.objects.filter(thread=t, role="assistant", status="failed").latest(
+        "created_at"
+    )
+    assert out == {"ok": False, "error": "no_provider", "message_id": failed.id}
 
 
 @pytest.mark.django_db
@@ -97,8 +99,8 @@ def test_run_ai_fails_when_provider_config_missing():
         "apps.threads.tasks.resolve_provider_and_model", return_value=("claude", "claude-x")
     ):
         out = _run_ai_on_message(thread_id=t.id, user_message_id=u.id)
-    assert out == {"ok": False, "error": "no_key"}
     a = Message.objects.filter(thread=t, role="assistant").latest("created_at")
+    assert out == {"ok": False, "error": "no_key", "message_id": a.id}
     assert "No ProviderConfig" in a.error
 
 
@@ -113,8 +115,10 @@ def test_run_ai_fails_when_cost_cap_exceeded():
         patch("apps.threads.tasks.check_daily_cap", side_effect=CostCapExceededError("over cap")),
     ):
         out = _run_ai_on_message(thread_id=t.id, user_message_id=u.id)
-    assert out == {"ok": False, "error": "cost_capped"}
-    assert Message.objects.filter(thread=t, role="assistant", status="failed").exists()
+    failed = Message.objects.filter(thread=t, role="assistant", status="failed").latest(
+        "created_at"
+    )
+    assert out == {"ok": False, "error": "cost_capped", "message_id": failed.id}
 
 
 # ---------- scenario application (E2E mock mode) ----------
@@ -196,8 +200,8 @@ def test_run_ai_records_cancelled_run_when_message_flipped_during_stream():
     ):
         out = _run_ai_on_message(thread_id=t.id, user_message_id=u.id)
 
-    assert out == {"ok": False, "error": "cancelled"}
     a = Message.objects.filter(thread=t, role="assistant").latest("created_at")
+    assert out == {"ok": False, "error": "cancelled", "message_id": a.id}
     run = AIRun.objects.get(message=a)
     assert run.status == "failed"
     assert run.error == "cancelled"
@@ -225,8 +229,8 @@ def test_run_ai_stop_flag_aborts_stream_via_should_stop():
     ):
         out = _run_ai_on_message(thread_id=t.id, user_message_id=u.id)
 
-    assert out == {"ok": True}
     a = Message.objects.filter(thread=t, role="assistant").latest("created_at")
+    assert out == {"ok": True, "message_id": a.id}
     assert a.content.get("text") == ""  # aborted before any delta was buffered
 
 
@@ -253,6 +257,6 @@ def test_run_ai_emits_capability_warning_for_unsupported_features():
     ):
         out = _run_ai_on_message(thread_id=t.id, user_message_id=u.id)
 
-    assert out == {"ok": True}
+    assert out["ok"] is True
     sys_msg = Message.objects.filter(thread=t, role="system").latest("created_at")
     assert sys_msg.content.get("kind") == "capability_warning"

@@ -195,24 +195,24 @@ def _resolve_run_config(
             thread=thread, message=user_msg, override=override
         )
     except ResolutionError as exc:
-        _fail(thread_id=thread.id, parent_message_id=parent_message_id, error=str(exc))
-        return {"ok": False, "error": "no_provider"}
+        msg = _fail(thread_id=thread.id, parent_message_id=parent_message_id, error=str(exc))
+        return {"ok": False, "error": "no_provider", "message_id": msg.id}
 
     try:
         cfg = ProviderConfig.objects.get(provider=provider_name)
     except ProviderConfig.DoesNotExist:
-        _fail(
+        msg = _fail(
             thread_id=thread.id,
             parent_message_id=parent_message_id,
             error=f"No ProviderConfig row for '{provider_name}'. Visit /settings.",
         )
-        return {"ok": False, "error": "no_key"}
+        return {"ok": False, "error": "no_key", "message_id": msg.id}
     except InvalidToken:
         # The stored key can't be decrypted (DJANGO_SECRET_KEY / salt changed since it
         # was saved). Decryption happens lazily in EncryptedJSONField.from_db_value, so
         # the .get() above raises here. Fail the run with an actionable message instead
         # of crashing the task and leaving the UI hung with no feedback.
-        _fail(
+        msg = _fail(
             thread_id=thread.id,
             parent_message_id=parent_message_id,
             error=(
@@ -220,18 +220,18 @@ def _resolve_run_config(
                 "(the encryption key may have changed). Re-enter it in Settings → Providers."
             ),
         )
-        return {"ok": False, "error": "undecryptable_key"}
+        return {"ok": False, "error": "undecryptable_key", "message_id": msg.id}
 
     if not cfg.enabled:
         # A profile can pin a provider+model that resolve_provider_and_model returns
         # without consulting `enabled` (it only filters enabled in fallback). Gate here
         # so the Settings "disable provider" toggle actually blocks runs for that provider.
-        _fail(
+        msg = _fail(
             thread_id=thread.id,
             parent_message_id=parent_message_id,
             error=f"Provider '{provider_name}' is disabled. Enable it in /settings.",
         )
-        return {"ok": False, "error": "provider_disabled"}
+        return {"ok": False, "error": "provider_disabled", "message_id": msg.id}
 
     try:
         check_daily_cap(provider_name, cap_usd=cfg.daily_cost_cap_usd)
@@ -247,13 +247,13 @@ def _resolve_run_config(
             if auto_cap > 0:
                 check_daily_cap(provider_name, cap_usd=_D(str(auto_cap)))
     except CostCapExceededError as exc:
-        _fail(
+        msg = _fail(
             thread_id=thread.id,
             parent_message_id=parent_message_id,
             error=str(exc),
             event="cost_capped",
         )
-        return {"ok": False, "error": "cost_capped"}
+        return {"ok": False, "error": "cost_capped", "message_id": msg.id}
 
     return provider_name, model_id, cfg
 
@@ -468,7 +468,7 @@ def _run_ai_on_message(
                 input_tokens=counts["input_tokens"],
                 output_tokens=counts["output_tokens"],
             )
-            return {"ok": False, "error": "cancelled"}
+            return {"ok": False, "error": "cancelled", "message_id": assistant.id}
 
         assistant.content = {"text": "".join(buffer)}
         if err:
@@ -497,7 +497,7 @@ def _run_ai_on_message(
                 cached_tokens=counts["cached_tokens"],
             )
             _broadcast(thread_id, {"event": "error", "message_id": assistant.id, "error": err})
-            return {"ok": False, "error": err}
+            return {"ok": False, "error": err, "message_id": assistant.id}
 
         # Finalize ONLY if still streaming (compare-and-set). The stop endpoint
         # races us — its status write can land after the refresh above, which does
@@ -519,7 +519,11 @@ def _run_ai_on_message(
                 input_tokens=counts["input_tokens"],
                 output_tokens=counts["output_tokens"],
             )
-            return {"ok": False, "error": assistant.error or "cancelled"}
+            return {
+                "ok": False,
+                "error": assistant.error or "cancelled",
+                "message_id": assistant.id,
+            }
         assistant.status = "done"
 
         cost = (
@@ -561,4 +565,4 @@ def _run_ai_on_message(
                 "duration_ms": latency_ms,
             },
         )
-        return {"ok": True}
+        return {"ok": True, "message_id": assistant.id}
