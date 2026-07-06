@@ -188,6 +188,32 @@ describe("useLiveMessages — refetch reseed vs in-flight streams", () => {
     expect(live.status).toBe("streaming");
   });
 
+  it("does not leak an in-flight stream (or its tool calls) across a thread switch", () => {
+    // ThreadDetailPage does not remount on a /threads/:id param change, so the
+    // hook's state persists across the switch and must reset itself.
+    const { result, rerender } = renderHook(
+      ({ threadId, thread }) => useLiveMessages(threadId, thread, vi.fn()),
+      {
+        initialProps: {
+          threadId: 1 as number,
+          thread: makeThread([makeMsg(10, "done", "Thread A history.")]),
+        },
+      },
+    );
+    streamMessage(11, ["partial from thread A"]);
+    act(() => {
+      wsHandler!({
+        event: "tool_call", message_id: 11, tool_use_id: "t1",
+        name: "get_quote", input: {},
+      });
+    });
+    // Navigate to thread B: its payload knows nothing about message 11.
+    const threadB = { ...makeThread([makeMsg(20, "done", "Thread B history.")]), id: 2 };
+    rerender({ threadId: 2, thread: threadB });
+    expect(result.current.ordered.map((m) => m.id)).toEqual([20]);
+    expect(result.current.toolCalls).toEqual({});
+  });
+
   it("replay_gap refetches and lets server state replace the buffered stream wholesale", () => {
     const refetch = vi.fn();
     const { result, rerender } = renderHook(
