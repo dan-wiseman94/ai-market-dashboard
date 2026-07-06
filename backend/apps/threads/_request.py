@@ -18,6 +18,13 @@ from apps.snapshots.serializer import build_image_blocks
 from apps.threads.coach import assemble_coach_context_for_message, build_system_prompt
 from apps.threads.models import Message, Thread
 
+# Observer threads are per-profile and append-only (one synthetic snapshot turn
+# per fire, never pruned), so an unwindowed history grows the provider request
+# linearly with fire count until it exceeds the context window. Cap the history
+# at the current turn plus this many prior turns — the coach's diff/calibration
+# blocks carry cross-fire continuity, not raw replay.
+OBSERVER_HISTORY_TURNS = 4
+
 
 def _block_text(blocks: list) -> str:
     """Concatenate the text of any ``{"type": "text", "text": ...}`` blocks."""
@@ -103,12 +110,29 @@ def _history_messages(thread: Thread) -> list[Message]:
 
     Picks up the synthetic pinned-snapshot Message (a done user turn) created by
     ThreadViewSet.create — do not load the snapshot here.
+
+    Compare-branch replies (``parent_message`` set) are excluded: each branch must
+    answer the shared user turn from the identical history, and a follow-up send
+    must not replay N sibling answers as consecutive assistant turns. A branch has
+    no prior lineage of its own at build time, so no exception is needed.
+
+    Observer-kind threads are windowed to the last ``OBSERVER_HISTORY_TURNS`` turns
+    (the newest done turn is the current fire's synthetic user message); the window
+    is then trimmed to start on a user turn, which providers require.
     """
-    return list(
-        Message.objects.filter(
-            thread=thread, role__in=["user", "assistant"], status="done"
-        ).order_by("created_at")
+    qs = Message.objects.filter(
+        thread=thread,
+        role__in=["user", "assistant"],
+        status="done",
+        parent_message__isnull=True,
     )
+    if thread.kind != "observer":
+        return list(qs.order_by("created_at"))
+    recent = list(qs.order_by("-created_at", "-id")[: OBSERVER_HISTORY_TURNS + 1])
+    recent.reverse()
+    while recent and recent[0].role != "user":
+        recent.pop(0)
+    return recent
 
 
 def _is_snapshot_free(history: list[Message], user_msg: Message) -> bool:
