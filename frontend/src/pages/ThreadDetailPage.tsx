@@ -17,6 +17,7 @@ import FileAttach from "./thread-detail/FileAttach";
 import ThesisForm from "./thread-detail/ThesisForm";
 import JournalPanel from "./thread-detail/JournalPanel";
 import { useLiveMessages } from "./thread-detail/useLiveMessages";
+import { DEFAULT_PICK } from "@/lib/modelDefaults";
 import { useThesisJournal } from "./thread-detail/useThesisJournal";
 import { RelatedObservations } from "@/components/RelatedObservations";
 
@@ -54,7 +55,7 @@ export default function ThreadDetailPage() {
   const { ordered, branchesByParent, toolCalls } = useLiveMessages(tid, thread, refetch);
 
   const [activeBranchByParent, setActiveBranchByParent] = useState<Record<number, number>>({});
-  const [picker, setPicker] = useState({ provider: "claude", model: "claude-sonnet-4-6" });
+  const [picker, setPicker] = useState({ ...DEFAULT_PICK });
   const [showCompare, setShowCompare] = useState(false);
   const [input, setInput] = useState("");
 

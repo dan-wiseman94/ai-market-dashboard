@@ -8,12 +8,10 @@ import Field from "@/components/settings/Field";
 import Toggle from "@/components/ui/Toggle";
 import ModelSelect from "@/components/settings/ModelSelect";
 import CapMeter from "@/components/settings/CapMeter";
+import { DEFAULT_MODEL_BY_PROVIDER } from "@/lib/modelDefaults";
 
 type ProviderId = "claude" | "openai" | "local";
 const LABEL: Record<ProviderId, string> = { claude: "Claude", openai: "OpenAI", local: "Local" };
-const DEFAULT_MODEL: Record<ProviderId, string> = {
-  claude: "claude-sonnet-4-6", openai: "gpt-5", local: "",
-};
 
 type Draft = {
   api_key_write?: string;
@@ -66,7 +64,7 @@ function resolveCaps(draft: Draft, cfg: ProviderConfig | undefined): { daily: st
 
 function resolveFields(provider: ProviderId, draft: Draft, cfg: ProviderConfig | undefined): ResolvedFields {
   return {
-    model: draft.default_model ?? cfg?.default_model ?? DEFAULT_MODEL[provider],
+    model: draft.default_model ?? cfg?.default_model ?? DEFAULT_MODEL_BY_PROVIDER[provider],
     baseUrl: draft.base_url ?? cfg?.base_url ?? "",
     apiKey: draft.api_key_write ?? "",
     discovered: cfg?.discovered_models ?? [],
