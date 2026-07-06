@@ -20,13 +20,34 @@ import { useLiveMessages } from "./thread-detail/useLiveMessages";
 import { useThesisJournal } from "./thread-detail/useThesisJournal";
 import { RelatedObservations } from "@/components/RelatedObservations";
 
+// A thread query that errored (deleted thread, 5xx, network) must not sit on the
+// "Loading thread…" placeholder forever — distinguish the error leg from the
+// still-pending leg. Kept as its own component so the branch does not inflate
+// ThreadDetailPage's cyclomatic complexity.
+function ThreadLoadState({ isError, onRetry }: { isError: boolean; onRetry: () => void }) {
+  return (
+    <main className="px-8 py-8 max-w-4xl mx-auto">
+      {isError ? (
+        <div className="font-mono text-[13px] text-loss-400">
+          Couldn’t load this thread. It may have been deleted, or the request failed.{" "}
+          <button type="button" onClick={onRetry} className="underline hover:text-copper-300">
+            Retry
+          </button>
+        </div>
+      ) : (
+        <div className="font-mono text-[13px] text-ink-400">Loading thread…</div>
+      )}
+    </main>
+  );
+}
+
 export default function ThreadDetailPage() {
   const { id } = useParams<{ id: string }>();
   const [search] = useSearchParams();
   const tid = id ? parseInt(id, 10) : null;
   const snapshotId = search.get("snapshot") ? parseInt(search.get("snapshot")!, 10) : null;
 
-  const { data: thread, refetch } = useThread(tid);
+  const { data: thread, refetch, isError } = useThread(tid);
   const { data: snap } = useSnapshot(snapshotId);
 
   const thesisJournal = useThesisJournal(tid, thread);
@@ -43,11 +64,7 @@ export default function ThreadDetailPage() {
   const rename = useRenameThread(tid ?? 0);
 
   if (!thread) {
-    return (
-      <main className="px-8 py-8 max-w-4xl mx-auto">
-        <div className="font-mono text-[13px] text-ink-400">Loading thread…</div>
-      </main>
-    );
+    return <ThreadLoadState isError={isError} onRetry={refetch} />;
   }
 
   const handleSend = () => {

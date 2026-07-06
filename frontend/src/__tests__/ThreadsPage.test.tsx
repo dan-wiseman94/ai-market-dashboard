@@ -41,4 +41,23 @@ describe("ThreadsPage", () => {
     expect(screen.getByRole("button", { name: "Next" })).toBeInTheDocument();
     expect(screen.getByText("1–50 of 120")).toBeInTheDocument();
   });
+
+  it("renders an error state (not 'No threads yet') when the query fails", () => {
+    const refetch = vi.fn();
+    vi.mocked(useThreadsPage).mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      isError: true,
+      refetch,
+    } as unknown as ReturnType<typeof useThreadsPage>);
+    render(
+      <MemoryRouter>
+        <ThreadsPage />
+      </MemoryRouter>,
+    );
+    expect(screen.getByText("Couldn’t load threads")).toBeInTheDocument();
+    expect(screen.queryByText("No threads yet")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    expect(refetch).toHaveBeenCalled();
+  });
 });
