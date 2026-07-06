@@ -1,4 +1,5 @@
 import { apiGet, apiPatch, apiPost } from "./client";
+import type { Schemas } from "./generated";
 import type { ObservationReport } from "./observation";
 
 export type AiRun = {
@@ -9,9 +10,16 @@ export type AiRun = {
   error: string;
 };
 
-export type Message = {
-  id: number;
-  role: "user" | "assistant" | "system";
+// The `*_id` FK surface + role/created_at are sourced from the generated OpenAPI
+// schema (api/generated.ts → schema.d.ts, drift-gated in CI) so backend contract
+// drift on these fields is caught at type-check time rather than silently read as
+// `undefined` (the exact *_id landmine CLAUDE.md flags). content/status/ai_run
+// keep the hand-written precise shapes the UI relies on — the generated schema
+// types `content` as `unknown` and `ai_run` as a non-null AIRun.
+export type Message = Pick<
+  Schemas["Message"],
+  "id" | "role" | "created_at" | "parent_message_id" | "snapshot_id"
+> & {
   content: {
     text?: string;
     kind?: "structured_observation";
@@ -19,10 +27,7 @@ export type Message = {
   };
   status: "done" | "streaming" | "failed";
   error: string;
-  created_at: string;
   ai_run?: AiRun | null;
-  // Set on the synthetic snapshot turn (the pinned-snapshot user message).
-  snapshot_id?: number | null;
 };
 
 export type ThreadProfile = {

@@ -42,6 +42,8 @@ describe("useLiveMessages — seed mapping", () => {
         status: "done",
         error: "",
         created_at: "2026-01-01T00:00:00Z",
+        parent_message_id: null,
+        snapshot_id: null,
       },
     ]);
 
@@ -68,6 +70,8 @@ describe("useLiveMessages — seed mapping", () => {
         status: "done",
         error: "",
         created_at: "2026-01-01T00:01:00Z",
+        parent_message_id: null,
+        snapshot_id: null,
       },
     ]);
 
@@ -92,6 +96,8 @@ describe("useLiveMessages — seed mapping", () => {
         status: "done",
         error: "",
         created_at: "2026-01-01T00:02:00Z",
+        parent_message_id: null,
+        snapshot_id: null,
       },
     ]);
 
