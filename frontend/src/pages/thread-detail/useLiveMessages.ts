@@ -77,6 +77,19 @@ export function useLiveMessages(
   // buffered streaming text.
   const [resync, setResync] = useState(false);
 
+  // ThreadDetailPage does NOT remount on a /threads/:id param change, so this
+  // hook's state survives a thread switch. Reset it wholesale when the id
+  // changes — the keep-streaming reseed below would otherwise re-add the old
+  // thread's in-flight bubble (absent from the new thread's payload) and
+  // render a frozen partial message from thread A inside thread B forever.
+  const [prevThreadId, setPrevThreadId] = useState(threadId);
+  if (threadId !== prevThreadId) {
+    setPrevThreadId(threadId);
+    setLive({});
+    setToolCalls({});
+    setResync(false);
+  }
+
   // Seed the live-message map from the loaded thread. Render-phase guarded
   // update keyed on the thread object (matches the prior effect's [thread] dep)
   // instead of an effect, per react-hooks v7 (set-state-in-effect).
