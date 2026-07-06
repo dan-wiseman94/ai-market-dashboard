@@ -16,12 +16,12 @@ from apps.observer.predictions.services.reconcile import (
 )
 
 
-def _pred(ticker="NVDA", direction="bullish", status="open", predicted_at=None):
+def _pred(ticker="NVDA", direction="bullish", status="open", predicted_at=None, horizon_days=7):
     predicted_at = predicted_at or datetime(2026, 1, 5, tzinfo=UTC)
     return AIPrediction.objects.create(
         ticker=ticker,
         direction=direction,
-        horizon_days=7,
+        horizon_days=horizon_days,
         confidence=0.7,
         provider="claude",
         model="m",
@@ -50,8 +50,12 @@ def test_reconcile_directions(thesis_dir, ai_dir, expected):
 @pytest.mark.django_db
 class TestCurrentAIView:
     def test_returns_latest_open(self):
-        _pred(predicted_at=datetime(2026, 1, 1, tzinfo=UTC))
-        latest = _pred(direction="bearish", predicted_at=datetime(2026, 1, 10, tzinfo=UTC))
+        # Distinct horizons so both may legally be open under the partial unique
+        # constraint (one open call per ticker/horizon/profile).
+        _pred(predicted_at=datetime(2026, 1, 1, tzinfo=UTC), horizon_days=7)
+        latest = _pred(
+            direction="bearish", predicted_at=datetime(2026, 1, 10, tzinfo=UTC), horizon_days=14
+        )
         assert current_ai_view("NVDA").id == latest.id
 
     def test_ignores_non_open(self):

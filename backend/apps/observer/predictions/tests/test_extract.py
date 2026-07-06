@@ -128,6 +128,103 @@ class TestExtract:
 
 
 # ---------------------------------------------------------------------------
+# Dedup invariant: a partial UNIQUE constraint (status="open") on
+# (ticker, horizon_days, profile) is the real guard behind the racy check-then-act;
+# extract catches the IntegrityError as the race-loser no-op.
+# ---------------------------------------------------------------------------
+
+
+def _open_kwargs(profile, **over):
+    from django.utils import timezone
+
+    base = dict(
+        ticker="NVDA",
+        horizon_days=7,
+        confidence=0.5,
+        provider="claude",
+        model="m",
+        profile=profile,
+        predicted_at=timezone.now(),
+        resolve_at=timezone.now(),
+        status="open",
+    )
+    base.update(over)
+    return base
+
+
+@pytest.mark.django_db
+def test_second_open_prediction_violates_unique_constraint():
+    from django.db import IntegrityError, transaction
+
+    p = _profile()
+    AIPrediction.objects.create(direction="bullish", **_open_kwargs(p))
+    with pytest.raises(IntegrityError), transaction.atomic():
+        AIPrediction.objects.create(direction="bearish", **_open_kwargs(p))
+
+
+@pytest.mark.django_db
+def test_null_profile_still_collides_on_open_constraint():
+    """nulls_distinct=False — two open rows with a NULL profile must still collide."""
+    from django.db import IntegrityError, transaction
+
+    AIPrediction.objects.create(direction="bullish", **_open_kwargs(None))
+    with pytest.raises(IntegrityError), transaction.atomic():
+        AIPrediction.objects.create(direction="bearish", **_open_kwargs(None))
+
+
+@pytest.mark.django_db
+def test_constraint_allows_second_when_first_is_not_open():
+    p = _profile()
+    AIPrediction.objects.create(direction="bullish", **_open_kwargs(p, status="resolved"))
+    # No IntegrityError — the partial index only covers status="open".
+    AIPrediction.objects.create(direction="bearish", **_open_kwargs(p))
+    assert AIPrediction.objects.count() == 2
+
+
+@pytest.mark.django_db
+def test_extract_race_loser_returns_the_concurrent_open():
+    """When a concurrent fire opens a prediction between our dedup .first() and our
+    create(), the DB constraint rejects ours (IntegrityError) — extract must swallow
+    it and return the already-open winner, not crash the fire."""
+    from unittest.mock import patch
+
+    from apps.observer.predictions.services import extract as extract_mod
+
+    p = _profile()
+    snap = _snap(p, "NVDA")
+    winner = AIPrediction.objects.create(direction="bearish", **_open_kwargs(p, confidence=0.4))
+
+    real_filter = AIPrediction.objects.filter
+    state = {"n": 0}
+
+    class _MissQS:
+        def first(self):
+            return None
+
+    def fake_filter(*args, **kwargs):
+        # Make ONLY the first dedup lookup miss the winner (the check-then-act race
+        # window); the except-branch re-fetch uses the real queryset.
+        if kwargs.get("status") == "open" and state["n"] == 0:
+            state["n"] += 1
+            return _MissQS()
+        return real_filter(*args, **kwargs)
+
+    with patch.object(AIPrediction.objects, "filter", side_effect=fake_filter):
+        result = extract_mod.extract_from_observation(
+            _report(direction="bullish"),
+            snapshot=snap,
+            message=None,
+            provider="claude",
+            model="m",
+            profile=p,
+        )
+
+    assert result is not None
+    assert result.id == winner.id
+    assert AIPrediction.objects.filter(status="open").count() == 1
+
+
+# ---------------------------------------------------------------------------
 # Expected-move freeze: the options-implied 1σ move for the prediction's
 # horizon is captured at decision time from the snapshot's own chain section.
 # ---------------------------------------------------------------------------

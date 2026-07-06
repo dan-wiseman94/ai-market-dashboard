@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import logging
 
+from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 from apps.observer.models import AIPrediction
@@ -151,23 +152,40 @@ def extract_from_observation(
         existing.invalidated_at = timezone.now()
         existing.save(update_fields=["status", "invalidated_at", "updated_at"])
 
-    pred = AIPrediction.objects.create(
-        ticker=ticker,
-        direction=direction,
-        horizon_days=horizon,
-        confidence=confidence,
-        expected_move_pct=_expected_move_pct(snapshot, horizon),
-        rationale=(getattr(report, "headline", "") or "")[:500],
-        invalidation_note=_invalidation_for(report, ticker),
-        invalidation_price=inv_price,
-        provider=provider,
-        model=model,
-        source_message=message,
-        source_snapshot=snapshot,
-        profile=profile,
-        predicted_at=predicted_at,
-        resolve_at=_resolve_at(ticker, predicted_at, horizon),
-    )
+    try:
+        with transaction.atomic():
+            pred = AIPrediction.objects.create(
+                ticker=ticker,
+                direction=direction,
+                horizon_days=horizon,
+                confidence=confidence,
+                expected_move_pct=_expected_move_pct(snapshot, horizon),
+                rationale=(getattr(report, "headline", "") or "")[:500],
+                invalidation_note=_invalidation_for(report, ticker),
+                invalidation_price=inv_price,
+                provider=provider,
+                model=model,
+                source_message=message,
+                source_snapshot=snapshot,
+                profile=profile,
+                predicted_at=predicted_at,
+                resolve_at=_resolve_at(ticker, predicted_at, horizon),
+            )
+    except IntegrityError:
+        # A concurrent fire opened a prediction for this (ticker, horizon, profile)
+        # between our .first() check above and this create — the partial unique
+        # constraint (status="open") rejected ours. We are the race-loser: treat it
+        # as the same-direction no-op and let the already-open call stand, frozen as
+        # stated so calibration scores it honestly.
+        log.info(
+            "prediction dedup race: open %s %sd for %s already exists; keeping it",
+            ticker,
+            horizon,
+            getattr(profile, "id", "?"),
+        )
+        return AIPrediction.objects.filter(
+            ticker=ticker, horizon_days=horizon, profile=profile, status="open"
+        ).first()
     _flag_contradictions(ticker, direction)
     return pred
 
