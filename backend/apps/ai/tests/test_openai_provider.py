@@ -216,7 +216,9 @@ async def test_openai_tool_loop_dispatches_and_continues():
     second_msgs = captured_calls[1]["messages"]
     assert any(m.get("role") == "tool" and m.get("tool_call_id") == "call_1" for m in second_msgs)
 
-    usage = next(e for e in events if isinstance(e, UsageEvent))
+    # Usage is emitted per completed round as a cumulative snapshot; the last
+    # event carries the run total.
+    usage = [e for e in events if isinstance(e, UsageEvent)][-1]
     assert usage.usage.input_tokens == 120
     assert usage.usage.output_tokens == 13
 

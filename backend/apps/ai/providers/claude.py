@@ -101,6 +101,22 @@ class ClaudeProvider:
                 total_cached += read
                 total_cache_write += write
 
+                # Emit the running total after every completed round. Each tool
+                # round re-sends the whole conversation and is genuinely billed
+                # upstream, so the consumer must see accrued usage even when a
+                # later round errors (ErrorEvent replaces any final yield) or the
+                # user stops the stream (the generator is closed before it could
+                # emit). Cumulative snapshots keep the consumer's dict.update()
+                # semantics correct — the last event seen is the true total.
+                yield UsageEvent(
+                    usage=TokenUsage(
+                        input_tokens=total_in,
+                        output_tokens=total_out,
+                        cached_tokens=total_cached,
+                        cache_write_tokens=total_cache_write,
+                    )
+                )
+
                 stop = getattr(final, "stop_reason", None)
                 if stop != "tool_use" or not tools_list:
                     break
@@ -159,14 +175,8 @@ class ClaudeProvider:
                     # conclude (the `not tools_list` guard then breaks the loop).
                     tools_enabled = False
 
-            yield UsageEvent(
-                usage=TokenUsage(
-                    input_tokens=total_in,
-                    output_tokens=total_out,
-                    cached_tokens=total_cached,
-                    cache_write_tokens=total_cache_write,
-                )
-            )
+            # The final round's cumulative UsageEvent was already emitted inside
+            # the loop; only the completion marker remains.
             yield DoneEvent()
         except Exception as exc:
             yield ErrorEvent(message=f"{type(exc).__name__}: {exc}")
