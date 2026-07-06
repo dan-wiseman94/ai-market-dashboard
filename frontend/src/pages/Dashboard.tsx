@@ -8,6 +8,7 @@ import { useMarketStatus } from "@/hooks/useMarketStatus";
 import { sessionKind, type SessionKind } from "@/lib/marketSession";
 import { useDashboard } from "@/hooks/useDashboard";
 import { useChannel } from "@/hooks/useChannel";
+import type { NotificationWsMsg } from "@/realtime/notificationEvents";
 import { SkeletonRows } from "@/components/Skeleton";
 import { OpenThesesTile } from "@/components/dashboard/OpenThesesTile";
 import { ObserverTodayTile } from "@/components/dashboard/ObserverTodayTile";
@@ -89,8 +90,7 @@ export default function Dashboard() {
   // trigger firing, backup, or export event arrives over the notifications channel.
   const qc = useQueryClient();
   const dashboardLiveHandler = useCallback(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (m: any) => {
+    (m: NotificationWsMsg) => {
       if (m.type === "notification.event") {
         qc.invalidateQueries({ queryKey: ["dashboard"] });
       }
