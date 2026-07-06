@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useChannel } from "@/hooks/useChannel";
 import type { Message, Thread } from "@/api/threads";
 import type { ToolCallRecord } from "@/components/ToolCallTrace";
@@ -28,25 +28,28 @@ function toLiveMessage(m: Message): LiveMessage {
  * covering that gap were already consumed and are never re-delivered. A
  * refetch triggered elsewhere (another Compare branch's message_done, window
  * refocus) must therefore keep the live entry while both sides are still
- * streaming. Server state wins once the row is terminal (done/failed) or when
- * `replaceAll` is set (after a replay_gap the buffered stream itself has holes).
+ * streaming. Server state wins once the row is terminal (done/failed) or for
+ * ids in `resyncIds` (streaming when a replay_gap arrived — their buffered
+ * text has holes, so the DB row is the more truthful one).
  */
 function reseed(
   prev: Record<number, LiveMessage>,
   messages: Message[],
-  replaceAll: boolean,
+  resyncIds: ReadonlySet<number> | null,
 ): Record<number, LiveMessage> {
   const seed: Record<number, LiveMessage> = {};
   for (const m of messages) {
     const cur = prev[m.id];
-    const keepLive = !replaceAll && cur?.status === "streaming" && m.status === "streaming";
+    const keepLive =
+      cur?.status === "streaming" && m.status === "streaming" && !resyncIds?.has(m.id);
     seed[m.id] = keepLive ? cur : toLiveMessage(m);
   }
-  if (!replaceAll) {
-    // A refetch snapshot can predate a just-started stream's row — don't drop
-    // an in-flight bubble the server payload doesn't know about yet.
-    for (const cur of Object.values(prev)) {
-      if (cur.status === "streaming" && !(cur.id in seed)) seed[cur.id] = cur;
+  // A refetch snapshot can predate a just-started stream's row — don't drop
+  // an in-flight bubble the server payload doesn't know about yet (unless its
+  // buffered text is known to have holes).
+  for (const cur of Object.values(prev)) {
+    if (cur.status === "streaming" && !(cur.id in seed) && !resyncIds?.has(cur.id)) {
+      seed[cur.id] = cur;
     }
   }
   return seed;
@@ -72,10 +75,19 @@ export function useLiveMessages(
     Record<number, Record<string, ToolCallRecord>>
   >({});
 
-  // Set by a replay_gap frame: the WS stream is known to have holes, so the
-  // next reseed must take server state wholesale instead of preserving
-  // buffered streaming text.
-  const [resync, setResync] = useState(false);
+  // Set by a replay_gap frame: the ids that were mid-stream when the gap
+  // arrived. Their buffered text is known to have holes, so a reseed must take
+  // server state for them instead of preserving buffered streaming text.
+  // Scoped to ids (not a whole-map flag) so a stale armed flag can never
+  // clobber a LATER unrelated stream if the gap-triggered refetch returned
+  // structurally identical data (react-query keeps the same object, so no
+  // reseed runs and a boolean would stay armed indefinitely).
+  const [resyncIds, setResyncIds] = useState<ReadonlySet<number> | null>(null);
+  // Latest live map for event handlers (onWs is stable across renders).
+  const liveRef = useRef(live);
+  useEffect(() => {
+    liveRef.current = live;
+  });
 
   // ThreadDetailPage does NOT remount on a /threads/:id param change, so this
   // hook's state survives a thread switch. Reset it wholesale when the id
@@ -87,7 +99,7 @@ export function useLiveMessages(
     setPrevThreadId(threadId);
     setLive({});
     setToolCalls({});
-    setResync(false);
+    setResyncIds(null);
   }
 
   // Seed the live-message map from the loaded thread. Render-phase guarded
@@ -97,9 +109,8 @@ export function useLiveMessages(
   if (thread !== prevThread) {
     setPrevThread(thread);
     if (thread) {
-      const replaceAll = resync;
-      if (resync) setResync(false);
-      setLive((prev) => reseed(prev, thread.messages, replaceAll));
+      if (resyncIds) setResyncIds(null);
+      setLive((prev) => reseed(prev, thread.messages, resyncIds));
     }
   }
 
@@ -107,8 +118,13 @@ export function useLiveMessages(
     if (msg.type === "replay_gap") {
       // Events were lost beyond the server's replay buffer: refetch (the
       // provider also invalidates the thread query) and let server state
-      // replace the buffered stream wholesale on the next reseed.
-      setResync(true);
+      // replace the currently-streaming entries — theirs is the buffered
+      // text with holes — on the next reseed. Streams started after the gap
+      // are clean and must keep their live text.
+      const holed = Object.values(liveRef.current)
+        .filter((m) => m.status === "streaming")
+        .map((m) => m.id);
+      setResyncIds(holed.length > 0 ? new Set(holed) : null);
       refetch();
       return;
     }
