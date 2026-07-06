@@ -7,6 +7,7 @@ import {
 } from "@/api/observer";
 import { formatRelative } from "@/utils/format";
 import { useChannel } from "@/hooks/useChannel";
+import type { NotificationWsMsg } from "@/realtime/notificationEvents";
 
 function unwrapResults(data: unknown): NotificationDTO[] {
   if (Array.isArray(data)) return data as NotificationDTO[];
@@ -67,8 +68,7 @@ export default function NotificationBell() {
   });
 
   const notificationHandler = useCallback(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (m: any) => {
+    (m: NotificationWsMsg) => {
       if (m.type !== "notification.event") return;
       qc.invalidateQueries({ queryKey: ["notifications"] });
       if (desktopNotificationsGranted()) showDesktopNotification(m.payload);
