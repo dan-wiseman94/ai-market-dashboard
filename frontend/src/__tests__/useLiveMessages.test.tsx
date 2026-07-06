@@ -229,4 +229,53 @@ describe("useLiveMessages — refetch reseed vs in-flight streams", () => {
     const live = result.current.ordered.find((m) => m.id === 11)!;
     expect(live.text).toBe("Hel"); // server state wins after a gap
   });
+
+  it("replay_gap resync is scoped to streams that were in flight at gap time", () => {
+    const refetch = vi.fn();
+    const { result, rerender } = renderHook(
+      ({ thread }) => useLiveMessages(1, thread, refetch),
+      { initialProps: { thread: makeThread([]) } },
+    );
+    streamMessage(11, ["holed "]); // buffered text has holes after the gap
+    act(() => wsHandler!({ type: "replay_gap" }));
+    // A stream started AFTER the gap is clean — post-gap deltas were all
+    // delivered (the provider reset its cursor), so its live text must survive
+    // the gap-triggered reseed even though 11's must not.
+    streamMessage(12, ["clean and complete"]);
+    rerender({
+      thread: makeThread([
+        makeMsg(11, "streaming", "holed but fuller"),
+        makeMsg(12, "streaming", "clea"),
+      ]),
+    });
+    expect(result.current.ordered.find((m) => m.id === 11)!.text).toBe("holed but fuller");
+    expect(result.current.ordered.find((m) => m.id === 12)!.text).toBe("clean and complete");
+  });
+
+  it("a stale armed replay_gap flag cannot clobber a later unrelated stream", () => {
+    const refetch = vi.fn();
+    const { result, rerender } = renderHook(
+      ({ thread }) => useLiveMessages(1, thread, refetch),
+      { initialProps: { thread: makeThread([makeMsg(10, "done", "History.")]) } },
+    );
+    streamMessage(11, ["holed"]);
+    act(() => wsHandler!({ type: "replay_gap" }));
+    // The gap-triggered refetch returned structurally identical data: react-query
+    // keeps the same object, so NO reseed runs and the resync stays armed.
+    // Message 11 then completes and a fresh stream 12 starts.
+    act(() => wsHandler!({ event: "message_done", message_id: 11, cost_usd: "0.01" }));
+    streamMessage(12, ["fresh stream"]);
+    // A later unrelated reseed (e.g. another branch's message_done refetch) must
+    // NOT wholesale-replace 12's live text just because the flag was never consumed.
+    rerender({
+      thread: makeThread([
+        makeMsg(10, "done", "History."),
+        makeMsg(11, "done", "holed — final."),
+        makeMsg(12, "streaming", "fre"),
+      ]),
+    });
+    const live = result.current.ordered.find((m) => m.id === 12)!;
+    expect(live.text).toBe("fresh stream");
+    expect(live.status).toBe("streaming");
+  });
 });
