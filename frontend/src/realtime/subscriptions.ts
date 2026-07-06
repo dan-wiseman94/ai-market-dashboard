@@ -1,5 +1,4 @@
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type Handler = (msg: any) => void;
+type Handler = (msg: unknown) => void;
 
 export class Broker {
   private subs = new Map<string, Set<Handler>>();
@@ -19,8 +18,7 @@ export class Broker {
     };
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  dispatch(channel: string, msg: any): void {
+  dispatch(channel: string, msg: unknown): void {
     this.subs.get(channel)?.forEach((handler) => {
       try {
         handler(msg);

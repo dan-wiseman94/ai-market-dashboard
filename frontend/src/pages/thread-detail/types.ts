@@ -1,5 +1,6 @@
 /** Shared types for the ThreadDetailPage subtree. */
 import type { ObservationReport } from "@/components/ObservationReportCard";
+import type { ThreadWsMsg } from "@/realtime/threadEvents";
 
 export type LiveMessage = {
   id: number;
@@ -18,7 +19,7 @@ export type LiveMessage = {
   report?: ObservationReport;
 };
 
-// WebSocket messages on the thread channel are an open event union; the
-// consumer narrows on `event` at runtime.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type WsMsg = any;
+// WebSocket messages on the thread channel: the normalized closed event union
+// the backend broadcasts. Handlers narrow on `event` (or `type` for the
+// seq-less replay_gap frame).
+export type WsMsg = ThreadWsMsg;
