@@ -408,6 +408,63 @@ describe("WebSocketProvider", () => {
     }
   });
 
+  it("replay_gap resets the replay cursor so post-gap restarted seqs are dispatched", () => {
+    const invalidate = vi
+      .spyOn(queryClient, "invalidateQueries")
+      .mockImplementation(() => Promise.resolve());
+    try {
+      const handler = vi.fn();
+      render(
+        <WebSocketProvider>
+          <TestConsumer channel="thread.12" onMsg={handler} />
+        </WebSocketProvider>,
+      );
+      const sock = fake.find("/ws/threads/12/");
+      act(() => sock!.emitOpen());
+      act(() => sock!.emitMessage({ event: "text_delta", text: "a", seq: 40 }));
+      // The server's seq counter restarted (Redis flush / 1h idle expiry) and the
+      // reconnect's ?since=40 could not be covered — the consumer sends a gap
+      // frame. Events after it carry restarted seqs (1..n <= our cursor) and must
+      // NOT be dropped as duplicates, or the streaming UI goes silently dead.
+      act(() => sock!.emitMessage({ type: "replay_gap" }));
+      act(() => sock!.emitMessage({ event: "text_delta", text: "fresh", seq: 1 }));
+      expect(handler.mock.calls.map((c) => c[0])).toEqual([
+        { event: "text_delta", text: "a", seq: 40 },
+        { type: "replay_gap" },
+        { event: "text_delta", text: "fresh", seq: 1 },
+      ]);
+    } finally {
+      invalidate.mockRestore();
+    }
+  });
+
+  it("reconnect after a replay_gap is a fresh first-connect (no stale ?since=)", () => {
+    vi.useFakeTimers();
+    const invalidate = vi
+      .spyOn(queryClient, "invalidateQueries")
+      .mockImplementation(() => Promise.resolve());
+    try {
+      render(
+        <WebSocketProvider>
+          <TestConsumer channel="thread.13" onMsg={vi.fn()} />
+        </WebSocketProvider>,
+      );
+      const first = fake.find("/ws/threads/13/");
+      act(() => first!.emitOpen());
+      act(() => first!.emitMessage({ event: "text_delta", text: "a", seq: 40 }));
+      act(() => first!.emitMessage({ type: "replay_gap" }));
+      // A drop right after the gap must not resend the pre-gap cursor: those
+      // events are already refetched, and the seq space may have restarted.
+      act(() => first!.emitClose(1006));
+      act(() => void vi.runOnlyPendingTimers());
+      const second = fake.sockets.filter((s) => s.url.includes("/ws/threads/13/")).at(-1)!;
+      expect(second.url).toMatch(/\/ws\/threads\/13\/$/);
+    } finally {
+      invalidate.mockRestore();
+      vi.useRealTimers();
+    }
+  });
+
   it("resets the replay cursor on deliberate teardown (re-subscribe is a fresh first-connect)", () => {
     const { unmount } = render(
       <WebSocketProvider>
