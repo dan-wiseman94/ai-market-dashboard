@@ -60,3 +60,37 @@ def test_claude_count_falls_back_to_tiktoken_when_key_undecryptable() -> None:
         )
     n = estimate_tokens("hello world", provider="claude", model="claude-opus-4-8")
     assert n >= 1
+
+
+def test_claude_count_cache_keys_are_hashes_not_text() -> None:
+    """The LRU must key on (sha256(text), model) — caching the raw strings pins
+    up-to-150k-token snapshot payloads in long-lived worker/web processes."""
+    from apps.ai import token_counter
+
+    token_counter._COUNT_CACHE.clear()
+    big_text = "payload " * 20_000
+    try:
+        with patch.object(token_counter, "_claude_count_tokens_api", return_value=123) as api:
+            n1 = token_counter._claude_count_tokens(big_text, "claude-opus-4-8")
+            n2 = token_counter._claude_count_tokens(big_text, "claude-opus-4-8")
+        assert n1 == n2 == 123
+        api.assert_called_once()  # the second call is a cache hit, no network
+        for (digest, model), count in token_counter._COUNT_CACHE.items():
+            assert len(digest) == 64  # sha256 hex, not the payload text
+            assert model == "claude-opus-4-8"
+            assert count == 123
+    finally:
+        token_counter._COUNT_CACHE.clear()
+
+
+def test_claude_count_cache_is_bounded() -> None:
+    from apps.ai import token_counter
+
+    token_counter._COUNT_CACHE.clear()
+    try:
+        with patch.object(token_counter, "_claude_count_tokens_api", return_value=1):
+            for i in range(token_counter._COUNT_CACHE_MAX + 10):
+                token_counter._claude_count_tokens(f"text-{i}", "m")
+        assert len(token_counter._COUNT_CACHE) == token_counter._COUNT_CACHE_MAX
+    finally:
+        token_counter._COUNT_CACHE.clear()
