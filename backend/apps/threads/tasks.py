@@ -437,6 +437,9 @@ def _run_ai_on_message(
             sec_model,
         )
         buffer.clear()
+        # clear() first: a per-round UsageEvent from the failed primary may have
+        # added keys beyond these three (e.g. cache_write_tokens).
+        counts.clear()
         counts.update({"input_tokens": 0, "output_tokens": 0, "cached_tokens": 0})
         err_container.clear()
         tool_events.clear()
@@ -472,6 +475,15 @@ def _run_ai_on_message(
             assistant.status = "failed"
             assistant.error = err
             assistant.save()
+            # Bill whatever usage arrived before the error: completed tool rounds
+            # were genuinely charged by the provider (each round re-sends the whole
+            # conversation), so a late-round failure must still count against the
+            # caps. Providers emit a cumulative UsageEvent per completed round.
+            failed_cost = (
+                cost_usd_for(provider_name, model_id, TokenUsage(**counts))
+                if any(counts.values())
+                else Decimal("0")
+            )
             AIRun.objects.create(
                 message=assistant,
                 provider=provider_name,
@@ -479,6 +491,10 @@ def _run_ai_on_message(
                 status="failed",
                 error=err,
                 latency_ms=latency_ms,
+                cost_usd=failed_cost,
+                input_tokens=counts["input_tokens"],
+                output_tokens=counts["output_tokens"],
+                cached_tokens=counts["cached_tokens"],
             )
             _broadcast(thread_id, {"event": "error", "message_id": assistant.id, "error": err})
             return {"ok": False, "error": err}

@@ -79,6 +79,18 @@ class OpenAIProvider:
                 total_out += st.out_tokens
                 total_cached += st.cached_tokens
 
+                # Emit the running total after every completed round (mirrors
+                # ClaudeProvider): a later round that errors or a user stop must
+                # not lose the usage already billed for earlier rounds. Cumulative
+                # snapshots keep the consumer's dict.update() semantics correct.
+                yield UsageEvent(
+                    usage=TokenUsage(
+                        input_tokens=total_in,
+                        output_tokens=total_out,
+                        cached_tokens=total_cached,
+                    )
+                )
+
                 if st.finish_reason != "tool_calls" or not st.tool_acc or not tools_enabled:
                     # `not tools_enabled`: the cap withheld tools this round, so ignore
                     # any tool_calls the model still emitted and take its text answer.
@@ -92,13 +104,8 @@ class OpenAIProvider:
                 if req.max_tool_iterations and tool_rounds >= req.max_tool_iterations:
                     tools_enabled = False
 
-            yield UsageEvent(
-                usage=TokenUsage(
-                    input_tokens=total_in,
-                    output_tokens=total_out,
-                    cached_tokens=total_cached,
-                )
-            )
+            # The final round's cumulative UsageEvent was already emitted inside
+            # the loop; only the completion marker remains.
             yield DoneEvent()
         except Exception as exc:
             yield ErrorEvent(message=f"{type(exc).__name__}: {exc}")
