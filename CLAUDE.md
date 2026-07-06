@@ -91,7 +91,7 @@ Fresh rebuild (catches reproducibility bugs): `docker compose down -v && docker 
 - **All tool config is in `pyproject.toml`**; no `ruff.toml`/`pytest.ini`. **`uv.lock` is committed** (`uv sync --frozen`); regenerate with `uv lock` on host.
 - **Only `web`/`frontend` hot-reload.** After adding/renaming a task module or `beat_schedule` entry, `docker compose restart worker beat` or it won't fire (fresh `up`/CI unaffected).
 - **Worker image carries chromium** (Playwright; slower cold builds); the render test passes only from `worker`. `web`/`beat` use the smaller image. **Integration tests excluded by default** (`-m 'not integration'`).
-- **`MOCK_EXTERNAL=true`** (set by `compose.e2e.yaml`) short-circuits Claude/OpenAI/Local/Schwab/Finnhub to fixtures. **Never set it on the dev stack** — `respx` provider tests will silently hit the mock. If you see "Mocked response" in dev, recreate containers (`docker compose stop web worker beat && rm -f … && up -d`).
+- **`MOCK_EXTERNAL=true`** (set by `compose.e2e.yaml`) short-circuits Claude/OpenAI/Local/Schwab/Finnhub to fixtures. **Never set it on the dev stack** — provider unit tests patch the SDK client class directly (e.g. `patch("apps.ai.providers.claude.AsyncAnthropic", ...)`) and that patch sits *below* the `is_mock_mode()` short-circuit, so a stray `MOCK_EXTERNAL=true` makes them silently exercise canned fixture streams instead. If you see "Mocked response" in dev, recreate containers (`docker compose stop web worker beat && rm -f … && up -d`).
 
 ### Backend wiring & security
 - **URL include order** — `config/urls.py` registers specific prefixes (e.g. `/api/costs/`) **before** generic `/api/`. Don't reorder.
@@ -128,7 +128,7 @@ Fresh rebuild (catches reproducibility bugs): `docker compose down -v && docker 
 - **Observer opt-in modes** (all default False): `structured` (→ `run_structured` `ObservationReport`), `mode="diff"` (only delta vs prior ready snapshot), `use_batch` (Messages Batch, 50% cheaper, no streaming; `poll_open_batches` every 60s), `consensus` (with structured: cross-model agreement), `investigate` (plain mode only).
 - **Observer response cache** (opt-in `OBSERVER_RESPONSE_CACHE_ENABLED`) — a plain fire with a byte-identical assembled prompt within TTL reuses the observation (`kind=cached_observation`). Plain path only.
 - **Trigger backtest** — `POST /api/triggers/backtest/` replays the DSL over `OHLCBar`. Only `price`/`pct_change` leaves evaluate; live-only metrics silently absent (not raising).
-- **NYSE market-hours** via `pandas-market-calendars` (cached at import in `apps.observer.services.market_hours`).
+- **NYSE market-hours** via `pandas-market-calendars` (`apps.market.calendar` — `registry.get_market_calendar` memoizes with `functools.cache` on first call; `apps.observer.services.market_hours` is a thin convenience wrapper over it, not the implementation).
 - **Market events are a forward calendar, not a session calendar** — `apps.market.MarketEvent` (earnings+macro from Finnhub) ≠ `apps.market.calendar` (sessions). Reads go through `events.upcoming_events(...)`. Macro degrades to `SEED_MACRO_EVENTS`.
 
 ### Thesis, post-mortems & calibration
@@ -169,7 +169,7 @@ Fresh rebuild (catches reproducibility bugs): `docker compose down -v && docker 
 ## Testing
 
 - **Unit** (pure logic): condition evaluator, payload serializer, cost calc, market-hours, DSL parser, token estimator. Favor `parametrize`.
-- **Integration**: real Postgres (testcontainers/CI services), `fakeredis`, Celery eager. External APIs mocked at the SDK boundary (`respx`/`vcrpy`).
+- **Integration**: real Postgres (testcontainers/CI services), `fakeredis`, Celery eager. External APIs mocked at the SDK boundary via `unittest.mock.patch` on the SDK client class (e.g. `AsyncAnthropic`, `AsyncOpenAI`), not `respx`/`vcrpy`.
 - **E2E**: six lanes under `e2e/` on the full stack (`MOCK_EXTERNAL=true`) — `ui`/`api`/`ws`/`visual`/`a11y`/`perf`. Design: `docs/superpowers/specs/2026-04-18-e2e-comprehensive-design.md`.
 - **Frontend**: `vitest` + `@testing-library/react`; don't duplicate E2E.
 
