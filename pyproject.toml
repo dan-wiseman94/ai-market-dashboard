@@ -169,6 +169,11 @@ source_modules = [
     "apps.book",
     "apps.snapshots",
     "apps.market",
+    "apps.core",
+    "apps.export",
+    "apps.backups",
+    "apps.recall",
+    "apps.profiles",
 ]
 forbidden_modules = [
     "apps.ai.providers.claude",
