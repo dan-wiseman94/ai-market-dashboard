@@ -185,24 +185,27 @@ All three AI modes ultimately call `snapshots.services.capture(...)`.
 
 ### 5.1 Orchestration
 
+`capture(profile, objective, includes, notes, source)` creates a `Snapshot(status="pending")`,
+then a single Celery task (`snapshots.capture`, `acks_late=False`) runs a **synchronous loop**
+over `includes` — not fanned-out parallel subtasks with a group callback:
+
 ```
-capture(profile, objective, includes, notes, source):
-  1. Create Snapshot(status="pending").
-  2. Fan out parallel Celery subtasks per section in `includes`:
-     - fetch_quotes(watchlist_tickers)
-     - fetch_ohlc(tickers, timeframe, bars)
-     - fetch_chain(underlying, expiries)
-     - fetch_positions()
-     - fetch_breadth()
-     - fetch_news(tickers, lookback_hours)
-     - render_charts(ohlc_sections)  # server-side via Playwright
-  3. Group callback: finalize_snapshot(snapshot_id)
-     - status="ready" if any section succeeded; "failed" if all failed
-     - broadcast `snapshot.<id>.ready` on Channels
-     - if source != "manual": auto-start an AI run on the profile's default provider
+capture_for_existing(snap, ...):
+  for kind in snap.includes:
+      fetch_<kind>(...)          # quotes / ohlc / chain / positions / breadth / news / image
+      on success: SnapshotSection(status="done"), stamp token counts
+      on raise:   SnapshotSection(status="failed", error=...) — caught, no retry
+      broadcast section_started / section_done / section_failed on `snapshot.<id>`
+  snap.status = "ready" if any section succeeded (or a client screenshot attached) else "failed"
+  broadcast snap.status on `snapshot.<id>`
 ```
 
-Each subtask is idempotent with its own retry policy (exponential backoff on 429; Anthropic `overloaded_error` optionally falls back to a smaller Claude model if `ProviderConfig.fallback_model` is set).
+This is deliberately **at-most-once, not idempotent**: a raising section is caught and marked
+`failed` with no retry policy and no backoff, and a worker killed mid-capture leaves a visible
+partial snapshot the user can re-trigger rather than silently double-capturing. `capture()`
+itself only creates the `Snapshot` and section rows; it does **not** auto-start an AI run —
+the observer and trigger paths each orchestrate capture-then-run themselves
+(`apps.observer.services.run`, `apps.observer.triggers`).
 
 ### 5.2 Redis cache TTLs
 
@@ -213,7 +216,7 @@ Each subtask is idempotent with its own retry policy (exponential backoff on 429
 - News: 5min
 - Positions: 10s
 
-Cache key: `market:<kind>:<ticker>:<params_hash>`. `SnapshotSection.source_refs` records which cached payload produced each section.
+Cache key: `market:<kind>:<ticker>:<params_hash>`. There is no `SnapshotSection.source_refs` field — as noted in §4, that idea was replaced by the synthetic-message pattern in §5.3.
 
 ### 5.3 AI payload serialization
 
@@ -230,7 +233,7 @@ Cache key: `market:<kind>:<ticker>:<params_hash>`. `SnapshotSection.source_refs`
 
 ### 5.4 Token budget guard
 
-Before sending, estimate tokens with `tiktoken` (OpenAI) or `anthropic.count_tokens` (Claude). If estimate > `model_context * 0.6`, progressively prune: chain first, then older news, then older OHLC bars. UI shows which sections were pruned.
+Before sending, estimate tokens with `tiktoken` (OpenAI) or `anthropic.count_tokens` (Claude), against the per-model budget in the catalog (`ModelInfo.max_payload_tokens`). If the estimate exceeds budget, `token_budget.prune_to_budget` drops **whole sections** (not a progressive within-section trim) in a fixed order — chain, then news, then OHLC, then breadth, then quotes, then positions — until the total fits. Quotes and positions are prunable like any other section. UI shows which sections were pruned.
 
 ### 5.5 Partial-failure handling
 

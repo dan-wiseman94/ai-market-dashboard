@@ -155,7 +155,7 @@ Where the Resident Analyst works one name at a time, the Strategist steps back t
 
 ### Operations & UX
 
-- **Backups** — scheduled `pg_dump` with rotation; `make restore file=<name>` to roll back.
+- **Backups** — scheduled `pg_dump` with rotation; `make restore file=<name>` to roll back. A full restore needs the DB dump **and** the persistent `/data` volume: the Fernet encryption salt (`/data/secret.salt`, `apps.secrets.keys`) that decrypts stored Schwab/provider credentials, and offloaded `SnapshotImage` bytes (`/data/images`, `apps.snapshots.image_store`) both live on that volume, not in the downloadable `.sql.gz` alone.
 - **Export** — async zip bundles of threads, snapshots, observations, triggers, profiles, and watchlists.
 - **App shell** — shared layout with top/side nav, breadcrumbs, a notification bell, and a live connection-status dot.
 - **Command palette** (`Cmd`/`Ctrl`-K, with live semantic-recall results) and `g <x>` keyboard shortcuts to the top-level routes — `g d` dashboard, `g s` snapshot, `g n` snapshots, `g h` threads, `g t` triggers, `g o` schedules, `g c` costs, `g e` events, `g b` briefing, `g j` theses, `g r` recall, `g k` scorecard, `g a` analytics.
@@ -243,7 +243,7 @@ Refresh tokens last ~7 days; after that, click **Connect Schwab** again — with
 Four layers, gated by `make check` (`lint` + `test`) — what CI runs.
 
 - **Unit** (`pytest`) — pure logic: condition evaluator, payload serializer, cost calc, market-hours, DSL parser, token estimator. Favors `pytest.mark.parametrize`. Runs by default.
-- **Integration** (`pytest -m integration`) — real Postgres, `fakeredis`, Celery eager; external SDKs mocked at the boundary with `respx` / `vcrpy`. **Excluded by default** (`-m 'not integration'`); opt in explicitly.
+- **Integration** (`pytest -m integration`) — real Postgres, `fakeredis`, Celery eager; external SDKs mocked at the boundary via `unittest.mock.patch` on the SDK client class (e.g. `AsyncAnthropic`, `AsyncOpenAI`), not `respx`/`vcrpy`. **Excluded by default** (`-m 'not integration'`); opt in explicitly.
 - **End-to-end** (`make e2e`) — six lanes under `e2e/` driving the full compose stack with `MOCK_EXTERNAL=true`: `ui` (Playwright journeys), `api` (httpx contract), `ws` (Channels events), `visual` (screenshot diffs), `a11y` (axe-core), and `perf` (Lighthouse budgets, prod overlay — `make e2e-perf`).
 - **Frontend** (`vitest` + Testing Library). Storybook stories double as a real-browser test lane (`pnpm test-storybook`, needs system Chromium; not part of the default `pnpm test`). Storybook itself runs on `:6006` under the `dev` compose profile.
 
