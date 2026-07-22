@@ -1,6 +1,6 @@
 import pytest
 
-from apps.market.symbols import normalize_symbol
+from apps.market.symbols import is_equity_like, normalize_symbol
 
 
 @pytest.mark.parametrize(
@@ -59,3 +59,30 @@ def test_normalize_symbol(raw, expected):
 )
 def test_normalize_symbol_futures(raw, expected):
     assert normalize_symbol(raw) == expected
+
+
+@pytest.mark.parametrize(
+    "raw,expected",
+    [
+        # Plain stocks/ETFs are fine for equity-only providers.
+        ("QQQ", True),
+        ("AAPL", True),
+        ("spy", True),
+        (" xlk ", True),
+        # Futures — bare root, slash-prefixed root, dated contract.
+        ("ES", False),
+        ("NQ", False),
+        ("/NQ", False),
+        ("/ESU26", False),
+        ("VX", False),
+        # Cash indices — bare alias and $-prefixed.
+        ("SPX", False),
+        ("$SPX", False),
+        ("$VIX", False),
+        # Empty / whitespace.
+        ("", False),
+        ("   ", False),
+    ],
+)
+def test_is_equity_like(raw, expected):
+    assert is_equity_like(raw) is expected

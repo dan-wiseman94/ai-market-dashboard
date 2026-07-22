@@ -68,3 +68,22 @@ def test_fetch_news_no_credential_returns_empty():
     with patch("apps.market.services.news._finnhub_api_key", return_value=None):
         items = fetch_news(["SPY"])
     assert items == []
+
+
+@pytest.mark.django_db
+def test_fetch_news_skips_company_news_for_non_equity():
+    # Bare futures roots collide with unrelated equities on Finnhub ("ES" is
+    # Eversource) — only equity-like tickers get a company-news call; the
+    # market-wide general feed still runs.
+    with (
+        patch("apps.market.services.news._finnhub_get") as fake_get,
+        patch("apps.market.services.news._finnhub_api_key", return_value="k"),
+        patch("apps.market.services.news.cache.get_or_fetch") as fake_cache,
+    ):
+        fake_cache.side_effect = lambda key, *, ttl_seconds, fetcher: fetcher()
+        fake_get.return_value = []
+        fetch_news(["ES", "/NQ", "$SPX", "QQQ"])
+
+    company_calls = [c for c in fake_get.call_args_list if c.args[0] == "/company-news"]
+    assert [c.args[1]["symbol"] for c in company_calls] == ["QQQ"]
+    assert any(c.args[0] == "/news" for c in fake_get.call_args_list)

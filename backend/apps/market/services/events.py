@@ -12,6 +12,8 @@ import requests  # type: ignore[import-untyped]
 from apps.market import cache
 from apps.market.models import MarketEvent
 from apps.market.services.events_seed import SEED_MACRO_EVENTS
+from apps.market.services.safe_log import safe_err
+from apps.market.symbols import is_equity_like
 from apps.secrets.credentials import decrypt_token
 
 log = logging.getLogger(__name__)
@@ -101,7 +103,9 @@ def fetch_earnings(tickers: list[str], *, ahead_days: int = 30) -> list[MarketEv
     today = datetime.now(UTC).date()
     end = today + timedelta(days=ahead_days)
     out: list[MarketEvent] = []
-    for ticker in [t.upper() for t in tickers if t]:
+    # Equity-like only: Finnhub knows bare futures roots as unrelated equities
+    # ("ES" is Eversource Energy), and indices/futures have no earnings.
+    for ticker in [t.upper() for t in tickers if is_equity_like(t)]:
         body = cache.get_or_fetch(
             f"market:earn:{ticker}:{ahead_days}",
             ttl_seconds=cache.ttl_for_kind("events"),
@@ -220,11 +224,19 @@ def fetch_macro(*, ahead_days: int = 45) -> list[MarketEvent]:
             )
             rows = body.get("economicCalendar", [])
         except Exception as exc:
-            log.warning("market.events.macro_fetch_failed: %s", exc)
+            # safe_err: the exception string embeds the request URL incl. the API key.
+            log.warning("market.events.macro_fetch_failed: %s", safe_err(exc))
 
     upserted = _upsert_macro(rows, source="finnhub")
     if not upserted:
         upserted = _upsert_macro(SEED_MACRO_EVENTS, source="seed")
+    now = datetime.now(UTC)
+    if not any(e.event_time >= now for e in upserted):
+        # Every snapshot's macro list reads future events only — an all-past
+        # result means the seed has lapsed and needs refreshing (events_seed.py).
+        log.warning(
+            "market.events.fetch_macro: no upcoming macro events; refresh SEED_MACRO_EVENTS"
+        )
     return upserted
 
 
@@ -256,11 +268,13 @@ def upcoming_events(
     tickers = [t.upper() for t in tickers if t]
 
     for t in tickers:
+        if not is_equity_like(t):
+            continue
         if not MarketEvent.objects.filter(kind="earnings", ticker=t, event_time__gte=now).exists():
             try:
                 fetch_earnings([t])
             except Exception as exc:
-                log.warning("market.events.ondemand_fill_failed %s: %s", t, exc)
+                log.warning("market.events.ondemand_fill_failed %s: %s", t, safe_err(exc))
 
     earnings_qs = MarketEvent.objects.filter(
         kind="earnings", ticker__in=tickers, event_time__gte=now, event_time__lte=horizon

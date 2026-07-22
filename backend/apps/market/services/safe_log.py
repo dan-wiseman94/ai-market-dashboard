@@ -10,6 +10,18 @@ exception type plus, for HTTP errors, the response status code.
 
 from __future__ import annotations
 
+import re
+
+_SECRET_PARAMS = re.compile(r"(?i)\b(token|apikey|api_key|key)=([^&\s\"']+)")
+
+
+def scrub_secret_params(text: str) -> str:
+    """Mask credential-bearing query params inside ``text`` (e.g. a requests
+    exception message embedding the full request URL). Unlike ``safe_err`` this
+    keeps the surrounding message — use it where the text is user-facing
+    diagnostics (``SnapshotSection.error``) rather than a log line."""
+    return _SECRET_PARAMS.sub(r"\1=***", text)
+
 
 def safe_err(exc: Exception) -> str:
     """Return a log-safe summary of ``exc`` that never echoes the request URL.

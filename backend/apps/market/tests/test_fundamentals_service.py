@@ -53,6 +53,21 @@ def _make_profile_response(sector="Technology", industry="Consumer Electronics",
 
 
 @pytest.mark.django_db
+def test_fetch_fundamentals_non_equity_returns_empty_without_fetch():
+    # Futures roots / cash indices have no company fundamentals; bare "ES"
+    # would resolve to Eversource Energy on Finnhub.
+    with (
+        patch.object(fundamentals_mod, "_finnhub_get") as fake_get,
+        patch.object(fundamentals_mod, "_finnhub_api_key", return_value="k"),
+    ):
+        assert fundamentals_mod.fetch_fundamentals("ES") == {}
+        assert fundamentals_mod.fetch_fundamentals("/NQ") == {}
+        assert fundamentals_mod.fetch_fundamentals("$SPX") == {}
+    fake_get.assert_not_called()
+    assert CompanyFundamentals.objects.count() == 0
+
+
+@pytest.mark.django_db
 def test_fetch_fundamentals_returns_normalized_dict():
     metric_body = _make_metric_response()
     profile_body = _make_profile_response()

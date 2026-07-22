@@ -60,3 +60,15 @@ def normalize_symbol(symbol: str) -> str:
     if s in FUTURE_ROOTS:
         return f"/{s}"
     return s
+
+
+def is_equity_like(symbol: str) -> bool:
+    """True when ``symbol`` is a plain stock/ETF suitable for equity-only providers
+    (Finnhub company endpoints, SEC EDGAR). Futures (bare root or /-prefixed) and
+    cash indices ($-prefixed or bare alias) resolve to instruments those providers
+    either don't know or — worse — collide with an unrelated equity (bare "ES" is
+    Eversource Energy on Finnhub while the rest of this app treats it as /ES)."""
+    s = (symbol or "").strip().upper()
+    if not s or s.startswith(("$", "/")):
+        return False
+    return s not in INDEX_ALIASES and s not in FUTURE_ROOTS

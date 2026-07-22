@@ -51,6 +51,32 @@ def test_fetch_earnings_no_credential_returns_empty():
 
 
 @pytest.mark.django_db
+def test_fetch_earnings_skips_non_equity_symbols():
+    # Finnhub company endpoints know bare "ES" as Eversource Energy, not /ES —
+    # futures roots and cash indices must never reach it.
+    with (
+        patch("apps.market.services.events._finnhub_get") as fake_get,
+        patch("apps.market.services.events._finnhub_api_key", return_value="k"),
+        patch(
+            "apps.market.services.events.cache.get_or_fetch",
+            side_effect=lambda key, *, ttl_seconds, fetcher: fetcher(),
+        ),
+    ):
+        fake_get.return_value = {"earningsCalendar": []}
+        events.fetch_earnings(["ES", "/NQ", "$SPX", "SPX", "NVDA"])
+    assert fake_get.call_count == 1
+    assert fake_get.call_args[0][1]["symbol"] == "NVDA"
+
+
+@pytest.mark.django_db
+def test_upcoming_events_ondemand_fill_skips_non_equity():
+    with patch("apps.market.services.events.fetch_earnings") as fill:
+        out = events.upcoming_events(["/NQ", "ES"], within_days=14)
+    fill.assert_not_called()
+    assert out["earnings"] == []
+
+
+@pytest.mark.django_db
 def test_fetch_earnings_mock_mode_returns_canned():
     with patch("apps.core.mocks.is_mock_mode", return_value=True):
         out = events.fetch_earnings(["IGNORED"])
@@ -134,6 +160,60 @@ def test_fetch_macro_falls_back_to_seed_when_endpoint_empty():
     assert len(out) == 1
     assert out[0].kind == "fomc"
     assert out[0].source == "seed"
+
+
+def test_seed_macro_events_extend_past_the_audit_date():
+    # The 2026-07-22 audit found every snapshot's macro list empty because all
+    # seed dates had lapsed. Guard this refresh: the seed must carry entries
+    # beyond that date (the runtime warning below guards future staleness).
+    latest = max(e["time"] for e in events.SEED_MACRO_EVENTS)
+    assert latest > "2026-07-22"
+    assert all(e["country"] == "US" and e["impact"] == "high" for e in events.SEED_MACRO_EVENTS)
+
+
+@pytest.mark.django_db
+def test_fetch_macro_warns_when_fallback_has_nothing_upcoming(caplog):
+    stale_seed = [
+        {
+            "event": "CPI YoY",
+            "country": "US",
+            "impact": "high",
+            "time": "2020-01-14 13:30:00",
+            "estimate": None,
+            "prev": None,
+            "actual": None,
+        }
+    ]
+    with (
+        patch("apps.market.services.events._finnhub_api_key", return_value=None),
+        patch("apps.market.services.events.SEED_MACRO_EVENTS", stale_seed),
+        caplog.at_level("WARNING"),
+    ):
+        out = events.fetch_macro()
+    assert len(out) == 1  # still upserted (harmless, prune removes it)
+    assert any("no upcoming macro" in r.message for r in caplog.records)
+
+
+@pytest.mark.django_db
+def test_fetch_macro_does_not_warn_when_fallback_has_upcoming(caplog):
+    fresh_seed = [
+        {
+            "event": "CPI YoY",
+            "country": "US",
+            "impact": "high",
+            "time": _soon(7) + " 12:30:00",
+            "estimate": None,
+            "prev": None,
+            "actual": None,
+        }
+    ]
+    with (
+        patch("apps.market.services.events._finnhub_api_key", return_value=None),
+        patch("apps.market.services.events.SEED_MACRO_EVENTS", fresh_seed),
+        caplog.at_level("WARNING"),
+    ):
+        events.fetch_macro()
+    assert not any("no upcoming macro" in r.message for r in caplog.records)
 
 
 @pytest.mark.django_db

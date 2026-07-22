@@ -6,6 +6,7 @@ cache.get_or_fetch are patched so nothing leaves the process.
 
 from __future__ import annotations
 
+from datetime import UTC, datetime, timedelta
 from unittest.mock import patch
 
 import apps.market.services.edgar as edgar_mod
@@ -22,19 +23,28 @@ _TICKER_MAP_RAW: dict = {
 
 _APPLE_CIK = 320193
 
+
+def _days_ago(n: int) -> str:
+    return (datetime.now(UTC) - timedelta(days=n)).date().isoformat()
+
+
+# Dynamic dates keep the fixture inside fetch_filings' recency window forever
+# (literal dates would silently age past the ~18-month cutoff).
+_FILED = [
+    _days_ago(30),
+    _days_ago(60),
+    _days_ago(90),
+    _days_ago(120),
+    _days_ago(150),
+    _days_ago(180),
+]
+
 _SUBMISSIONS_RAW: dict = {
     "name": "Apple Inc.",
     "filings": {
         "recent": {
             "form": ["10-K", "10-Q", "8-K", "4", "10-Q", "4"],
-            "filingDate": [
-                "2025-11-01",
-                "2025-08-05",
-                "2025-07-15",
-                "2025-06-10",
-                "2025-05-08",
-                "2025-04-22",
-            ],
+            "filingDate": list(_FILED),
             "accessionNumber": [
                 "0000320193-25-000001",
                 "0000320193-25-000002",
@@ -97,7 +107,7 @@ def test_fetch_filings_returns_normalized_list():
 
     first = result[0]
     assert first["form"] == "10-K"
-    assert first["filed"] == "2025-11-01"
+    assert first["filed"] == _FILED[0]
     assert first["report_date"] == "2025-09-30"
     assert first["accession"] == "0000320193-25-000001"
     assert first["title"] == "Apple Inc. 10-K"
@@ -286,6 +296,56 @@ def test_fetch_insider_mock_mode_returns_canned():
 # ---------------------------------------------------------------------------
 # Unknown ticker
 # ---------------------------------------------------------------------------
+
+
+def test_fetch_filings_and_insider_drop_stale_entries_by_default():
+    """A rarely-filing issuer (the audit's QQQ trust served 8-Ks from 2014) must
+    not surface decade-old documents as current context."""
+    from datetime import UTC, datetime, timedelta
+
+    fresh = (datetime.now(UTC) - timedelta(days=30)).date().isoformat()
+    submissions = {
+        "name": "Invesco QQQ Trust",
+        "filings": {
+            "recent": {
+                "form": ["8-K", "8-K", "4", "4"],
+                "filingDate": [fresh, "2014-09-08", fresh, "2014-02-07"],
+                "accessionNumber": ["0-1", "0-2", "0-3", "0-4"],
+                "primaryDocument": ["a.htm", "b.htm", "c.xml", "d.xml"],
+                "reportDate": ["", "", "", ""],
+            }
+        },
+    }
+
+    def _side_effect(url: str, *, headers: dict) -> dict:
+        if "company_tickers" in url:
+            return {"0": {"cik_str": 1067839, "ticker": "QQQ", "title": "Invesco QQQ Trust"}}
+        return submissions
+
+    with (
+        patch("apps.market.services.edgar._get", side_effect=_side_effect),
+        patch(
+            "apps.market.services.edgar.cache.get_or_fetch",
+            side_effect=_passthrough_cache,
+        ),
+    ):
+        filings = fetch_filings("QQQ")
+        insider = fetch_insider("QQQ")
+
+    assert [f["filed"] for f in filings] == [fresh]
+    assert [f["filed"] for f in insider] == [fresh]
+    # Futures roots and cash indices are not SEC filers — no EDGAR round-trip.
+    with (
+        patch("apps.market.services.edgar._get") as fake_get,
+        patch(
+            "apps.market.services.edgar.cache.get_or_fetch",
+            side_effect=_passthrough_cache,
+        ),
+    ):
+        assert fetch_filings("NQ") == []
+        assert fetch_filings("/ES") == []
+        assert fetch_insider("$SPX") == []
+    fake_get.assert_not_called()
 
 
 def test_fetch_filings_unknown_ticker_returns_empty():

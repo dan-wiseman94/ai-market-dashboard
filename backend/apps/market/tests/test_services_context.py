@@ -33,3 +33,34 @@ def test_fetch_market_context_shape():
     for etf in SECTOR_ETFS:
         assert etf in ctx["sectors"]
     assert "breadth" in ctx  # may be empty dict, that's fine
+
+
+@pytest.mark.django_db
+def test_fetch_market_context_drops_premarket_placeholder_internals():
+    # Before ~9:30 ET the A/D indices quote near-zero warm-up values
+    # ($ADVN=8, $DECN=0, $TRIN=0.0 in the audit) — noise, not breadth.
+    quotes = {
+        "$SPX": {"last": 7509.2},
+        "$ADVN": {"last": 8.0},
+        "$DECN": {"last": 0.0},
+        "$TICK": {"last": 8.0},
+        "$TRIN": {"last": 0.0},
+    }
+    with patch("apps.market.services.context.fetch_quotes", return_value=quotes):
+        ctx = fetch_market_context()
+    assert ctx["breadth"] == {}
+    assert ctx["spx_last"] == 7509.2
+
+
+@pytest.mark.django_db
+def test_fetch_market_context_keeps_populated_internals():
+    quotes = {
+        "$ADVN": {"last": 1800.0},
+        "$DECN": {"last": 1100.0},
+        "$TICK": {"last": 250.0},
+        "$TRIN": {"last": 0.85},
+    }
+    with patch("apps.market.services.context.fetch_quotes", return_value=quotes):
+        ctx = fetch_market_context()
+    assert ctx["breadth"]["$TRIN"] == 0.85
+    assert ctx["breadth"]["$ADVN"] == 1800.0

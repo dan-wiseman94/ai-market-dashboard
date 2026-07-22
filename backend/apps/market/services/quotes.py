@@ -39,6 +39,28 @@ def fetch_quotes(tickers: Iterable[str], *, gap_context: bool = False) -> dict[s
         return alt
 
 
+def _pct_change(q: dict) -> float | None:
+    """Best-available percent change: Schwab's equity field, then the futures
+    field, then computed off the prior close (futures quotes carry neither
+    equity field, which left the primary instrument's %chg blank in snapshots)."""
+    for field in ("netPercentChange", "futurePercentChange"):
+        if q.get(field) is not None:
+            return q[field]
+    last, close = q.get("lastPrice"), q.get("closePrice")
+    if isinstance(last, int | float) and isinstance(close, int | float) and close:
+        return (last - close) / close * 100
+    return None
+
+
+def _day_extreme(q: dict, field: str):
+    """Day high/low; Schwab reports 0.0 before the day session — a literal
+    "Low 0.00" reads as a crash downstream, so map the placeholder to None."""
+    value = q.get(field)
+    if value == 0 and q.get("lastPrice"):
+        return None
+    return value
+
+
 def _fetch_from_schwab(tickers: list[str], *, gap_context: bool = False) -> dict[str, dict]:
     client = get_schwab_client()
     raw = schwab_json(client.get_quotes(tickers))
@@ -52,9 +74,9 @@ def _fetch_from_schwab(tickers: list[str], *, gap_context: bool = False) -> dict
             "bid": q.get("bidPrice"),
             "ask": q.get("askPrice"),
             "volume": q.get("totalVolume"),
-            "high": q.get("highPrice"),
-            "low": q.get("lowPrice"),
-            "pct_change": q.get("netPercentChange"),
+            "high": _day_extreme(q, "highPrice"),
+            "low": _day_extreme(q, "lowPrice"),
+            "pct_change": _pct_change(q),
         }
         if gap_context:
             reg = blob.get("regular") or {}
