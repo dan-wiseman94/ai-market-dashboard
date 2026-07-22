@@ -18,15 +18,17 @@ def test_prune_returns_same_when_small():
     assert pruned == []
 
 
-def test_prune_drops_chain_first_then_news():
+def test_prune_drops_chain_then_ohlc_before_news():
+    # OHLC is the chronic oversize section — it must go before news does, so a
+    # bloated bar dump can never evict the day's headlines.
     big = "x " * 50_000
     sections = {
         "chain": big,
-        "news": big,
-        "ohlc": "medium",
+        "ohlc": big,
+        "news": "a few headlines",
         "quotes": "small",
     }
     out, pruned = prune_to_budget(sections, max_tokens=100)
-    assert "chain" not in out
+    assert pruned == ["chain", "ohlc"]
+    assert "news" in out
     assert "quotes" in out
-    assert "chain" in pruned

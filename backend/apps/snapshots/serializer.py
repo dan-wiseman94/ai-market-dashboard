@@ -7,7 +7,11 @@ from datetime import UTC, datetime
 
 from apps.snapshots.image_store import read_image_bytes
 from apps.snapshots.models import Snapshot, SnapshotImage
-from apps.snapshots.token_budget import prune_to_budget
+from apps.snapshots.token_budget import estimate_tokens, prune_to_budget
+
+# Never truncate the OHLC tail below this many bars — fewer stops being a price
+# path; at that point dropping the section (prune_to_budget) is more honest.
+_OHLC_MIN_BARS = 30
 
 
 def _age_str(captured_at: datetime) -> str:
@@ -78,14 +82,7 @@ def serialize_for_ai(
         age = _age_str(cap)
         parts.append(f"> **Captured:** {ts_str} ({age}).")
 
-    ms = snapshot.market_state
-    if ms and not ms.get("any_open", True):
-        closed = [m for m, s in ms.get("markets", {}).items() if not s.get("is_open")]
-        if closed:
-            parts.append(
-                f"> **Market state:** {', '.join(closed)} closed at capture — "
-                f"data is as-of the last session close."
-            )
+    parts.extend(_market_state_lines(snapshot.market_state))
 
     rendered: dict[str, str] = {}
 
@@ -98,6 +95,16 @@ def serialize_for_ai(
         text = _render_section(kind, sec.payload)
         if text:
             rendered[kind] = text
+
+    ohlc_sec = sections_by_kind.get("ohlc")
+    if "ohlc" in rendered and ohlc_sec is not None:
+        rendered = _shrink_ohlc_to_budget(
+            rendered,
+            ohlc_payload=ohlc_sec.payload or {},
+            max_tokens=max_tokens,
+            provider=provider,
+            model=model,
+        )
 
     pruned_sections, pruned_kinds = prune_to_budget(
         rendered,
@@ -112,6 +119,27 @@ def serialize_for_ai(
         parts.append(f"_(pruned for token budget: {', '.join(pruned_kinds)})_")
 
     return "\n\n".join(parts).strip() or "_(empty snapshot)_"
+
+
+def _market_state_lines(ms: dict | None) -> list[str]:
+    """Blockquote caveats about market phase at capture time."""
+    lines: list[str] = []
+    if ms and not ms.get("any_open", True):
+        closed = [m for m, s in ms.get("markets", {}).items() if not s.get("is_open")]
+        if closed:
+            lines.append(
+                f"> **Market state:** {', '.join(closed)} closed at capture — "
+                f"data is as-of the last session close."
+            )
+    # A futures-open capture keeps any_open True while equities sit premarket —
+    # flag it, or zeroed day fields and warm-up breadth read as real numbers.
+    eq_phase = ((ms or {}).get("markets", {}).get("us_equity") or {}).get("phase")
+    if eq_phase in ("premarket", "postmarket"):
+        lines.append(
+            f"> **Market state:** US equities in {eq_phase} at capture — day-session "
+            f"fields (day high/low, breadth internals) may be incomplete."
+        )
+    return lines
 
 
 def _title(kind: str) -> str:
@@ -228,7 +256,7 @@ def _render_ohlc(payload: dict) -> str:
     header = f"## OHLC ({payload.get('ticker', '?')} @ {payload.get('timeframe', '?')})"
     if payload.get("window") == "24h":
         header += (
-            " — last 24h (1m current session, 5m prior)"
+            " — last 24h (1m recent, 5m earlier)"
             if payload.get("coarse_timeframe")
             else " — last 24h"
         )
@@ -236,10 +264,55 @@ def _render_ohlc(payload: dict) -> str:
     for b in bars:
         csv_lines.append(f"{b['ts']},{b['open']},{b['high']},{b['low']},{b['close']},{b['volume']}")
     result = f"{header}\n```csv\n" + "\n".join(csv_lines) + "\n```"
+    truncated_from = payload.get("truncated_from")
+    if truncated_from:
+        result += (
+            f"\n_(showing newest {len(bars)} of {truncated_from} bars — "
+            "older bars trimmed to fit the token budget)_"
+        )
     gap_note = _ohlc_gap_note(bars)
     if gap_note:
         result += f"\n{gap_note}"
     return result
+
+
+def _shrink_ohlc_to_budget(
+    rendered: dict[str, str],
+    *,
+    ohlc_payload: dict,
+    max_tokens: int,
+    provider: str,
+    model: str,
+) -> dict[str, str]:
+    """Truncate the OHLC bars (oldest first) when the total overflows the budget.
+
+    Without this, ``prune_to_budget`` can only drop whole sections — a bloated
+    bar dump would cost the entire price history (and, before OHLC in the old
+    prune order, the news). Keeping the newest tail preserves the recent price
+    path the AI actually reasons over.
+    """
+    bars = ohlc_payload.get("bars") or []
+    if len(bars) <= _OHLC_MIN_BARS:
+        return rendered
+
+    sizes = {k: estimate_tokens(v, provider=provider, model=model) for k, v in rendered.items()}
+    total = sum(sizes.values())
+    if total <= max_tokens:
+        return rendered
+
+    headroom = max_tokens - (total - sizes["ohlc"])
+    if headroom <= 0:
+        return rendered  # other sections alone overflow — leave it to the pruner
+
+    keep = max(_OHLC_MIN_BARS, int(len(bars) * headroom / sizes["ohlc"] * 0.9))
+    while True:
+        keep = min(keep, len(bars))
+        shrunk = {**ohlc_payload, "bars": bars[-keep:], "truncated_from": len(bars)}
+        text = _render_ohlc(shrunk)
+        fits = estimate_tokens(text, provider=provider, model=model) <= headroom
+        if fits or keep <= _OHLC_MIN_BARS:
+            return {**rendered, "ohlc": text}
+        keep = max(_OHLC_MIN_BARS, keep // 2)
 
 
 def _render_positions(payload: list) -> str:

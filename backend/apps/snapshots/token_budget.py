@@ -4,7 +4,10 @@ from __future__ import annotations
 
 from apps.ai.token_counter import estimate_tokens as _estimate
 
-_PRUNE_ORDER = ["chain", "news", "ohlc", "breadth", "quotes", "positions"]
+# OHLC before news: the chronically-oversized section must never evict the
+# day's headlines (the serializer truncates OHLC bars first; this is the
+# whole-section last resort).
+_PRUNE_ORDER = ["chain", "ohlc", "news", "breadth", "quotes", "positions"]
 
 
 def estimate_tokens(text: str, *, provider: str = "openai", model: str = "") -> int:

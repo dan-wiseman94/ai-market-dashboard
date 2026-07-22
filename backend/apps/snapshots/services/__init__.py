@@ -22,7 +22,9 @@ from apps.market.services.ohlc import (
 from apps.market.services.overnight import overnight_board
 from apps.market.services.positions import fetch_positions
 from apps.market.services.quotes import fetch_quotes
+from apps.market.services.safe_log import scrub_secret_params
 from apps.market.services.treasury import fetch_treasury
+from apps.market.symbols import is_equity_like, normalize_symbol
 from apps.profiles.models import TradingProfile
 from apps.snapshots.models import Snapshot, SnapshotImage, SnapshotSection
 from apps.snapshots.primary import (
@@ -59,6 +61,18 @@ def stamp_payload_tokens(
 
 def _pick_ticker(ohlc_ticker: str | None, watchlist_tickers: list[str]) -> str:
     return ohlc_ticker or (watchlist_tickers[0] if watchlist_tickers else "SPY")
+
+
+def _fetch_chain_section(*, watchlist_tickers: list[str], **_) -> dict:
+    # Schwab's chains endpoint serves equity and cash-index options but 400s on
+    # futures symbols — pick the first non-futures watchlist symbol instead of
+    # failing every futures-primary capture.
+    for t in watchlist_tickers or ["SPY"]:
+        if not normalize_symbol(t).startswith("/"):
+            return {"data": fetch_chain(t)}
+    raise ValueError(
+        "no chain-capable symbol in watchlist (futures contracts have no equity option chain)"
+    )
 
 
 def _representative_tickers(
@@ -118,9 +132,7 @@ _FETCHERS = {
     "breadth": lambda *, watchlist_tickers, **_: {
         "data": fetch_market_context(tickers=list(watchlist_tickers))
     },
-    "chain": lambda *, watchlist_tickers, **_: {
-        "data": fetch_chain(_pick_ticker(None, watchlist_tickers)),
-    },
+    "chain": _fetch_chain_section,
     "image": lambda *, snapshot_id, watchlist_tickers, ohlc_ticker, ohlc_timeframe, ohlc_bars, **_: {
         "data": {
             "image_ids": [
@@ -147,7 +159,12 @@ _FETCHERS = {
     "quotes": lambda *, watchlist_tickers, **_: {"data": fetch_quotes(watchlist_tickers)},
     "macro": lambda **_: {"data": fred_fetch_macro()},
     "filings": lambda *, watchlist_tickers, **_: {
-        "data": {t: edgar_fetch_filings(t) for t in (list(watchlist_tickers) or [])[:6]},
+        # Equity-like only — futures roots / indices aren't SEC filers, and a
+        # bogus key ("NQ") in the payload reads as "no filings" to the AI.
+        "data": {
+            t: edgar_fetch_filings(t)
+            for t in [s for s in list(watchlist_tickers) if is_equity_like(s)][:6]
+        },
     },
     "treasury": lambda **_: {"data": fetch_treasury()},
 }
@@ -236,7 +253,10 @@ def capture_for_existing(
             _broadcast(snap.id, {"event": "section_done", "kind": kind})
         except Exception as exc:
             section.status = "failed"
-            section.error = f"{type(exc).__name__}: {exc}"
+            # Provider errors can embed the full request URL — including a
+            # query-string API key — so scrub before the text is persisted,
+            # broadcast over WS, and rendered into the AI prompt as a stub.
+            section.error = scrub_secret_params(f"{type(exc).__name__}: {exc}")
             section.save()
             _broadcast(snap.id, {"event": "section_failed", "kind": kind, "error": section.error})
 
