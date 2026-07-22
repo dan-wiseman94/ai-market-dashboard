@@ -6,6 +6,66 @@ from apps.snapshots.serializer import serialize_for_ai
 
 
 @pytest.mark.django_db
+def test_oversized_ohlc_is_truncated_to_newest_bars_not_dropped():
+    """When OHLC alone overflows the budget, trim its oldest bars instead of
+    letting the pruner drop whole sections (the audit's pre-open run lost news
+    AND all price history to a 40k-token bar dump)."""
+    p = TradingProfile.objects.create(name="P", style="x")
+    s = Snapshot.objects.create(profile=p, includes=["ohlc", "news"], source="manual")
+    bars = [
+        {
+            "ts": f"2026-07-22T{h:02d}:{m:02d}:00+00:00",
+            "open": 100 + h,
+            "high": 101 + h,
+            "low": 99 + h,
+            "close": 100.5 + h,
+            "volume": 1000 + m,
+        }
+        for h in range(10)
+        for m in range(60)
+    ]  # 600 bars ≈ well over a 2k-token budget when rendered
+    SnapshotSection.objects.create(
+        snapshot=s,
+        kind="ohlc",
+        status="done",
+        payload={"ticker": "NQ", "timeframe": "1m", "window": "24h", "bars": bars},
+    )
+    SnapshotSection.objects.create(
+        snapshot=s,
+        kind="news",
+        status="done",
+        payload={"items": [{"headline": "keep me", "source": "S", "datetime": 1784725100}]},
+    )
+
+    out = serialize_for_ai(s, max_tokens=2000)
+
+    assert "keep me" in out  # news survives
+    assert "## OHLC" in out  # ohlc survives, truncated
+    assert "older bars trimmed" in out
+    assert bars[-1]["ts"] in out  # newest bar kept
+    assert bars[0]["ts"] not in out  # oldest bar trimmed
+    assert "pruned for token budget" not in out
+
+
+@pytest.mark.django_db
+def test_ohlc_within_budget_is_not_truncated():
+    p = TradingProfile.objects.create(name="P", style="x")
+    s = Snapshot.objects.create(profile=p, includes=["ohlc"], source="manual")
+    bars = [
+        {"ts": "2026-07-22T13:00:00+00:00", "open": 1, "high": 2, "low": 1, "close": 2, "volume": 5}
+    ]
+    SnapshotSection.objects.create(
+        snapshot=s,
+        kind="ohlc",
+        status="done",
+        payload={"ticker": "NQ", "timeframe": "1m", "window": "24h", "bars": bars},
+    )
+    out = serialize_for_ai(s)
+    assert "older bars trimmed" not in out
+    assert bars[0]["ts"] in out
+
+
+@pytest.mark.django_db
 def test_serializes_quotes_section_as_table():
     p = TradingProfile.objects.create(name="P", style="x")
     s = Snapshot.objects.create(

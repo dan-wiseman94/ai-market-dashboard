@@ -14,13 +14,13 @@ def test_render_ohlc_24h_blended_header():
         }
     )
     assert "last 24h" in md
-    assert "1m current session, 5m prior" in md
+    assert "1m recent, 5m earlier" in md
 
 
 def test_render_ohlc_24h_single_resolution_header():
     md = _render_ohlc({"ticker": "SPY", "timeframe": "5m", "window": "24h", "bars": [_BAR]})
     assert "last 24h" in md
-    assert "current session" not in md
+    assert "1m recent" not in md
 
 
 def test_render_news_always_24h_label():

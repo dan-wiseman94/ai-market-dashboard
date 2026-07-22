@@ -63,6 +63,30 @@ def test_capture_records_partial_failure():
 
 @pytest.mark.django_db
 @override_settings(CELERY_TASK_ALWAYS_EAGER=True, CELERY_TASK_EAGER_PROPAGATES=True)
+def test_capture_scrubs_credentials_from_section_error():
+    p = TradingProfile.objects.create(name="P", style="x")
+    leaky = RuntimeError(
+        "403 Client Error for url: https://finnhub.io/api/v1/news?symbol=SPY&token=SECRETKEY99"
+    )
+
+    with patch("apps.snapshots.services.fetch_quotes", side_effect=leaky):
+        snap = capture(
+            profile=p,
+            objective="",
+            includes=["quotes"],
+            notes="",
+            source="manual",
+            watchlist_tickers=["SPY"],
+        )
+
+    err = snap.sections.get(kind="quotes").error
+    assert "SECRETKEY99" not in err
+    assert "token=***" in err
+    assert "403 Client Error" in err  # diagnostics survive the scrub
+
+
+@pytest.mark.django_db
+@override_settings(CELERY_TASK_ALWAYS_EAGER=True, CELERY_TASK_EAGER_PROPAGATES=True)
 def test_capture_fails_when_all_sections_fail():
     p = TradingProfile.objects.create(name="P", style="x")
 
