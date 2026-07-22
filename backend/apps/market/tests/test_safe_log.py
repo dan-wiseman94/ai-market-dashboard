@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import requests  # type: ignore[import-untyped]
 
-from apps.market.services.safe_log import safe_err
+from apps.market.services.safe_log import safe_err, scrub_secret_params
 
 
 def test_safe_err_http_error_redacts_url_and_key():
@@ -35,3 +35,23 @@ def test_safe_err_connection_error_is_type_name_only():
 
 def test_safe_err_plain_exception_is_type_name():
     assert safe_err(ValueError("boom")) == "ValueError"
+
+
+def test_scrub_secret_params_masks_key_but_keeps_message():
+    msg = (
+        "HTTPError: 403 Client Error: Forbidden for url: "
+        "https://finnhub.io/api/v1/calendar/economic?from=2026-07-22&token=SUPERSECRET123"
+    )
+    out = scrub_secret_params(msg)
+    assert "SUPERSECRET123" not in out
+    assert "token=***" in out
+    assert "403 Client Error" in out  # diagnostics survive
+    assert "calendar/economic" in out
+
+
+def test_scrub_secret_params_covers_apikey_variants_and_plain_text():
+    out = scrub_secret_params("boom /quote?symbol=AAPL&apikey=AAA api_key=BBB&x=1 key=CCC")
+    for secret in ("AAA", "BBB", "CCC"):
+        assert secret not in out
+    assert "symbol=AAPL" in out
+    assert scrub_secret_params("no secrets here") == "no secrets here"

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from datetime import UTC, datetime, timedelta
 
 from apps.market import cache
 from apps.market.models import OptionChainSnapshot
@@ -73,26 +74,34 @@ def fetch_chain(
     ticker: str,
     *,
     strikes_around_atm: int = 10,
+    within_days: int = 60,
 ) -> dict:
     """Fetch + cache + persist an option chain for `ticker`.
 
+    Expirations are bounded to the next `within_days` days — an unbounded
+    request returns EVERY listed expiration (daily-expiry underlyings store
+    100k+ tokens of chain), while the serializer shows the 2 nearest and the
+    analytics read a term structure this window still covers.
     On cache miss: call Schwab, normalize, persist OptionChainSnapshot, return payload.
     On cache hit: return cached payload (no DB write).
     """
     ticker = normalize_symbol(ticker)
     # Short cache-key fingerprint (not a security digest) — sha256 truncated.
     params_hash = hashlib.sha256(
-        json.dumps({"k": strikes_around_atm}, sort_keys=True).encode(),
+        json.dumps({"k": strikes_around_atm, "d": within_days}, sort_keys=True).encode(),
     ).hexdigest()[:8]
     cache_key = f"market:chain:{ticker}:{params_hash}"
 
     def _fetch_and_persist() -> dict:
         client = get_schwab_client()
+        today = datetime.now(UTC).date()
         resp = client.get_option_chain(
             symbol=ticker,
             contract_type=client.Options.ContractType.ALL,
             strike_count=strikes_around_atm * 2,
             include_underlying_quote=True,
+            from_date=today,
+            to_date=today + timedelta(days=within_days),
         )
         payload = _normalize_chain(schwab_json(resp))
         payload["ticker"] = ticker

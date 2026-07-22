@@ -38,6 +38,21 @@ def _last(quotes: dict, sym: str):
     return quotes.get(sym, {}).get("last")
 
 
+def _internals(quotes: dict) -> dict:
+    """A/D internals, dropped wholesale while they're still warm-up placeholders.
+
+    Before ~9:30 ET Schwab quotes the indices as near-zero values ($ADVN=8,
+    $DECN=0, $TRIN=0.0) — passing those through reads as real breadth to the
+    AI. A populated NYSE tape has thousands of advancing+declining issues, so
+    a tiny A/D sum means "not yet populated", not "quiet market"."""
+    internals = {sym: v for sym in BREADTH if (v := _last(quotes, sym)) is not None}
+    advn = internals.get("$ADVN") or 0
+    decn = internals.get("$DECN") or 0
+    if advn + decn < 100:
+        return {}
+    return internals
+
+
 def _fetch(primary: str | None = None) -> dict:
     from apps.market.services import intel
 
@@ -55,7 +70,7 @@ def _fetch(primary: str | None = None) -> dict:
         "qqq_last": _last(quotes, "QQQ"),
         "vix_last": _last(quotes, "$VIX"),
         "sectors": {etf: _last(quotes, etf) for etf in SECTOR_ETFS},
-        "breadth": {sym: v for sym in BREADTH if (v := _last(quotes, sym)) is not None},
+        "breadth": _internals(quotes),
         "relative_strength": rs,
         "sector_rotation": rotation,
     }

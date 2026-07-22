@@ -16,6 +16,8 @@ from datetime import UTC, datetime
 import requests  # type: ignore[import-untyped]
 
 from apps.market import cache
+from apps.market.services.safe_log import safe_err
+from apps.market.symbols import is_equity_like
 from apps.secrets.credentials import decrypt_token
 
 log = logging.getLogger(__name__)
@@ -89,6 +91,11 @@ def fetch_fundamentals(ticker: str) -> dict:
     if is_mock_mode():
         return _canned_fundamentals(ticker)
 
+    if not is_equity_like(ticker):
+        # Futures roots / cash indices have no company fundamentals; bare "ES"
+        # would resolve to Eversource Energy on Finnhub.
+        return {}
+
     api_key = _finnhub_api_key()
     if not api_key:
         log.info("market.fundamentals: no credential configured, skipping fetch")
@@ -108,7 +115,8 @@ def fetch_fundamentals(ticker: str) -> dict:
             fetcher=lambda: _finnhub_get("/stock/profile2", {"symbol": ticker}, api_key),
         )
     except Exception as exc:
-        log.warning("market.fundamentals.fetch_failed %s: %s", ticker, exc)
+        # safe_err: the exception string embeds the request URL incl. the API key.
+        log.warning("market.fundamentals.fetch_failed %s: %s", ticker, safe_err(exc))
         return {}
 
     normalized = _normalize(ticker, metric_body, profile_body)

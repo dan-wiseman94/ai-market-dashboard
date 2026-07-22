@@ -32,9 +32,13 @@ _METHOD_BY_TIMEFRAME = {
 # the fixed bar-count behavior.
 INTRADAY_TIMEFRAMES = frozenset({"1m", "5m", "15m", "1h"})
 
-# A 1m request keeps the current session at 1m and coarsens the older part of the
-# 24h window to this (24h of 1m extended-hours bars is too many).
+# A 1m request keeps only the most recent _FINE_WINDOW of the 24h window at 1m
+# and coarsens everything older to this. Capping by recency (not "the current
+# session") bounds the bar count for 23-hour futures sessions, premarket
+# captures (where the "current" session is yesterday's, in full), and weekends —
+# worst case ≈ 240 1m + ~240 5m bars, in line with _ALT_24H_LIMIT["1m"].
 _COARSE_TIMEFRAME = "5m"
+_FINE_WINDOW = timedelta(hours=4)
 
 # Free-provider fallback is count-based and single-resolution; size ~24h per timeframe.
 _ALT_24H_LIMIT = {"1m": 480, "5m": 288, "15m": 96, "1h": 48}
@@ -110,9 +114,9 @@ def _union_window(
 def fetch_ohlc_24h(ticker: str, *, timeframe: str) -> list[dict]:
     """Intraday OHLC over a rolling 24h window, never thinner than the current
     session (start = min(now-24h, session_open); end = now), extended hours
-    included. A 1m request keeps the current session at 1m and coarsens the older
-    portion of the window to 5m. Use this for snapshot capture; ``fetch_ohlc``
-    (fixed count) stays the path for charts and tools.
+    included. A 1m request keeps the most recent ``_FINE_WINDOW`` at 1m and
+    coarsens the older portion of the window to 5m. Use this for snapshot
+    capture; ``fetch_ohlc`` (fixed count) stays the path for charts and tools.
     """
     if timeframe not in _METHOD_BY_TIMEFRAME:
         raise ValueError(f"Unsupported timeframe: {timeframe}")
@@ -161,16 +165,19 @@ def _fetch_24h_from_schwab(ticker: str, timeframe: str) -> list[dict]:
     if window is None:
         return []
     start_dt, end_dt, session_open = window
-    if timeframe != "1m" or session_open <= start_dt:
-        # Non-1m, or no older portion (weekend / pre-market): single resolution.
+    if timeframe != "1m":
         return _fetch_window_from_schwab(ticker, timeframe, start_dt, end_dt)
-    # 1m request: coarsen the pre-session portion to 5m, keep the current session at 1m.
+    # 1m request: keep a fine tail of at most _FINE_WINDOW at 1m (never starting
+    # before the session open snaps it wider) and coarsen everything older to 5m.
+    fine_start = max(start_dt, session_open, end_dt - _FINE_WINDOW)
+    if fine_start <= start_dt:
+        return _fetch_window_from_schwab(ticker, "1m", start_dt, end_dt)
     older = [
         b
-        for b in _fetch_window_from_schwab(ticker, _COARSE_TIMEFRAME, start_dt, session_open)
-        if datetime.fromisoformat(b["ts"]) < session_open  # drop the boundary bar (belongs to 1m)
+        for b in _fetch_window_from_schwab(ticker, _COARSE_TIMEFRAME, start_dt, fine_start)
+        if datetime.fromisoformat(b["ts"]) < fine_start  # drop the boundary bar (belongs to 1m)
     ]
-    recent = _fetch_window_from_schwab(ticker, "1m", session_open, end_dt)
+    recent = _fetch_window_from_schwab(ticker, "1m", fine_start, end_dt)
     return older + recent
 
 

@@ -9,6 +9,7 @@ import requests  # type: ignore[import-untyped]
 
 from apps.market import cache
 from apps.market.models import NewsItem
+from apps.market.symbols import is_equity_like
 from apps.secrets.credentials import decrypt_token
 
 log = logging.getLogger(__name__)
@@ -103,7 +104,10 @@ def fetch_news(
     start = (now - timedelta(hours=lookback_hours)).date()
     aggregated: list[dict] = []
 
-    for ticker in [t.upper() for t in tickers if t]:
+    # Equity-like only: Finnhub company-news for a bare futures root pulls an
+    # unrelated equity's headlines ("ES" is Eversource). The general feed below
+    # still covers market-wide context for futures/index watchlists.
+    for ticker in [t.upper() for t in tickers if is_equity_like(t)]:
         cache_key = f"market:news:{ticker}:{lookback_hours}"
         items = cache.get_or_fetch(
             cache_key,

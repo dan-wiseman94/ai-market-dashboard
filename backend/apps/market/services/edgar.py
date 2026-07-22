@@ -16,11 +16,13 @@ from __future__ import annotations
 
 import contextlib
 import logging
+from datetime import UTC, datetime, timedelta
 
 import requests  # type: ignore[import-untyped]
 from django.conf import settings
 
 from apps.market import cache
+from apps.market.symbols import is_equity_like
 
 log = logging.getLogger(__name__)
 
@@ -157,6 +159,11 @@ def _build_filing_url(cik: int, accession: str, primary_doc: str) -> str:
     return f"https://www.sec.gov/Archives/edgar/data/{cik}/{acc_nodash}/{primary_doc}"
 
 
+def _min_filed(max_age_days: int) -> str:
+    """ISO date floor for the recency filter (ISO strings compare lexicographically)."""
+    return (datetime.now(UTC) - timedelta(days=max_age_days)).date().isoformat()
+
+
 def _normalize_filings(
     company_name: str,
     cik: int,
@@ -164,6 +171,7 @@ def _normalize_filings(
     *,
     forms: tuple[str, ...],
     limit: int,
+    min_filed: str = "",
 ) -> list[dict]:
     """Extract and filter filings from a EDGAR submissions payload."""
     recent = (submissions.get("filings") or {}).get("recent") or {}
@@ -181,6 +189,8 @@ def _normalize_filings(
     for i in range(length):
         form = form_list[i]
         if form not in forms:
+            continue
+        if min_filed and filed_list[i] < min_filed:
             continue
         accession = acc_list[i]
         primary_doc = doc_list[i]
@@ -207,6 +217,7 @@ def _normalize_insider(
     submissions: dict,
     *,
     limit: int,
+    min_filed: str = "",
 ) -> list[dict]:
     """Extract Form 4 filings from a EDGAR submissions payload."""
     recent = (submissions.get("filings") or {}).get("recent") or {}
@@ -220,6 +231,8 @@ def _normalize_insider(
     results: list[dict] = []
     for i in range(length):
         if form_list[i] != "4":
+            continue
+        if min_filed and filed_list[i] < min_filed:
             continue
         accession = acc_list[i]
         primary_doc = doc_list[i]
@@ -248,12 +261,15 @@ def fetch_filings(
     *,
     forms: tuple[str, ...] = ("10-K", "10-Q", "8-K"),
     limit: int = 10,
+    max_age_days: int = 548,
 ) -> list[dict]:
     """Return the `limit` most-recent filings (newest-first) matching `forms`.
 
     Each item: {"form", "filed", "report_date", "accession", "title", "url"}.
-    Returns [] for an unknown ticker, credential-less fetch, or any network error.
-    Never raises.
+    Filings older than `max_age_days` (default ~18 months — keeps the latest
+    10-K cycle) are dropped: a rarely-filing issuer would otherwise surface
+    decade-old documents as current context. Returns [] for an unknown ticker,
+    credential-less fetch, or any network error. Never raises.
     """
     from apps.core.mocks import is_mock_mode
 
@@ -261,6 +277,9 @@ def fetch_filings(
 
     if is_mock_mode():
         return [f for f in _canned_filings(ticker) if f["form"] in forms][:limit]
+
+    if not is_equity_like(ticker):
+        return []  # futures roots / cash indices are not SEC filers
 
     cik = _cik_for(ticker)
     if cik is None:
@@ -274,13 +293,21 @@ def fetch_filings(
         return []
 
     company_name = submissions.get("name") or ticker
-    return _normalize_filings(company_name, cik, submissions, forms=forms, limit=limit)
+    return _normalize_filings(
+        company_name,
+        cik,
+        submissions,
+        forms=forms,
+        limit=limit,
+        min_filed=_min_filed(max_age_days),
+    )
 
 
-def fetch_insider(ticker: str, *, limit: int = 15) -> list[dict]:
+def fetch_insider(ticker: str, *, limit: int = 15, max_age_days: int = 548) -> list[dict]:
     """Return the `limit` most-recent Form 4 insider-transaction filings (newest-first).
 
-    Each item: {"filed", "accession", "url", "title"}.
+    Each item: {"filed", "accession", "url", "title"}. Form 4s older than
+    `max_age_days` are dropped (stale insider activity is noise, not signal).
     Returns [] for an unknown ticker or any network error. Never raises.
     """
     from apps.core.mocks import is_mock_mode
@@ -289,6 +316,9 @@ def fetch_insider(ticker: str, *, limit: int = 15) -> list[dict]:
 
     if is_mock_mode():
         return _canned_insider(ticker)[:limit]
+
+    if not is_equity_like(ticker):
+        return []  # futures roots / cash indices are not SEC filers
 
     cik = _cik_for(ticker)
     if cik is None:
@@ -302,4 +332,6 @@ def fetch_insider(ticker: str, *, limit: int = 15) -> list[dict]:
         return []
 
     company_name = submissions.get("name") or ticker
-    return _normalize_insider(company_name, cik, submissions, limit=limit)
+    return _normalize_insider(
+        company_name, cik, submissions, limit=limit, min_filed=_min_filed(max_age_days)
+    )

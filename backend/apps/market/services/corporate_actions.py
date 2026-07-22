@@ -16,6 +16,7 @@ from django.utils import timezone
 
 from apps.market import cache
 from apps.market.models import CorporateAction
+from apps.market.services.safe_log import safe_err
 from apps.secrets.credentials import decrypt_token
 
 log = logging.getLogger(__name__)
@@ -209,7 +210,9 @@ def corporate_actions_for(
             fetch_splits([ticker])
             fetch_dividends([ticker])
         except Exception as exc:  # network / parse — degrade to stored
-            log.warning("market.corporate_actions.ondemand_fill_failed %s: %s", ticker, exc)
+            log.warning(
+                "market.corporate_actions.ondemand_fill_failed %s: %s", ticker, safe_err(exc)
+            )
 
     qs = CorporateAction.objects.filter(
         ticker=ticker, ex_date__gt=start.date(), ex_date__lte=end.date()
