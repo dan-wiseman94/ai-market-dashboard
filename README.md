@@ -270,6 +270,45 @@ db        Postgres 17                             :5432
 frontend  Vite dev server (React + TS)            :5173
 ```
 
+How they connect — the browser talks only to Vite; long-running work (captures, AI runs, scheduled observers) executes in the Celery worker and streams back to the UI over Redis-backed Channels:
+
+```mermaid
+flowchart LR
+    browser(["Browser"])
+
+    subgraph stack["Docker Compose — binds 127.0.0.1 only"]
+        frontend["frontend<br/>Vite dev server · :5173"]
+        tlsproxy["tls-proxy · :8000 HTTPS<br/>Caddy — dev profile only"]
+        web["web<br/>Django + DRF + Channels<br/>Daphne ASGI · :8000"]
+        worker["worker<br/>Celery worker<br/>+ headless Chromium"]
+        beat["beat<br/>Celery beat<br/>DatabaseScheduler"]
+        redis[("redis<br/>broker · Channels layer · cache")]
+        db[("db<br/>Postgres 17 + pgvector")]
+        vol[/"/data volume<br/>chart images · secret salt · backups"/]
+    end
+
+    subgraph ext["External APIs"]
+        ai["AI providers<br/>Anthropic · OpenAI · local endpoint"]
+        market["Market data<br/>Schwab · Alpaca · Tiingo · Polygon · Tradier<br/>FRED · SEC EDGAR · Marketaux · US Treasury"]
+    end
+
+    browser -->|"HTTP + WS"| frontend
+    frontend -->|"proxies /api + /ws"| web
+    browser -.->|"Schwab OAuth callback"| tlsproxy
+    tlsproxy -.-> web
+    web <--> db
+    web <-->|"enqueue tasks · Channels layer"| redis
+    web -->|"live quotes · OAuth exchange"| market
+    beat -->|"due schedules"| redis
+    beat <--> db
+    redis -->|"task queue"| worker
+    worker <--> db
+    worker -->|"stream events → Channels"| redis
+    worker --> ai
+    worker --> market
+    web & worker -.- vol
+```
+
 Backend code lives under `backend/apps/<name>/` (imported as `apps.<name>`) — **15 apps**, grouped into a few clear domains. Every public `/api/<x>/` route is unchanged; several apps now nest absorbed features as subpackages (noted below).
 
 - `core` · health, base consumer, logging, `MOCK_EXTERNAL` flag, `SystemSettings` + `runtime_config()`, and `model_bases.py` (shared `Resolution` / `DirectionalCall` / `TimeStamped` abstract bases)
