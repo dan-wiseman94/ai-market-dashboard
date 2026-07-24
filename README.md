@@ -24,6 +24,92 @@ A single-user desktop dashboard that captures point-in-time **stock-market snaps
 
 ![Ledger costs](ledger-costs.png)
 
+## Architecture at a glance
+
+Six core services in `compose.yaml`, all bound to `127.0.0.1` (the `dev` profile adds a Caddy `tls-proxy` and a Storybook server):
+
+```
+web       Django + DRF + Channels (Daphne ASGI)   :8000
+worker    Celery worker (has chromium for chart renders)
+beat      Celery beat (DatabaseScheduler)
+redis     Broker + Channels layer + cache         :6379
+db        Postgres 17                             :5432
+frontend  Vite dev server (React + TS)            :5173
+```
+
+How they connect — the browser talks only to Vite; long-running work (captures, AI runs, scheduled observers) executes in the Celery worker and streams back to the UI over Redis-backed Channels:
+
+```mermaid
+flowchart LR
+    browser(["Browser"])
+
+    subgraph stack["Docker Compose — binds 127.0.0.1 only"]
+        frontend["frontend<br/>Vite dev server · :5173"]
+        tlsproxy["tls-proxy · :8000 HTTPS<br/>Caddy — dev profile only"]
+        web["web<br/>Django + DRF + Channels<br/>Daphne ASGI · :8000"]
+        worker["worker<br/>Celery worker<br/>+ headless Chromium"]
+        beat["beat<br/>Celery beat<br/>DatabaseScheduler"]
+        redis[("redis<br/>broker · Channels layer · cache")]
+        db[("db<br/>Postgres 17 + pgvector")]
+        vol[/"/data volume<br/>chart images · secret salt · backups"/]
+    end
+
+    subgraph ext["External APIs"]
+        ai["AI providers<br/>Anthropic · OpenAI · local endpoint"]
+        market["Market data<br/>Schwab · Alpaca · Tiingo · Polygon · Tradier<br/>FRED · SEC EDGAR · Marketaux · US Treasury"]
+    end
+
+    browser -->|"HTTP + WS"| frontend
+    frontend -->|"proxies /api + /ws"| web
+    browser -.->|"Schwab OAuth callback"| tlsproxy
+    tlsproxy -.-> web
+    web <--> db
+    web <-->|"enqueue tasks · Channels layer"| redis
+    web -->|"live quotes · OAuth exchange"| market
+    beat -->|"due schedules"| redis
+    beat <--> db
+    redis -->|"task queue"| worker
+    worker <--> db
+    worker -->|"stream events → Channels"| redis
+    worker --> ai
+    worker --> market
+    web & worker -.- vol
+```
+
+Backend code lives under `backend/apps/<name>/` (imported as `apps.<name>`) — **15 apps**, grouped into a few clear domains. Every public `/api/<x>/` route is unchanged; several apps now nest absorbed features as subpackages (noted below).
+
+- `core` · health, base consumer, logging, `MOCK_EXTERNAL` flag, `SystemSettings` + `runtime_config()`, and `model_bases.py` (shared `Resolution` / `DirectionalCall` / `TimeStamped` abstract bases)
+- `secrets` · encrypted credentials (Schwab OAuth, provider API keys, free data-source keys) + cost caps
+- `market` · Schwab client + free fallback providers (Alpaca / Tiingo / Twelve Data / Polygon / Tradier / FRED / SEC EDGAR / Marketaux / US Treasury), quotes/OHLC/chain/news, the forward-events calendar, shared forward-return helpers (`returns.py`)
+- `profiles` · trading-style profiles + agent presets
+- `snapshots` · capture orchestration + token budget
+- `threads` · messages, streaming consumer, multi-provider compare, stop, Decision Coach context (`coach.py`), and the Anthropic **Files** API proxy (`UserFile`, file attach)
+- `ai` · provider abstraction (Claude / OpenAI / Local), router, catalog, tool/thinking/memory/citations support + capability-gap detection, and **cost** reporting (per-provider / per-model / per-thread aggregation, caps, CSV export, snapshot drill-down)
+- `observer` · the automated-monitoring domain — scheduled AI runs via Celery beat (structured / diff / batch modes) + notifications + timeline, plus subpackages `observer/triggers` (event-trigger evaluator + condition DSL + firings + backtest), `observer/predictions` (the AI's own auto-extracted, auto-resolving forecasts + invalidation alerts — the Prediction Ledger), and `observer/briefing` (daily Morning Briefing assembly + AI synthesis)
+- `analytics` · on-demand aggregations (leaderboard, cost-per-insight, trigger heatmap, observer timeline, unusual options, thesis + AI + trader calibration, setup cohorts), the `GET /api/dashboard/` command-centre rollup (fault-isolated per section), and the offline, look-ahead-safe **eval/calibration** harness (`EvalRun`) replaying candidate models against frozen snapshots
+- `backups` · scheduled `pg_dump` + rotation
+- `export` · async zip bundles (threads, snapshots, observations, triggers, profiles, watchlists)
+- `thesis` · the decision loop — theses + post-mortems + decision journal (the "second brain"), plus manual **position** tracking with realized / unrealized P&L (thesis-linked) and recurring post-mortem **lessons** distilled into the Coach
+- `recall` · semantic + keyword search across all documents; pgvector embeddings index (feeds the Decision Coach)
+- `book` · daily whole-book risk X-ray: concentration, correlation clusters, dollar VaR + factor-beta
+- `strategy` · the Strategist + COVERAGE, with subpackages `strategy/coverage` (living, version-controlled per-ticker "house view" the AI revises with a reason), `strategy/regime` (append-only market-regime readings; latest row = current), `strategy/warroom` (multi-agent "courtroom" debate that spins up a thread and streams the personas), and `strategy/desk` (agentic anomaly-sweep desk that can originate a finding into a thesis)
+
+WebSocket groups: `user.<id>.notifications`, `thread.<id>`, `snapshot.<id>`. See design spec §3.3.
+
+## Layout
+
+```
+backend/             Django project (config/) + apps/
+frontend/            Vite + React + TypeScript
+docs/superpowers/
+  specs/             Design docs
+  plans/             Per-milestone implementation plans
+e2e/                 Six-lane end-to-end suite (ui/api/ws/visual/a11y/perf)
+compose.yaml         Dev stack
+compose.prod.yaml    Prod overlay (static frontend via Whitenoise)
+compose.e2e.yaml     E2E harness (MOCK_EXTERNAL=true)
+```
+
 ## Status
 
 **Feature-complete.** The dashboard spans market data + snapshots, streaming AI threads with multi-provider compare, scheduled observers + event triggers, a second brain (theses, post-mortems, decision journal), analytics + calibration scorecards, the **Prediction Ledger**, the **Resident Analyst** (autonomous investigation, calibration-weighted routing, COVERAGE, The Mirror), and the **Strategist** — an append-only market-regime read, a daily whole-book risk X-ray, a multi-agent war-room debate, and an agentic anomaly-sweep desk.
@@ -257,91 +343,6 @@ docker compose exec web pytest apps/<app>/tests/test_<x>.py::<name> -v
 
 `ty` is **advisory, not a gate** — it emits ~900 false-positive `unresolved-attribute` diagnostics on Django `.objects`/FK descriptors it can't model, so CI runs it `continue-on-error`. A non-zero `ty` (or `make lint` failing only at the `ty` step) is not a build failure.
 
-## Architecture at a glance
-
-Six core services in `compose.yaml`, all bound to `127.0.0.1` (the `dev` profile adds a Caddy `tls-proxy` and a Storybook server):
-
-```
-web       Django + DRF + Channels (Daphne ASGI)   :8000
-worker    Celery worker (has chromium for chart renders)
-beat      Celery beat (DatabaseScheduler)
-redis     Broker + Channels layer + cache         :6379
-db        Postgres 17                             :5432
-frontend  Vite dev server (React + TS)            :5173
-```
-
-How they connect — the browser talks only to Vite; long-running work (captures, AI runs, scheduled observers) executes in the Celery worker and streams back to the UI over Redis-backed Channels:
-
-```mermaid
-flowchart LR
-    browser(["Browser"])
-
-    subgraph stack["Docker Compose — binds 127.0.0.1 only"]
-        frontend["frontend<br/>Vite dev server · :5173"]
-        tlsproxy["tls-proxy · :8000 HTTPS<br/>Caddy — dev profile only"]
-        web["web<br/>Django + DRF + Channels<br/>Daphne ASGI · :8000"]
-        worker["worker<br/>Celery worker<br/>+ headless Chromium"]
-        beat["beat<br/>Celery beat<br/>DatabaseScheduler"]
-        redis[("redis<br/>broker · Channels layer · cache")]
-        db[("db<br/>Postgres 17 + pgvector")]
-        vol[/"/data volume<br/>chart images · secret salt · backups"/]
-    end
-
-    subgraph ext["External APIs"]
-        ai["AI providers<br/>Anthropic · OpenAI · local endpoint"]
-        market["Market data<br/>Schwab · Alpaca · Tiingo · Polygon · Tradier<br/>FRED · SEC EDGAR · Marketaux · US Treasury"]
-    end
-
-    browser -->|"HTTP + WS"| frontend
-    frontend -->|"proxies /api + /ws"| web
-    browser -.->|"Schwab OAuth callback"| tlsproxy
-    tlsproxy -.-> web
-    web <--> db
-    web <-->|"enqueue tasks · Channels layer"| redis
-    web -->|"live quotes · OAuth exchange"| market
-    beat -->|"due schedules"| redis
-    beat <--> db
-    redis -->|"task queue"| worker
-    worker <--> db
-    worker -->|"stream events → Channels"| redis
-    worker --> ai
-    worker --> market
-    web & worker -.- vol
-```
-
-Backend code lives under `backend/apps/<name>/` (imported as `apps.<name>`) — **15 apps**, grouped into a few clear domains. Every public `/api/<x>/` route is unchanged; several apps now nest absorbed features as subpackages (noted below).
-
-- `core` · health, base consumer, logging, `MOCK_EXTERNAL` flag, `SystemSettings` + `runtime_config()`, and `model_bases.py` (shared `Resolution` / `DirectionalCall` / `TimeStamped` abstract bases)
-- `secrets` · encrypted credentials (Schwab OAuth, provider API keys, free data-source keys) + cost caps
-- `market` · Schwab client + free fallback providers (Alpaca / Tiingo / Twelve Data / Polygon / Tradier / FRED / SEC EDGAR / Marketaux / US Treasury), quotes/OHLC/chain/news, the forward-events calendar, shared forward-return helpers (`returns.py`)
-- `profiles` · trading-style profiles + agent presets
-- `snapshots` · capture orchestration + token budget
-- `threads` · messages, streaming consumer, multi-provider compare, stop, Decision Coach context (`coach.py`), and the Anthropic **Files** API proxy (`UserFile`, file attach)
-- `ai` · provider abstraction (Claude / OpenAI / Local), router, catalog, tool/thinking/memory/citations support + capability-gap detection, and **cost** reporting (per-provider / per-model / per-thread aggregation, caps, CSV export, snapshot drill-down)
-- `observer` · the automated-monitoring domain — scheduled AI runs via Celery beat (structured / diff / batch modes) + notifications + timeline, plus subpackages `observer/triggers` (event-trigger evaluator + condition DSL + firings + backtest), `observer/predictions` (the AI's own auto-extracted, auto-resolving forecasts + invalidation alerts — the Prediction Ledger), and `observer/briefing` (daily Morning Briefing assembly + AI synthesis)
-- `analytics` · on-demand aggregations (leaderboard, cost-per-insight, trigger heatmap, observer timeline, unusual options, thesis + AI + trader calibration, setup cohorts), the `GET /api/dashboard/` command-centre rollup (fault-isolated per section), and the offline, look-ahead-safe **eval/calibration** harness (`EvalRun`) replaying candidate models against frozen snapshots
-- `backups` · scheduled `pg_dump` + rotation
-- `export` · async zip bundles (threads, snapshots, observations, triggers, profiles, watchlists)
-- `thesis` · the decision loop — theses + post-mortems + decision journal (the "second brain"), plus manual **position** tracking with realized / unrealized P&L (thesis-linked) and recurring post-mortem **lessons** distilled into the Coach
-- `recall` · semantic + keyword search across all documents; pgvector embeddings index (feeds the Decision Coach)
-- `book` · daily whole-book risk X-ray: concentration, correlation clusters, dollar VaR + factor-beta
-- `strategy` · the Strategist + COVERAGE, with subpackages `strategy/coverage` (living, version-controlled per-ticker "house view" the AI revises with a reason), `strategy/regime` (append-only market-regime readings; latest row = current), `strategy/warroom` (multi-agent "courtroom" debate that spins up a thread and streams the personas), and `strategy/desk` (agentic anomaly-sweep desk that can originate a finding into a thesis)
-
-WebSocket groups: `user.<id>.notifications`, `thread.<id>`, `snapshot.<id>`. See design spec §3.3.
-
-## Layout
-
-```
-backend/             Django project (config/) + apps/
-frontend/            Vite + React + TypeScript
-docs/superpowers/
-  specs/             Design docs
-  plans/             Per-milestone implementation plans
-e2e/                 Six-lane end-to-end suite (ui/api/ws/visual/a11y/perf)
-compose.yaml         Dev stack
-compose.prod.yaml    Prod overlay (static frontend via Whitenoise)
-compose.e2e.yaml     E2E harness (MOCK_EXTERNAL=true)
-```
 
 ## Production mode
 
