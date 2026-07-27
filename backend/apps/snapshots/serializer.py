@@ -249,21 +249,44 @@ def _ohlc_gap_note(bars: list[dict]) -> str:
     return f"_(history gap: largest hole between {before} and {after})_"
 
 
+def _ohlc_csv(bars: list[dict], ticker: str) -> str:
+    """Bars as a fenced CSV block. Cash indices ($SPX, $TNX, ...) don't trade —
+    providers truthfully report volume 0 on every bar — so an all-zero/absent
+    volume series drops the column (with a note) rather than shipping rows of
+    zeros the AI reads as a broken feed."""
+    has_volume = any(b.get("volume") for b in bars)
+    if has_volume:
+        csv_lines = ["ts,open,high,low,close,volume"]
+        for b in bars:
+            csv_lines.append(
+                f"{b['ts']},{b['open']},{b['high']},{b['low']},{b['close']},{b.get('volume')}"
+            )
+    else:
+        csv_lines = ["ts,open,high,low,close"]
+        for b in bars:
+            csv_lines.append(f"{b['ts']},{b['open']},{b['high']},{b['low']},{b['close']}")
+    result = "```csv\n" + "\n".join(csv_lines) + "\n```"
+    if not has_volume:
+        result += (
+            f"\n_({ticker} reports no traded volume (cash indices don't trade) — volume "
+            "column omitted; use a liquid proxy ETF for volume confirmation)_"
+        )
+    return result
+
+
 def _render_ohlc(payload: dict) -> str:
     bars = payload.get("bars", [])
     if not bars:
         return "## OHLC\n_(empty)_"
-    header = f"## OHLC ({payload.get('ticker', '?')} @ {payload.get('timeframe', '?')})"
+    ticker = payload.get("ticker", "?")
+    header = f"## OHLC ({ticker} @ {payload.get('timeframe', '?')})"
     if payload.get("window") == "24h":
         header += (
             " — last 24h (1m recent, 5m earlier)"
             if payload.get("coarse_timeframe")
             else " — last 24h"
         )
-    csv_lines = ["ts,open,high,low,close,volume"]
-    for b in bars:
-        csv_lines.append(f"{b['ts']},{b['open']},{b['high']},{b['low']},{b['close']},{b['volume']}")
-    result = f"{header}\n```csv\n" + "\n".join(csv_lines) + "\n```"
+    result = f"{header}\n" + _ohlc_csv(bars, ticker)
     truncated_from = payload.get("truncated_from")
     if truncated_from:
         result += (
@@ -273,6 +296,13 @@ def _render_ohlc(payload: dict) -> str:
     gap_note = _ohlc_gap_note(bars)
     if gap_note:
         result += f"\n{gap_note}"
+    for wl_ticker, wl_bars in (payload.get("watchlist_daily") or {}).items():
+        if wl_bars:
+            result += f"\n\n### {wl_ticker} — daily ({len(wl_bars)} bars)\n" + _ohlc_csv(
+                wl_bars, wl_ticker
+            )
+    if payload.get("watchlist_daily_omitted"):
+        result += "\n\n_(per-ticker watchlist daily history omitted to fit the token budget)_"
     return result
 
 
@@ -292,12 +322,22 @@ def _shrink_ohlc_to_budget(
     path the AI actually reasons over.
     """
     bars = ohlc_payload.get("bars") or []
-    if len(bars) <= _OHLC_MIN_BARS:
-        return rendered
-
     sizes = {k: estimate_tokens(v, provider=provider, model=model) for k, v in rendered.items()}
     total = sum(sizes.values())
     if total <= max_tokens:
+        return rendered
+
+    # Over budget: sacrifice the watchlist-daily enrichment before the primary
+    # series loses a single bar — the intraday path is what the AI reasons over.
+    if ohlc_payload.get("watchlist_daily"):
+        ohlc_payload = {**ohlc_payload, "watchlist_daily": {}, "watchlist_daily_omitted": True}
+        rendered = {**rendered, "ohlc": _render_ohlc(ohlc_payload)}
+        sizes["ohlc"] = estimate_tokens(rendered["ohlc"], provider=provider, model=model)
+        total = sum(sizes.values())
+        if total <= max_tokens:
+            return rendered
+
+    if len(bars) <= _OHLC_MIN_BARS:
         return rendered
 
     headroom = max_tokens - (total - sizes["ohlc"])
@@ -650,6 +690,48 @@ def _render_fundamentals(payload: dict) -> str:
     return "\n".join(lines)
 
 
+_LIVE_YIELD_TENOR_ORDER = ("13W", "2Y", "5Y", "10Y", "30Y")
+
+
+def _render_macro(payload: dict) -> str:
+    """FRED series table with as-of dates plus best-effort live Treasury yields.
+
+    The lag note is load-bearing: FRED daily series (DGS*) publish ~1 business
+    day behind (weekends widen it), and without the note the AI reads the as-of
+    dates as a stale/broken feed instead of normal source lag.
+    """
+    if not isinstance(payload, dict):
+        return "## Macro\n_(empty)_"
+    series = payload.get("series")
+    live = payload.get("live_yields") or {}
+    if not isinstance(series, dict):
+        # Legacy flat payloads: {series_id: {label, value, prev, change, date}}.
+        series = {k: v for k, v in payload.items() if isinstance(v, dict) and "label" in v}
+        live = {}
+    if not series and not live:
+        return "## Macro\n_(empty)_"
+    lines = ["## Macro"]
+    if series:
+        lines += ["| Series | Value | Prev | Δ | As of |", "|---|---:|---:|---:|---|"]
+        for s in series.values():
+            lines.append(
+                f"| {s.get('label')} | {_fmt(s.get('value'))} | {_fmt(s.get('prev'))} | "
+                f"{_fmt(s.get('change'))} | {s.get('date') or '—'} |"
+            )
+        lines.append(
+            "_(FRED daily series publish with a ~1-business-day lag (weekends widen it) — "
+            "'As of' shows the latest observation the source has released, not a stale feed)_"
+        )
+    if live:
+        lines += ["", "**Live Treasury yields** (CBOE yield indices at capture time):"]
+        lines += ["| Tenor | Yield % |", "|---|---:|"]
+        for tenor in _LIVE_YIELD_TENOR_ORDER:
+            y = live.get(tenor)
+            if y:
+                lines.append(f"| {tenor} | {_fmt(y.get('yield_pct'))} |")
+    return "\n".join(lines)
+
+
 _RENDERERS = {
     "quotes": _render_quotes,
     "ohlc": _render_ohlc,
@@ -661,5 +743,6 @@ _RENDERERS = {
     "events": _render_events,
     "overnight": _render_overnight,
     "fundamentals": _render_fundamentals,
+    "macro": _render_macro,
     "notes": lambda _p: "",
 }
