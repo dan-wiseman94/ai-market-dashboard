@@ -94,7 +94,11 @@ function DataSourceCard({ ds, onChanged }: { ds: DataSource; onChanged: () => vo
                 value={values[f] ?? ""}
                 onChange={(e) => setValues((v) => ({ ...v, [f]: e.target.value }))}
                 placeholder={
-                  ds.status.fields_present.includes(f) ? "•••••••• (unchanged)" : "paste your key"
+                  (ds.status.env_fields ?? []).includes(f)
+                    ? "from .env — paste to override"
+                    : ds.status.fields_present.includes(f)
+                      ? "•••••••• (unchanged)"
+                      : "paste your key"
                 }
                 className="ledger-input w-full py-2 font-mono text-[12px]"
               />
@@ -114,14 +118,18 @@ function DataSourceCard({ ds, onChanged }: { ds: DataSource; onChanged: () => vo
                 >
                   Test key
                 </button>
-                <button
-                  type="button"
-                  onClick={clear}
-                  disabled={busy}
-                  className="text-[12px] text-ink-400 hover:text-ink-200"
-                >
-                  Clear
-                </button>
+                {/* Clear deletes the saved DB row only — hide it when every field comes
+                    from .env, where it would be a confusing no-op. */}
+                {ds.status.fields_present.some((f) => !(ds.status.env_fields ?? []).includes(f)) && (
+                  <button
+                    type="button"
+                    onClick={clear}
+                    disabled={busy}
+                    className="text-[12px] text-ink-400 hover:text-ink-200"
+                  >
+                    Clear
+                  </button>
+                )}
               </>
             )}
             {testResult && (

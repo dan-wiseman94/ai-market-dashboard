@@ -172,3 +172,62 @@ def test_put_succeeds_without_csrf_token():
     )
     assert r.status_code == 200, r.content
     assert ApiCredential.objects.get(provider="fred").token["api_key"] == "abc"
+
+
+# --- .env fallback surfaces in status + Test key ---------------------------------------
+# DB rows die with `docker compose down -v`; DATA_SOURCE_ENV_KEYS-backed keys survive and
+# must read as configured everywhere a DB-saved key would.
+
+
+@pytest.mark.django_db
+def test_list_reports_env_configured(api, settings):
+    settings.DATA_SOURCE_ENV_KEYS = {"finnhub": {"api_key": "env-k"}}
+    r = api.get("/api/schwab/data-sources/")
+    assert r.status_code == 200
+    by_provider = {d["provider"]: d for d in r.json()["data_sources"]}
+    assert by_provider["finnhub"]["status"] == {
+        "configured": True,
+        "fields_present": ["api_key"],
+        "env_fields": ["api_key"],
+    }
+
+
+@pytest.mark.django_db
+def test_list_never_exposes_env_secret(api, settings):
+    settings.DATA_SOURCE_ENV_KEYS = {"finnhub": {"api_key": "ENVSUPERSECRET"}}
+    r = api.get("/api/schwab/data-sources/")
+    assert "ENVSUPERSECRET" not in r.content.decode()
+
+
+@pytest.mark.django_db
+def test_status_db_value_shadows_env_field(api, settings):
+    """A field satisfied by the DB is not an env_field — env only backs the gaps."""
+    settings.DATA_SOURCE_ENV_KEYS = {"alpaca": {"api_key": "env-k", "api_secret": "env-s"}}
+    ApiCredential.objects.create(provider="alpaca", token={"api_key": "db-k"})
+    r = api.get("/api/schwab/data-sources/")
+    status = {d["provider"]: d for d in r.json()["data_sources"]}["alpaca"]["status"]
+    assert status == {
+        "configured": True,
+        "fields_present": ["api_key", "api_secret"],
+        "env_fields": ["api_secret"],
+    }
+
+
+@pytest.mark.django_db
+def test_test_credential_probes_env_key(settings):
+    settings.DATA_SOURCE_ENV_KEYS = {"fred": {"api_key": "env-k"}}
+    from apps.secrets import data_source_test as mod
+
+    seen = {}
+
+    def _probe(t):
+        seen.update(t)
+        return SimpleNamespace(status_code=200)
+
+    with (
+        patch("apps.core.mocks.is_mock_mode", return_value=False),
+        patch.dict(mod._PROBES, {"fred": _probe}),
+    ):
+        result = mod.test_credential("fred")
+    assert result["ok"] is True
+    assert seen == {"api_key": "env-k"}
