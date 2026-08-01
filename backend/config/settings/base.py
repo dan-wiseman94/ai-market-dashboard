@@ -206,6 +206,24 @@ SCHWAB_CALLBACK_URL = env(
 SCHWAB_AUTHORIZE_URL = "https://api.schwabapi.com/v1/oauth/authorize"
 SCHWAB_TOKEN_URL = "https://api.schwabapi.com/v1/oauth/token"  # noqa: S105 (URL, not a secret)
 
+# Env fallback for free data-source API keys (same DB-first/env-fallback contract as the
+# SCHWAB_CLIENT_ID pair above; merge is per-field in apps.secrets.credentials.decrypt_token).
+# Keys saved through Settings → Connections live in Postgres encrypted with the /data Fernet
+# salt — `docker compose down -v` destroys both, while .env survives any stack rebuild.
+DATA_SOURCE_ENV_KEYS = {
+    "alpaca": {
+        "api_key": env("ALPACA_API_KEY", default=""),
+        "api_secret": env("ALPACA_API_SECRET", default=""),
+    },
+    "finnhub": {"api_key": env("FINNHUB_API_KEY", default="")},
+    "tiingo": {"api_key": env("TIINGO_API_KEY", default="")},
+    "twelvedata": {"api_key": env("TWELVEDATA_API_KEY", default="")},
+    "polygon": {"api_key": env("POLYGON_API_KEY", default="")},
+    "tradier": {"api_key": env("TRADIER_API_KEY", default="")},
+    "fred": {"api_key": env("FRED_API_KEY", default="")},
+    "marketaux": {"api_key": env("MARKETAUX_API_KEY", default="")},
+}
+
 # SEC EDGAR requires a descriptive User-Agent ("name email") on every request; this is
 # the keyless identifier the edgar service sends. Override with a real contact in prod.
 SEC_EDGAR_USER_AGENT = env(

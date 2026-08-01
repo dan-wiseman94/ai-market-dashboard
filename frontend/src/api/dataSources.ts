@@ -5,6 +5,8 @@ export type DataSourceAuth = "oauth" | "key" | "key_secret" | "none";
 export interface DataSourceStatus {
   configured: boolean;
   fields_present: string[];
+  /** Subset of fields_present currently supplied by a host .env var rather than a saved key. */
+  env_fields?: string[];
 }
 
 export interface DataSource {
