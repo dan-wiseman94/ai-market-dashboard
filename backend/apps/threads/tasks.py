@@ -18,6 +18,7 @@ from decimal import Decimal
 from typing import Any
 
 from celery import shared_task
+from celery.exceptions import SoftTimeLimitExceeded
 from cryptography.fernet import InvalidToken
 from django.db import transaction
 
@@ -340,6 +341,53 @@ def _make_flush_partial(
     return _flush
 
 
+_SOFT_TIME_LIMIT_ERROR = "Run exceeded the task time limit and was stopped."
+
+
+def _finalize_soft_time_limit(
+    *,
+    thread_id: int,
+    assistant_id: int,
+    provider_name: str,
+    model_id: str,
+    buffer: list[str],
+    counts: dict[str, int],
+    t0: float,
+) -> None:
+    """Terminal cleanup when the Celery soft time limit interrupts a run: fail the
+    still-streaming assistant Message (CAS — never clobbers one the stop endpoint or
+    the normal finalize already flipped), bill the partial usage, and broadcast the
+    error so the UI unblocks before the hard-limit SIGKILL lands."""
+    clear_stop(assistant_id)
+    latency_ms = int((time.perf_counter() - t0) * 1000)
+    updated = Message.objects.filter(id=assistant_id, status="streaming").update(
+        status="failed", error=_SOFT_TIME_LIMIT_ERROR, content={"text": "".join(buffer)}
+    )
+    if not updated:
+        return
+    cost = (
+        cost_usd_for(provider_name, model_id, TokenUsage(**counts))
+        if any(counts.values())
+        else Decimal("0")
+    )
+    AIRun.objects.create(
+        message_id=assistant_id,
+        provider=provider_name,
+        model=model_id,
+        status="failed",
+        error=_SOFT_TIME_LIMIT_ERROR,
+        latency_ms=latency_ms,
+        cost_usd=cost,
+        input_tokens=counts["input_tokens"],
+        output_tokens=counts["output_tokens"],
+        cached_tokens=counts["cached_tokens"],
+    )
+    _broadcast(
+        thread_id,
+        {"event": "error", "message_id": assistant_id, "error": _SOFT_TIME_LIMIT_ERROR},
+    )
+
+
 def _run_ai_on_message(
     *,
     thread_id: int,
@@ -419,150 +467,166 @@ def _run_ai_on_message(
         )
         asyncio.run(drive())
 
-    _run_attempt(provider_name, cfg, req)
+    try:
+        _run_attempt(provider_name, cfg, req)
 
-    # Cross-provider failover: the primary errored BEFORE any token streamed.
-    # Retry once on a configured secondary — never after a token (that would
-    # duplicate the response). Opt-in; _failover_target returns None when off.
-    secondary = _failover_target(provider_name) if (err_container and not buffer) else None
-    if secondary is not None and not should_stop():
-        sec_name, sec_model, sec_cfg = secondary
-        # Log the transition only — not the provider's raw error string, which
-        # could carry sensitive context (CWE-532 / the repo's no-secret-logging rule).
-        log.warning(
-            "ai failover: %s/%s -> %s/%s (primary errored before first token)",
-            provider_name,
-            model_id,
-            sec_name,
-            sec_model,
-        )
-        buffer.clear()
-        # clear() first: a per-round UsageEvent from the failed primary may have
-        # added keys beyond these three (e.g. cache_write_tokens).
-        counts.clear()
-        counts.update({"input_tokens": 0, "output_tokens": 0, "cached_tokens": 0})
-        err_container.clear()
-        tool_events.clear()
-        sec_req = _build_request(
-            thread, user_msg, provider_name=sec_name, supports_tools=sec_cfg.supports_tools
-        )
-        sec_req.model = sec_model
-        _run_attempt(sec_name, sec_cfg, sec_req)
-        provider_name, model_id = sec_name, sec_model
-
-    clear_stop(assistant.id)
-    latency_ms = int((time.perf_counter() - t0) * 1000)
-    err: str | None = err_container[0] if err_container else None
-
-    with transaction.atomic():
-        assistant.refresh_from_db()
-        if assistant.status == "failed" and assistant.error == "cancelled":
-            # Stop endpoint already marked the message; don't overwrite cancellation.
-            AIRun.objects.create(
-                message=assistant,
-                provider=provider_name,
-                model=model_id,
-                status="failed",
-                error="cancelled",
-                latency_ms=latency_ms,
-                input_tokens=counts["input_tokens"],
-                output_tokens=counts["output_tokens"],
+        # Cross-provider failover: the primary errored BEFORE any token streamed.
+        # Retry once on a configured secondary — never after a token (that would
+        # duplicate the response). Opt-in; _failover_target returns None when off.
+        secondary = _failover_target(provider_name) if (err_container and not buffer) else None
+        if secondary is not None and not should_stop():
+            sec_name, sec_model, sec_cfg = secondary
+            # Log the transition only — not the provider's raw error string, which
+            # could carry sensitive context (CWE-532 / the repo's no-secret-logging rule).
+            log.warning(
+                "ai failover: %s/%s -> %s/%s (primary errored before first token)",
+                provider_name,
+                model_id,
+                sec_name,
+                sec_model,
             )
-            return {"ok": False, "error": "cancelled", "message_id": assistant.id}
+            buffer.clear()
+            # clear() first: a per-round UsageEvent from the failed primary may have
+            # added keys beyond these three (e.g. cache_write_tokens).
+            counts.clear()
+            counts.update({"input_tokens": 0, "output_tokens": 0, "cached_tokens": 0})
+            err_container.clear()
+            tool_events.clear()
+            sec_req = _build_request(
+                thread, user_msg, provider_name=sec_name, supports_tools=sec_cfg.supports_tools
+            )
+            sec_req.model = sec_model
+            _run_attempt(sec_name, sec_cfg, sec_req)
+            provider_name, model_id = sec_name, sec_model
 
-        assistant.content = {"text": "".join(buffer)}
-        if err:
-            assistant.status = "failed"
-            assistant.error = err
-            assistant.save()
-            # Bill whatever usage arrived before the error: completed tool rounds
-            # were genuinely charged by the provider (each round re-sends the whole
-            # conversation), so a late-round failure must still count against the
-            # caps. Providers emit a cumulative UsageEvent per completed round.
-            failed_cost = (
+        clear_stop(assistant.id)
+        latency_ms = int((time.perf_counter() - t0) * 1000)
+        err: str | None = err_container[0] if err_container else None
+
+        with transaction.atomic():
+            assistant.refresh_from_db()
+            if assistant.status == "failed" and assistant.error == "cancelled":
+                # Stop endpoint already marked the message; don't overwrite cancellation.
+                AIRun.objects.create(
+                    message=assistant,
+                    provider=provider_name,
+                    model=model_id,
+                    status="failed",
+                    error="cancelled",
+                    latency_ms=latency_ms,
+                    input_tokens=counts["input_tokens"],
+                    output_tokens=counts["output_tokens"],
+                )
+                return {"ok": False, "error": "cancelled", "message_id": assistant.id}
+
+            assistant.content = {"text": "".join(buffer)}
+            if err:
+                assistant.status = "failed"
+                assistant.error = err
+                assistant.save()
+                # Bill whatever usage arrived before the error: completed tool rounds
+                # were genuinely charged by the provider (each round re-sends the whole
+                # conversation), so a late-round failure must still count against the
+                # caps. Providers emit a cumulative UsageEvent per completed round.
+                failed_cost = (
+                    cost_usd_for(provider_name, model_id, TokenUsage(**counts))
+                    if any(counts.values())
+                    else Decimal("0")
+                )
+                AIRun.objects.create(
+                    message=assistant,
+                    provider=provider_name,
+                    model=model_id,
+                    status="failed",
+                    error=err,
+                    latency_ms=latency_ms,
+                    cost_usd=failed_cost,
+                    input_tokens=counts["input_tokens"],
+                    output_tokens=counts["output_tokens"],
+                    cached_tokens=counts["cached_tokens"],
+                )
+                _broadcast(thread_id, {"event": "error", "message_id": assistant.id, "error": err})
+                return {"ok": False, "error": err, "message_id": assistant.id}
+
+            # Finalize ONLY if still streaming (compare-and-set). The stop endpoint
+            # races us — its status write can land after the refresh above, which does
+            # not lock the row. A CAS guarantees we never un-cancel or bill a run the
+            # user stopped: whoever flips status out of "streaming" first wins.
+            finalized = Message.objects.filter(id=assistant.id, status="streaming").update(
+                status="done", content={"text": "".join(buffer)}
+            )
+            _persist_tool_calls(assistant, tool_events)
+            if not finalized:
+                assistant.refresh_from_db()
+                AIRun.objects.create(
+                    message=assistant,
+                    provider=provider_name,
+                    model=model_id,
+                    status="failed",
+                    error=assistant.error or "cancelled",
+                    latency_ms=latency_ms,
+                    input_tokens=counts["input_tokens"],
+                    output_tokens=counts["output_tokens"],
+                )
+                return {
+                    "ok": False,
+                    "error": assistant.error or "cancelled",
+                    "message_id": assistant.id,
+                }
+            assistant.status = "done"
+
+            cost = (
                 cost_usd_for(provider_name, model_id, TokenUsage(**counts))
                 if any(counts.values())
                 else Decimal("0")
             )
+            # Explicit columns (not **counts): counts may carry cache_write_tokens,
+            # which has no AIRun column — its cost is already folded into cost_usd.
             AIRun.objects.create(
                 message=assistant,
                 provider=provider_name,
                 model=model_id,
-                status="failed",
-                error=err,
+                cost_usd=cost,
                 latency_ms=latency_ms,
-                cost_usd=failed_cost,
+                status="done",
                 input_tokens=counts["input_tokens"],
                 output_tokens=counts["output_tokens"],
                 cached_tokens=counts["cached_tokens"],
             )
-            _broadcast(thread_id, {"event": "error", "message_id": assistant.id, "error": err})
-            return {"ok": False, "error": err, "message_id": assistant.id}
-
-        # Finalize ONLY if still streaming (compare-and-set). The stop endpoint
-        # races us — its status write can land after the refresh above, which does
-        # not lock the row. A CAS guarantees we never un-cancel or bill a run the
-        # user stopped: whoever flips status out of "streaming" first wins.
-        finalized = Message.objects.filter(id=assistant.id, status="streaming").update(
-            status="done", content={"text": "".join(buffer)}
-        )
-        _persist_tool_calls(assistant, tool_events)
-        if not finalized:
-            assistant.refresh_from_db()
-            AIRun.objects.create(
-                message=assistant,
-                provider=provider_name,
-                model=model_id,
-                status="failed",
-                error=assistant.error or "cancelled",
-                latency_ms=latency_ms,
-                input_tokens=counts["input_tokens"],
-                output_tokens=counts["output_tokens"],
+            _broadcast(
+                thread_id,
+                {
+                    "event": "message_done",
+                    "message_id": assistant.id,
+                    "cost_usd": str(cost),
+                },
             )
-            return {
-                "ok": False,
-                "error": assistant.error or "cancelled",
-                "message_id": assistant.id,
-            }
-        assistant.status = "done"
-
-        cost = (
-            cost_usd_for(provider_name, model_id, TokenUsage(**counts))
-            if any(counts.values())
-            else Decimal("0")
+            _broadcast(
+                thread_id,
+                {
+                    "event": "cost",
+                    "message_id": assistant.id,
+                    "parent_message_id": parent_message_id,
+                    "cost_usd": str(cost),
+                    "tokens_in": counts["input_tokens"],
+                    "tokens_out": counts["output_tokens"],
+                    "tokens_cached": counts["cached_tokens"],
+                    "duration_ms": latency_ms,
+                },
+            )
+            return {"ok": True, "message_id": assistant.id}
+    except SoftTimeLimitExceeded:
+        # Celery's soft limit (config.celery task_soft_time_limit — "catchable
+        # cleanup") landed mid-run. Write the terminal state NOW — the hard limit
+        # SIGKILLs the worker ~60s later, and acks_late=False (correct: at-most-once
+        # billing) means nothing would ever finalize the stuck "streaming" message.
+        _finalize_soft_time_limit(
+            thread_id=thread_id,
+            assistant_id=assistant.id,
+            provider_name=provider_name,
+            model_id=model_id,
+            buffer=buffer,
+            counts=counts,
+            t0=t0,
         )
-        # Explicit columns (not **counts): counts may carry cache_write_tokens,
-        # which has no AIRun column — its cost is already folded into cost_usd.
-        AIRun.objects.create(
-            message=assistant,
-            provider=provider_name,
-            model=model_id,
-            cost_usd=cost,
-            latency_ms=latency_ms,
-            status="done",
-            input_tokens=counts["input_tokens"],
-            output_tokens=counts["output_tokens"],
-            cached_tokens=counts["cached_tokens"],
-        )
-        _broadcast(
-            thread_id,
-            {
-                "event": "message_done",
-                "message_id": assistant.id,
-                "cost_usd": str(cost),
-            },
-        )
-        _broadcast(
-            thread_id,
-            {
-                "event": "cost",
-                "message_id": assistant.id,
-                "parent_message_id": parent_message_id,
-                "cost_usd": str(cost),
-                "tokens_in": counts["input_tokens"],
-                "tokens_out": counts["output_tokens"],
-                "tokens_cached": counts["cached_tokens"],
-                "duration_ms": latency_ms,
-            },
-        )
-        return {"ok": True, "message_id": assistant.id}
+        raise

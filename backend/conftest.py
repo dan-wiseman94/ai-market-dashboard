@@ -31,6 +31,18 @@ def _reset_calendar_resolution_cache():
 
 
 @pytest.fixture(autouse=True)
+def _no_data_source_env_keys(settings):
+    """Blank the data-source .env key fallback for every test.
+
+    `DATA_SOURCE_ENV_KEYS` is populated from the developer's real environment (compose
+    injects the local env file into the test container), so a machine with, say, a real
+    FINNHUB_API_KEY would silently flip every "no credential → not configured / degrades
+    to None" assertion. Tests that exercise the fallback set the mapping explicitly.
+    """
+    settings.DATA_SOURCE_ENV_KEYS = {}
+
+
+@pytest.fixture(autouse=True)
 def _reset_channel_layers():
     """Give every test a fresh channel layer.
 

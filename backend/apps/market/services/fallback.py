@@ -3,8 +3,9 @@
 The Schwab-backed services (quotes, ohlc, chain) call into here when
 ``get_schwab_client()`` / ``schwab_json`` raise ``SchwabNotConnectedError``
 (which also covers ``SchwabAuthError`` — a rejected token). We pick the first
-*configured* free provider — one whose ``ApiCredential`` row exists — in a fixed
-precedence and return the same normalized shape as the Schwab path.
+*configured* free provider — one with a credential (``ApiCredential`` row or an
+.env-provided key) — in a fixed precedence and return the same normalized shape
+as the Schwab path.
 
 Each ``alt_*`` returns ``None`` when **no** provider is configured (so the caller
 re-raises and the UI still says "connect Schwab"), and a real value — possibly
@@ -18,14 +19,14 @@ has no key, to aggregate Marketaux / Tiingo instead.
 
 from __future__ import annotations
 
-from apps.secrets.models import ApiCredential
+from apps.secrets.credentials import decrypt_token
 
 # Our timeframe code -> Twelve Data interval string.
 _TD_INTERVAL = {"1m": "1min", "5m": "5min", "15m": "15min", "1h": "1h", "1d": "1day"}
 
 
 def _has(provider: str) -> bool:
-    return ApiCredential.objects.filter(provider=provider).exists()
+    return decrypt_token(provider) is not None
 
 
 def alt_quotes(tickers: list[str]) -> dict | None:
