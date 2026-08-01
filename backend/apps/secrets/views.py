@@ -21,6 +21,7 @@ from apps.ai.catalog import list_models as _list_catalog
 from apps.ai.cost import daily_spend_usd
 from apps.ai.providers import get_provider
 from apps.core import provider_health
+from apps.secrets.credentials import env_token_fields
 from apps.secrets.data_source_test import test_credential
 from apps.secrets.data_sources import DATA_SOURCES, get_data_source
 from apps.secrets.models import ApiCredential, ProviderConfig, SchwabAppConfig
@@ -288,27 +289,36 @@ def _schwab_connected() -> bool:
 def _credential_status(provider: str) -> dict:
     """Which credential fields are present for ``provider`` — never the values.
 
-    An undecryptable row (encryption key rotated / salt reset) reports as
-    not-configured so the UI lets the user re-enter the key (overwriting it).
+    ``fields_present`` is the effective set (DB row merged over .env per
+    ``DATA_SOURCE_ENV_KEYS``); ``env_fields`` is the subset currently supplied by .env,
+    so the UI can say where a key comes from. An undecryptable row (encryption key
+    rotated / salt reset) degrades to the .env fields and lets the user re-enter the key.
     """
+    env_fields = env_token_fields(provider)
     try:
-        cred = ApiCredential.objects.get(provider=provider)
+        token = ApiCredential.objects.get(provider=provider).token or {}
     except (ApiCredential.DoesNotExist, InvalidToken):
-        return {"configured": False, "fields_present": []}
-    token = cred.token or {}
-    present = [k for k in ("api_key", "api_secret") if token.get(k)]
-    return {"configured": bool(present), "fields_present": present}
+        token = {}
+    present = [k for k in ("api_key", "api_secret") if token.get(k) or env_fields.get(k)]
+    env_only = [k for k in present if env_fields.get(k) and not token.get(k)]
+    return {"configured": bool(present), "fields_present": present, "env_fields": env_only}
 
 
 def _data_source_payload(ds: dict, present: set[str]) -> dict:
     keys = ("provider", "label", "auth", "fields", "blurb", "signup_url", "docs_url")
     entry = {k: ds[k] for k in keys}
     if ds["auth"] == "none":
-        entry["status"] = {"configured": True, "fields_present": []}  # keyless → always on
-    elif ds["provider"] not in present:
-        entry["status"] = {"configured": False, "fields_present": []}  # no row → skip the query
+        # keyless → always on
+        entry["status"] = {"configured": True, "fields_present": [], "env_fields": []}
+    elif ds["provider"] not in present and not env_token_fields(ds["provider"]):
+        # no row and nothing in .env → skip the query
+        entry["status"] = {"configured": False, "fields_present": [], "env_fields": []}
     elif ds["auth"] == "oauth":
-        entry["status"] = {"configured": _schwab_connected(), "fields_present": []}
+        entry["status"] = {
+            "configured": _schwab_connected(),
+            "fields_present": [],
+            "env_fields": [],
+        }
     else:
         entry["status"] = _credential_status(ds["provider"])
     return entry

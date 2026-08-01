@@ -102,4 +102,27 @@ describe("DataSourcesPanel", () => {
     await userEvent.click(within(alpaca).getByRole("button", { name: /clear/i }));
     expect(vi.mocked(clearDataSourceKey)).toHaveBeenCalledWith("alpaca");
   });
+
+  it("marks env-backed fields and hides Clear when nothing is DB-saved", () => {
+    mockUseDataSources.mockReturnValue({
+      data: {
+        data_sources: [
+          {
+            ...SOURCES[1], // fred
+            status: { configured: true, fields_present: ["api_key"], env_fields: ["api_key"] },
+          },
+        ],
+      },
+      isLoading: false,
+    });
+    renderPanel();
+    const fred = screen.getByTestId("ds-card-fred");
+    expect(within(fred).getByLabelText("FRED API key")).toHaveAttribute(
+      "placeholder",
+      expect.stringMatching(/\.env/),
+    );
+    // Clear only deletes the DB row; with an env-only key it would be a no-op.
+    expect(within(fred).queryByRole("button", { name: /clear/i })).not.toBeInTheDocument();
+    expect(within(fred).getByRole("button", { name: /test key/i })).toBeInTheDocument();
+  });
 });

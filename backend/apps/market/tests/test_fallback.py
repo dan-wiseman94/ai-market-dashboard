@@ -150,3 +150,18 @@ def test_fetch_quotes_reraises_when_no_alt_provider():
         pytest.raises(SchwabNotConnectedError),
     ):
         quotes.fetch_quotes(["AAPL"])
+
+
+# --- .env-backed keys count as configured ------------------------------------------
+
+
+@pytest.mark.django_db
+def test_alt_quotes_uses_env_configured_provider(settings):
+    """No ApiCredential row at all — a DATA_SOURCE_ENV_KEYS key alone must route the
+    fallback (DB rows die with `docker compose down -v`; .env keys survive)."""
+    settings.DATA_SOURCE_ENV_KEYS = {"alpaca": {"api_key": "env-k", "api_secret": "env-s"}}
+    with patch(
+        "apps.market.services.alpaca.fetch_quotes", return_value={"AAPL": {"last": 7.0}}
+    ) as m:
+        assert fallback.alt_quotes(["AAPL"]) == {"AAPL": {"last": 7.0}}
+    m.assert_called_once()

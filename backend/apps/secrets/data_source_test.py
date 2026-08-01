@@ -15,7 +15,7 @@ from types import SimpleNamespace
 import requests  # type: ignore[import-untyped]
 
 from apps.market.services.safe_log import safe_err
-from apps.secrets.models import ApiCredential
+from apps.secrets.credentials import decrypt_token
 
 log = logging.getLogger(__name__)
 _TIMEOUT = 8
@@ -129,12 +129,11 @@ def test_credential(provider: str) -> dict:
     probe = _PROBES.get(provider)
     if probe is None:
         return {"ok": False, "message": "Testing isn't supported for this source."}
-    try:
-        cred = ApiCredential.objects.get(provider=provider)
-    except ApiCredential.DoesNotExist:
+    token = decrypt_token(provider)  # DB row merged over any .env-provided fields
+    if token is None:
         return {"ok": False, "message": "No credential saved yet."}
     try:
-        resp = probe(cred.token or {})
+        resp = probe(token)
     except Exception as exc:
         log.warning("market.data_source_test.failed provider=%s: %s", provider, safe_err(exc))
         return {"ok": False, "message": "Couldn't reach the provider."}

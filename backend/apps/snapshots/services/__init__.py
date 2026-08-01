@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from collections.abc import Iterable
 
 from apps.core.realtime import group_broadcast
@@ -22,8 +23,9 @@ from apps.market.services.ohlc import (
 from apps.market.services.overnight import overnight_board
 from apps.market.services.positions import fetch_positions
 from apps.market.services.quotes import fetch_quotes
-from apps.market.services.safe_log import scrub_secret_params
+from apps.market.services.safe_log import safe_err, scrub_secret_params
 from apps.market.services.treasury import fetch_treasury
+from apps.market.services.yields import live_yields
 from apps.market.symbols import is_equity_like, normalize_symbol
 from apps.profiles.models import TradingProfile
 from apps.snapshots.models import Snapshot, SnapshotImage, SnapshotSection
@@ -35,6 +37,8 @@ from apps.snapshots.primary import (
 )
 from apps.snapshots.services.render import render_chart_png
 from apps.snapshots.token_budget import estimate_tokens
+
+log = logging.getLogger(__name__)
 
 
 def stamp_payload_tokens(
@@ -102,6 +106,30 @@ def _build_market_state(tickers: list[str]) -> dict:
     }
 
 
+_WATCHLIST_DAILY_MAX_TICKERS = 8
+_WATCHLIST_DAILY_BARS = 60
+
+
+def _watchlist_daily_bars(watchlist_tickers: list[str], primary: str) -> dict[str, list[dict]]:
+    """Compact daily history for the rest of the watchlist, so objectives that
+    scan across names (breakout scans, relative strength) have a per-name price
+    path — the primary ticker's intraday series alone can't answer them.
+    Best-effort per ticker: one failing symbol never kills the section."""
+    out: dict[str, list[dict]] = {}
+    primary_norm = normalize_symbol(primary)
+    for t in list(watchlist_tickers)[:_WATCHLIST_DAILY_MAX_TICKERS]:
+        if normalize_symbol(t) == primary_norm:
+            continue
+        try:
+            bars = fetch_ohlc(t, timeframe="1d", bars=_WATCHLIST_DAILY_BARS)
+        except Exception as exc:
+            log.warning("snapshots.ohlc.watchlist_daily skip %s: %s", t, safe_err(exc))
+            continue
+        if bars:
+            out[t] = bars
+    return out
+
+
 def _fetch_ohlc_section(
     *,
     watchlist_tickers: list[str],
@@ -111,17 +139,21 @@ def _fetch_ohlc_section(
     **_,
 ) -> dict:
     ticker = _pick_ticker(ohlc_ticker, watchlist_tickers)
+    watchlist_daily = _watchlist_daily_bars(list(watchlist_tickers), ticker)
     if ohlc_timeframe in INTRADAY_TIMEFRAMES:
         # Always the rolling last-24h window; 1m blends the current session (1m)
         # with the older portion coarsened to 5m (see apps.market.services.ohlc).
         bars = fetch_ohlc_24h(ticker, timeframe=ohlc_timeframe)
-        data = {"ticker": ticker, "timeframe": ohlc_timeframe, "bars": bars, "window": "24h"}
+        data: dict = {"ticker": ticker, "timeframe": ohlc_timeframe, "bars": bars, "window": "24h"}
         if ohlc_timeframe == "1m":
             data["coarse_timeframe"] = "5m"
-        return {"data": data}
-    # Daily: keep the fixed bar count (a 24h window of daily bars is a single bar).
-    bars = fetch_ohlc(ticker, timeframe=ohlc_timeframe, bars=ohlc_bars)
-    return {"data": {"ticker": ticker, "timeframe": ohlc_timeframe, "bars": bars}}
+    else:
+        # Daily: keep the fixed bar count (a 24h window of daily bars is a single bar).
+        bars = fetch_ohlc(ticker, timeframe=ohlc_timeframe, bars=ohlc_bars)
+        data = {"ticker": ticker, "timeframe": ohlc_timeframe, "bars": bars}
+    if watchlist_daily:
+        data["watchlist_daily"] = watchlist_daily
+    return {"data": data}
 
 
 def _fetch_news_section(*, watchlist_tickers: list[str], **_) -> dict:
@@ -157,7 +189,9 @@ _FETCHERS = {
     "overnight": lambda **_: {"data": overnight_board()},
     "positions": lambda **_: {"data": fetch_positions()},
     "quotes": lambda *, watchlist_tickers, **_: {"data": fetch_quotes(watchlist_tickers)},
-    "macro": lambda **_: {"data": fred_fetch_macro()},
+    # Live CBOE yield-index quotes ride along because the FRED series lag a
+    # business day — without them a Monday capture has no current yields at all.
+    "macro": lambda **_: {"data": {"series": fred_fetch_macro(), "live_yields": live_yields()}},
     "filings": lambda *, watchlist_tickers, **_: {
         # Equity-like only — futures roots / indices aren't SEC filers, and a
         # bogus key ("NQ") in the payload reads as "no filings" to the AI.
