@@ -13,28 +13,15 @@ from __future__ import annotations
 import logging
 from datetime import UTC, datetime
 
-import requests  # type: ignore[import-untyped]
-
 from apps.market import cache
+
+# Aliased so tests can patch apps.market.services.fundamentals._finnhub_get / _finnhub_api_key.
+from apps.market.services._finnhub import api_key as _finnhub_api_key
+from apps.market.services._finnhub import get_dict as _finnhub_get
 from apps.market.services.safe_log import safe_err
 from apps.market.symbols import is_equity_like
-from apps.secrets.credentials import decrypt_token
 
 log = logging.getLogger(__name__)
-
-FINNHUB_BASE = "https://finnhub.io/api/v1"
-
-
-def _finnhub_api_key() -> str | None:
-    return (decrypt_token("finnhub") or {}).get("api_key")
-
-
-def _finnhub_get(path: str, params: dict, api_key: str) -> dict:
-    p = {**params, "token": api_key}
-    resp = requests.get(f"{FINNHUB_BASE}{path}", params=p, timeout=10)
-    resp.raise_for_status()
-    body = resp.json()
-    return body if isinstance(body, dict) else {}
 
 
 def _canned_fundamentals(ticker: str) -> dict:
@@ -139,3 +126,18 @@ def fetch_fundamentals(ticker: str) -> dict:
         log.warning("market.fundamentals.upsert_failed %s: %s", ticker, exc)
 
     return normalized
+
+
+def sector_for_ticker(ticker: str) -> str:
+    """Stored CompanyFundamentals sector for `ticker`; "" when unknown or input is empty."""
+    if not ticker:
+        return ""
+    from apps.market.models import CompanyFundamentals
+
+    return (
+        CompanyFundamentals.objects.filter(ticker=ticker.upper())
+        .exclude(sector="")
+        .values_list("sector", flat=True)
+        .first()
+        or ""
+    )
