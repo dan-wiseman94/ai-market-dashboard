@@ -15,14 +15,21 @@ class ThreadConsumer(AsyncJsonWebsocketConsumer):
         self.group_name = f"thread.{self.thread_id}"
         await self.channel_layer.group_add(self.group_name, self.channel_name)
         await self.accept()
+        from apps.threads.event_log import MAX_EVENTS, TTL_SECONDS, replay_since
+
+        # First frame, before any replay: the server's replay-buffer geometry, so
+        # the client derives its duplicate-vs-counter-restart heuristic from the
+        # source of truth instead of mirrored literals. Sent directly (never via
+        # event_log.record) — it must not consume a seq or enter the buffer.
+        await self.send_json(
+            {"type": "replay_config", "buffer": MAX_EVENTS, "ttl_seconds": TTL_SECONDS}
+        )
         # Reconnect replay: a client that dropped can pass ?since=<seq> to receive
         # the buffered events it missed before live streaming resumes. Joining the
         # group before replaying means a concurrent live event is at worst a
         # duplicate (same seq), never a gap — the client dedupes on seq.
         since = self._since()
         if since is not None:
-            from apps.threads.event_log import replay_since
-
             for ev in await sync_to_async(replay_since)(self.thread_id, since):
                 await self.send_json(ev)
 

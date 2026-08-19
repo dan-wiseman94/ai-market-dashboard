@@ -365,8 +365,9 @@ describe("WebSocketProvider", () => {
       sock!.emitMessage({ event: "text_delta", text: "a", seq: 400 });
       // The server's seq counter restarted mid-connection (Redis flush) with no
       // reconnect, so no replay_gap arrives. seq=1 trails the cursor by more
-      // than the 256-event replay buffer — it cannot be a replay duplicate and
-      // must be dispatched, or the whole restarted stream is silently dropped.
+      // than the 256-event replay buffer (the fallback — no replay_config frame
+      // received) — it cannot be a replay duplicate and must be dispatched, or
+      // the whole restarted stream is silently dropped.
       sock!.emitMessage({ event: "message_started", message_id: 9, seq: 1 });
       sock!.emitMessage({ event: "text_delta", text: "fresh", seq: 2 });
     });
@@ -390,7 +391,8 @@ describe("WebSocketProvider", () => {
       act(() => sock!.emitOpen());
       act(() => sock!.emitMessage({ event: "text_delta", text: "a", seq: 40 }));
       // A thread page left open idle: the backend's counter key expires after
-      // 1h (event_log._TTL_SECONDS), so the next run restarts at seq=1..n, all
+      // 1h (event_log.TTL_SECONDS — here the fallback, no replay_config frame
+      // received), so the next run restarts at seq=1..n, all
       // <= our cursor but small enough (40-1 < 256) that only the idle rule
       // can tell a restart from a duplicate. Without it the reply never renders.
       act(() => void vi.advanceTimersByTime(56 * 60 * 1000));
@@ -532,6 +534,84 @@ describe("WebSocketProvider", () => {
       expect(second.url).toMatch(/\/ws\/threads\/13\/$/);
     } finally {
       invalidate.mockRestore();
+      vi.useRealTimers();
+    }
+  });
+
+  it("intercepts replay_config frames — stored, never forwarded to handlers", () => {
+    const handler = vi.fn();
+    render(
+      <WebSocketProvider>
+        <TestConsumer channel="thread.30" onMsg={handler} />
+      </WebSocketProvider>,
+    );
+    const sock = fake.find("/ws/threads/30/");
+    act(() => sock!.emitOpen());
+    act(() => {
+      // The consumer's first frame on every connect. It configures the
+      // dedupe heuristic and must be invisible to subscribers.
+      sock!.emitMessage({ type: "replay_config", buffer: 256, ttl_seconds: 3600 });
+      sock!.emitMessage({ event: "text_delta", text: "a", seq: 1 });
+    });
+    expect(handler.mock.calls.map((c) => c[0])).toEqual([
+      { event: "text_delta", text: "a", seq: 1 },
+    ]);
+  });
+
+  it("uses the announced buffer size (not the 256 literal) for the restart-vs-duplicate call", () => {
+    const handler = vi.fn();
+    render(
+      <WebSocketProvider>
+        <TestConsumer channel="thread.31" onMsg={handler} />
+      </WebSocketProvider>,
+    );
+    const sock = fake.find("/ws/threads/31/");
+    act(() => sock!.emitOpen());
+    act(() => {
+      sock!.emitMessage({ type: "replay_config", buffer: 16, ttl_seconds: 3600 });
+      sock!.emitMessage({ event: "text_delta", text: "a", seq: 40 });
+      // 40-10=30 >= the announced 16-event buffer: a restart under the server's
+      // real geometry. Under the stale 256 fallback it would be silently
+      // dropped as a "duplicate" and the stream would go dead.
+      sock!.emitMessage({ event: "message_started", message_id: 9, seq: 10 });
+      // 10-5=5 < 16: still a genuine duplicate under the announced buffer.
+      sock!.emitMessage({ event: "text_delta", text: "dup", seq: 5 });
+    });
+    expect(handler.mock.calls.map((c) => c[0])).toEqual([
+      { event: "text_delta", text: "a", seq: 40 },
+      { event: "message_started", message_id: 9, seq: 10 },
+    ]);
+  });
+
+  it("derives the idle-restart threshold from announced ttl_seconds (ttl - 5min margin)", () => {
+    vi.useFakeTimers();
+    try {
+      const handler = vi.fn();
+      render(
+        <WebSocketProvider>
+          <TestConsumer channel="thread.32" onMsg={handler} />
+        </WebSocketProvider>,
+      );
+      const sock = fake.find("/ws/threads/32/");
+      act(() => sock!.emitOpen());
+      act(() => {
+        // 30min TTL → 25min idle-restart threshold (TTL minus the 5min margin).
+        sock!.emitMessage({ type: "replay_config", buffer: 256, ttl_seconds: 1800 });
+        sock!.emitMessage({ event: "text_delta", text: "a", seq: 40 });
+      });
+      // 26min idle: past the announced 25min threshold but far below the 55min
+      // fallback — only the server-announced TTL classifies this as a restart.
+      act(() => void vi.advanceTimersByTime(26 * 60 * 1000));
+      act(() => {
+        sock!.emitMessage({ event: "message_started", message_id: 9, seq: 1 });
+        sock!.emitMessage({ event: "text_delta", text: "fresh", seq: 2 });
+      });
+      expect(handler.mock.calls.map((c) => c[0])).toEqual([
+        { event: "text_delta", text: "a", seq: 40 },
+        { event: "message_started", message_id: 9, seq: 1 },
+        { event: "text_delta", text: "fresh", seq: 2 },
+      ]);
+    } finally {
       vi.useRealTimers();
     }
   });

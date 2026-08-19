@@ -17,8 +17,11 @@ from typing import Any, cast
 import redis
 from django.conf import settings
 
-_TTL_SECONDS = 3600
-_MAX_EVENTS = 256
+# Exported: ThreadConsumer announces both to the client in a replay_config
+# frame so the frontend's duplicate-vs-counter-restart heuristic tracks the
+# server instead of mirroring these as literals.
+TTL_SECONDS = 3600
+MAX_EVENTS = 256
 
 _client: redis.Redis | None = None
 
@@ -57,10 +60,10 @@ def record(thread_id: int, payload: dict) -> dict:
         seq = cast(int, r.incr(_seq_key(thread_id)))
         stamped = {**payload, "seq": seq}
         pipe = r.pipeline()
-        pipe.expire(_seq_key(thread_id), _TTL_SECONDS)
+        pipe.expire(_seq_key(thread_id), TTL_SECONDS)
         pipe.rpush(_log_key(thread_id), json.dumps(stamped))
-        pipe.ltrim(_log_key(thread_id), -_MAX_EVENTS, -1)
-        pipe.expire(_log_key(thread_id), _TTL_SECONDS)
+        pipe.ltrim(_log_key(thread_id), -MAX_EVENTS, -1)
+        pipe.expire(_log_key(thread_id), TTL_SECONDS)
         pipe.execute()
         return stamped
     except Exception:
