@@ -59,10 +59,16 @@ beforeEach(() => {
 });
 
 describe("WatchlistsList", () => {
-  it("renders loading state", () => {
+  it("renders skeleton rows while loading", () => {
     mockUseWatchlists.mockReturnValue({ data: undefined, isLoading: true } as never);
     renderWithProviders(<WatchlistsList />);
-    expect(screen.getByText("Loading…")).toBeInTheDocument();
+    expect(screen.getAllByTestId("skeleton-row").length).toBeGreaterThan(0);
+  });
+
+  it("renders an empty state when there are no watchlists", () => {
+    mockUseWatchlists.mockReturnValue({ data: [], isLoading: false } as never);
+    renderWithProviders(<WatchlistsList />);
+    expect(screen.getByText("No watchlists yet")).toBeInTheDocument();
   });
 
   it("renders one row per watchlist with symbol count", () => {

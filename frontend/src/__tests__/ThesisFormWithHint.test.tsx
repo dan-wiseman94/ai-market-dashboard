@@ -1,15 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import type { ReactNode } from "react";
+import { hookWrapper } from "./testUtils";
 import ThesisForm from "@/pages/thread-detail/ThesisForm";
 import * as analytics from "@/hooks/useAnalytics";
 import type { TrackRecord } from "@/hooks/useAnalytics";
 
-function wrapper({ children }: { children: ReactNode }) {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
-}
 
 const FULL_RECORD: TrackRecord = {
   ticker: "NVDA",
@@ -53,7 +48,7 @@ describe("ThesisForm with TrackRecordHint", () => {
       isSuccess: true,
     } as ReturnType<typeof analytics.useTrackRecord>);
 
-    render(<ThesisForm {...BASE_PROPS} />, { wrapper });
+    render(<ThesisForm {...BASE_PROPS} />, { wrapper: hookWrapper() });
 
     expect(screen.getByTestId("track-record-hint")).toBeInTheDocument();
     expect(screen.getByText(/Your NVDA track record:/)).toBeInTheDocument();
@@ -68,7 +63,7 @@ describe("ThesisForm with TrackRecordHint", () => {
       isSuccess: true,
     } as ReturnType<typeof analytics.useTrackRecord>);
 
-    render(<ThesisForm {...BASE_PROPS} />, { wrapper });
+    render(<ThesisForm {...BASE_PROPS} />, { wrapper: hookWrapper() });
 
     expect(screen.queryByTestId("track-record-hint")).toBeNull();
   });
@@ -80,7 +75,7 @@ describe("ThesisForm with TrackRecordHint", () => {
       isSuccess: true,
     } as ReturnType<typeof analytics.useTrackRecord>);
 
-    render(<ThesisForm {...BASE_PROPS} />, { wrapper });
+    render(<ThesisForm {...BASE_PROPS} />, { wrapper: hookWrapper() });
 
     expect(screen.getByLabelText(/Rationale/i)).toBeRequired();
     expect(screen.getByLabelText(/What would invalidate/i)).toBeRequired();

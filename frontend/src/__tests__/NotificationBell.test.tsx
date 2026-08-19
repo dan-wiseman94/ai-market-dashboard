@@ -1,10 +1,13 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { WebSocketProvider } from "@/realtime/WebSocketProvider";
+import { screen, fireEvent, waitFor, act } from "@testing-library/react";
 import NotificationBell from "../components/NotificationBell";
-import { installFakeWebSocket, type FakeWebSocketController } from "./testUtils";
+import {
+  installFakeWebSocket,
+  mockApi,
+  newQueryClient,
+  renderWithProviders,
+  type FakeWebSocketController,
+} from "./testUtils";
 
 const NOTIFS = [
   { id: 1, kind: "observer_done", title: "Fired", body: "snap 42",
@@ -15,12 +18,14 @@ const NOTIFS = [
     created_at: "2026-04-17T08:00:00Z" },
 ];
 
+// renderWithProviders mounts <Toasts /> whose region is also labeled
+// "Notifications" — target the bell by role to disambiguate.
+const bellButton = () => screen.getByRole("button", { name: /notifications/i });
+
 let fake: FakeWebSocketController;
 
 beforeEach(() => {
-  globalThis.fetch = vi.fn(() =>
-    Promise.resolve({ ok: true, json: () => Promise.resolve({ results: NOTIFS }) }),
-  ) as never;
+  mockApi({ "GET /api/observer/notifications/": { results: NOTIFS } });
   fake = installFakeWebSocket();
 });
 
@@ -28,39 +33,16 @@ afterEach(() => {
   fake.restore();
 });
 
-const qc = () => new QueryClient({ defaultOptions: { queries: { retry: false } } });
-
-/** Minimal wrapper: QueryClient + WebSocketProvider + Router. */
-function Wrapper({ client, children }: { client: QueryClient; children: React.ReactNode }) {
-  return (
-    <QueryClientProvider client={client}>
-      <WebSocketProvider>
-        <MemoryRouter>{children}</MemoryRouter>
-      </WebSocketProvider>
-    </QueryClientProvider>
-  );
-}
-
 describe("NotificationBell", () => {
   it("shows unread badge count", async () => {
-    const client = qc();
-    render(
-      <Wrapper client={client}>
-        <NotificationBell />
-      </Wrapper>,
-    );
+    renderWithProviders(<NotificationBell />);
     await waitFor(() => expect(screen.getByText("1")).toBeInTheDocument());
   });
 
   it("opens dropdown on click and lists notifications", async () => {
-    const client = qc();
-    render(
-      <Wrapper client={client}>
-        <NotificationBell />
-      </Wrapper>,
-    );
-    await waitFor(() => expect(screen.getByLabelText(/notifications/i)).toBeInTheDocument());
-    fireEvent.click(screen.getByLabelText(/notifications/i));
+    renderWithProviders(<NotificationBell />);
+    await waitFor(() => expect(bellButton()).toBeInTheDocument());
+    fireEvent.click(bellButton());
     expect(screen.getByText("Fired")).toBeInTheDocument();
     expect(screen.getByText("Boom")).toBeInTheDocument();
   });
@@ -74,14 +56,9 @@ describe("NotificationBell", () => {
       }),
     });
 
-    const client = qc();
-    render(
-      <Wrapper client={client}>
-        <NotificationBell />
-      </Wrapper>,
-    );
-    await waitFor(() => expect(screen.getByLabelText(/notifications/i)).toBeInTheDocument());
-    fireEvent.click(screen.getByLabelText(/notifications/i));
+    renderWithProviders(<NotificationBell />);
+    await waitFor(() => expect(bellButton()).toBeInTheDocument());
+    fireEvent.click(bellButton());
     expect(screen.getByText(/desktop notification/i)).toBeInTheDocument();
   });
 
@@ -94,28 +71,19 @@ describe("NotificationBell", () => {
       }),
     });
 
-    const client = qc();
-    render(
-      <Wrapper client={client}>
-        <NotificationBell />
-      </Wrapper>,
-    );
-    await waitFor(() => expect(screen.getByLabelText(/notifications/i)).toBeInTheDocument());
-    fireEvent.click(screen.getByLabelText(/notifications/i));
+    renderWithProviders(<NotificationBell />);
+    await waitFor(() => expect(bellButton()).toBeInTheDocument());
+    fireEvent.click(bellButton());
     expect(screen.queryByText(/desktop notification/i)).toBeNull();
   });
 
   it("invalidates notifications query on notification.event via shared WS broker", async () => {
-    const client = qc();
+    const client = newQueryClient();
     const invalidateSpy = vi.spyOn(client, "invalidateQueries");
 
-    render(
-      <Wrapper client={client}>
-        <NotificationBell />
-      </Wrapper>,
-    );
+    renderWithProviders(<NotificationBell />, { client });
 
-    await waitFor(() => expect(screen.getByLabelText(/notifications/i)).toBeInTheDocument());
+    await waitFor(() => expect(bellButton()).toBeInTheDocument());
 
     // The shared WebSocketProvider opens the socket via addEventListener (not onmessage).
     // emitMessage() calls all registered "message" listeners on the FakeSocket.

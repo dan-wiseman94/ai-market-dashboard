@@ -1,8 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
-import { MemoryRouter, Routes, Route } from "react-router-dom";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { screen, waitFor } from "@testing-library/react";
 import CoveragePage from "../pages/CoveragePage";
+import { mockFetch, renderWithProviders } from "./testUtils";
 
 const NOTE = {
   id: 1,
@@ -35,21 +34,14 @@ const NOTE = {
   ],
 };
 
-const qc = () => new QueryClient({ defaultOptions: { queries: { retry: false } } });
-
 function renderAt(path: string, payload: unknown, ok = true, status = 200) {
-  globalThis.fetch = vi.fn(() =>
-    Promise.resolve({ ok, status, json: () => Promise.resolve(payload) }),
-  ) as never;
-  render(
-    <QueryClientProvider client={qc()}>
-      <MemoryRouter initialEntries={[path]}>
-        <Routes>
-          <Route path="/coverage/:ticker" element={<CoveragePage />} />
-        </Routes>
-      </MemoryRouter>
-    </QueryClientProvider>,
-  );
+  // mockFetch, not mockApi: the not-covered test needs an ok=false response
+  // whose body passes through unreshaped.
+  mockFetch(() => ({ ok, status, json: () => Promise.resolve(payload) }));
+  renderWithProviders(<CoveragePage />, {
+    initialEntries: [path],
+    routePath: "/coverage/:ticker",
+  });
 }
 
 describe("CoveragePage", () => {

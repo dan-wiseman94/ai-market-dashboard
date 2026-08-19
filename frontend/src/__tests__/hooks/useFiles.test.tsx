@@ -6,6 +6,7 @@ import {
   useUploadFile,
   type UserFile,
 } from "@/hooks/useFiles";
+import { ApiError } from "@/api/client";
 import { hookWrapper, mockApi, mockApiError, newQueryClient } from "../testUtils";
 
 const FILE: UserFile = {
@@ -44,10 +45,14 @@ describe("useFiles (query)", () => {
     expect(result.current.data).toEqual([]);
   });
 
-  it("surfaces an error when the request fails", async () => {
-    mockApiError("GET /api/files/", 500);
+  it("surfaces the server error envelope as an ApiError", async () => {
+    mockApiError("GET /api/files/", 500, "error", "boom");
     const { result } = renderHook(() => useFiles(), { wrapper: hookWrapper() });
     await waitFor(() => expect(result.current.isError).toBe(true));
+    const err = result.current.error as ApiError;
+    expect(err).toBeInstanceOf(ApiError);
+    expect(err.status).toBe(500);
+    expect(err.message).toBe("boom");
   });
 });
 
@@ -89,7 +94,7 @@ describe("useUploadFile", () => {
 describe("useAttachFileToThread", () => {
   it("POSTs file_id + prompt as JSON to the thread's attach-file route", async () => {
     const { calls } = mockApi({
-      "POST /api/threads/7/attach-file/": { ok: true },
+      "POST /api/threads/7/attach-file/": { message_id: 5 },
     });
     const { result } = renderHook(() => useAttachFileToThread(7), {
       wrapper: hookWrapper(),
@@ -101,8 +106,8 @@ describe("useAttachFileToThread", () => {
     expect(calls[0].body).toEqual({ file_id: 42, prompt: "summarize" });
   });
 
-  it("rejects when the attach call fails", async () => {
-    mockApiError("POST /api/threads/7/attach-file/", 400);
+  it("rejects with the server's validation message, not a fixed string", async () => {
+    mockApiError("POST /api/threads/7/attach-file/", 404, "not_found", "File not found");
     const { result } = renderHook(() => useAttachFileToThread(7), {
       wrapper: hookWrapper(),
     });
@@ -112,5 +117,10 @@ describe("useAttachFileToThread", () => {
         .catch(() => {});
     });
     await waitFor(() => expect(result.current.isError).toBe(true));
+    const err = result.current.error as ApiError;
+    expect(err).toBeInstanceOf(ApiError);
+    expect(err.status).toBe(404);
+    expect(err.code).toBe("not_found");
+    expect(err.message).toBe("File not found");
   });
 });

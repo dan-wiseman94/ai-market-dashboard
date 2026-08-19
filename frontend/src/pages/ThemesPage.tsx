@@ -4,8 +4,7 @@ import type { ThemeHealth } from "@/api/themes";
 import { EmptyState } from "@/components/EmptyState";
 import { SkeletonRows } from "@/components/Skeleton";
 import { useCreateTheme, useDeleteTheme, useThemeHealth, useThemes } from "@/hooks/useThemes";
-
-const pct = (v: number | null | undefined) => (v == null ? "—" : `${v >= 0 ? "+" : ""}${v.toFixed(2)}%`);
+import { pctSigned } from "@/utils/format";
 
 export default function ThemesPage() {
   const { data: themes = [], isLoading } = useThemes();
@@ -100,22 +99,22 @@ function ThemeHealthCard({ health }: { health: ThemeHealth }) {
         <>
           <p className="text-sm text-ink-300">
             Breadth <span className="font-medium">{(health.breadth * 100).toFixed(0)}%</span> up ·
-            mean {pct(health.mean_return_pct)} · relative strength{" "}
+            mean {pctSigned(health.mean_return_pct)} · relative strength{" "}
             <span className={(health.relative_strength ?? 0) >= 0 ? "text-gain-400" : "text-copper-400"}>
-              {pct(health.relative_strength)}
+              {pctSigned(health.relative_strength)}
             </span>{" "}
-            vs $SPX {pct(health.spx_return_pct)}
+            vs $SPX {pctSigned(health.spx_return_pct)}
           </p>
           {health.leadership && (
             <p className="text-sm text-ink-400">
-              Leader {health.leadership.leader.ticker} {pct(health.leadership.leader.return_pct)} ·
-              laggard {health.leadership.laggard.ticker} {pct(health.leadership.laggard.return_pct)}
+              Leader {health.leadership.leader.ticker} {pctSigned(health.leadership.leader.return_pct)} ·
+              laggard {health.leadership.laggard.ticker} {pctSigned(health.leadership.laggard.return_pct)}
             </p>
           )}
           <ul className="text-sm text-ink-400">
             {health.members.map((m) => (
               <li key={m.ticker}>
-                {m.ticker}: {pct(m.return_pct)}
+                {m.ticker}: {pctSigned(m.return_pct)}
                 {m.above_theme ? " ↑" : m.return_pct != null ? " ↓" : ""}
               </li>
             ))}

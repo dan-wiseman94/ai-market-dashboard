@@ -1,14 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
+import { newQueryClient } from "./testUtils";
 import { TrackRecordHint } from "@/components/TrackRecordHint";
 import * as analytics from "@/hooks/useAnalytics";
 import type { TrackRecord } from "@/hooks/useAnalytics";
 
+// Bare QueryClientProvider, NOT testUtils' hookWrapper: two tests here assert
+// `container.firstChild` is null, and hookWrapper's always-rendered <Toasts />
+// region div would make it non-null.
 function wrapper({ children }: { children: ReactNode }) {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
+  return <QueryClientProvider client={newQueryClient()}>{children}</QueryClientProvider>;
 }
 
 const FULL_RECORD: TrackRecord = {

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useParams } from "react-router-dom";
 import WatchlistTable from "@/components/WatchlistTable";
+import { SkeletonRows } from "@/components/Skeleton";
 import { TickerChanges } from "./watchlist/TickerChanges";
 import { useAddSymbol, useRemoveSymbol, useWatchlist } from "@/hooks/useWatchlist";
 
@@ -13,7 +14,13 @@ export default function WatchlistDetail() {
   const [ticker, setTicker] = useState("");
 
   if (!wid) return <main className="p-6">Invalid watchlist</main>;
-  if (isLoading || !wl) return <main className="p-6">Loading…</main>;
+  if (isLoading || !wl) {
+    return (
+      <main className="p-6 max-w-4xl mx-auto">
+        <SkeletonRows rows={6} />
+      </main>
+    );
+  }
 
   return (
     <main className="p-6 max-w-4xl mx-auto space-y-4">

@@ -1,9 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { mockApi, renderWithProviders, type FetchMock } from "./testUtils";
 import TriggersListPage from "../pages/TriggersListPage";
-import { ToastProvider } from "@/hooks/useToast";
 
 const TRIGGERS = [
   {
@@ -14,63 +12,39 @@ const TRIGGERS = [
   },
 ];
 
-beforeEach(() => {
-  globalThis.fetch = vi.fn((url: string, init?: RequestInit) => {
-    if (url.startsWith("/api/triggers/") && (!init || init.method === "GET" || !init.method)) {
-      return Promise.resolve({ ok: true, json: () => Promise.resolve(TRIGGERS) });
-    }
-    if (init?.method === "PATCH") {
-      return Promise.resolve({ ok: true, json: () => Promise.resolve({ ...TRIGGERS[0], enabled: false }) });
-    }
-    if (init?.method === "DELETE") {
-      return Promise.resolve({ ok: true, status: 204, json: () => Promise.resolve({}) });
-    }
-    if (init?.method === "POST" && url.includes("/fire/")) {
-      return Promise.resolve({ ok: true, status: 202, json: () => Promise.resolve({ task_id: "t" }) });
-    }
-    return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
-  }) as never;
-});
+let api: FetchMock;
 
-const qc = () => new QueryClient({ defaultOptions: { queries: { retry: false } } });
+beforeEach(() => {
+  api = mockApi({
+    "GET /api/triggers/": TRIGGERS,
+    "PATCH /api/triggers/1/": { ...TRIGGERS[0], enabled: false },
+    "DELETE /api/triggers/1/": undefined, // 204
+    "POST /fire/": { task_id: "t" },
+  });
+});
 
 describe("TriggersListPage", () => {
   it("renders the list with names and firings_count", async () => {
-    render(
-      <QueryClientProvider client={qc()}>
-        <ToastProvider><MemoryRouter><TriggersListPage /></MemoryRouter></ToastProvider>
-      </QueryClientProvider>,
-    );
+    renderWithProviders(<TriggersListPage />);
     await waitFor(() => expect(screen.getByText("SPY>550")).toBeInTheDocument());
     expect(screen.getByText(/3 firings/i)).toBeInTheDocument();
   });
 
   it("fires manual fire on button click (after confirm)", async () => {
     const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
-    render(
-      <QueryClientProvider client={qc()}>
-        <ToastProvider><MemoryRouter><TriggersListPage /></MemoryRouter></ToastProvider>
-      </QueryClientProvider>,
-    );
+    renderWithProviders(<TriggersListPage />);
     await waitFor(() => expect(screen.getByText("SPY>550")).toBeInTheDocument());
     fireEvent.click(screen.getByRole("button", { name: /fire now/i }));
     expect(confirmSpy).toHaveBeenCalled();
     await waitFor(() => {
-      const calls = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls;
-      expect(calls.some((c) => typeof c[0] === "string" && c[0].includes("/fire/"))).toBe(true);
+      expect(api.calls.some((c) => c.url.includes("/fire/"))).toBe(true);
     });
     confirmSpy.mockRestore();
   });
 
   it("shows empty state when no triggers", async () => {
-    globalThis.fetch = vi.fn(() =>
-      Promise.resolve({ ok: true, json: () => Promise.resolve([]) }),
-    ) as never;
-    render(
-      <QueryClientProvider client={qc()}>
-        <ToastProvider><MemoryRouter><TriggersListPage /></MemoryRouter></ToastProvider>
-      </QueryClientProvider>,
-    );
+    mockApi({ "GET /api/triggers/": [] });
+    renderWithProviders(<TriggersListPage />);
     await waitFor(() => expect(screen.getByText(/no triggers yet/i)).toBeInTheDocument());
   });
 });

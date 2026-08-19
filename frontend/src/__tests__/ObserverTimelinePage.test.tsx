@@ -1,7 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor, fireEvent } from "@testing-library/react";
-import { MemoryRouter, Routes, Route } from "react-router-dom";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { describe, it, expect, beforeEach } from "vitest";
+import { screen, waitFor, fireEvent } from "@testing-library/react";
+import { mockApi, renderWithProviders } from "./testUtils";
 import ObserverTimelinePage from "../pages/ObserverTimelinePage";
 
 const FAKE_THREAD = {
@@ -13,24 +12,15 @@ const FAKE_THREAD = {
 };
 
 beforeEach(() => {
-  globalThis.fetch = vi.fn(() =>
-    Promise.resolve({ ok: true, json: () => Promise.resolve(FAKE_THREAD) }),
-  ) as never;
+  mockApi({ "GET /api/observer/threads/1/": FAKE_THREAD });
 });
-
-const qc = () => new QueryClient({ defaultOptions: { queries: { retry: false } } });
 
 describe("ObserverTimelinePage", () => {
   it("renders messages, expands on click", async () => {
-    render(
-      <QueryClientProvider client={qc()}>
-        <MemoryRouter initialEntries={["/threads/observer/1"]}>
-          <Routes>
-            <Route path="/threads/observer/:profileId" element={<ObserverTimelinePage />} />
-          </Routes>
-        </MemoryRouter>
-      </QueryClientProvider>,
-    );
+    renderWithProviders(<ObserverTimelinePage />, {
+      initialEntries: ["/threads/observer/1"],
+      routePath: "/threads/observer/:profileId",
+    });
 
     await waitFor(() => expect(screen.getByText(/Observer: P/)).toBeInTheDocument());
     const headers = screen.getAllByRole("button", { name: /(snapshot|response)/i });

@@ -83,6 +83,17 @@ export function apiPost<T>(path: string, body?: unknown): Promise<T> {
   return request<T>("POST", path, body);
 }
 
+export function apiPostForm<T>(path: string, form: FormData): Promise<T> {
+  // Multipart upload: no Content-Type header — the browser must set the
+  // multipart boundary itself. Shares handle() so error envelopes parse
+  // the same as JSON requests.
+  return fetch(`${apiBase}${path}`, {
+    method: "POST",
+    credentials: "include",
+    body: form,
+  }).then(handle<T>);
+}
+
 export function apiPatch<T>(path: string, body: unknown): Promise<T> {
   return request<T>("PATCH", path, body);
 }

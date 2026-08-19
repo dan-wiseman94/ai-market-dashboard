@@ -1,11 +1,8 @@
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { MemoryRouter } from "react-router-dom";
 import { vi, test, expect, beforeEach } from "vitest";
 import ExportPage from "@/pages/ExportPage";
-import { ToastProvider } from "@/hooks/useToast";
-import { Toasts } from "@/components/Toasts";
+import { renderWithProviders } from "./testUtils";
 
 beforeEach(() => {
   vi.spyOn(globalThis, "fetch").mockImplementation(async (url, init) => {
@@ -26,20 +23,15 @@ beforeEach(() => {
   });
 });
 
-function wrap(ui: React.ReactNode) {
-  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return <MemoryRouter><QueryClientProvider client={qc}><ToastProvider>{ui}</ToastProvider></QueryClientProvider></MemoryRouter>;
-}
-
 test("renders scope form + recent jobs list", async () => {
-  render(wrap(<ExportPage />));
+  renderWithProviders(<ExportPage />);
   expect(screen.getByRole("button", { name: /start export/i })).toBeInTheDocument();
   expect(await screen.findByText(/x\.zip/)).toBeInTheDocument();
 });
 
 test("clicking Start export POSTs scope", async () => {
   const spy = vi.spyOn(globalThis, "fetch");
-  render(wrap(<ExportPage />));
+  renderWithProviders(<ExportPage />);
   await userEvent.click(screen.getByRole("button", { name: /start export/i }));
   const called = spy.mock.calls.some(
     ([u, init]) => String(u).endsWith("/api/export/") && (init as RequestInit | undefined)?.method === "POST",
@@ -47,23 +39,9 @@ test("clicking Start export POSTs scope", async () => {
   expect(called).toBe(true);
 });
 
-function wrapWithToasts(ui: React.ReactNode) {
-  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return (
-    <MemoryRouter>
-      <QueryClientProvider client={qc}>
-        <ToastProvider>
-          <Toasts />
-          {ui}
-        </ToastProvider>
-      </QueryClientProvider>
-    </MemoryRouter>
-  );
-}
-
 test("unchecking every scope sends the minimal scope", async () => {
   const spy = vi.spyOn(globalThis, "fetch");
-  render(wrap(<ExportPage />));
+  renderWithProviders(<ExportPage />);
   for (const name of [/threads/i, /snapshots/i, /observations/i, /triggers/i, /profiles/i]) {
     await userEvent.click(screen.getByRole("checkbox", { name }));
   }
@@ -88,14 +66,14 @@ test("toasts an error when starting an export fails", async () => {
     if (u.includes("/api/export/")) return new Response(JSON.stringify({ results: [] }));
     return new Response("{}");
   });
-  render(wrapWithToasts(<ExportPage />));
+  renderWithProviders(<ExportPage />);
   await userEvent.click(screen.getByRole("button", { name: /start export/i }));
   expect(await screen.findByText(/disk full/i)).toBeInTheDocument();
 });
 
 test("Delete on a finished job sends DELETE for that job", async () => {
   const spy = vi.spyOn(globalThis, "fetch");
-  render(wrap(<ExportPage />));
+  renderWithProviders(<ExportPage />);
   await screen.findByText(/x\.zip/);
   await userEvent.click(screen.getByRole("button", { name: /delete/i }));
   const deleted = spy.mock.calls.some(
@@ -106,7 +84,7 @@ test("Delete on a finished job sends DELETE for that job", async () => {
 
 test("toggling a scope checkbox changes what gets POSTed", async () => {
   const spy = vi.spyOn(globalThis, "fetch");
-  render(wrap(<ExportPage />));
+  renderWithProviders(<ExportPage />);
   // Observations defaults to checked; turn it off before starting the export.
   await userEvent.click(screen.getByRole("checkbox", { name: /observations/i }));
   await userEvent.click(screen.getByRole("button", { name: /start export/i }));
@@ -138,7 +116,7 @@ test("Retry on a failed job re-POSTs that job's scope", async () => {
     return new Response("{}");
   });
   const spy = vi.spyOn(globalThis, "fetch");
-  render(wrap(<ExportPage />));
+  renderWithProviders(<ExportPage />);
   await userEvent.click(await screen.findByRole("button", { name: /retry/i }));
 
   const posts = spy.mock.calls.filter(
@@ -160,7 +138,7 @@ test("Start export is disabled while a job is still running", async () => {
     }
     return new Response("{}");
   });
-  render(wrap(<ExportPage />));
+  renderWithProviders(<ExportPage />);
   await screen.findByText(/running…/i);
   expect(screen.getByRole("button", { name: /start export/i })).toBeDisabled();
 });
@@ -177,6 +155,6 @@ test("shows 1 GB warning banner when total exceeds threshold", async () => {
     }
     return new Response("{}");
   });
-  render(wrap(<ExportPage />));
+  renderWithProviders(<ExportPage />);
   expect(await screen.findByText(/consider deleting/i)).toBeInTheDocument();
 });
