@@ -15,7 +15,7 @@ from apps.market.schwab_client import SchwabNotConnectedError
 from apps.market.serializers import CalendarOverrideSerializer
 from apps.market.services.chain import fetch_chain
 from apps.market.services.context import fetch_market_context
-from apps.market.services.edgar import fetch_filings, fetch_insider
+from apps.market.services.edgar import fetch_filings
 from apps.market.services.events import upcoming_events
 from apps.market.services.fred import fetch_macro
 from apps.market.services.news import fetch_news
@@ -132,16 +132,6 @@ def filings(request: HttpRequest) -> JsonResponse:
     if not tickers:
         return _err("missing_tickers", "Provide ?tickers=AAPL,MSFT", 400)
     return JsonResponse({t.upper(): fetch_filings(t) for t in tickers})
-
-
-@require_GET
-def insider(request: HttpRequest) -> JsonResponse:
-    """Recent Form 4 insider filings per ticker from EDGAR. ``?tickers=AAPL,MSFT``."""
-    raw = request.GET.get("tickers", "").strip()
-    tickers = [t.strip() for t in raw.split(",") if t.strip()]
-    if not tickers:
-        return _err("missing_tickers", "Provide ?tickers=AAPL,MSFT", 400)
-    return JsonResponse({t.upper(): fetch_insider(t) for t in tickers})
 
 
 @require_GET

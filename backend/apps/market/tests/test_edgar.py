@@ -10,7 +10,7 @@ from datetime import UTC, datetime, timedelta
 from unittest.mock import patch
 
 import apps.market.services.edgar as edgar_mod
-from apps.market.services.edgar import fetch_filings, fetch_insider
+from apps.market.services.edgar import fetch_filings
 
 _TICKER_MAP_RAW: dict = {
     "0": {"cik_str": 320193, "ticker": "AAPL", "title": "Apple Inc."},
@@ -185,55 +185,6 @@ def test_fetch_filings_url_construction():
     assert url.startswith("https://www.sec.gov/Archives/edgar/data/")
 
 
-def test_fetch_insider_returns_form4_only():
-    with (
-        patch("apps.market.services.edgar._get", side_effect=_get_side_effect),
-        patch(
-            "apps.market.services.edgar.cache.get_or_fetch",
-            side_effect=_passthrough_cache,
-        ),
-    ):
-        result = fetch_insider("AAPL")
-
-    assert isinstance(result, list)
-    assert len(result) == 2  # two form 4s in the fixture
-    for item in result:
-        assert "filed" in item
-        assert "accession" in item
-        assert "url" in item
-        assert item["title"] == "Apple Inc. Form 4"
-
-
-def test_fetch_insider_url_contains_cik_and_nodash():
-    with (
-        patch("apps.market.services.edgar._get", side_effect=_get_side_effect),
-        patch(
-            "apps.market.services.edgar.cache.get_or_fetch",
-            side_effect=_passthrough_cache,
-        ),
-    ):
-        result = fetch_insider("AAPL")
-
-    assert len(result) > 0
-    url = result[0]["url"]
-    assert str(_APPLE_CIK) in url
-    expected_nodash = "000032019325000004"
-    assert expected_nodash in url
-
-
-def test_fetch_insider_respects_limit():
-    with (
-        patch("apps.market.services.edgar._get", side_effect=_get_side_effect),
-        patch(
-            "apps.market.services.edgar.cache.get_or_fetch",
-            side_effect=_passthrough_cache,
-        ),
-    ):
-        result = fetch_insider("AAPL", limit=1)
-
-    assert len(result) <= 1
-
-
 def test_fetch_filings_mock_mode_returns_canned():
     with patch("apps.core.mocks.is_mock_mode", return_value=True):
         result = fetch_filings("AAPL")
@@ -257,21 +208,7 @@ def test_fetch_filings_mock_mode_respects_form_filter():
     assert all(f["form"] == "10-K" for f in result)
 
 
-def test_fetch_insider_mock_mode_returns_canned():
-    with patch("apps.core.mocks.is_mock_mode", return_value=True):
-        result = fetch_insider("TSLA")
-
-    assert isinstance(result, list)
-    assert len(result) > 0
-    first = result[0]
-    assert "filed" in first
-    assert "accession" in first
-    assert "url" in first
-    assert "title" in first
-    assert "Form 4" in first["title"]
-
-
-def test_fetch_filings_and_insider_drop_stale_entries_by_default():
+def test_fetch_filings_drop_stale_entries_by_default():
     """A rarely-filing issuer (the audit's QQQ trust served 8-Ks from 2014) must
     not surface decade-old documents as current context."""
     from datetime import UTC, datetime, timedelta
@@ -303,10 +240,8 @@ def test_fetch_filings_and_insider_drop_stale_entries_by_default():
         ),
     ):
         filings = fetch_filings("QQQ")
-        insider = fetch_insider("QQQ")
 
     assert [f["filed"] for f in filings] == [fresh]
-    assert [f["filed"] for f in insider] == [fresh]
     # Futures roots and cash indices are not SEC filers — no EDGAR round-trip.
     with (
         patch("apps.market.services.edgar._get") as fake_get,
@@ -317,7 +252,7 @@ def test_fetch_filings_and_insider_drop_stale_entries_by_default():
     ):
         assert fetch_filings("NQ") == []
         assert fetch_filings("/ES") == []
-        assert fetch_insider("$SPX") == []
+        assert fetch_filings("$SPX") == []
     fake_get.assert_not_called()
 
 
@@ -330,19 +265,6 @@ def test_fetch_filings_unknown_ticker_returns_empty():
         ),
     ):
         result = fetch_filings("ZZZZZ_DOES_NOT_EXIST")
-
-    assert result == []
-
-
-def test_fetch_insider_unknown_ticker_returns_empty():
-    with (
-        patch("apps.market.services.edgar._get", side_effect=_get_side_effect),
-        patch(
-            "apps.market.services.edgar.cache.get_or_fetch",
-            side_effect=_passthrough_cache,
-        ),
-    ):
-        result = fetch_insider("ZZZZZ_DOES_NOT_EXIST")
 
     assert result == []
 
@@ -363,22 +285,6 @@ def test_fetch_filings_never_raises_on_network_error():
     assert result == []
 
 
-def test_fetch_insider_never_raises_on_network_error():
-    def _boom(url: str, *, headers: dict) -> dict:
-        raise RuntimeError("connection refused")
-
-    with (
-        patch("apps.market.services.edgar._get", side_effect=_boom),
-        patch(
-            "apps.market.services.edgar.cache.get_or_fetch",
-            side_effect=_passthrough_cache,
-        ),
-    ):
-        result = fetch_insider("AAPL")
-
-    assert result == []
-
-
 def test_fetch_filings_never_raises_on_submissions_error():
     """Ticker map succeeds but submissions fetch fails → []."""
 
@@ -395,24 +301,6 @@ def test_fetch_filings_never_raises_on_submissions_error():
         ),
     ):
         result = fetch_filings("AAPL")
-
-    assert result == []
-
-
-def test_fetch_insider_never_raises_on_submissions_error():
-    def _partial_fail(url: str, *, headers: dict) -> dict:
-        if "company_tickers" in url:
-            return _TICKER_MAP_RAW
-        raise OSError("submissions unreachable")
-
-    with (
-        patch("apps.market.services.edgar._get", side_effect=_partial_fail),
-        patch(
-            "apps.market.services.edgar.cache.get_or_fetch",
-            side_effect=_passthrough_cache,
-        ),
-    ):
-        result = fetch_insider("AAPL")
 
     assert result == []
 

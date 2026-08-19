@@ -18,7 +18,6 @@ urlpatterns = [
     path("events/", views.events, name="events"),
     path("macro/", views.macro, name="macro"),
     path("filings/", views.filings, name="filings"),
-    path("insider/", views.insider, name="insider"),
     path("treasury/", views.treasury, name="treasury"),
     path("calendar-status/", views.calendar_status, name="calendar-status"),
     *router.urls,

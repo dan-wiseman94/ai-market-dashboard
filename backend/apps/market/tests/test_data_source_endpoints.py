@@ -1,4 +1,4 @@
-"""Read endpoints for the new data dimensions: macro / filings / insider / treasury."""
+"""Read endpoints for the new data dimensions: macro / filings / treasury."""
 
 from __future__ import annotations
 
@@ -40,20 +40,6 @@ def test_filings_missing_tickers_400(api):
     r = api.get("/api/market/filings/")
     assert r.status_code == 400
     assert r.json()["code"] == "missing_tickers"
-
-
-@pytest.mark.django_db
-def test_insider_endpoint(api):
-    with patch("apps.market.views.fetch_insider", return_value=[{"accession": "x"}]):
-        r = api.get("/api/market/insider/?tickers=AAPL")
-    assert r.status_code == 200
-    assert r.json()["AAPL"][0]["accession"] == "x"
-
-
-@pytest.mark.django_db
-def test_insider_missing_tickers_400(api):
-    r = api.get("/api/market/insider/")
-    assert r.status_code == 400
 
 
 @pytest.mark.django_db

@@ -7,8 +7,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-KNOWN_PROVIDERS = ["claude", "openai", "local"]
-
 # Provider names that resolve to Anthropic endpoints. Claude-only paths
 # (structured outputs, Messages Batches) must check membership before wrapping
 # an arbitrary ProviderConfig in an Anthropic client — sending another vendor's
@@ -31,7 +29,6 @@ class ModelInfo:
     cached_per_mtok: float
     context_window: int
     supports_vision: bool
-    supports_cache: bool
     max_payload_tokens: int = 40_000
 
 
@@ -45,7 +42,6 @@ _CATALOG: list[ModelInfo] = [
         cached_per_mtok=1.875,
         context_window=200_000,
         supports_vision=True,
-        supports_cache=True,
         max_payload_tokens=150_000,
     ),
     ModelInfo(
@@ -57,7 +53,6 @@ _CATALOG: list[ModelInfo] = [
         cached_per_mtok=0.375,
         context_window=200_000,
         supports_vision=True,
-        supports_cache=True,
         max_payload_tokens=150_000,
     ),
     ModelInfo(
@@ -69,7 +64,6 @@ _CATALOG: list[ModelInfo] = [
         cached_per_mtok=0.125,
         context_window=200_000,
         supports_vision=True,
-        supports_cache=True,
         max_payload_tokens=150_000,
     ),
     ModelInfo(
@@ -81,7 +75,6 @@ _CATALOG: list[ModelInfo] = [
         cached_per_mtok=0.50,
         context_window=400_000,
         supports_vision=True,
-        supports_cache=True,
         max_payload_tokens=300_000,
     ),
     ModelInfo(
@@ -93,7 +86,6 @@ _CATALOG: list[ModelInfo] = [
         cached_per_mtok=0.06,
         context_window=400_000,
         supports_vision=True,
-        supports_cache=True,
         max_payload_tokens=200_000,
     ),
     ModelInfo(
@@ -105,7 +97,6 @@ _CATALOG: list[ModelInfo] = [
         cached_per_mtok=0.015,
         context_window=400_000,
         supports_vision=False,
-        supports_cache=True,
         max_payload_tokens=200_000,
     ),
 ]
