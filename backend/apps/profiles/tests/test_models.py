@@ -25,3 +25,11 @@ def test_ticker_is_uppercased():
     s = WatchlistSymbol.objects.create(watchlist=w, ticker="nvda", sort_order=0)
     s.refresh_from_db()
     assert s.ticker == "NVDA"
+
+
+@pytest.mark.django_db
+def test_ticker_is_stripped():
+    w = Watchlist.objects.create(name="A")
+    s = WatchlistSymbol.objects.create(watchlist=w, ticker=" nvda ", sort_order=0)
+    s.refresh_from_db()
+    assert s.ticker == "NVDA"

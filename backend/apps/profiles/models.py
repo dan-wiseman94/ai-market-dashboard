@@ -32,7 +32,9 @@ class WatchlistSymbol(models.Model):
         return f"{self.watchlist} / {self.ticker}"
 
     def save(self, *args, **kwargs) -> None:
-        self.ticker = (self.ticker or "").upper()
+        # Strip before upper: "nvda " would otherwise store "NVDA " past the
+        # (watchlist, ticker) unique constraint and break exact-key joins.
+        self.ticker = (self.ticker or "").strip().upper()
         super().save(*args, **kwargs)
 
 

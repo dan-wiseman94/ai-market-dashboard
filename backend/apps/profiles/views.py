@@ -44,18 +44,21 @@ class WatchlistSymbolViewSet(
 
     def create(self, request, *args, **kwargs):
         wl = get_object_or_404(Watchlist, pk=self.kwargs["watchlist_pk"])
-        ticker = request.data.get("ticker", "").upper()
+        ticker = request.data.get("ticker", "").strip().upper()
         if not ticker:
             return Response(
                 {"code": "invalid_input", "message": "ticker is required"},
                 status=400,
             )
         try:
-            sym = WatchlistSymbol.objects.create(
-                watchlist=wl,
-                ticker=ticker,
-                sort_order=wl.symbols.count(),
-            )
+            # atomic() gives the IntegrityError a savepoint to roll back to — catching it
+            # without one leaves an enclosing transaction (tests, future callers) aborted.
+            with transaction.atomic():
+                sym = WatchlistSymbol.objects.create(
+                    watchlist=wl,
+                    ticker=ticker,
+                    sort_order=wl.symbols.count(),
+                )
         except IntegrityError:
             return Response(
                 {"code": "duplicate", "message": f"{ticker} is already in this watchlist"},
@@ -83,7 +86,9 @@ class AgentPresetViewSet(viewsets.ModelViewSet):
     def _handle_slug_collision(handler, request, *args, **kwargs):
         """Turn a unique-slug IntegrityError into a 400 instead of a 500."""
         try:
-            return handler(request, *args, **kwargs)
+            # See create(): the savepoint keeps an enclosing transaction usable after the catch.
+            with transaction.atomic():
+                return handler(request, *args, **kwargs)
         except IntegrityError:
             return Response(
                 {"code": "duplicate", "message": "A preset with this slug already exists."},
