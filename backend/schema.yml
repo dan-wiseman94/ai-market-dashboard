@@ -10,8 +10,6 @@ paths:
       tags:
       - aieval
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -28,8 +26,6 @@ paths:
       tags:
       - aieval
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -41,8 +37,6 @@ paths:
       tags:
       - analytics
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -54,8 +48,6 @@ paths:
       tags:
       - analytics
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -66,8 +58,6 @@ paths:
       tags:
       - analytics
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -80,8 +70,6 @@ paths:
       tags:
       - analytics
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -93,8 +81,6 @@ paths:
       tags:
       - analytics
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -106,8 +92,6 @@ paths:
       tags:
       - analytics
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -118,8 +102,6 @@ paths:
       tags:
       - analytics
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -130,8 +112,6 @@ paths:
       tags:
       - analytics
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -142,8 +122,6 @@ paths:
       tags:
       - analytics
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -154,8 +132,6 @@ paths:
       tags:
       - analytics
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -169,8 +145,6 @@ paths:
       tags:
       - analytics
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -181,8 +155,6 @@ paths:
       tags:
       - analytics
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -193,8 +165,6 @@ paths:
       tags:
       - analytics
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -218,8 +188,6 @@ paths:
       tags:
       - backups
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -238,8 +206,6 @@ paths:
             schema:
               $ref: '#/components/schemas/BackupRecord'
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '201':
@@ -261,8 +227,6 @@ paths:
       tags:
       - backups
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -283,8 +247,6 @@ paths:
       tags:
       - backups
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '204':
@@ -302,8 +264,6 @@ paths:
       tags:
       - backups
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -323,8 +283,6 @@ paths:
             schema:
               $ref: '#/components/schemas/BackupRecord'
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -339,8 +297,6 @@ paths:
       tags:
       - book
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -364,8 +320,6 @@ paths:
       tags:
       - book
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -380,8 +334,6 @@ paths:
       tags:
       - book
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -401,8 +353,6 @@ paths:
             schema:
               $ref: '#/components/schemas/BookSnapshot'
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -417,8 +367,6 @@ paths:
       tags:
       - briefings
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -435,8 +383,6 @@ paths:
       tags:
       - briefings
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -455,8 +401,6 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedBriefingConfig'
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -471,8 +415,6 @@ paths:
       tags:
       - briefings
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -483,8 +425,6 @@ paths:
       tags:
       - briefings
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -496,8 +436,6 @@ paths:
       tags:
       - coverage
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -521,8 +459,6 @@ paths:
       tags:
       - coverage
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -550,8 +486,6 @@ paths:
               $ref: '#/components/schemas/CoverageNote'
         required: true
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -566,8 +500,6 @@ paths:
       tags:
       - dashboard
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -578,8 +510,6 @@ paths:
       tags:
       - desk
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -603,8 +533,6 @@ paths:
       tags:
       - desk
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -631,8 +559,6 @@ paths:
             schema:
               $ref: '#/components/schemas/DeskEntry'
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -659,8 +585,6 @@ paths:
             schema:
               $ref: '#/components/schemas/DeskEntry'
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -680,8 +604,6 @@ paths:
             schema:
               $ref: '#/components/schemas/DeskEntry'
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -702,8 +624,6 @@ paths:
       tags:
       - errors
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -721,8 +641,6 @@ paths:
       tags:
       - errors
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -746,8 +664,6 @@ paths:
       tags:
       - export
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -767,8 +683,6 @@ paths:
               $ref: '#/components/schemas/ExportJob'
         required: true
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '201':
@@ -790,8 +704,6 @@ paths:
       tags:
       - export
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -812,8 +724,6 @@ paths:
       tags:
       - export
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '204':
@@ -831,8 +741,6 @@ paths:
       tags:
       - export
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -853,8 +761,6 @@ paths:
       tags:
       - export
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -865,8 +771,6 @@ paths:
       tags:
       - files
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -887,8 +791,6 @@ paths:
             schema:
               $ref: '#/components/schemas/UserFile'
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '201':
@@ -910,8 +812,6 @@ paths:
       tags:
       - files
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -932,8 +832,6 @@ paths:
       tags:
       - files
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '204':
@@ -949,8 +847,6 @@ paths:
       tags:
       - journal
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -977,8 +873,6 @@ paths:
               $ref: '#/components/schemas/JournalEntry'
         required: true
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '201':
@@ -994,8 +888,6 @@ paths:
       tags:
       - lessons
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -1025,8 +917,6 @@ paths:
             schema:
               $ref: '#/components/schemas/Lesson'
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -1053,8 +943,6 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedLesson'
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -1076,8 +964,6 @@ paths:
       tags:
       - lessons
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '204':
@@ -1088,8 +974,6 @@ paths:
       tags:
       - market
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -1111,8 +995,6 @@ paths:
               $ref: '#/components/schemas/CalendarOverride'
         required: true
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '201':
@@ -1134,8 +1016,6 @@ paths:
       tags:
       - market
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -1162,8 +1042,6 @@ paths:
               $ref: '#/components/schemas/CalendarOverride'
         required: true
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -1189,8 +1067,6 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedCalendarOverride'
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -1211,8 +1087,6 @@ paths:
       tags:
       - market
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '204':
@@ -1223,8 +1097,6 @@ paths:
       tags:
       - observer
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -1248,8 +1120,6 @@ paths:
       tags:
       - observer
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -1277,8 +1147,6 @@ paths:
               $ref: '#/components/schemas/Notification'
         required: true
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -1299,8 +1167,6 @@ paths:
               $ref: '#/components/schemas/Notification'
         required: true
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -1315,8 +1181,6 @@ paths:
       tags:
       - observer
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -1338,8 +1202,6 @@ paths:
               $ref: '#/components/schemas/ObserverSchedule'
         required: true
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '201':
@@ -1361,8 +1223,6 @@ paths:
       tags:
       - observer
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -1389,8 +1249,6 @@ paths:
               $ref: '#/components/schemas/ObserverSchedule'
         required: true
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -1416,8 +1274,6 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedObserverSchedule'
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -1438,8 +1294,6 @@ paths:
       tags:
       - observer
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '204':
@@ -1463,8 +1317,6 @@ paths:
               $ref: '#/components/schemas/ObserverSchedule'
         required: true
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -1486,8 +1338,6 @@ paths:
       tags:
       - portfolio
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -1516,8 +1366,6 @@ paths:
               $ref: '#/components/schemas/Position'
         required: true
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '201':
@@ -1546,8 +1394,6 @@ paths:
       tags:
       - portfolio
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -1581,8 +1427,6 @@ paths:
               $ref: '#/components/schemas/Position'
         required: true
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -1615,8 +1459,6 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedPosition'
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -1644,8 +1486,6 @@ paths:
       tags:
       - portfolio
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '204':
@@ -1678,8 +1518,6 @@ paths:
               $ref: '#/components/schemas/Position'
         required: true
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -1697,8 +1535,6 @@ paths:
       tags:
       - predictions
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -1712,8 +1548,6 @@ paths:
       tags:
       - predictions
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -1724,8 +1558,6 @@ paths:
       tags:
       - presets
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -1747,8 +1579,6 @@ paths:
               $ref: '#/components/schemas/AgentPreset'
         required: true
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '201':
@@ -1770,8 +1600,6 @@ paths:
       tags:
       - presets
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -1798,8 +1626,6 @@ paths:
               $ref: '#/components/schemas/AgentPreset'
         required: true
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -1825,8 +1651,6 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedAgentPreset'
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -1847,8 +1671,6 @@ paths:
       tags:
       - presets
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '204':
@@ -1859,8 +1681,6 @@ paths:
       tags:
       - profiles
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -1882,8 +1702,6 @@ paths:
               $ref: '#/components/schemas/TradingProfile'
         required: true
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '201':
@@ -1905,8 +1723,6 @@ paths:
       tags:
       - profiles
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -1933,8 +1749,6 @@ paths:
               $ref: '#/components/schemas/TradingProfile'
         required: true
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -1960,8 +1774,6 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedTradingProfile'
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -1982,8 +1794,6 @@ paths:
       tags:
       - profiles
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '204':
@@ -1994,8 +1804,6 @@ paths:
       tags:
       - recall
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -2006,8 +1814,6 @@ paths:
       tags:
       - recall
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -2018,8 +1824,6 @@ paths:
       tags:
       - recall
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -2031,8 +1835,6 @@ paths:
       tags:
       - regime
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -2057,8 +1859,6 @@ paths:
       tags:
       - regime
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -2074,8 +1874,6 @@ paths:
       tags:
       - regime
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -2096,8 +1894,6 @@ paths:
             schema:
               $ref: '#/components/schemas/RegimeReading'
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -2112,8 +1908,6 @@ paths:
       tags:
       - schwab
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -2135,8 +1929,6 @@ paths:
               $ref: '#/components/schemas/ProviderConfig'
         required: true
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '201':
@@ -2165,8 +1957,6 @@ paths:
       tags:
       - schwab
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -2200,8 +1990,6 @@ paths:
               $ref: '#/components/schemas/ProviderConfig'
         required: true
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -2234,8 +2022,6 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedProviderConfig'
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -2263,8 +2049,6 @@ paths:
       tags:
       - schwab
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '204':
@@ -2300,8 +2084,6 @@ paths:
               $ref: '#/components/schemas/ProviderConfig'
         required: true
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -2321,8 +2103,6 @@ paths:
       tags:
       - settings
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -2337,8 +2117,6 @@ paths:
       tags:
       - settings
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -2362,8 +2140,6 @@ paths:
       tags:
       - snapshots
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -2382,8 +2158,6 @@ paths:
             schema:
               $ref: '#/components/schemas/Snapshot'
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '201':
@@ -2405,8 +2179,6 @@ paths:
       tags:
       - snapshots
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -2434,8 +2206,6 @@ paths:
       tags:
       - snapshots
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -2462,8 +2232,6 @@ paths:
             schema:
               $ref: '#/components/schemas/Snapshot'
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -2481,8 +2249,6 @@ paths:
       tags:
       - snapshots
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -2497,8 +2263,6 @@ paths:
       tags:
       - themes
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -2520,8 +2284,6 @@ paths:
               $ref: '#/components/schemas/Theme'
         required: true
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '201':
@@ -2543,8 +2305,6 @@ paths:
       tags:
       - themes
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -2571,8 +2331,6 @@ paths:
               $ref: '#/components/schemas/Theme'
         required: true
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -2598,8 +2356,6 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedTheme'
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -2620,8 +2376,6 @@ paths:
       tags:
       - themes
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '204':
@@ -2639,8 +2393,6 @@ paths:
       tags:
       - themes
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -2655,8 +2407,6 @@ paths:
       tags:
       - theses
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -2678,8 +2428,6 @@ paths:
               $ref: '#/components/schemas/Thesis'
         required: true
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '201':
@@ -2701,8 +2449,6 @@ paths:
       tags:
       - theses
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -2729,8 +2475,6 @@ paths:
               $ref: '#/components/schemas/Thesis'
         required: true
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -2756,8 +2500,6 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedThesis'
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -2778,8 +2520,6 @@ paths:
       tags:
       - theses
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '204':
@@ -2808,8 +2548,6 @@ paths:
               $ref: '#/components/schemas/Thesis'
         required: true
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -2851,8 +2589,6 @@ paths:
               $ref: '#/components/schemas/Thesis'
         required: true
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -2880,8 +2616,6 @@ paths:
       tags:
       - threads
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -2900,8 +2634,6 @@ paths:
             schema:
               $ref: '#/components/schemas/Thread'
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '201':
@@ -2923,8 +2655,6 @@ paths:
       tags:
       - threads
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -2950,8 +2680,6 @@ paths:
             schema:
               $ref: '#/components/schemas/Thread'
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -2977,8 +2705,6 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedThread'
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -3011,8 +2737,6 @@ paths:
             schema:
               $ref: '#/components/schemas/Thread'
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -3041,8 +2765,6 @@ paths:
             schema:
               $ref: '#/components/schemas/Thread'
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -3069,8 +2791,6 @@ paths:
             schema:
               $ref: '#/components/schemas/Thread'
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -3105,8 +2825,6 @@ paths:
             schema:
               $ref: '#/components/schemas/Thread'
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -3121,8 +2839,6 @@ paths:
       tags:
       - triggers
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -3144,8 +2860,6 @@ paths:
               $ref: '#/components/schemas/EventTrigger'
         required: true
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '201':
@@ -3167,8 +2881,6 @@ paths:
       tags:
       - triggers
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -3195,8 +2907,6 @@ paths:
               $ref: '#/components/schemas/EventTrigger'
         required: true
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -3222,8 +2932,6 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedEventTrigger'
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -3244,8 +2952,6 @@ paths:
       tags:
       - triggers
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '204':
@@ -3269,8 +2975,6 @@ paths:
               $ref: '#/components/schemas/EventTrigger'
         required: true
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -3292,8 +2996,6 @@ paths:
       tags:
       - triggers
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -3321,8 +3023,6 @@ paths:
               $ref: '#/components/schemas/EventTrigger'
         required: true
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -3348,8 +3048,6 @@ paths:
               $ref: '#/components/schemas/EventTrigger'
         required: true
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -3364,8 +3062,6 @@ paths:
       tags:
       - triggers
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -3380,8 +3076,6 @@ paths:
       tags:
       - warroom
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -3405,8 +3099,6 @@ paths:
       tags:
       - warroom
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -3426,8 +3118,6 @@ paths:
             schema:
               $ref: '#/components/schemas/WarRoomRun'
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -3442,8 +3132,6 @@ paths:
       tags:
       - watchlists
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -3465,8 +3153,6 @@ paths:
               $ref: '#/components/schemas/Watchlist'
         required: true
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '201':
@@ -3488,8 +3174,6 @@ paths:
       tags:
       - watchlists
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -3516,8 +3200,6 @@ paths:
               $ref: '#/components/schemas/Watchlist'
         required: true
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -3543,8 +3225,6 @@ paths:
             schema:
               $ref: '#/components/schemas/PatchedWatchlist'
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -3565,8 +3245,6 @@ paths:
       tags:
       - watchlists
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '204':
@@ -3591,8 +3269,6 @@ paths:
               $ref: '#/components/schemas/Watchlist'
         required: true
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '200':
@@ -3619,8 +3295,6 @@ paths:
               $ref: '#/components/schemas/WatchlistSymbol'
         required: true
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '201':
@@ -3646,8 +3320,6 @@ paths:
       tags:
       - watchlists
       security:
-      - cookieAuth: []
-      - basicAuth: []
       - {}
       responses:
         '204':
@@ -6141,11 +5813,3 @@ components:
       - id
       - sort_order
       - ticker
-  securitySchemes:
-    basicAuth:
-      type: http
-      scheme: basic
-    cookieAuth:
-      type: apiKey
-      in: cookie
-      name: sessionid

@@ -13,6 +13,7 @@ from django.utils import timezone
 from apps.core import provider_health
 from apps.market.models import MarketEvent
 from apps.market.services import events as events_service
+from apps.market.services.safe_log import scrub_secret_params
 from apps.profiles.models import WatchlistSymbol
 from apps.secrets.models import ApiCredential
 from apps.secrets.schwab_oauth import persist_token, refresh_token
@@ -62,16 +63,23 @@ def refresh_schwab_token() -> dict:
             provider_health.mark_auth_error(
                 "schwab", "Schwab refresh token expired or was revoked — reconnect at /settings."
             )
+            # nosemgrep: python.lang.security.audit.logging.logger-credential-leak.python-logger-credential-disclosure -- interpolates an int HTTP status, no credential
             log.warning(
                 "Schwab proactive token refresh rejected (HTTP %s); reconnect needed.", status
             )
             return {"ok": False, "reason": "refresh_rejected"}
         # A transient server-side error (5xx) — leave the credential alone and retry next tick.
+        # nosemgrep: python.lang.security.audit.logging.logger-credential-leak.python-logger-credential-disclosure -- interpolates an int HTTP status, no credential
         log.warning("Schwab token refresh failed (HTTP %s); will retry next tick.", status)
         return {"ok": False, "reason": "refresh_error"}
     except httpx.HTTPError as exc:
         # Network/timeout reaching Schwab's token endpoint — transient, retry next tick.
-        log.warning("Schwab token refresh network error (%s); will retry next tick.", exc)
+        # httpx error strings can embed the request URL — scrub before logging.
+        # nosemgrep: python.lang.security.audit.logging.logger-credential-leak.python-logger-credential-disclosure -- value passes through scrub_secret_params first
+        log.warning(
+            "Schwab token refresh network error (%s); will retry next tick.",
+            scrub_secret_params(str(exc)),
+        )
         return {"ok": False, "reason": "refresh_error"}
 
     persist_token(new_token)

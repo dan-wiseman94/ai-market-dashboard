@@ -160,6 +160,10 @@ SNAPSHOT_IMAGE_DIR = env.str("SNAPSHOT_IMAGE_DIR", default="/data/images")
 REST_FRAMEWORK = {  # nosemgrep
     "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
     "DEFAULT_PARSER_CLASSES": ["rest_framework.parsers.JSONParser"],
+    # No auth by design (network isolation is the security model) — DRF's default
+    # Session/Basic classes otherwise advertise a basicAuth scheme in the OpenAPI
+    # schema for auth the API doesn't actually perform.
+    "DEFAULT_AUTHENTICATION_CLASSES": [],
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     # Map malformed-client-input exceptions (non-integer path ids, NUL bytes, etc.) that
     # reach the ORM to 400 instead of letting them escape as 500s. See apps.core.exceptions.
