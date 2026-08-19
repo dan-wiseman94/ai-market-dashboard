@@ -6,22 +6,10 @@ from __future__ import annotations
 from unittest.mock import patch
 
 import pytest
-from rest_framework.test import APIClient
 
-from apps.profiles.models import TradingProfile
 from apps.snapshots.models import Snapshot, SnapshotSection
 from apps.thesis.models import Thesis
 from apps.threads.models import Thread
-
-
-@pytest.fixture
-def api():
-    return APIClient()
-
-
-@pytest.fixture
-def profile(db):
-    return TradingProfile.objects.create(name="Test Profile", style="swing trader")
 
 
 @pytest.fixture

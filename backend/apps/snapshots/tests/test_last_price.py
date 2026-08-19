@@ -1,13 +1,7 @@
 import pytest
 
-from apps.profiles.models import TradingProfile
 from apps.snapshots.models import Snapshot, SnapshotSection
 from apps.snapshots.primary import last_price
-
-
-@pytest.fixture
-def profile(db):
-    return TradingProfile.objects.create(name="P", default_includes=["quotes"])
 
 
 def _snap(profile, *, primary_ticker="NVDA"):

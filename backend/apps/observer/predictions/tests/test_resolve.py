@@ -7,25 +7,12 @@ from datetime import UTC, date, datetime, timedelta
 import pytest
 from django.utils import timezone
 
-from apps.market.models import CorporateAction, OHLCBar
+from apps.market.models import CorporateAction
 from apps.observer.models import AIPrediction
 from apps.observer.predictions.tasks import resolve_due, resolve_prediction
 
 START = datetime(2026, 1, 5, 15, 0, tzinfo=UTC)
 END = datetime(2026, 1, 12, 15, 0, tzinfo=UTC)
-
-
-def _mk_bar(ticker, ts, close):
-    OHLCBar.objects.create(
-        ticker=ticker,
-        timeframe="1h",
-        ts=ts,
-        open=close,
-        high=close,
-        low=close,
-        close=close,
-        volume=1,
-    )
 
 
 def _pred(*, ticker="NVDA", direction="bullish", predicted_at=START, resolve_at=END):
@@ -44,9 +31,9 @@ def _pred(*, ticker="NVDA", direction="bullish", predicted_at=START, resolve_at=
 
 @pytest.mark.django_db
 class TestResolve:
-    def test_resolves_with_forward_return_and_verdict(self):
-        _mk_bar("NVDA", START, 100.0)
-        _mk_bar("NVDA", END, 110.0)
+    def test_resolves_with_forward_return_and_verdict(self, mk_bar):
+        mk_bar("NVDA", START, 100.0)
+        mk_bar("NVDA", END, 110.0)
         pred = _pred()
         assert resolve_prediction(pred.id) is True
         pred.refresh_from_db()
@@ -55,9 +42,9 @@ class TestResolve:
         assert pred.verdict == "correct"  # bullish + 10%
         assert pred.resolved_at is not None
 
-    def test_idempotent_second_resolve_is_noop(self):
-        _mk_bar("NVDA", START, 100.0)
-        _mk_bar("NVDA", END, 110.0)
+    def test_idempotent_second_resolve_is_noop(self, mk_bar):
+        mk_bar("NVDA", START, 100.0)
+        mk_bar("NVDA", END, 110.0)
         pred = _pred()
         assert resolve_prediction(pred.id) is True
         assert resolve_prediction(pred.id) is False  # already resolved — no double-score
@@ -69,11 +56,11 @@ class TestResolve:
         assert pred.forward_return_pct is None
         assert pred.verdict == "inconclusive"
 
-    def test_split_in_window_resolves_flat_not_crashed(self):
+    def test_split_in_window_resolves_flat_not_crashed(self, mk_bar):
         # 3:1 split divides price to 1/3; a neutral call should read FLAT (correct),
         # not a -66% crash — proving the ledger inherits corporate-action-aware math.
-        _mk_bar("NVDA", START, 300.0)
-        _mk_bar("NVDA", END, 100.0)
+        mk_bar("NVDA", START, 300.0)
+        mk_bar("NVDA", END, 100.0)
         CorporateAction.objects.create(
             source="test",
             external_id="SPLIT:NVDA:x",

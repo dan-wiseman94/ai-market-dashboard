@@ -2,20 +2,9 @@ from unittest.mock import patch
 
 import pytest
 from django_celery_beat.models import PeriodicTask
-from rest_framework.test import APIClient
 
 from apps.observer.models import ObserverSchedule
 from apps.profiles.models import TradingProfile
-
-
-@pytest.fixture
-def api():
-    return APIClient()
-
-
-@pytest.fixture
-def profile(db):
-    return TradingProfile.objects.create(name="P", style="x")
 
 
 @pytest.mark.django_db

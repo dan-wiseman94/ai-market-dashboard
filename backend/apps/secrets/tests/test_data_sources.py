@@ -7,14 +7,8 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
-from rest_framework.test import APIClient
 
 from apps.secrets.models import ApiCredential
-
-
-@pytest.fixture
-def api():
-    return APIClient()
 
 
 @pytest.mark.django_db

@@ -2,14 +2,8 @@ from __future__ import annotations
 
 import pytest
 from django.db import IntegrityError
-from rest_framework.test import APIClient
 
 from apps.profiles.models import AgentPreset
-
-
-@pytest.fixture
-def api():
-    return APIClient()
 
 
 @pytest.mark.django_db

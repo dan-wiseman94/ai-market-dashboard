@@ -12,7 +12,6 @@ from unittest.mock import patch
 import pytest
 
 from apps.ai.cost import CostCapExceededError
-from apps.profiles.models import TradingProfile
 from apps.secrets.models import ProviderConfig
 from apps.snapshots.models import Snapshot, SnapshotSection
 from apps.strategy.coverage.schemas import CoverageRevisionDraft
@@ -20,11 +19,6 @@ from apps.strategy.coverage.services.revise import revise_coverage
 from apps.strategy.models import CoverageNote, CoverageRevision
 
 PATCH_TARGET = "apps.strategy.coverage.services.revise.run_structured"
-
-
-@pytest.fixture
-def profile(db) -> TradingProfile:
-    return TradingProfile.objects.create(name="p", style="s", default_provider="claude")
 
 
 @pytest.fixture

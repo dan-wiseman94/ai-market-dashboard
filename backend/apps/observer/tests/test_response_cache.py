@@ -11,13 +11,8 @@ from django.test import override_settings
 
 from apps.observer.models import ObserverSchedule
 from apps.observer.services.run import run_observer
-from apps.profiles.models import TradingProfile
 from apps.snapshots.models import Snapshot
 from apps.threads.models import Message, Thread
-
-
-def _profile():
-    return TradingProfile.objects.create(name="P", style="x")
 
 
 def _fire(schedule, snap):
@@ -40,8 +35,8 @@ def _fire(schedule, snap):
 
 @pytest.mark.django_db
 @override_settings(OBSERVER_RESPONSE_CACHE_ENABLED=True)
-def test_reuses_cached_response_for_identical_prompt():
-    p = _profile()
+def test_reuses_cached_response_for_identical_prompt(profile):
+    p = profile
     s = ObserverSchedule.objects.create(
         name="x", profile=p, market_hours_only=False, default_includes=["quotes"]
     )
@@ -70,8 +65,8 @@ def test_reuses_cached_response_for_identical_prompt():
 
 
 @pytest.mark.django_db
-def test_cache_off_by_default_always_dispatches():
-    p = _profile()
+def test_cache_off_by_default_always_dispatches(profile):
+    p = profile
     s = ObserverSchedule.objects.create(
         name="x", profile=p, market_hours_only=False, default_includes=["quotes"]
     )
