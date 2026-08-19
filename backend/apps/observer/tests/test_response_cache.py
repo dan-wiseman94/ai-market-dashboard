@@ -10,13 +10,13 @@ import pytest
 from django.test import override_settings
 
 from apps.observer.models import ObserverSchedule
-from apps.observer.services.run import run_observer
+from apps.observer.services.run import fire_observer
 from apps.snapshots.models import Snapshot
 from apps.threads.models import Message, Thread
 
 
 def _fire(schedule, snap):
-    """Fire run_observer with capture/serialize/cost mocked so the assembled
+    """Fire fire_observer with capture/serialize/cost mocked so the assembled
     prompt is deterministic; return the patched run_ai_on_message mock."""
     with ExitStack() as stack:
         for cm in (
@@ -29,7 +29,7 @@ def _fire(schedule, snap):
         ):
             stack.enter_context(cm)
         run_ai = stack.enter_context(patch("apps.observer.services.run.run_ai_on_message"))
-        run_observer(schedule.id)
+        fire_observer(schedule.id)
         return run_ai
 
 

@@ -39,7 +39,11 @@ function makeRouter(entry = "/") {
 
 beforeEach(() => {
   localStorage.clear();
-  mockFetch(() => ({ ok: true, json: () => Promise.resolve({ results: [] }) }));
+  // Notifications is a bare-array endpoint; everything else here reads {results}.
+  mockFetch((url) => ({
+    ok: true,
+    json: () => Promise.resolve(url.includes("/api/observer/notifications/") ? [] : { results: [] }),
+  }));
   installFakeWebSocket();
 });
 

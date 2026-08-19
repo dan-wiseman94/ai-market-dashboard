@@ -42,7 +42,7 @@ function mockHooks(
 ) {
   const mutateMock = vi.fn();
   vi.spyOn(hooks, "useErrors").mockReturnValue({
-    data: { errors: rows, count: rows.length },
+    data: { results: rows, count: rows.length },
     isLoading,
     isSuccess: !isLoading,
   } as never);

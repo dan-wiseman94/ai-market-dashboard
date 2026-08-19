@@ -15,7 +15,7 @@ from apps.observer.serializers import NotificationSerializer, ObserverScheduleSe
 from apps.observer.services.market_hours import market_status
 from apps.observer.services.sync import crontab_to_cron, delete_periodic_task, sync_periodic_task
 from apps.observer.services.threads import get_or_create_observer_thread
-from apps.observer.tasks import run_observer_task
+from apps.observer.tasks import fire_observer_task
 from apps.profiles.models import TradingProfile
 
 
@@ -45,8 +45,8 @@ class ObserverScheduleViewSet(viewsets.ModelViewSet):
         instance.delete()
 
     @action(detail=True, methods=["post"], url_path="run-now")
-    def run_now(self, request, pk=None):
-        run_observer_task.delay(schedule_id=int(pk))
+    def fire_now(self, request, pk=None):
+        fire_observer_task.delay(schedule_id=int(pk))
         return Response(status=status.HTTP_202_ACCEPTED)
 
 

@@ -3,19 +3,10 @@ import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   listNotifications, markNotificationRead, markAllNotificationsRead,
-  NotificationDTO,
 } from "@/api/observer";
 import { formatRelative } from "@/utils/format";
 import { useChannel } from "@/hooks/useChannel";
 import type { NotificationWsMsg } from "@/realtime/notificationEvents";
-
-function unwrapResults(data: unknown): NotificationDTO[] {
-  if (Array.isArray(data)) return data as NotificationDTO[];
-  if (data && typeof data === "object" && "results" in data) {
-    return (data as { results: NotificationDTO[] }).results;
-  }
-  return [];
-}
 
 function desktopNotificationsGranted(): boolean {
   return typeof Notification !== "undefined" && Notification.permission === "granted";
@@ -55,7 +46,7 @@ export default function NotificationBell() {
     queryKey: ["notifications"],
     queryFn: () => listNotifications(false),
   });
-  const items = useMemo(() => unwrapResults(data), [data]);
+  const items = useMemo(() => data ?? [], [data]);
   const unread = items.filter((n) => n.read_at === null).length;
 
   const markOne = useMutation({

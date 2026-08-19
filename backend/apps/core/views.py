@@ -124,7 +124,7 @@ class ErrorEventListView(APIView):
         events = list(qs[:limit])
         return Response(
             {
-                "errors": [_serialize_error_event(ev) for ev in events],
+                "results": [_serialize_error_event(ev) for ev in events],
                 "count": len(events),
             }
         )

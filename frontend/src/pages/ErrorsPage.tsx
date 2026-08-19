@@ -30,7 +30,7 @@ export default function ErrorsPage() {
     );
   }
 
-  const errors = data?.errors ?? [];
+  const errors = data?.results ?? [];
 
   return (
     <main className="px-8 py-8 max-w-4xl mx-auto ledger-fade-in space-y-6">

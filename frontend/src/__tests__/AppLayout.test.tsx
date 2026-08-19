@@ -50,7 +50,11 @@ test("TopNav renders primary route links", () => {
 beforeEach(() => {
   localStorage.clear();
   // Stub network deps needed by NotificationBell (now mounted in TopNav)
-  mockFetch(() => ({ ok: true, json: () => Promise.resolve({ results: [] }) }));
+  // Notifications is a bare-array endpoint; everything else here reads {results}.
+  mockFetch((url) => ({
+    ok: true,
+    json: () => Promise.resolve(url.includes("/api/observer/notifications/") ? [] : { results: [] }),
+  }));
   installFakeWebSocket();
 });
 

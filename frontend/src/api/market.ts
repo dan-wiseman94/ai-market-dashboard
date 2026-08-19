@@ -41,7 +41,7 @@ export type MarketKey =
 
 export interface CalendarOverride {
   id: number;
-  symbol: string;
+  ticker: string;
   market_key: MarketKey;
   note: string;
   created_at: string;
@@ -58,15 +58,15 @@ export interface CalendarMarketStatus {
 
 export const listCalendarOverrides = () =>
   apiGet<CalendarOverride[]>("/api/market/calendar-overrides/");
-export const createCalendarOverride = (body: { symbol: string; market_key: MarketKey; note?: string }) =>
+export const createCalendarOverride = (body: { ticker: string; market_key: MarketKey; note?: string }) =>
   apiPost<CalendarOverride>("/api/market/calendar-overrides/", body);
 export const deleteCalendarOverride = (id: number) =>
   apiDelete(`/api/market/calendar-overrides/${id}/`);
 
-export const getCalendarStatus = (symbols: string[] = []) => {
-  const qs = symbols.map((s) => `symbol=${encodeURIComponent(s)}`).join("&");
+export const getCalendarStatus = (tickers: string[] = []) => {
+  const qs = tickers.length ? `?tickers=${encodeURIComponent(tickers.join(","))}` : "";
   return apiGet<{ markets: Record<string, CalendarMarketStatus> }>(
-    `/api/market/calendar-status/${qs ? `?${qs}` : ""}`,
+    `/api/market/calendar-status/${qs}`,
   );
 };
 

@@ -5,7 +5,7 @@ import type { Firing } from "@/api/triggers";
 import FiringsTable from "./FiringsTable";
 
 const TRIGGER_ID = 42;
-// fetchFirings(triggerId) hits /api/triggers/<id>/firings/?page=&size= — the
+// fetchFirings(triggerId) hits /api/triggers/<id>/firings/?page=&page_size= — the
 // path param is matched here; MSW ignores the query string by default.
 const FIRINGS_URL = "/api/triggers/:id/firings/";
 
@@ -43,11 +43,12 @@ const firings: Firing[] = [
   },
 ];
 
+// DRF PageNumberPagination envelope.
 const page = (results: Firing[]) => ({
-  results,
   count: results.length,
-  page: 1,
-  size: 20,
+  next: null,
+  previous: null,
+  results,
 });
 
 const meta = {

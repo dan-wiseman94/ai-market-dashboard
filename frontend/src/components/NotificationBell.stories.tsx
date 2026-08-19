@@ -6,7 +6,7 @@ import { WebSocketProvider } from "@/realtime/WebSocketProvider";
 import NotificationBell from "./NotificationBell";
 
 // `listNotifications(false)` hits this path (with a `?limit=50` query MSW
-// ignores for matching). The component reads from `{ results: [...] }`.
+// ignores for matching). The endpoint returns a bare NotificationDTO[] array.
 const NOTIFICATIONS_URL = "/api/observer/notifications/";
 
 const now = Date.now();
@@ -76,7 +76,7 @@ type Story = StoryObj<typeof meta>;
 export const Unread: Story = {
   args: {},
   parameters: {
-    msw: { handlers: [http.get(NOTIFICATIONS_URL, () => HttpResponse.json({ results: unreadFeed }))] },
+    msw: { handlers: [http.get(NOTIFICATIONS_URL, () => HttpResponse.json(unreadFeed))] },
   },
   play: async ({ canvas, userEvent }) => {
     // The badge only appears once the query resolves (2 of 3 are unread).
@@ -91,7 +91,7 @@ export const Unread: Story = {
 export const AllRead: Story = {
   args: {},
   parameters: {
-    msw: { handlers: [http.get(NOTIFICATIONS_URL, () => HttpResponse.json({ results: allRead }))] },
+    msw: { handlers: [http.get(NOTIFICATIONS_URL, () => HttpResponse.json(allRead))] },
   },
   play: async ({ canvas, userEvent }) => {
     await userEvent.click(await canvas.findByRole("button", { name: "notifications" }));
@@ -104,7 +104,7 @@ export const AllRead: Story = {
 export const Empty: Story = {
   args: {},
   parameters: {
-    msw: { handlers: [http.get(NOTIFICATIONS_URL, () => HttpResponse.json({ results: [] }))] },
+    msw: { handlers: [http.get(NOTIFICATIONS_URL, () => HttpResponse.json([]))] },
   },
   play: async ({ canvas, userEvent }) => {
     await userEvent.click(canvas.getByRole("button", { name: "notifications" }));

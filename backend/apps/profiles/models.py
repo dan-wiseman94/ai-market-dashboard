@@ -18,7 +18,7 @@ class Watchlist(models.Model):
 
 
 class WatchlistSymbol(models.Model):
-    watchlist = models.ForeignKey(Watchlist, related_name="symbols", on_delete=models.CASCADE)
+    watchlist = models.ForeignKey(Watchlist, related_name="tickers", on_delete=models.CASCADE)
     ticker = models.CharField(max_length=16)
     sort_order = models.PositiveIntegerField(default=0)
 

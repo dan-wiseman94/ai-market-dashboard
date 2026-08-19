@@ -16,6 +16,7 @@ from apps.backups.tasks import run_backup
 
 class BackupPagination(PageNumberPagination):
     page_size = 50
+    page_size_query_param = "page_size"
 
 
 class BackupViewSet(viewsets.ModelViewSet):

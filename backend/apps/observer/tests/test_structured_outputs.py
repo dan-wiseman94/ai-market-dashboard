@@ -63,7 +63,7 @@ def test_structured_observer_run_persists_parsed_json(
         patch.object(run_service, "run_structured", return_value=fake_report),
         patch.object(run_service.run_ai_on_message, "delay") as streaming,
     ):
-        run_service.run_observer(schedule_structured.id)
+        run_service.fire_observer(schedule_structured.id)
 
     streaming.assert_not_called()
     from apps.observer.services.threads import get_or_create_observer_thread

@@ -7,10 +7,7 @@ import {
 export function useExports() {
   return useQuery<ExportJob[]>({
     queryKey: ["exports"],
-    queryFn: async () => {
-      const d = await fetchExports();
-      return Array.isArray(d) ? d : d.results;
-    },
+    queryFn: async () => (await fetchExports()).results,
     refetchInterval: (q) => {
       const data = q.state.data as ExportJob[] | undefined;
       return data?.some((j) => j.status === "pending" || j.status === "running") ? 2000 : false;

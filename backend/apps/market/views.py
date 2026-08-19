@@ -94,10 +94,10 @@ def news(request: HttpRequest) -> JsonResponse:
     raw = request.GET.get("tickers", "").strip()
     tickers = [t.strip() for t in raw.split(",") if t.strip()]
     try:
-        lookback = int(request.GET.get("lookback", "24"))
+        lookback_hours = int(request.GET.get("lookback_hours", "24"))
     except ValueError:
-        return _err("invalid_lookback", "lookback must be int hours", 400)
-    return JsonResponse({"items": fetch_news(tickers, lookback_hours=lookback)})
+        return _err("invalid_lookback_hours", "lookback_hours must be an integer", 400)
+    return JsonResponse({"items": fetch_news(tickers, lookback_hours=lookback_hours)})
 
 
 @require_GET
@@ -144,11 +144,12 @@ class CalendarOverrideViewSet(viewsets.ModelViewSet):
     queryset = CalendarOverride.objects.all().order_by("symbol")
     serializer_class = CalendarOverrideSerializer
 
-    # CalendarOverride.symbol is unique AND normalized (strip().upper()) in Model.save(),
-    # which runs AFTER the serializer's UniqueValidator (which sees the raw value). So a
-    # case-variant of an existing symbol ("spy" vs stored "SPY") slips past validation and
-    # hits the DB unique constraint -> IntegrityError -> 500. Translate it to a clean 400.
-    # (Wrapped in a savepoint so the failed INSERT rolls back cleanly.)
+    # CalendarOverride.symbol (API field "ticker") is unique AND normalized
+    # (strip().upper()) in Model.save(), which runs AFTER the serializer's UniqueValidator
+    # (which sees the raw value). So a case-variant of an existing ticker ("spy" vs stored
+    # "SPY") slips past validation and hits the DB unique constraint -> IntegrityError ->
+    # 500. Translate it to a clean 400. (Wrapped in a savepoint so the failed INSERT rolls
+    # back cleanly.)
     def perform_create(self, serializer) -> None:
         self._save_or_400(serializer)
 
@@ -162,16 +163,17 @@ class CalendarOverrideViewSet(viewsets.ModelViewSet):
                 serializer.save()
         except IntegrityError as exc:
             raise ValidationError(
-                {"symbol": "A calendar override for this symbol already exists."}
+                {"ticker": "A calendar override for this ticker already exists."}
             ) from exc
 
 
 @require_GET
 def calendar_status(request: HttpRequest) -> JsonResponse:
-    symbols = request.GET.getlist("symbol")
+    raw = request.GET.get("tickers", "").strip()
+    tickers = [t.strip() for t in raw.split(",") if t.strip()]
     markets: set[str] = set(request.GET.getlist("market"))
-    for s in symbols:
-        markets.add(calendar_for(s))
+    for t in tickers:
+        markets.add(calendar_for(t))
     if not markets:
         markets.add("us_equity")
         markets.update(CalendarOverride.objects.values_list("market_key", flat=True).distinct())
