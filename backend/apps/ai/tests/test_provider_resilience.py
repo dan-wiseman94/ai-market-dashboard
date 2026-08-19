@@ -16,10 +16,6 @@ from unittest.mock import MagicMock, patch
 
 from django.test import override_settings
 
-# ---------------------------------------------------------------------------
-# client_kwargs() helper
-# ---------------------------------------------------------------------------
-
 
 def test_client_kwargs_returns_defaults():
     """When settings are at their defaults, client_kwargs returns 2 retries / 60s."""
@@ -48,11 +44,6 @@ def test_client_kwargs_zero_retries_is_valid():
     kw = client_kwargs()
     assert kw["max_retries"] == 0
     assert kw["timeout"] == 10.0
-
-
-# ---------------------------------------------------------------------------
-# ClaudeProvider — AsyncAnthropic constructed with resilience kwargs
-# ---------------------------------------------------------------------------
 
 
 @override_settings(AI_PROVIDER_MAX_RETRIES=2, AI_PROVIDER_TIMEOUT_SECONDS=60.0)
@@ -110,11 +101,6 @@ def test_claude_provider_with_base_url_passes_resilience_kwargs():
     assert captured["base_url"] == "https://proxy.example.com"
 
 
-# ---------------------------------------------------------------------------
-# OpenAIProvider — AsyncOpenAI constructed with resilience kwargs
-# ---------------------------------------------------------------------------
-
-
 @override_settings(AI_PROVIDER_MAX_RETRIES=2, AI_PROVIDER_TIMEOUT_SECONDS=60.0)
 def test_openai_provider_passes_resilience_kwargs_to_client():
     """OpenAIProvider.__init__ must call AsyncOpenAI with max_retries + timeout."""
@@ -170,11 +156,6 @@ def test_openai_provider_with_base_url_passes_resilience_kwargs():
     assert "host.docker.internal" in captured["base_url"]
 
 
-# ---------------------------------------------------------------------------
-# LocalProvider — inherits OpenAIProvider kwargs
-# ---------------------------------------------------------------------------
-
-
 @override_settings(AI_PROVIDER_MAX_RETRIES=2, AI_PROVIDER_TIMEOUT_SECONDS=60.0)
 def test_local_provider_passes_resilience_kwargs_to_client():
     """LocalProvider (OpenAIProvider subclass) also passes max_retries + timeout."""
@@ -191,11 +172,6 @@ def test_local_provider_passes_resilience_kwargs_to_client():
 
     assert captured["max_retries"] == 2
     assert captured["timeout"] == 60.0
-
-
-# ---------------------------------------------------------------------------
-# claude_structured.run_structured — sync Anthropic client
-# ---------------------------------------------------------------------------
 
 
 @override_settings(AI_PROVIDER_MAX_RETRIES=2, AI_PROVIDER_TIMEOUT_SECONDS=60.0)
@@ -262,12 +238,6 @@ def test_claude_structured_passes_overridden_kwargs():
 
     assert captured["max_retries"] == 1
     assert captured["timeout"] == 20.0
-
-
-# ---------------------------------------------------------------------------
-# Mock-mode safety: FakeClient in existing tests must accept **kwargs
-# (construction must not raise even when kwargs are passed)
-# ---------------------------------------------------------------------------
 
 
 @override_settings(AI_PROVIDER_MAX_RETRIES=2, AI_PROVIDER_TIMEOUT_SECONDS=60.0)

@@ -49,7 +49,6 @@ describe("WatchlistTable", () => {
     expect(screen.getByText("Bid")).toBeInTheDocument();
     expect(screen.getByText("Ask")).toBeInTheDocument();
     expect(screen.getByText("Vol")).toBeInTheDocument();
-    // No data rows
     expect(screen.queryByRole("link")).not.toBeInTheDocument();
   });
 

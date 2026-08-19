@@ -82,10 +82,8 @@ class ThesisSerializer(serializers.ModelSerializer):
             "thread_id",
             "snapshot_id",
             "review_thread_id",
-            # guard fields
             "guard_enabled",
             "guard_trigger_id",
-            # timestamps
             "opened_at",
             "closed_at",
             "close_note",

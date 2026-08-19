@@ -154,7 +154,6 @@ def add_trading_days(market: str, anchor: datetime, n: int) -> datetime:
     dates = [d.date() for d in valid]
     if not dates:
         return anchor + timedelta(days=n)
-    # index of the first valid day >= anchor's date
     base = 0
     for i, d in enumerate(dates):
         if d >= anchor.date():

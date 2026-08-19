@@ -49,9 +49,6 @@ def _pm(thesis: Thesis, *, horizon: int, verdict: str, fwd: float | None) -> Pos
     )
 
 
-# --------------------------------------------------------------------------- #
-# Service
-# --------------------------------------------------------------------------- #
 @pytest.mark.django_db
 def test_drilldown_filters_by_conviction(profile):
     a = _thesis(5, title="five-correct")
@@ -65,7 +62,6 @@ def test_drilldown_filters_by_conviction(profile):
     assert out["count"] == 2
     assert {r["thesis_id"] for r in out["rows"]} == {a.id, b.id}
 
-    # row shape is stable / serializable
     row = next(r for r in out["rows"] if r["thesis_id"] == a.id)
     for key in (
         "thesis_id",
@@ -100,7 +96,6 @@ def test_drilldown_filters_by_verdict_and_direction(profile):
     by_dir = calibration_drilldown(start=WIN[0], end=WIN[1], horizon=30, direction="bearish")
     assert {r["thesis_id"] for r in by_dir["rows"]} == {bear_ok.id}
 
-    # combined conviction + verdict
     combined = calibration_drilldown(
         start=WIN[0], end=WIN[1], horizon=30, conviction=4, verdict="correct"
     )
@@ -132,9 +127,6 @@ def test_drilldown_respects_horizon_and_window(profile):
     assert {r["thesis_id"] for r in out["rows"]} == {in_h.id}
 
 
-# --------------------------------------------------------------------------- #
-# Endpoint
-# --------------------------------------------------------------------------- #
 @pytest.mark.django_db
 def test_drilldown_endpoint_shape(api, profile):
     t = _thesis(5)

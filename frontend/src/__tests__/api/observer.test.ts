@@ -13,8 +13,6 @@ import {
 import { ApiError } from "@/api/client";
 import { mockApi, mockApiError } from "../testUtils";
 
-// ---- Shared fixtures ----
-
 const scheduleFixture = {
   id: 7,
   name: "Morning Brief",
@@ -53,8 +51,6 @@ const marketStatusFixture = {
   next_close: "2026-05-17T20:00:00Z",
 };
 
-// ---- listSchedules ----
-
 describe("api/observer", () => {
   describe("listSchedules", () => {
     it("GETs /api/observer/schedules/ and returns schedule array", async () => {
@@ -81,8 +77,6 @@ describe("api/observer", () => {
       expect(res).toEqual([]);
     });
   });
-
-  // ---- createSchedule ----
 
   describe("createSchedule", () => {
     it("POSTs to /api/observer/schedules/ and returns the created schedule", async () => {
@@ -140,8 +134,6 @@ describe("api/observer", () => {
     });
   });
 
-  // ---- patchSchedule ----
-
   describe("patchSchedule", () => {
     it("PATCHes /api/observer/schedules/:id/ and returns updated schedule", async () => {
       const api = mockApi({ "PATCH /api/observer/schedules/7/": { ...scheduleFixture, enabled: false } });
@@ -167,8 +159,6 @@ describe("api/observer", () => {
     });
   });
 
-  // ---- deleteSchedule ----
-
   describe("deleteSchedule", () => {
     it("DELETEs /api/observer/schedules/:id/ and resolves on 204", async () => {
       const api = mockApi({ "DELETE /api/observer/schedules/42/": undefined });
@@ -192,8 +182,6 @@ describe("api/observer", () => {
       expect(api.calls[0].url).toMatch(/\/api\/observer\/schedules\/1\/$/);
     });
   });
-
-  // ---- runScheduleNow ----
 
   describe("runScheduleNow", () => {
     it("POSTs to /api/observer/schedules/:id/run-now/ with empty body", async () => {
@@ -219,8 +207,6 @@ describe("api/observer", () => {
     });
   });
 
-  // ---- listNotifications ----
-
   describe("listNotifications", () => {
     it("GETs /api/observer/notifications/?limit=50 without unread param by default", async () => {
       const api = mockApi({ "GET /api/observer/notifications/": { results: [notificationFixture] } });
@@ -245,8 +231,6 @@ describe("api/observer", () => {
       expect(api.calls[0].url).toContain("&unread=true");
     });
   });
-
-  // ---- markNotificationRead ----
 
   describe("markNotificationRead", () => {
     it("POSTs to /api/observer/notifications/:id/read/ with empty body", async () => {
@@ -276,8 +260,6 @@ describe("api/observer", () => {
     });
   });
 
-  // ---- markAllNotificationsRead ----
-
   describe("markAllNotificationsRead", () => {
     it("POSTs to /api/observer/notifications/mark-all-read/ and returns {ok:true}", async () => {
       const api = mockApi({ "POST /api/observer/notifications/mark-all-read/": { ok: true } });
@@ -301,8 +283,6 @@ describe("api/observer", () => {
       expect(api.calls[0].url).toBe("/api/observer/notifications/mark-all-read/");
     });
   });
-
-  // ---- getMarketStatus ----
 
   describe("getMarketStatus", () => {
     it("GETs /api/observer/market-status/ and returns market status", async () => {

@@ -40,11 +40,6 @@ def canned_ai_stream() -> list[MockAIEvent]:
     ]
 
 
-# ---------------------------------------------------------------------------
-# AI scenario streams — each returns a list of MockAIEvent
-# ---------------------------------------------------------------------------
-
-
 def stream_mocked_response() -> list[MockAIEvent]:
     return canned_ai_stream()
 
@@ -111,11 +106,6 @@ def structured_observation_report() -> list[MockAIEvent]:
         MockAIEvent("usage"),
         MockAIEvent("done"),
     ]
-
-
-# ---------------------------------------------------------------------------
-# Non-AI service handlers
-# ---------------------------------------------------------------------------
 
 
 def ok(*_args, **_kwargs) -> dict:

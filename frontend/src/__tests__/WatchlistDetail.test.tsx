@@ -64,7 +64,6 @@ function renderDetail(id = "42") {
 
 describe("WatchlistDetail", () => {
   it("shows 'Invalid watchlist' when no id param resolves", () => {
-    // render without a matching route param
     renderWithProviders(<WatchlistDetail />, {
       initialEntries: ["/watchlists/"],
       routePath: "/watchlists/",

@@ -15,7 +15,7 @@ export const useThreadsPage = (params: { limit: number; offset: number }) =>
   useQuery({
     queryKey: ["threads", "page", params.limit, params.offset],
     queryFn: () => fetchThreadsPage(params),
-    placeholderData: keepPreviousData, // keep the current page visible while the next loads
+    placeholderData: keepPreviousData,
   });
 
 export const useThread = (id: number | null) =>

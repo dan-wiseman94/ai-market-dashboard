@@ -6,19 +6,10 @@ from rest_framework.test import APIClient
 
 from apps.profiles.models import AgentPreset
 
-# ---------------------------------------------------------------------------
-# Fixtures
-# ---------------------------------------------------------------------------
-
 
 @pytest.fixture
 def api():
     return APIClient()
-
-
-# ---------------------------------------------------------------------------
-# Model tests
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.django_db
@@ -73,10 +64,6 @@ def test_str():
     assert str(preset) == "My Preset"
 
 
-# ---------------------------------------------------------------------------
-# Seed migration tests
-# ---------------------------------------------------------------------------
-
 # Builtin presets seeded by the data migrations. Keep in sync when a new seed
 # migration lands (0005 seeds the first four, 0006 the next eight).
 EXPECTED_BUILTIN_SLUGS = {
@@ -111,11 +98,6 @@ def test_seed_migration_builtins_are_active():
     for slug in EXPECTED_BUILTIN_SLUGS:
         preset = AgentPreset.objects.get(slug=slug)
         assert preset.active is True
-
-
-# ---------------------------------------------------------------------------
-# API CRUD tests
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.django_db
@@ -219,7 +201,6 @@ def test_patch_slug_collision_returns_400(api):
         name="Beta Preset",
         objective_template="Beta.",
     )
-    # Explicitly set preset_b's slug to match preset_a's
     resp = api.patch(
         f"/api/presets/{preset_b.id}/",
         {"slug": preset_a.slug},

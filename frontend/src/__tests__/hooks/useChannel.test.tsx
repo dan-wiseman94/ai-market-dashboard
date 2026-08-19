@@ -23,7 +23,6 @@ describe("useChannel", () => {
     const handler = vi.fn();
     renderHook(() => useChannel("thread.1", handler));
     expect(subscribeSpy).toHaveBeenCalledWith("thread.1", expect.any(Function));
-    // The wrapper delegates to the provided handler.
     const wrapper = subscribeSpy.mock.calls[0][1] as (m: unknown) => void;
     wrapper({ event: "text_delta" });
     expect(handler).toHaveBeenCalledWith({ event: "text_delta" });

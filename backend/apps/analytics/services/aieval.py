@@ -118,7 +118,7 @@ def _direction_from_report(report: ObservationReport) -> str | None:
     bias = getattr(report, "bias", None)
     if bias in ("bullish", "bearish", "neutral"):
         return bias
-    return None  # "mixed" or anything unexpected
+    return None
 
 
 def _confidence_from_report(report: ObservationReport) -> float | None:

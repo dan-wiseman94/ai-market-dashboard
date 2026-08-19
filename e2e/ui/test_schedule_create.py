@@ -22,13 +22,12 @@ def test_create_schedule_via_form(page, frontend_base_url, minimal) -> None:
     s.go()
     s.expect_error_boundary_absent()
 
-    page.get_by_role("button", name="New schedule").click()  # reveal the create form
+    page.get_by_role("button", name="New schedule").click()
     page.get_by_label("Name").fill("E2E created schedule")
     page.get_by_label("Profile").select_option(index=0)  # first profile (no placeholder option)
     create = page.get_by_role("button", name="Create", exact=True)
     expect(create).to_be_enabled(timeout=10_000)
     create.click()
 
-    # Success persists the schedule and refetches the list.
     expect(page.get_by_text("E2E created schedule")).to_be_visible(timeout=10_000)
     assert ObserverSchedule.objects.filter(name="E2E created schedule").exists()

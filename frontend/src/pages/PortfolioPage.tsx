@@ -18,8 +18,6 @@ function pnlColor(pnl: number): string {
   return "text-ink-400";
 }
 
-// ---- Add Position Form ----
-
 interface AddPositionFormProps {
   onCreated: () => void;
 }
@@ -181,8 +179,6 @@ function AddPositionForm({ onCreated }: AddPositionFormProps) {
   );
 }
 
-// ---- Close Position Form (inline per-row) ----
-
 function ClosePositionInline({
   position,
   onDone,
@@ -233,8 +229,6 @@ function ClosePositionInline({
     </form>
   );
 }
-
-// ---- Position Row cells (module-scoped subcomponents) ----
 
 function PositionTickerCell({ position }: { position: PortfolioPosition }) {
   return (
@@ -368,8 +362,6 @@ function PositionActionsCell({
   );
 }
 
-// ---- Position Row ----
-
 function PositionRow({
   position,
   showClose = false,
@@ -416,8 +408,6 @@ function PositionRow({
   );
 }
 
-// ---- Positions Table ----
-
 function PositionsTable({
   positions,
   showClose = false,
@@ -448,8 +438,6 @@ function PositionsTable({
   );
 }
 
-// ---- Main Page ----
-
 export default function PortfolioPage() {
   const [viewStatus, setViewStatus] = useState<ViewStatus>("open");
   const { data: positions, isLoading } = usePortfolioPositions({ status: viewStatus as PositionStatus });
@@ -470,7 +458,6 @@ export default function PortfolioPage() {
         </p>
       </header>
 
-      {/* Status toggle */}
       <div className="flex items-center gap-2 mb-6">
         <button
           data-testid="view-open-btn"
@@ -501,14 +488,12 @@ export default function PortfolioPage() {
         )}
       </div>
 
-      {/* Add position form (only for open view) */}
       {viewStatus === "open" && (
         <div className="mb-6">
           <AddPositionForm onCreated={() => {}} />
         </div>
       )}
 
-      {/* Position list */}
       {isLoading ? (
         <div className="ledger-surface p-5">
           <SkeletonRows rows={4} />

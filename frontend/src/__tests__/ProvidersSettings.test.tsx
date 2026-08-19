@@ -1,4 +1,3 @@
-// frontend/src/__tests__/ProvidersSettings.test.tsx
 import { render, screen } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 import ProvidersSettings from "@/pages/settings/ProvidersSettings";

@@ -68,7 +68,6 @@ describe("ErrorsPage", () => {
     mockHooks();
     renderPage();
 
-    // Source and message content present
     expect(screen.getByText("capture_task")).toBeInTheDocument();
     expect(
       screen.getByText("Connection timeout fetching quotes"),
@@ -80,7 +79,6 @@ describe("ErrorsPage", () => {
     expect(screen.getByText("beat")).toBeInTheDocument();
     expect(screen.getByText("Celery beat heartbeat missed")).toBeInTheDocument();
 
-    // Level badges present
     expect(screen.getAllByText("error").length).toBeGreaterThan(0);
     expect(screen.getAllByText("warning").length).toBeGreaterThan(0);
     expect(screen.getAllByText("critical").length).toBeGreaterThan(0);
@@ -109,7 +107,6 @@ describe("ErrorsPage", () => {
     const toggle = screen.getByRole("checkbox", { name: /unresolved only/i });
     await userEvent.click(toggle);
 
-    // After toggle, useErrors should have been called with true
     expect(hooks.useErrors).toHaveBeenCalledWith(true);
   });
 

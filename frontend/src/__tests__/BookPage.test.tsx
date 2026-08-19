@@ -28,7 +28,6 @@ describe("BookPage", () => {
     renderWithProviders(<BookPage />);
     await waitFor(() => expect(screen.getAllByText(/NVDA/).length).toBeGreaterThan(0));
     expect(screen.getByText(/misaligned/i)).toBeInTheDocument();
-    // cluster members are shown inline (the whole point of the cluster view)
     expect(screen.getByText(/NVDA, AMD/)).toBeInTheDocument();
   });
 
@@ -61,7 +60,6 @@ describe("BookPage", () => {
     );
     const summary = screen.getByTestId("book-var-summary");
     expect(summary.textContent).toMatch(/411/); // diversified VaR dollars
-    // per-position beta is surfaced
     expect(screen.getByText(/β\s*1\.4/)).toBeInTheDocument();
   });
 

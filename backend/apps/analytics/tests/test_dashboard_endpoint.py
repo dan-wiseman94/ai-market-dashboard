@@ -18,34 +18,21 @@ def api():
     return APIClient()
 
 
-# ---------------------------------------------------------------------------
-# 1. Empty DB → 200 with all five keys present
-# ---------------------------------------------------------------------------
-
-
 @pytest.mark.django_db
 def test_empty_db_returns_200_with_all_keys(api):
     r = api.get("/api/dashboard/")
     assert r.status_code == 200
     body = r.json()
     assert set(body.keys()) >= {"theses", "events", "observer", "triggers", "briefing"}
-    # sane empty defaults
     assert isinstance(body["theses"], list)
     assert isinstance(body["events"], dict)
     assert isinstance(body["observer"], dict)
     assert isinstance(body["triggers"], dict)
-    # briefing is null when no run exists
     assert body["briefing"] is None
-
-
-# ---------------------------------------------------------------------------
-# 2. Seed data — theses, triggers, briefing
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.django_db
 def test_with_seed_data(api):
-    # Open thesis
     Thesis.objects.create(
         title="Long NVDA",
         ticker="NVDA",
@@ -55,7 +42,6 @@ def test_with_seed_data(api):
         status="open",
     )
 
-    # Enabled trigger + one firing
     prof = TradingProfile.objects.create(name="p", style="s")
     trigger = EventTrigger.objects.create(
         profile=prof,
@@ -65,7 +51,6 @@ def test_with_seed_data(api):
     )
     TriggerFiring.objects.create(trigger=trigger, matched_values={"price": 100})
 
-    # BriefingRun with data containing a summary-style theses list
     BriefingRun.objects.create(status="ready", data={"theses": [{"ticker": "NVDA"}]})
 
     with patch(
@@ -77,13 +62,11 @@ def test_with_seed_data(api):
     assert r.status_code == 200
     body = r.json()
 
-    # theses: open thesis reflected with ticker
     assert any(t["ticker"] == "NVDA" for t in body["theses"])
     nvda = next(t for t in body["theses"] if t["ticker"] == "NVDA")
     assert nvda["direction"] == "bullish"
     assert nvda["current"] == 120.0
 
-    # triggers: at least one armed trigger and one firing entry
     trig_section = body["triggers"]
     assert trig_section["armed_count"] >= 1
     assert len(trig_section["latest_firings"]) >= 1
@@ -91,7 +74,6 @@ def test_with_seed_data(api):
     assert first_firing["trigger_id"] == trigger.id
     assert "fired_at" in first_firing
 
-    # briefing: latest BriefingRun's status
     assert body["briefing"] is not None
     assert body["briefing"]["status"] == "ready"
 
@@ -108,11 +90,6 @@ def test_observer_section_counts_enabled_schedules(api):
     assert obs["enabled_schedules"] == 1
 
 
-# ---------------------------------------------------------------------------
-# 3. Never-raise: a section that raises is swallowed → endpoint still 200
-# ---------------------------------------------------------------------------
-
-
 @pytest.mark.django_db
 def test_never_raise_swallows_section_error(api):
     """Monkeypatch _theses_section to raise; endpoint must survive with theses=[] default."""
@@ -124,9 +101,7 @@ def test_never_raise_swallows_section_error(api):
 
     assert r.status_code == 200
     body = r.json()
-    # All five keys still present
     assert set(body.keys()) >= {"theses", "events", "observer", "triggers", "briefing"}
-    # The failing section degrades to its empty default
     assert body["theses"] == []
 
 

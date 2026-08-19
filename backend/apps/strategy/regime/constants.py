@@ -1,6 +1,5 @@
 """Regime classifier thresholds — single source of truth, tunable later."""
 
-# Volatility (VIX level)
 VIX_LOW = 14.0
 VIX_ELEVATED = 20.0
 VIX_STRESS = 30.0
@@ -25,7 +24,6 @@ DEFENSIVE_ETFS = ["XLU", "XLP", "XLV"]
 LEADERSHIP_SPREAD = 1.0
 SECTOR_RETURN_WINDOW = 20  # trading days
 
-# Composite scoring thresholds
 COMPOSITE_RISK_ON = 2
 COMPOSITE_RISK_OFF = -2
 

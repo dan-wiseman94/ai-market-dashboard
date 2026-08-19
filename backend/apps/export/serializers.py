@@ -9,10 +9,6 @@ from rest_framework import serializers as drf
 
 from apps.export.models import ExportJob
 
-# ---------------------------------------------------------------------------
-# Thread serializers
-# ---------------------------------------------------------------------------
-
 
 def thread_to_json(thread) -> dict:
     from apps.threads.models import Message
@@ -77,11 +73,6 @@ def thread_to_markdown(thread) -> str:
     return "\n".join(lines)
 
 
-# ---------------------------------------------------------------------------
-# Snapshot serializers
-# ---------------------------------------------------------------------------
-
-
 def snapshot_to_json(snapshot) -> dict:
     from apps.snapshots.models import SnapshotSection
 
@@ -131,11 +122,6 @@ def snapshot_images(snapshot) -> Iterator[tuple[str, bytes]]:
         yield name, read_image_bytes(img)
 
 
-# ---------------------------------------------------------------------------
-# Observer serializers
-# ---------------------------------------------------------------------------
-
-
 def observer_runs_to_json(schedule) -> dict:
     """Serialize an ObserverSchedule and its linked observer threads as 'runs'."""
     from apps.threads.models import Thread
@@ -172,11 +158,6 @@ def observer_runs_to_markdown(schedule) -> str:
     return "\n".join(lines)
 
 
-# ---------------------------------------------------------------------------
-# Trigger serializer
-# ---------------------------------------------------------------------------
-
-
 def trigger_to_json(trigger) -> dict:
     from apps.observer.models import TriggerFiring
 
@@ -201,11 +182,6 @@ def trigger_to_json(trigger) -> dict:
     }
 
 
-# ---------------------------------------------------------------------------
-# Profiles serializer
-# ---------------------------------------------------------------------------
-
-
 def profiles_to_json() -> dict:
     from apps.profiles.models import TradingProfile
 
@@ -222,11 +198,6 @@ def profiles_to_json() -> dict:
             for p in TradingProfile.objects.all()
         ]
     }
-
-
-# ---------------------------------------------------------------------------
-# Watchlists serializer
-# ---------------------------------------------------------------------------
 
 
 def watchlists_to_json() -> dict:
@@ -246,11 +217,6 @@ def watchlists_to_json() -> dict:
             for w in Watchlist.objects.all()
         ]
     }
-
-
-# ---------------------------------------------------------------------------
-# DRF serializer
-# ---------------------------------------------------------------------------
 
 
 class ExportJobSerializer(drf.ModelSerializer):

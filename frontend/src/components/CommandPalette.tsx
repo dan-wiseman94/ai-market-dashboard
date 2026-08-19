@@ -49,7 +49,6 @@ export function CommandPalette({
     );
   }, [q, commands]);
 
-  // Merge static filtered + dynamic extra commands into a single list.
   const filtered = useMemo(
     () => [...filteredStatic, ...extraCommands],
     [filteredStatic, extraCommands],

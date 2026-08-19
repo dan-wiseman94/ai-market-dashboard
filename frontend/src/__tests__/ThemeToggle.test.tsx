@@ -37,11 +37,11 @@ describe("ThemeToggle", () => {
     const user = userEvent.setup();
     wrap(<ThemeToggle />);
     const btn = screen.getByTestId("theme-toggle");
-    await user.click(btn); // system -> light
+    await user.click(btn);
     expect(btn).toHaveAttribute("data-preference", "light");
-    await user.click(btn); // light -> dark
+    await user.click(btn);
     expect(btn).toHaveAttribute("data-preference", "dark");
-    await user.click(btn); // dark -> system
+    await user.click(btn);
     expect(btn).toHaveAttribute("data-preference", "system");
   });
 });

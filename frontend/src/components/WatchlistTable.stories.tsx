@@ -22,7 +22,6 @@ const meta = {
   tags: ["ai-generated"],
   parameters: {
     layout: "padded",
-    // Symbols arrive as props; quote cells fetch `/api/market/quotes/`, mocked here.
     msw: { handlers: [http.get("/api/market/quotes/", () => HttpResponse.json(quotes))] },
     docs: {
       description: {

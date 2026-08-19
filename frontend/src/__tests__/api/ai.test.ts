@@ -22,7 +22,6 @@ const claudeModel = {
   supports_vision: true,
 };
 
-// CORRECTION: ProviderConfig requires monthly_cost_cap_usd.
 const claudeProviderConfig = {
   provider: "claude" as const,
   base_url: "",
@@ -114,7 +113,6 @@ describe("api/ai", () => {
         "PATCH /api/schwab/providers/claude/": { status: 500, code: "server_error", message: "boom" },
       });
       await expect(upsertProviderConfig("claude", {})).rejects.toBeInstanceOf(ApiError);
-      // No POST attempt — should be exactly one PATCH call.
       expect(api.calls.map((c) => c.method)).toEqual(["PATCH"]);
     });
   });

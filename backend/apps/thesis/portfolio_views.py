@@ -89,7 +89,6 @@ class PositionViewSet(viewsets.ModelViewSet):
         except InvalidOperation:
             return _error("invalid_value", "close_price must be a valid number", 400)
 
-        # Optional explicit closed_at
         raw_closed_at = request.data.get("closed_at")
         if raw_closed_at:
             from django.utils.dateparse import parse_datetime

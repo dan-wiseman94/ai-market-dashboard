@@ -1,4 +1,3 @@
-// frontend/src/hooks/useMarketStatus.ts
 import { useQuery } from "@tanstack/react-query";
 
 import { getCalendarStatus } from "@/api/market";

@@ -28,7 +28,6 @@ def test_snapshot_detail_returns_sections(api_client, snapshots) -> None:
     # Sections may be nested or at top level
     sections = body.get("sections")
     if sections is None:
-        # try /sections endpoint as fallback
         r2 = api_client.get(f"/api/snapshots/{snap.id}/sections/")
         if r2.status_code == 200:
             sections = r2.json()

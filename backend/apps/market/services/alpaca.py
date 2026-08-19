@@ -22,7 +22,6 @@ log = logging.getLogger(__name__)
 
 ALPACA_BASE = "https://data.alpaca.markets"
 
-# Map our internal timeframe codes to Alpaca's timeframe strings.
 _ALPACA_TIMEFRAME: dict[str, str] = {
     "1m": "1Min",
     "5m": "5Min",
@@ -57,11 +56,6 @@ def _get(path: str, params: dict, headers: dict) -> dict:
     resp.raise_for_status()
     body = resp.json()
     return body if isinstance(body, dict) else {}
-
-
-# ---------------------------------------------------------------------------
-# Canned fixtures (MOCK_EXTERNAL / e2e mode)
-# ---------------------------------------------------------------------------
 
 
 def _canned_quotes(tickers: list[str]) -> dict[str, dict]:
@@ -125,11 +119,6 @@ def _canned_bars(ticker: str) -> list[dict]:
     ]
 
 
-# ---------------------------------------------------------------------------
-# Normalization helpers
-# ---------------------------------------------------------------------------
-
-
 def _normalize_snapshot(symbol: str, blob: dict) -> dict:
     """Map one Alpaca snapshot blob to the quotes contract dict."""
     latest_trade = blob.get("latestTrade") or {}
@@ -183,18 +172,8 @@ def _normalize_bars(raw_bars: list[dict]) -> list[dict]:
     return result
 
 
-# ---------------------------------------------------------------------------
-# OHLCBar persist helper (verbatim from spec)
-# ---------------------------------------------------------------------------
-
-
 def _persist_bars(ticker: str, timeframe: str, bars: list[dict]) -> None:
     persist_bars(ticker, timeframe, bars, source="alpaca")
-
-
-# ---------------------------------------------------------------------------
-# Public API
-# ---------------------------------------------------------------------------
 
 
 def fetch_quotes(tickers: list[str]) -> dict[str, dict]:

@@ -34,7 +34,6 @@ def test_watchlist_detail_add_remove_ticker(page, frontend_base_url, market) -> 
     d = WatchlistDetailPage(page, frontend_base_url)
     d.go(wl.id)
     d.expect_error_boundary_absent()
-    # Add a ticker → its row appears; remove it → the row goes away.
     d.add("NVDA")
     expect(d.ticker_row("NVDA")).to_be_visible(timeout=10_000)
     d.remove("NVDA")
@@ -47,7 +46,6 @@ def test_market_ticker_page_renders_ohlc_and_news(page, frontend_base_url, marke
     m = MarketTickerPage(page, frontend_base_url)
     m.go("AAPL")
     m.expect_error_boundary_absent()
-    # The ticker page renders its chart root plus the Option chain and News sections.
     expect(m.ohlc_chart).to_be_visible(timeout=10_000)
     expect(m.chain_heading).to_be_visible()
     expect(m.news_heading).to_be_visible()

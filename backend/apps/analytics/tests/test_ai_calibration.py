@@ -80,7 +80,7 @@ class TestAICalibration:
         assert band["n"] == 2
         assert band["observed_hit_rate"] == pytest.approx(0.5)
         dd = ai_calibration_drilldown(start=WIN_START, end=WIN_END, band="0.8-0.9")
-        assert dd["count"] == band["n"]  # same population
+        assert dd["count"] == band["n"]
 
     def test_horizon_filter(self):
         _resolved(0.8, "correct", horizon=7)
@@ -98,11 +98,6 @@ def test_ai_calibration_endpoints_200():
     dd = APIClient().get(f"/api/analytics/ai-calibration/drilldown/?{rng}&band=0.8-0.9")
     assert dd.status_code == 200
     assert dd.json()["count"] == 1
-
-
-# ---------------------------------------------------------------------------
-# Beat-the-straddle: actual move vs the options-priced 1σ move
-# ---------------------------------------------------------------------------
 
 
 def _straddle_pred(*, verdict, fwd, exp_move):

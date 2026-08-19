@@ -15,7 +15,7 @@ class TestSplitParsing:
     def test_forward_split_ratio_is_to_over_from(self, db) -> None:
         rows = [{"symbol": "nvda", "date": "2026-02-01", "fromFactor": 1, "toFactor": 10}]
         [obj] = ca._upsert_splits(rows)
-        assert obj.ticker == "NVDA"  # upcased
+        assert obj.ticker == "NVDA"
         assert obj.kind == "split"
         assert obj.ex_date == date(2026, 2, 1)
         assert float(obj.ratio) == pytest.approx(10.0)
@@ -63,7 +63,7 @@ class TestFetchAndIdempotency:
             patch("apps.market.cache.get_or_fetch", side_effect=lambda *a, fetcher, **k: fetcher()),
         ):
             ca.fetch_splits(["NVDA"])
-            ca.fetch_splits(["NVDA"])  # re-fetch must not duplicate
+            ca.fetch_splits(["NVDA"])
         assert get.call_count == 2
         assert CorporateAction.objects.filter(kind="split", ticker="NVDA").count() == 1
 

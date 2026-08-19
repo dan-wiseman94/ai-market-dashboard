@@ -20,7 +20,6 @@ const METRICS: { value: Metric; label: string }[] = [
 const OPS: Op[] = [">", ">=", "<", "<=", "==", "crosses_above", "crosses_below"];
 const WINDOWS: Window[] = ["1m", "5m", "15m", "1h", "1d"];
 
-// Metrics that require a ticker input
 const TICKER_METRICS: Metric[] = [
   "price", "pct_change", "volume_z",
   "rsi", "sma_spread_pct", "atr_pct", "dist_from_sma_pct",
@@ -36,10 +35,8 @@ const INDICATOR_METRICS: Metric[] = [
   "dist_from_52w_high", "dist_from_52w_low", "gap_pct",
 ];
 
-// Metrics that use a single "period" param
 const PERIOD_METRICS: Metric[] = ["rsi", "atr_pct", "dist_from_sma_pct"];
 
-// Metrics that use fast/slow params
 const FAST_SLOW_METRICS: Metric[] = ["sma_spread_pct"];
 
 function needsTicker(m: Metric): boolean {
@@ -156,7 +153,6 @@ export default function LeafRow({ leaf, onChange, onRemove, readOnly }: LeafRowP
         )}
       </div>
 
-      {/* Params sub-form for indicator metrics */}
       {needsParams(leaf.metric) && !readOnly && (
         <div className="flex gap-3 mt-2 items-center text-xs text-neutral-400">
           {showPeriod && (

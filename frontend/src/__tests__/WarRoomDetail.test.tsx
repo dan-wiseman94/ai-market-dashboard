@@ -28,6 +28,6 @@ describe("WarRoomDetailPage", () => {
     await waitFor(() => expect(screen.getByText(/AI capex is durable/)).toBeInTheDocument());
     expect(screen.getByText(/Valuation is stretched/)).toBeInTheDocument();
     expect(screen.getByText(/Both ignore rates/)).toBeInTheDocument();
-    expect(screen.getByText(/bull case stronger/)).toBeInTheDocument();  // verdict
+    expect(screen.getByText(/bull case stronger/)).toBeInTheDocument();
   });
 });

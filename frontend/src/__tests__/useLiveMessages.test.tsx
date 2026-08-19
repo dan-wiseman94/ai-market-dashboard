@@ -104,7 +104,6 @@ describe("useLiveMessages — seed mapping", () => {
     expect(msg).toBeDefined();
     expect(msg!.kind).toBe("structured_observation");
     expect(msg!.report).toEqual(REPORT);
-    // headline is a field in the report; confirm it survived the mapping
     expect(msg!.report!.headline).toBe("SPY consolidates near highs");
   });
 

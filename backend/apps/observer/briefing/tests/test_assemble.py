@@ -98,7 +98,7 @@ def test_assemble_never_raises_when_a_section_fails():
             side_effect=RuntimeError("boom"),
         ),
     ):
-        data, _snap = A.assemble(cfg)  # must not raise
+        data, _snap = A.assemble(cfg)
     assert data["theses"] == [] and data["events"] == {"earnings": [], "macro": []}
     assert data["triggers"] == [] and data["news"] == []
     assert "since" in data

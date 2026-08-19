@@ -8,10 +8,6 @@ import { Toasts } from "@/components/Toasts";
 import Dashboard from "@/pages/Dashboard";
 import { installFakeWebSocket, type FakeWebSocketController } from "./testUtils";
 
-// ---------------------------------------------------------------------------
-// Child component mocks — keep test surface flat
-// ---------------------------------------------------------------------------
-
 vi.mock("@/hooks/useMarketContext", () => ({
   useMarketContext: vi.fn(() => ({ data: null, isLoading: false })),
 }));
@@ -29,7 +25,6 @@ vi.mock("@/hooks/useMarketStatus", () => ({
   useMarketStatus: () => mockMarketStatus(),
 }));
 
-// useDashboard is the new boundary — mock it at the hook level
 const mockUseDashboard = vi.fn();
 vi.mock("@/hooks/useDashboard", () => ({
   useDashboard: () => mockUseDashboard(),
@@ -193,10 +188,6 @@ describe("Dashboard", () => {
     expect(screen.getByRole("link", { name: /watchlists/i })).toBeInTheDocument();
   });
 
-  // ------------------------------------------------------------------
-  // Command-centre tiles — real content assertions (W4b)
-  // ------------------------------------------------------------------
-
   it("shows the AAPL thesis from useDashboard", () => {
     renderDashboard();
     expect(screen.getByText("AAPL")).toBeInTheDocument();
@@ -240,10 +231,6 @@ describe("Dashboard", () => {
     renderDashboard();
     expect(screen.getByText(/command centre/i)).toBeInTheDocument();
   });
-
-  // ------------------------------------------------------------------
-  // Live refresh via shared notifications WS channel (W4b-2)
-  // ------------------------------------------------------------------
 
   it("invalidates the dashboard query when a notification.event arrives over /ws/notifications/", () => {
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });

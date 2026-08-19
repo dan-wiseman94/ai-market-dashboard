@@ -33,14 +33,12 @@ const SESSION: Record<SessionKind, { label: string; tone: string; dot: string }>
   closed: { label: "Closed", tone: "text-ink-400", dot: "var(--ink-500)" },
 };
 
-// Headline predicate, e.g. "the tape is in extended hours."
 const TAPE_VERB: Record<SessionKind, string> = {
   open: "open",
   extended: "in extended hours",
   closed: "closed",
 };
 
-// Time-of-day greeting for the hero, keyed off the local hour.
 function greetingForHour(hour: number): string {
   if (hour < 5) return "Late watch";
   if (hour < 12) return "Good morning";
@@ -105,7 +103,6 @@ export default function Dashboard() {
 
   return (
     <main className="px-8 py-8 max-w-[1400px] mx-auto ledger-fade-in">
-      {/* Editorial hero */}
       <header className="mb-10 ledger-stagger">
         <div className="flex items-center gap-4 mb-4">
           <SessionStatus kind={kind} />
@@ -136,7 +133,6 @@ export default function Dashboard() {
         </div>
       </header>
 
-      {/* Market context */}
       <section className="mb-10 ledger-reveal" style={{ animationDelay: "220ms" }}>
         <div className="flex items-baseline justify-between mb-3">
           <h2 className="ledger-eyebrow">Market context</h2>
@@ -147,7 +143,6 @@ export default function Dashboard() {
         <MarketContextStrip />
       </section>
 
-      {/* Command-centre tiles */}
       <section className="mb-8 ledger-reveal" style={{ animationDelay: "300ms" }}>
         <h2 className="ledger-eyebrow mb-4">Command centre</h2>
         {dashLoading ? (
@@ -167,14 +162,12 @@ export default function Dashboard() {
         ) : null}
       </section>
 
-      {/* Upcoming events strip */}
       {dashboard && (
         <section className="mb-8 ledger-reveal" style={{ animationDelay: "360ms" }}>
           <UpcomingEventsRow events={dashboard.events} />
         </section>
       )}
 
-      {/* Two-column: positions */}
       <div className="grid grid-cols-1 gap-8 ledger-reveal" style={{ animationDelay: "420ms" }}>
         <section>
           <div className="flex items-baseline justify-between mb-3">
@@ -187,7 +180,6 @@ export default function Dashboard() {
         </section>
       </div>
 
-      {/* Footer signature */}
       <footer className="mt-16 pt-6 border-t border-rule-soft flex items-center gap-3 text-[11px] font-mono text-ink-500">
         <span className="text-copper-500/70" aria-hidden>◈</span>
         <span className="uppercase tracking-loose2">Ledger</span>

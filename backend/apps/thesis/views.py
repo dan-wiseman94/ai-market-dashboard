@@ -66,7 +66,6 @@ class ThesisViewSet(viewsets.ModelViewSet):
     def create(self, request: Request, *args: object, **kwargs: object) -> Response:
         data = request.data
 
-        # Resolve optional FKs from the submitted ids (unknown id -> None)
         profile = _resolve_fk(TradingProfile, data.get("profile_id"))
         thread = _resolve_fk(Thread, data.get("thread_id"))
         snapshot = _resolve_fk(Snapshot, data.get("snapshot_id"))
@@ -74,8 +73,6 @@ class ThesisViewSet(viewsets.ModelViewSet):
         # Mutable copy of posted data so we can inject defaults
         mutable_data = dict(data)
 
-        # Default entry_price from the snapshot's quotes section when the client
-        # hasn't provided one explicitly.
         if snapshot is not None and not mutable_data.get("entry_price"):
             ticker = (mutable_data.get("ticker") or "").upper()
             if ticker:
@@ -92,7 +89,6 @@ class ThesisViewSet(viewsets.ModelViewSet):
                 thread=thread,
                 snapshot=snapshot,
             )
-            # Lay down the 7/30/90-day post-mortems for this new thesis.
             schedule_postmortems(thesis)
             from apps.observer.triggers.services.thesis_guard import sync_thesis_guard
 
@@ -147,7 +143,7 @@ class ThesisViewSet(viewsets.ModelViewSet):
         row. The atomic claim in run_postmortem then ensures exactly one run
         happens per click even if beat dispatches the same row concurrently.
         """
-        thesis = self.get_object()  # raises 404 for unknown pk
+        thesis = self.get_object()
         now = timezone.now()
 
         # 1) An already-due scheduled PM takes priority.

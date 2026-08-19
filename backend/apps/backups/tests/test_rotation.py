@@ -24,7 +24,6 @@ def test_rotation_keeps_7_scheduled_and_all_manual(tmp_path, monkeypatch) -> Non
             kind="scheduled",
             status="ok",
         )
-        # space them out
         BackupRecord.objects.filter(pk=r.pk).update(
             created_at=timezone.now() - timedelta(days=10 - i),
         )
@@ -41,14 +40,11 @@ def test_rotation_keeps_7_scheduled_and_all_manual(tmp_path, monkeypatch) -> Non
 
     rotate_scheduled(keep=7)
 
-    # Expect 7 scheduled "ok", 2 scheduled "rotated", both manuals "ok"
     assert BackupRecord.objects.filter(kind="scheduled", status="ok").count() == 7
     assert BackupRecord.objects.filter(kind="scheduled", status="rotated").count() == 2
     assert BackupRecord.objects.filter(kind="manual", status="ok").count() == 2
-    # Rotated files gone from disk
     for rec in BackupRecord.objects.filter(status="rotated"):
         assert not (tmp_path / rec.filename).exists()
-    # Kept files still present
     for rec in BackupRecord.objects.filter(kind="scheduled", status="ok"):
         assert (tmp_path / rec.filename).exists()
     for rec in BackupRecord.objects.filter(kind="manual"):

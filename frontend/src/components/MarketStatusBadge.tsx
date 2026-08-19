@@ -1,4 +1,3 @@
-// frontend/src/components/MarketStatusBadge.tsx
 import { useMarketStatus } from "@/hooks/useMarketStatus";
 import { sessionKind, SESSION_LABEL, type SessionKind } from "@/lib/marketSession";
 

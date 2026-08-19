@@ -71,16 +71,7 @@ _RAW_NEWS = [
 ]
 
 
-# ---------------------------------------------------------------------------
-# Helper: bypass cache.get_or_fetch to call fetcher directly
-# ---------------------------------------------------------------------------
-
 _BYPASS_CACHE = lambda key, *, ttl_seconds, fetcher: fetcher()  # noqa: E731
-
-
-# ---------------------------------------------------------------------------
-# fetch_daily_bars — normalization + persist
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.django_db
@@ -172,11 +163,6 @@ def test_fetch_daily_bars_never_raises_on_network_failure():
         result = tiingo_mod.fetch_daily_bars("BOOM")
 
     assert result == []
-
-
-# ---------------------------------------------------------------------------
-# fetch_news — normalization + NewsItem upsert
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.django_db
@@ -331,7 +317,7 @@ def test_fetch_daily_bars_skips_bars_with_missing_fields():
     raw_with_nulls = [
         {
             "date": "2026-01-02T00:00:00+00:00",
-            "open": None,  # missing required field
+            "open": None,
             "high": 185.50,
             "low": 181.23,
             "close": 184.76,
@@ -354,6 +340,5 @@ def test_fetch_daily_bars_skips_bars_with_missing_fields():
     ):
         result = tiingo_mod.fetch_daily_bars("AAPL")
 
-    # Only the complete bar should survive
     assert len(result) == 1
     assert result[0]["close"] == 187.22

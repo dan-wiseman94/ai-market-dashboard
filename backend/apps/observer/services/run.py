@@ -71,7 +71,6 @@ def run_observer(schedule_id: int) -> int | None:
         cap_usd = cfg.daily_cost_cap_usd
         monthly_cap = cfg.monthly_cost_cap_usd
 
-    # Cost-cap check: write placeholder Message instead of running if exceeded.
     try:
         check_daily_cap(provider_name, cap_usd=cap_usd)
         check_monthly_cap(provider_name, cap_usd=monthly_cap)

@@ -25,7 +25,6 @@ from apps.market.symbols import is_equity_like, normalize_symbol
         ("QQQ", "QQQ"),
         ("aapl", "AAPL"),
         ("XLK", "XLK"),
-        # Empty / whitespace.
         ("", ""),
         ("   ", ""),
     ],
@@ -39,8 +38,8 @@ def test_normalize_symbol(raw, expected):
     [
         # Bare CME future roots get Schwab's leading-slash futures namespace.
         ("ES", "/ES"),  # E-mini S&P 500
-        ("es", "/ES"),  # case-insensitive
-        (" es ", "/ES"),  # whitespace stripped
+        ("es", "/ES"),
+        (" es ", "/ES"),
         ("NQ", "/NQ"),  # E-mini Nasdaq-100
         ("RTY", "/RTY"),  # E-mini Russell 2000
         ("YM", "/YM"),  # E-mini Dow
@@ -79,7 +78,6 @@ def test_normalize_symbol_futures(raw, expected):
         ("SPX", False),
         ("$SPX", False),
         ("$VIX", False),
-        # Empty / whitespace.
         ("", False),
         ("   ", False),
     ],

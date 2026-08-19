@@ -48,7 +48,6 @@ export const Default: Story = {
     await expect(btn).toHaveAttribute("data-preference", "light");
     await expect(btn).toHaveAttribute("aria-label", "Theme: Light");
 
-    // light → dark
     await userEvent.click(btn);
     await expect(btn).toHaveAttribute("data-preference", "dark");
     await expect(btn).toHaveAttribute("aria-label", "Theme: Dark");

@@ -1,4 +1,3 @@
-# backend/apps/core/tests/test_spa_fallback.py
 """Prod SPA fallback: / serves index.html, /api/* still 404s, /static/* unaffected."""
 
 from __future__ import annotations

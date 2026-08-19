@@ -20,7 +20,6 @@ describe("ErrorBoundary", () => {
     );
     expect(screen.getByText("Something went wrong.")).toBeInTheDocument();
 
-    // Navigating (resetKey changes) clears the trapped error and renders children.
     rerender(
       <ErrorBoundary resetKey="/b">
         <div>recovered</div>

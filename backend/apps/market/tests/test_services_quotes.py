@@ -57,7 +57,7 @@ def test_fetch_quotes_uses_schwab_and_caches():
     with patch("apps.market.services.quotes.get_schwab_client", return_value=client):
         result2 = fetch_quotes(["SPY", "QQQ"])
     assert result2 == result
-    assert client.get_quotes.call_count == 1  # still 1 from before
+    assert client.get_quotes.call_count == 1
 
 
 @pytest.mark.django_db

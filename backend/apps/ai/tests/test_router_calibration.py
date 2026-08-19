@@ -61,7 +61,6 @@ def test_profile_pin_beats_calibration(settings):
         name="p", style="x", default_provider="claude", default_model="model-a"
     )
     thread = Thread.objects.create(kind="chat", profile=prof)
-    # Pin is "model-a" even though "model-b" is better-measured.
     assert resolve_provider_and_model(thread=thread) == ("claude", "model-a")
 
 

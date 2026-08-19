@@ -8,7 +8,6 @@ import {
 import { ApiError } from "@/api/client";
 import { mockApi, mockApiError } from "../testUtils";
 
-// Shared fixture so individual tests don't repeat the full literal.
 const costsSummary = {
   total: "1.2345",
   by_provider: [
@@ -95,7 +94,6 @@ describe("api/costs", () => {
         to: "2026-05-17T23:59:59Z",
       });
       const url = api.calls[0].url;
-      // T and : must be encoded; raw colons in query params would be wrong
       expect(url).toContain("from=2026-05-01T00%3A00%3A00Z");
       expect(url).toContain("to=2026-05-17T23%3A59%3A59Z");
     });

@@ -57,11 +57,6 @@ def _persist_bars(ticker: str, timeframe: str, bars: list[dict]) -> None:
     persist_bars(ticker, timeframe, bars, source="tiingo")
 
 
-# ---------------------------------------------------------------------------
-# Normalizers
-# ---------------------------------------------------------------------------
-
-
 def _normalize_bar(raw: dict) -> dict | None:
     """Map one Tiingo daily price entry to the BARS contract dict, or None to skip."""
     date_str = raw.get("date")
@@ -122,11 +117,6 @@ def _normalize_news_item(raw: dict) -> dict | None:
     }
 
 
-# ---------------------------------------------------------------------------
-# Canned fixtures for MOCK_EXTERNAL / e2e mode
-# ---------------------------------------------------------------------------
-
-
 def _canned_bars(ticker: str, days: int) -> list[dict]:
     """Deterministic EOD bar fixture for MOCK_EXTERNAL mode."""
     return [
@@ -155,11 +145,6 @@ def _canned_news(tickers: list[str], limit: int) -> list[dict]:
             "ticker": ticker,
         }
     ][:limit]
-
-
-# ---------------------------------------------------------------------------
-# Public API
-# ---------------------------------------------------------------------------
 
 
 def fetch_daily_bars(ticker: str, *, days: int = 120) -> list[dict]:

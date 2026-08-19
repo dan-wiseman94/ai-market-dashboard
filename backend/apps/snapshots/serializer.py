@@ -203,7 +203,6 @@ def _ohlc_gap_note(bars: list[dict]) -> str:
     if len(bars) < 3:
         return ""
 
-    # Parse timestamps — bars['ts'] is an ISO 8601 string.
     timestamps: list[datetime] = []
     for b in bars:
         raw = b.get("ts")
@@ -225,7 +224,6 @@ def _ohlc_gap_note(bars: list[dict]) -> str:
         [(timestamps[i + 1] - timestamps[i]).total_seconds() for i in range(len(timestamps) - 1)]
     )
 
-    # Typical interval = median of the lower half (ignores the largest outlier(s))
     lower_half = deltas_s[: max(1, len(deltas_s) // 2)]
     typical_s = lower_half[len(lower_half) // 2]
 
@@ -234,7 +232,6 @@ def _ohlc_gap_note(bars: list[dict]) -> str:
 
     max_s = deltas_s[-1]  # already sorted ascending
 
-    # Only flag when the largest gap is >= 4x the typical interval
     if max_s < 4 * typical_s:
         return ""
 

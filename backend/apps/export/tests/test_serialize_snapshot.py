@@ -1,4 +1,3 @@
-# backend/apps/export/tests/test_serialize_snapshot.py
 from __future__ import annotations
 
 import pytest

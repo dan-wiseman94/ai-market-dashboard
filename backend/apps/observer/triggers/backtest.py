@@ -158,7 +158,6 @@ def backtest(
                 pct = (close - prev) / prev
                 for window in ("1m", "5m", "15m", "1h", "1d"):
                     snapshot[f"pct_change:{ticker}:{window}"] = pct
-            # indicator leaves for this ticker
             for leaf in leaves:
                 if leaf.get("ticker") != ticker or leaf["metric"] not in INDICATOR_METRICS:
                     continue
@@ -188,7 +187,6 @@ def backtest(
                 BacktestMatch(ts=ts, values=values, fwd_1d_pct=fwd_1d, fwd_5d_pct=fwd_5d)
             )
 
-        # update prev_values with non-prior entries for next iteration
         prev_values.update({k: v for k, v in snapshot.items() if not k.startswith("_prior:")})
 
     return matches

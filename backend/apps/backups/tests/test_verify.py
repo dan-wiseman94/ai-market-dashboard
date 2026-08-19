@@ -11,10 +11,6 @@ from apps.backups.models import BackupRecord
 from apps.backups.services import verify_latest
 from apps.core.models import ErrorEvent
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
 
 def _make_record(tmp_path, status: str = "ok") -> BackupRecord:
     """Create a BackupRecord whose filename lives under tmp_path.
@@ -33,11 +29,6 @@ def _make_record(tmp_path, status: str = "ok") -> BackupRecord:
         kind="scheduled",
         status=status,
     )
-
-
-# ---------------------------------------------------------------------------
-# Case 1: no successful backups → ok=False, reason="no_backup"
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.django_db
@@ -62,11 +53,6 @@ def test_verify_latest_no_backup_only_failed_records(tmp_path, monkeypatch) -> N
     assert result == {"ok": False, "reason": "no_backup"}
 
 
-# ---------------------------------------------------------------------------
-# Case 2: pg_restore --list succeeds → ok=True, no ErrorEvent created
-# ---------------------------------------------------------------------------
-
-
 @pytest.mark.django_db
 def test_verify_latest_success_returns_ok_dict(tmp_path, monkeypatch) -> None:
     monkeypatch.setenv("BACKUPS_DIR", str(tmp_path))
@@ -80,7 +66,6 @@ def test_verify_latest_success_returns_ok_dict(tmp_path, monkeypatch) -> None:
         result = verify_latest()
 
     assert result == {"ok": True, "filename": rec.filename, "backup_id": rec.id}
-    # Confirm subprocess was called with pg_restore --list
     args = mock_run.call_args[0][0]
     assert args[0] == "pg_restore"
     assert "--list" in args
@@ -97,11 +82,6 @@ def test_verify_latest_success_creates_no_error_event(tmp_path, monkeypatch) -> 
         verify_latest()
 
     assert ErrorEvent.objects.count() == 0
-
-
-# ---------------------------------------------------------------------------
-# Case 3: pg_restore --list fails (returncode=1) → ok=False + ErrorEvent created
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.django_db
@@ -141,11 +121,6 @@ def test_verify_latest_failure_creates_critical_error_event(tmp_path, monkeypatc
     assert ev.detail["filename"] == rec.filename
 
 
-# ---------------------------------------------------------------------------
-# Case 4: pg_restore returns 0 but empty stdout → treated as failure
-# ---------------------------------------------------------------------------
-
-
 @pytest.mark.django_db
 def test_verify_latest_empty_stdout_treated_as_failure(tmp_path, monkeypatch) -> None:
     monkeypatch.setenv("BACKUPS_DIR", str(tmp_path))
@@ -157,13 +132,7 @@ def test_verify_latest_empty_stdout_treated_as_failure(tmp_path, monkeypatch) ->
         result = verify_latest()
 
     assert result["ok"] is False
-    # An ErrorEvent should have been recorded
     assert ErrorEvent.objects.filter(source="backups.verify_latest").count() == 1
-
-
-# ---------------------------------------------------------------------------
-# Case 5: subprocess raises an exception → never propagates, returns dict + ErrorEvent
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.django_db
@@ -173,7 +142,7 @@ def test_verify_latest_subprocess_raises_never_propagates(tmp_path, monkeypatch)
     rec = _make_record(tmp_path)
 
     with patch("apps.backups.services.subprocess.run", side_effect=OSError("pg_restore not found")):
-        result = verify_latest()  # must not raise
+        result = verify_latest()
 
     assert isinstance(result, dict)
     assert result["ok"] is False
@@ -194,16 +163,10 @@ def test_verify_latest_subprocess_raises_creates_error_event(tmp_path, monkeypat
     assert ev.level == "critical"
 
 
-# ---------------------------------------------------------------------------
-# Case 6: picks the NEWEST ok record (not oldest)
-# ---------------------------------------------------------------------------
-
-
 @pytest.mark.django_db
 def test_verify_latest_uses_newest_ok_record(tmp_path, monkeypatch) -> None:
     monkeypatch.setenv("BACKUPS_DIR", str(tmp_path))
 
-    # Create two ok records; the newer one has a distinct filename
     old_p = tmp_path / "2026-01-01-000000.sql.gz"
     old_p.write_bytes(b"old")
     BackupRecord.objects.create(

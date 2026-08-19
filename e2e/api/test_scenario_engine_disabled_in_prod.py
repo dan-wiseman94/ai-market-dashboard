@@ -28,7 +28,6 @@ def test_scenario_probe_404_when_mock_external_false(api_base_url) -> None:
         headers={"X-E2E-Scenario": "claude-5xx"},
         timeout=3,
     )
-    # Endpoint shouldn't exist without MOCK_EXTERNAL.
     assert r.status_code == 404
 
 
@@ -41,7 +40,6 @@ def test_scenario_header_is_noop_when_mock_external_false(api_base_url) -> None:
     ):
         pytest.skip("e2e overlay is up; this assertion only applies to prod posture")
 
-    # Hit the readiness probe with the header — it should be ignored.
     r = httpx.get(
         f"{api_base_url}/api/ready/",
         headers={"X-E2E-Scenario": "claude-5xx"},

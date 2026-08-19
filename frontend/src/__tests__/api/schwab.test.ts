@@ -3,8 +3,6 @@ import { fetchSchwabStatus, fetchSchwabAuthorizeUrl } from "@/api/schwab";
 import { ApiError } from "@/api/client";
 import { mockApi, mockApiError } from "../testUtils";
 
-// ---- fetchSchwabStatus ----
-
 describe("api/schwab", () => {
   describe("fetchSchwabStatus", () => {
     it("GETs /api/schwab/status/ and returns connected status with expires_at", async () => {
@@ -37,8 +35,6 @@ describe("api/schwab", () => {
       await expect(promise).rejects.toMatchObject({ status: 503, code: "service_unavailable" });
     });
   });
-
-  // ---- fetchSchwabAuthorizeUrl ----
 
   describe("fetchSchwabAuthorizeUrl", () => {
     it("GETs /api/schwab/authorize/ and returns the authorize url", async () => {

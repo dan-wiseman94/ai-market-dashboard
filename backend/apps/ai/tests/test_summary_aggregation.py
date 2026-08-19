@@ -1,4 +1,3 @@
-# backend/apps/costs/tests/test_summary_aggregation.py
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta

@@ -22,7 +22,7 @@ def test_multi_mode_spreads_across_providers(monkeypatch):
     )
     out = assign_voices("multi")
     provs = [p for _persona, p, _m in out]
-    assert len(set(provs)) > 1  # spread across providers
+    assert len(set(provs)) > 1
 
 
 def test_multi_with_one_provider_falls_back(monkeypatch):

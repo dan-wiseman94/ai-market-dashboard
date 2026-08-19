@@ -16,7 +16,7 @@ from apps.snapshots.models import Snapshot
 @pytest.mark.django_db
 def test_diff_non_integer_pk_returns_404_not_500():
     r = APIClient().get("/api/snapshots/null/diff/")
-    assert r.status_code == 404  # not 500
+    assert r.status_code == 404
 
 
 @pytest.mark.django_db
@@ -26,4 +26,4 @@ def test_diff_non_integer_against_returns_404_not_500():
         profile=profile, includes=["quotes"], status="ready", primary_ticker="NVDA"
     )
     r = APIClient().get(f"/api/snapshots/{snap.id}/diff/?against=null")
-    assert r.status_code == 404  # not 500
+    assert r.status_code == 404

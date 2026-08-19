@@ -152,10 +152,8 @@ describe("UpcomingEvents", () => {
 
     const links = screen.getAllByRole("link");
     expect(links).toHaveLength(2);
-    // First chip is the soonest event (NVDA, 3d)
     expect(links[0].textContent).toContain("NVDA earnings");
     expect(links[0].textContent).toContain("3d");
-    // Second chip is the next soonest (MSFT, 9d)
     expect(links[1].textContent).toContain("MSFT earnings");
     expect(links[1].textContent).toContain("9d");
   });

@@ -9,7 +9,6 @@ from django.db.models.functions import TruncDate
 
 from apps.threads.models import AIRun
 
-# Shared per-(provider/model) token + cost aggregation applied across the breakdowns.
 _TOKEN_AGG = {
     "cost_usd": Sum("cost_usd"),
     "runs": Count("id"),
@@ -172,7 +171,6 @@ def snapshot_breakdown(snapshot_id: int) -> list[dict]:
     sections = list(SnapshotSection.objects.filter(snapshot_id=snapshot_id).order_by("kind"))
     total_tokens = sum(s.payload_tokens for s in sections) or 1
 
-    # Find the single AIRun that consumed this snapshot (pinned_snapshot_id on Thread).
     ai_run = (
         AIRun.objects.filter(message__thread__pinned_snapshot_id=snapshot_id, status="done")
         .order_by("-created_at")

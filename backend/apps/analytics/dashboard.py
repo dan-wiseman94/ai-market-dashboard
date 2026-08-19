@@ -29,11 +29,6 @@ def _safe(fn, default):
         return default
 
 
-# ---------------------------------------------------------------------------
-# Section helpers
-# ---------------------------------------------------------------------------
-
-
 def _events_section() -> dict:
     from apps.market.services.events import upcoming_events
     from apps.profiles.models import WatchlistSymbol
@@ -132,11 +127,6 @@ def _latest_briefing_summary() -> dict | None:
         "created_at": run.created_at.isoformat(),
         "scheduled_date": run.scheduled_date.isoformat() if run.scheduled_date else None,
     }
-
-
-# ---------------------------------------------------------------------------
-# View
-# ---------------------------------------------------------------------------
 
 
 class DashboardView(APIView):

@@ -20,7 +20,6 @@ export function useThesisJournal(threadId: number | null, thread: Thread | undef
   const createJournalEntry = useCreateJournalEntry();
   const { data: journalEntries = [] } = useJournal(threadId);
 
-  // New thesis form
   const [showThesisForm, setShowThesisForm] = useState(false);
   const [thesisTitle, setThesisTitle] = useState("");
   const [thesisTicker, setThesisTicker] = useState("");
@@ -31,7 +30,6 @@ export function useThesisJournal(threadId: number | null, thread: Thread | undef
   const [thesisInvalidation, setThesisInvalidation] = useState("");
   const [thesisInvalidationNote, setThesisInvalidationNote] = useState("");
 
-  // Close & journal panel
   const [showJournalPanel, setShowJournalPanel] = useState(false);
   const [journalDecision, setJournalDecision] = useState<JournalDecision>("acted");
   const [journalNote, setJournalNote] = useState("");
@@ -68,7 +66,6 @@ export function useThesisJournal(threadId: number | null, thread: Thread | undef
       {
         onSuccess: (thesis) => {
           push({ kind: "success", text: `Thesis created: ${thesis.title}` });
-          // In promote mode, link a journal entry to the newly created thesis
           if (promoteMode && threadId) {
             createJournalEntry.mutate(
               {
@@ -119,7 +116,6 @@ export function useThesisJournal(threadId: number | null, thread: Thread | undef
   }
 
   return {
-    // thesis form
     showThesisForm,
     setShowThesisForm,
     thesisTitle,
@@ -140,7 +136,6 @@ export function useThesisJournal(threadId: number | null, thread: Thread | undef
     setThesisInvalidationNote,
     handleCreateThesis,
     thesisPending: createThesis.isPending,
-    // journal panel
     showJournalPanel,
     setShowJournalPanel,
     journalDecision,
@@ -150,7 +145,6 @@ export function useThesisJournal(threadId: number | null, thread: Thread | undef
     handleLogDecision,
     journalPending: createJournalEntry.isPending,
     journalEntries,
-    // shared
     promoteMode,
     setPromoteMode,
   };

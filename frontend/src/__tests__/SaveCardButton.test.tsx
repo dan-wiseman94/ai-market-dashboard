@@ -34,7 +34,6 @@ describe("SaveCardButton", () => {
       expect(clickSpy).toHaveBeenCalled();
     });
 
-    // html2canvas must have been called with the target element
     const html2canvas = (await import("html2canvas")).default;
     expect(html2canvas).toHaveBeenCalledWith(div);
   });
@@ -43,7 +42,6 @@ describe("SaveCardButton", () => {
     const div = document.createElement("div");
     const targetRef = { current: div };
 
-    // Capture the anchor that was created and clicked.
     let capturedAnchor: HTMLAnchorElement | null = null;
     const createElementOrig = document.createElement.bind(document);
     const createElSpy = vi
@@ -70,7 +68,6 @@ describe("SaveCardButton", () => {
   it("does nothing when targetRef.current is null (no crash, html2canvas not called)", async () => {
     const targetRef = { current: null };
 
-    // Reset call count for this specific assertion
     const html2canvas = (await import("html2canvas")).default as ReturnType<typeof vi.fn>;
     html2canvas.mockClear();
 

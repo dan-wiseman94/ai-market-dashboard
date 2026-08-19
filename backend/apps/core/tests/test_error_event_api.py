@@ -19,11 +19,6 @@ def _make_event(**kwargs) -> ErrorEvent:
     return ErrorEvent.objects.create(**defaults)
 
 
-# ---------------------------------------------------------------------------
-# GET /api/errors/
-# ---------------------------------------------------------------------------
-
-
 @pytest.mark.django_db
 def test_get_errors_returns_newest_first():
     """Results are ordered newest → oldest."""
@@ -114,7 +109,6 @@ def test_get_errors_limit_cap():
     assert len(body["errors"]) == 3
     assert body["count"] == 3
 
-    # limit > 200 is capped to 200
     resp2 = client.get("/api/errors/?limit=9999")
     assert resp2.status_code == 200
     body2 = resp2.json()
@@ -132,11 +126,6 @@ def test_get_errors_default_limit_is_50():
     assert resp.status_code == 200
     body = resp.json()
     assert len(body["errors"]) == 50
-
-
-# ---------------------------------------------------------------------------
-# POST /api/errors/<id>/resolve/
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.django_db

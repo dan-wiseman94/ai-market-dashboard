@@ -16,10 +16,6 @@ from apps.profiles.models import TradingProfile
 from apps.thesis.models import Position
 from apps.thesis.portfolio_service import realized_pnl, unrealized_pnl
 
-# ---------------------------------------------------------------------------
-# Fixtures
-# ---------------------------------------------------------------------------
-
 
 @pytest.fixture
 def profile(db):
@@ -64,24 +60,15 @@ def _seed_bar(ticker: str, close: float) -> OHLCBar:
     )
 
 
-# ---------------------------------------------------------------------------
-# unrealized_pnl — LONG
-# ---------------------------------------------------------------------------
-
-
 @pytest.mark.django_db
 def test_unrealized_pnl_long_profit(long_position):
     """Long position: price rises from $450 to $480, profit = (480-450)*100 = $3 000."""
     _seed_bar("NVDA", 480.0)
     result = unrealized_pnl(long_position)
 
-    # last price
     assert result["last"] == pytest.approx(480.0)
-    # market_value = 480 * 100
     assert result["market_value"] == pytest.approx(48_000.0)
-    # unrealized_pnl = (480 - 450) * 100 * +1 = 3 000
     assert result["unrealized_pnl"] == pytest.approx(3_000.0)
-    # unrealized_pct = 3000 / (450*100) * 100 = 6.666...%
     assert result["unrealized_pct"] == pytest.approx(6.666_666, rel=1e-4)
 
 
@@ -93,15 +80,8 @@ def test_unrealized_pnl_long_loss(long_position):
 
     assert result["last"] == pytest.approx(420.0)
     assert result["market_value"] == pytest.approx(42_000.0)
-    # (420 - 450) * 100 * +1 = -3 000
     assert result["unrealized_pnl"] == pytest.approx(-3_000.0)
-    # -3000 / 45000 * 100 = -6.666...%
     assert result["unrealized_pct"] == pytest.approx(-6.666_666, rel=1e-4)
-
-
-# ---------------------------------------------------------------------------
-# unrealized_pnl — SHORT
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.django_db
@@ -131,15 +111,8 @@ def test_unrealized_pnl_short_loss(short_position):
 
     assert result["last"] == pytest.approx(280.0)
     assert result["market_value"] == pytest.approx(14_000.0)
-    # (280 - 250) * 50 * -1 = -1 500
     assert result["unrealized_pnl"] == pytest.approx(-1_500.0)
-    # -1500 / 12500 * 100 = -12.0%
     assert result["unrealized_pct"] == pytest.approx(-12.0)
-
-
-# ---------------------------------------------------------------------------
-# Coverage-gap: no OHLC bar — returns None fields, never raises
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.django_db
@@ -152,7 +125,6 @@ def test_unrealized_pnl_no_bar_returns_none_fields(long_position):
     assert result["market_value"] is None
     assert result["unrealized_pnl"] is None
     assert result["unrealized_pct"] is None
-    # Function must return a dict (not raise)
     assert isinstance(result, dict)
 
 
@@ -163,11 +135,6 @@ def test_unrealized_pnl_no_bar_does_not_raise(short_position):
     result = unrealized_pnl(short_position)
     assert result["unrealized_pnl"] is None
     assert result["last"] is None
-
-
-# ---------------------------------------------------------------------------
-# realized_pnl helper
-# ---------------------------------------------------------------------------
 
 
 def test_realized_pnl_long_profit():

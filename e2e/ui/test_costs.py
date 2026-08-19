@@ -21,7 +21,6 @@ def test_costs_today_tile(page, frontend_base_url, analytics) -> None:
     # The "Today" stat tile is always rendered; with seeded AIRuns the value is non-zero.
     today_section = page.locator("text=Today").first
     expect(today_section).to_be_visible(timeout=10_000)
-    # The costs page renders at least one $ amount (stat tiles + chart if data present).
     expect(page.locator("body")).to_contain_text("$")
 
 

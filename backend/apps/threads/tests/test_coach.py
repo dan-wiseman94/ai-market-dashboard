@@ -289,11 +289,6 @@ def test_lessons_block_empty_ticker():
     assert _lessons_block("") == ""
 
 
-# --------------------------------------------------------------------------- #
-# Task 6 — A3: calibration block + verdict injected into the coach
-# --------------------------------------------------------------------------- #
-
-
 def test_calibration_verdict_overconfident():
     # observed < stated in both buckets -> overconfident
     buckets = [

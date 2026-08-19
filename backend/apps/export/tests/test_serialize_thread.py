@@ -1,4 +1,3 @@
-# backend/apps/export/tests/test_serialize_thread.py
 from __future__ import annotations
 
 import json
@@ -25,7 +24,6 @@ def test_thread_to_json_includes_messages(seeded_thread) -> None:
     assert out["title"] == "Alpha"
     assert len(out["messages"]) == 2
     assert out["messages"][0]["role"] == "user"
-    # No secrets
     assert "api_key" not in json.dumps(out).lower()
 
 

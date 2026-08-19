@@ -36,7 +36,6 @@ def test_compare_two_branches_stream_and_cost(page, frontend_base_url, minimal) 
     c.open()
     c.dispatch("What do you see in this tape?")
 
-    # Both branch tabs appear and each resolves a cost (pending → resolved).
     expect(c.branch_costs).to_have_count(2, timeout=20_000)
     expect(c.pending_costs).to_have_count(0, timeout=45_000)
 

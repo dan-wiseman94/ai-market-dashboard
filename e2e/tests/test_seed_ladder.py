@@ -54,7 +54,6 @@ def test_seed_market_creates_watchlists_and_ohlc() -> None:
         assert OHLCBar.objects.filter(ticker=sym).count() > 100
     assert NewsItem.objects.count() >= 10
     assert OptionChainSnapshot.objects.filter(ticker="AAPL").count() == 14
-    # Unusual-options signal must be present on the most recent chain.
     chain = OptionChainSnapshot.objects.filter(ticker="AAPL").order_by("-fetched_at").first()
     lines = chain.payload["lines"]
     assert any(ln.get("volume", 0) / max(ln.get("oi", 1), 1) >= 3.0 for ln in lines), (
@@ -72,7 +71,6 @@ def test_seed_snapshots_states() -> None:
     assert Snapshot.objects.filter(status="ready").count() >= 4  # 3 ready + 1 partial-as-ready
     assert Snapshot.objects.filter(status="failed").count() >= 1
 
-    # Every fully-ready snapshot has 7 sections with stamped tokens.
     ready_snap = Snapshot.objects.filter(objective__startswith="e2e ready").first()
     assert ready_snap.sections.count() == 7
     for section in ready_snap.sections.all():

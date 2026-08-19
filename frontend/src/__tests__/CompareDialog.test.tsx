@@ -68,7 +68,6 @@ describe("CompareDialog", () => {
     fireEvent.click(overlay);
     expect(onCancel).toHaveBeenCalledTimes(1);
 
-    // Click on the inner card should NOT fire onCancel again
     onCancel.mockClear();
     const innerCard = overlay.querySelector(".ledger-surface") as HTMLElement;
     await user.click(innerCard);
@@ -78,7 +77,6 @@ describe("CompareDialog", () => {
   it("clicking + add branch adds a third branch label", async () => {
     const user = userEvent.setup();
     render(<CompareDialog onCancel={() => {}} onSubmit={() => {}} />);
-    // Initially "01" and "02" are visible
     expect(screen.getByText("01")).toBeInTheDocument();
     expect(screen.getByText("02")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /add branch/i }));
@@ -90,7 +88,6 @@ describe("CompareDialog", () => {
     render(<CompareDialog onCancel={() => {}} onSubmit={() => {}} />);
     const removeButtons = screen.getAllByRole("button", { name: /remove/i });
     expect(removeButtons.length).toBe(2);
-    // Remove one branch
     await user.click(removeButtons[0]);
     expect(screen.queryByRole("button", { name: /remove/i })).toBeNull();
   });
@@ -98,7 +95,6 @@ describe("CompareDialog", () => {
   it("clicking remove on branch 0 leaves branch 1 remaining", async () => {
     const user = userEvent.setup();
     render(<CompareDialog onCancel={() => {}} onSubmit={() => {}} />);
-    // With two branches: "01" (claude) and "02" (openai)
     const removeButtons = screen.getAllByRole("button", { name: /remove/i });
     await user.click(removeButtons[0]);
     // Now only 1 branch remains, re-indexed as "01"

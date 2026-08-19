@@ -74,7 +74,6 @@ def parse_junit(path: Path) -> dict[str, bool]:
             results[key] = True
             pos = m.end()
             continue
-        # Otherwise scan up to the matching </testcase>
         close = text.find("</testcase>", m.end())
         body = text[m.end() : close] if close != -1 else text[m.end() :]
         results[key] = not _FAILED_INNER_RE.search(body)

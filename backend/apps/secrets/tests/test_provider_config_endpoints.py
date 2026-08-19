@@ -66,7 +66,7 @@ def test_discovery_fields_are_read_only(api):
     )
     assert r.status_code == 200
     pc = ProviderConfig.objects.get(provider="local")
-    assert pc.discovered_models == []  # write ignored
+    assert pc.discovered_models == []
 
 
 def _corrupt_stored_key(provider: str) -> None:

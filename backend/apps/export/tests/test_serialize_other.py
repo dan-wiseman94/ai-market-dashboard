@@ -1,4 +1,3 @@
-# backend/apps/export/tests/test_serialize_other.py
 from __future__ import annotations
 
 import json
@@ -55,11 +54,9 @@ def test_profiles_and_watchlists_no_secrets() -> None:
     WatchlistSymbol.objects.create(watchlist=wl, ticker="AAPL")
     out_profiles = profiles_to_json()
     out_watchlists = watchlists_to_json()
-    # Check no secrets leak
     s = json.dumps(out_profiles).lower() + json.dumps(out_watchlists).lower()
     for forbidden in ("api_key", "access_token", "refresh_token"):
         assert forbidden not in s
-    # Basic shape assertions
     assert any(p["name"] == "p1" for p in out_profiles["profiles"])
     assert any(w["name"] == "tech" for w in out_watchlists["watchlists"])
     tech = next(w for w in out_watchlists["watchlists"] if w["name"] == "tech")

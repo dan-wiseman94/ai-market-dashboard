@@ -123,12 +123,10 @@ def test_returns_client_when_connected():
         },
         expires_at=timezone.now() + timedelta(hours=1),
     )
-    # Mock the schwab-py factory so we don't need real credentials
     with patch("apps.market.schwab_client.client_from_access_functions") as factory:
         factory.return_value = object()
         client = get_schwab_client()
         assert client is factory.return_value
-        # Verify factory called with client id + secret + read/write funcs
         args, kwargs = factory.call_args
         assert kwargs.get("api_key") == "cid" or (args and args[0] == "cid")
 

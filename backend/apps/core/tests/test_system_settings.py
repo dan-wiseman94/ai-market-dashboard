@@ -25,7 +25,7 @@ def test_runtime_config_prefers_db_override():
     cfg.ai_failover_enabled = True
     cfg.save()
     rc = runtime_config()
-    assert rc.retention_ohlc_days == 30  # DB wins over the setting
+    assert rc.retention_ohlc_days == 30
     assert rc.ai_failover_enabled is True
 
 

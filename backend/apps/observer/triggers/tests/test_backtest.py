@@ -159,9 +159,6 @@ def msft_scoring_bars(db):
     OHLCBar.objects.bulk_create(rows)
 
 
-# ── Commit 1: forward-return scoring ────────────────────────────────────────
-
-
 def test_matched_bars_carry_forward_return_fields(db, msft_scoring_bars) -> None:
     """Each matched BacktestMatch exposes fwd_1d_pct and fwd_5d_pct."""
     from apps.observer.triggers.backtest import BacktestMatch, backtest
@@ -281,9 +278,6 @@ def test_backtest_summary_no_matches() -> None:
     assert summary["hit_rate_5d"] is None
 
 
-# ── Commit 2: vix leaf ───────────────────────────────────────────────────────
-
-
 @pytest.fixture
 def msft_and_vix_bars(db):
     """MSFT bars (same 10 days) + $VIX bars: VIX=18 on May4-6, VIX=22 on May7-15."""
@@ -378,9 +372,6 @@ def test_vix_only_condition_no_match_without_bars(db, msft_scoring_bars) -> None
     assert matches == []
 
 
-# ── Commit 3: API response includes summary ──────────────────────────────────
-
-
 def test_backtest_api_response_includes_summary(db, msft_scoring_bars) -> None:
     """The backtest endpoint now returns a 'summary' dict with all expected keys."""
     client = APIClient()
@@ -398,7 +389,6 @@ def test_backtest_api_response_includes_summary(db, msft_scoring_bars) -> None:
     assert resp.status_code == 200, resp.content
     body = resp.json()
 
-    # summary key is present and has all expected sub-keys
     assert "summary" in body
     summary = body["summary"]
     for key in (
@@ -412,19 +402,16 @@ def test_backtest_api_response_includes_summary(db, msft_scoring_bars) -> None:
     ):
         assert key in summary, f"summary missing key {key!r}"
 
-    # Numeric sanity: 8 matches, hit_rate values are in [0,1] or None
     assert summary["matches"] == 8
     if summary["hit_rate_1d"] is not None:
         assert 0.0 <= summary["hit_rate_1d"] <= 1.0
     if summary["hit_rate_5d"] is not None:
         assert 0.0 <= summary["hit_rate_5d"] <= 1.0
 
-    # per-match dicts now carry fwd_1d_pct and fwd_5d_pct keys
     for m in body["matches"]:
         assert "fwd_1d_pct" in m
         assert "fwd_5d_pct" in m
 
-    # existing keys still present (additive, not breaking)
     assert "match_count" in body
     assert "matches" in body
 

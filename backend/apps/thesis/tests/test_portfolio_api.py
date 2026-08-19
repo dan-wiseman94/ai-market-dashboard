@@ -15,10 +15,6 @@ from apps.market.models import OHLCBar
 from apps.profiles.models import TradingProfile
 from apps.thesis.models import Position, Thesis
 
-# ---------------------------------------------------------------------------
-# Fixtures
-# ---------------------------------------------------------------------------
-
 
 @pytest.fixture
 def api():
@@ -65,11 +61,6 @@ def _seed_bar(ticker: str, close: float) -> OHLCBar:
     )
 
 
-# ---------------------------------------------------------------------------
-# Create
-# ---------------------------------------------------------------------------
-
-
 @pytest.mark.django_db
 def test_create_position(api, profile, thesis):
     """POST /api/portfolio/positions/ creates a position; ticker is normalised."""
@@ -110,11 +101,6 @@ def test_create_position_without_thesis(api, profile):
     )
     assert resp.status_code == 201
     assert resp.json()["thesis_id"] is None
-
-
-# ---------------------------------------------------------------------------
-# List + filters
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.django_db
@@ -231,11 +217,6 @@ def test_filter_by_thesis(api, open_position, profile):
     assert pos_unlinked.id not in ids
 
 
-# ---------------------------------------------------------------------------
-# Read — unrealized dict in payload
-# ---------------------------------------------------------------------------
-
-
 @pytest.mark.django_db
 def test_retrieve_includes_unrealized_dict(api, open_position):
     """GET /api/portfolio/positions/<id>/ includes the 'unrealized' dict."""
@@ -264,11 +245,6 @@ def test_retrieve_unrealized_with_bar(api, open_position):
     assert unrealized["unrealized_pct"] == pytest.approx(6.666_666, rel=1e-4)
 
 
-# ---------------------------------------------------------------------------
-# Close action
-# ---------------------------------------------------------------------------
-
-
 @pytest.mark.django_db
 def test_close_action_long_sets_realized_pnl(api, open_position):
     """POST .../close/ with close_price flips status→closed and sets realized_pnl.
@@ -287,7 +263,6 @@ def test_close_action_long_sets_realized_pnl(api, open_position):
     assert data["close_price"] == "500.0000"
     assert data["closed_at"] is not None
 
-    # Verify persisted in DB
     open_position.refresh_from_db()
     assert open_position.status == "closed"
     assert float(open_position.realized_pnl) == pytest.approx(5_000.0)
@@ -342,11 +317,6 @@ def test_close_action_custom_closed_at(api, open_position):
     assert "2026-01-15" in resp.json()["closed_at"]
 
 
-# ---------------------------------------------------------------------------
-# Update
-# ---------------------------------------------------------------------------
-
-
 @pytest.mark.django_db
 def test_patch_note(api, open_position):
     """PATCH /api/portfolio/positions/<id>/ updates the note field."""
@@ -357,11 +327,6 @@ def test_patch_note(api, open_position):
     )
     assert resp.status_code == 200
     assert resp.json()["note"] == "Watching for breakout"
-
-
-# ---------------------------------------------------------------------------
-# Delete
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.django_db

@@ -63,7 +63,6 @@ const SEQ_RESTART_IDLE_MS = 55 * 60 * 1000;
 export function WebSocketProvider({ children }: { children: React.ReactNode }) {
   const broker = useMemo(() => new Broker(), []);
   const sockets = useRef(new Map<string, WebSocket>());
-  // Pending reconnect timers and per-channel backoff attempt counts.
   const timers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
   const attempts = useRef(new Map<string, number>());
   // Per-channel last-received server `seq` (thread.<id> events carry one) plus

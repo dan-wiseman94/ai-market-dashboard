@@ -29,7 +29,6 @@ describe("RecallPage", () => {
   it("shows empty state before any search", () => {
     renderWithProviders(<RecallPage />, { initialEntries: ["/recall"] });
     expect(screen.getByTestId("recall-query-input")).toBeInTheDocument();
-    // No results shown yet
     expect(screen.queryByTestId("mode-badge")).not.toBeInTheDocument();
   });
 
@@ -50,7 +49,6 @@ describe("RecallPage", () => {
     // Kind badge renders (appears in section heading + inline badge — ensure at least one is present)
     expect(screen.getAllByText("thesis").length).toBeGreaterThan(0);
 
-    // Link renders
     expect(screen.getByText("→ /theses/42")).toBeInTheDocument();
   });
 

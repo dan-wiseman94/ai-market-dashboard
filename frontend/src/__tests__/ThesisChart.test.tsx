@@ -94,7 +94,6 @@ describe("ThesisChart", () => {
   it("skips a price line when the level is null", async () => {
     mockOhlc();
     renderWithProviders(
-      // No invalidation
       <ThesisChart ticker="SPY" entry="540.00" target="600.00" invalidation={null} />,
     );
     await waitFor(() =>
@@ -103,7 +102,6 @@ describe("ThesisChart", () => {
 
     const series = getSeriesMock();
     const calls = series?.createPriceLine.mock.calls ?? [];
-    // Should have Target + Entry but NOT Invalidation
     expect(calls.some((c: unknown[]) => (c[0] as { title: string }).title === "Target")).toBe(true);
     expect(calls.some((c: unknown[]) => (c[0] as { title: string }).title === "Entry")).toBe(true);
     expect(calls.some((c: unknown[]) => (c[0] as { title: string }).title === "Invalidation")).toBe(false);
@@ -112,7 +110,6 @@ describe("ThesisChart", () => {
   it("skips a price line when the level is undefined", async () => {
     mockOhlc();
     renderWithProviders(
-      // No entry passed at all
       <ThesisChart ticker="SPY" target="600.00" invalidation="520.00" />,
     );
     await waitFor(() =>
@@ -141,10 +138,8 @@ describe("ThesisChart", () => {
 
     const targetLine = calls.find((c) => c.title === "Target");
     const invalidationLine = calls.find((c) => c.title === "Invalidation");
-    // Gain color (green family)
     expect(targetLine?.color).toMatch(/#[0-9a-f]+/i);
     expect(targetLine?.color).toBe("#4fb38a");
-    // Loss color (red family)
     expect(invalidationLine?.color).toBe("#c55c62");
   });
 
@@ -156,7 +151,6 @@ describe("ThesisChart", () => {
     await waitFor(() =>
       expect(screen.queryByTestId("skeleton-thesis-chart")).not.toBeInTheDocument(),
     );
-    // Chart container is also not rendered on error
     expect(screen.queryByTestId("thesis-chart")).not.toBeInTheDocument();
   });
 });

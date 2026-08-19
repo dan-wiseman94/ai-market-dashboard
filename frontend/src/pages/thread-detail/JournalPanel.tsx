@@ -2,9 +2,6 @@ import { Link } from "react-router-dom";
 import type { JournalDecision, JournalEntry } from "@/api/journal";
 import { EmptyState } from "@/components/EmptyState";
 
-// Per-decision pill colors. The original used a nested ternary keyed on the four
-// decisions (acted/passed/watching/hedged); the lookup keeps the exact classes
-// while dropping the nesting. `hedged` was the ternary's trailing else branch.
 const DECISION_PILL_CLASS: Record<JournalDecision, string> = {
   acted:
     "text-emerald-700 border-emerald-500/40 bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-800 dark:bg-emerald-950/40",
@@ -45,7 +42,6 @@ export default function JournalPanel({
     >
       <div className="ledger-eyebrow mb-1">Close &amp; journal this thread</div>
 
-      {/* Decision log form */}
       <div className="grid grid-cols-2 gap-4">
         <div className="col-span-2">
           <label htmlFor="journal-decision" className="block text-[12px] text-ink-400 mb-1">Decision</label>
@@ -102,7 +98,6 @@ export default function JournalPanel({
         </button>
       </div>
 
-      {/* Existing journal entries */}
       <div className="border-t border-rule-soft pt-4 mt-2">
         <div className="ledger-eyebrow mb-3">Prior decisions</div>
         {entries.length === 0 ? (

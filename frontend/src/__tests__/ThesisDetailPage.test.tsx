@@ -166,7 +166,6 @@ describe("ThesisDetailPage", () => {
     );
     fireEvent.click(screen.getByTestId("open-close-form-btn"));
     expect(screen.getByTestId("close-thesis-form")).toBeInTheDocument();
-    // Outcome select is visible
     expect(screen.getByLabelText("Outcome")).toBeInTheDocument();
   });
 
@@ -209,12 +208,9 @@ describe("ThesisDetailPage", () => {
     await waitFor(() =>
       expect(screen.getByText(/Snapshot #99/)).toBeInTheDocument(),
     );
-    // Must not be rendered inside an <a> element
     const el = screen.getByText(/Snapshot #99/);
     expect(el.closest("a")).toBeNull();
   });
-
-  // --- Post-mortem section tests ---
 
   it("renders the Run now button", async () => {
     mockApi({ "GET /api/theses/1/": THESIS, ...NO_POSITIONS });
@@ -239,19 +235,15 @@ describe("ThesisDetailPage", () => {
       expect(screen.getByTestId("pm-card-7")).toBeInTheDocument(),
     );
 
-    // Verdict badge present
     expect(screen.getByTestId("verdict-badge-correct")).toBeInTheDocument();
     expect(screen.getByText("Correct")).toBeInTheDocument();
 
-    // Forward return formatted as signed percentage
     expect(screen.getByTestId("pm-return-7")).toHaveTextContent("+3.2%");
 
-    // Summary text
     expect(
       screen.getByText("Thesis played out as expected with strong momentum."),
     ).toBeInTheDocument();
 
-    // Lesson
     expect(
       screen.getByText("Size appropriately given macro backdrop"),
     ).toBeInTheDocument();
@@ -268,13 +260,10 @@ describe("ThesisDetailPage", () => {
       expect(screen.getByTestId("pm-card-30")).toBeInTheDocument(),
     );
 
-    // Shows scheduled state text
     expect(screen.getByText(/Scheduled for/)).toBeInTheDocument();
 
-    // No verdict badge for the scheduled PM
     expect(screen.queryByTestId("verdict-badge-empty")).not.toBeInTheDocument();
 
-    // No return shown for scheduled PM
     expect(screen.queryByTestId("pm-return-30")).not.toBeInTheDocument();
   });
 
@@ -353,7 +342,6 @@ describe("ThesisDetailPage", () => {
     mockApi({
       "GET /api/theses/1/": THESIS,
       "POST /api/theses/1/run-postmortem/": () => {
-        // Keep the promise pending until we resolve it
         return pendingPromise as Promise<unknown>;
       },
       ...NO_POSITIONS,
@@ -418,7 +406,6 @@ describe("ThesisDetailPage", () => {
     await waitFor(() =>
       expect(screen.getByTestId("thesis-chart-stub")).toBeInTheDocument(),
     );
-    // The stub records the ticker via data-ticker — confirms the prop was passed through
     expect(screen.getByTestId("thesis-chart-stub")).toHaveAttribute("data-ticker", "SPY");
   });
 
@@ -450,8 +437,6 @@ describe("ThesisDetailPage", () => {
 
     expect(screen.getByText("Analysis in progress…")).toBeInTheDocument();
   });
-
-  // --- Linked positions section tests ---
 
   it("shows linked-positions section with EmptyState when no positions", async () => {
     mockApi({ "GET /api/theses/1/": THESIS, ...NO_POSITIONS });

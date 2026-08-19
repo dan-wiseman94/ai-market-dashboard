@@ -22,14 +22,12 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "django.contrib.postgres",
-    # 3rd party
     "channels",
     "rest_framework",
     "drf_spectacular",
     "corsheaders",
     "django_celery_beat",
     "django_structlog",
-    # local
     "apps.core",
     "apps.secrets",
     "apps.market",
@@ -97,7 +95,6 @@ DATABASES = {
     }
 }
 
-# Redis / Channels
 REDIS_URL = env("REDIS_URL", default="redis://redis:6379/0")
 CHANNEL_LAYERS = {
     "default": {
@@ -111,7 +108,6 @@ CHANNEL_LAYERS = {
 # Losing this file permanently destroys stored credentials.
 _ENCRYPTION_SALT_PATH = env.str("ENCRYPTION_SALT_PATH", default="/data/secret.salt")
 
-# Celery
 CELERY_BROKER_URL = env("CELERY_BROKER_URL", default="redis://redis:6379/1")
 CELERY_RESULT_BACKEND = env("CELERY_RESULT_BACKEND", default="redis://redis:6379/2")
 CELERY_TASK_SERIALIZER = "json"
@@ -135,7 +131,6 @@ THESIS_POSTMORTEM_HORIZONS: list[int] = [7, 30, 90]
 # a semantic change — so they're opt-in here. OFF by default; see apps.market.returns.
 RETURNS_ADJUST_DIVIDENDS = env.bool("RETURNS_ADJUST_DIVIDENDS", default=False)
 
-# Auth / i18n / etc
 AUTH_PASSWORD_VALIDATORS: list[dict[str, str]] = []
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = "UTC"
@@ -143,7 +138,6 @@ USE_I18N = True
 USE_TZ = True
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# Static / media
 STATIC_URL = "/static/"
 STATIC_ROOT = REPO_ROOT / "staticfiles"
 STATICFILES_DIRS = (
@@ -153,13 +147,12 @@ STATICFILES_DIRS = (
 # Raw-bytes uploads (snapshot client captures): align Django's body-buffer cap with
 # apps.snapshots.services_image.MAX_BYTES so oversized PNGs produce a structured 413
 # response from the view rather than Django's bare 400 RequestDataTooBig.
-DATA_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024  # 5 MB
+DATA_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024
 
 # Snapshot image bytes are written here (on the persistent app_data:/data volume)
 # instead of into Postgres, keeping pg_dump small. See apps.snapshots.image_store.
 SNAPSHOT_IMAGE_DIR = env.str("SNAPSHOT_IMAGE_DIR", default="/data/images")
 
-# DRF
 # No throttling by design — single-user, 127.0.0.1-bound, AllowAny app (security model
 # is network isolation, not auth; see CLAUDE.md). Mirrors the csrf-exempt /
 # insecure-websocket rules already excluded in .github/workflows/semgrep.yml.
@@ -197,7 +190,6 @@ CORS_ALLOW_CREDENTIALS = True
 # Prod: hits the Whitenoise-served SPA bundle via hash routing.
 RENDER_BASE_URL = env("RENDER_BASE_URL", default="http://frontend:5173")
 
-# Schwab OAuth
 SCHWAB_CLIENT_ID = env("SCHWAB_CLIENT_ID", default="")
 SCHWAB_CLIENT_SECRET = env("SCHWAB_CLIENT_SECRET", default="")
 SCHWAB_CALLBACK_URL = env(

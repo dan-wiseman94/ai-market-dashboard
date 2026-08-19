@@ -20,7 +20,6 @@ export default function ProfilesPage() {
       <ProfileForm form={profileForm} />
       <ProfileList profiles={profiles ?? []} onEdit={profileForm.startEdit} />
 
-      {/* ---- Agent presets ---- */}
       <div className="flex items-center justify-between pt-2">
         <h2 className="text-xl font-semibold">Agent presets</h2>
         {!presetForm.showForm && !presetForm.editing && (

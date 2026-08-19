@@ -45,7 +45,6 @@ def test_ticker_below_min_n_returns_available_false(api):
 
 @pytest.mark.django_db
 def test_ticker_above_min_n_returns_available_true(api):
-    # 4 closed theses: 3 wins, 1 loss
     Thesis.objects.create(
         title="T1", ticker="NVDA", direction="bullish", conviction=4, status="closed_win"
     )
@@ -84,7 +83,6 @@ def test_ticker_is_uppercased(api):
         title="T3", ticker="TSLA", direction="bullish", conviction=3, status="closed_win"
     )
 
-    # Pass lowercase in query param — endpoint must uppercase it
     r = api.get("/api/analytics/track-record/?ticker=tsla")
     assert r.status_code == 200
     body = r.json()
@@ -105,7 +103,6 @@ def test_bad_conviction_param_is_treated_as_none(api):
         title="T3", ticker="META", direction="bullish", conviction=3, status="closed_loss"
     )
 
-    # "abc" is not a valid int — endpoint should silently treat it as None
     r = api.get("/api/analytics/track-record/?ticker=META&conviction=abc")
     assert r.status_code == 200
     body = r.json()

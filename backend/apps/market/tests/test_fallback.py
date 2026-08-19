@@ -17,9 +17,6 @@ def _cred(provider: str) -> None:
     ApiCredential.objects.create(provider=provider, token={"api_key": "k", "api_secret": "s"})
 
 
-# --- alt_quotes -------------------------------------------------------------
-
-
 @pytest.mark.django_db
 def test_alt_quotes_none_when_no_provider():
     assert fallback.alt_quotes(["AAPL"]) is None
@@ -43,9 +40,6 @@ def test_alt_quotes_falls_to_twelvedata():
         "apps.market.services.twelvedata.fetch_quotes", return_value={"AAPL": {"last": 2.0}}
     ):
         assert fallback.alt_quotes(["AAPL"]) == {"AAPL": {"last": 2.0}}
-
-
-# --- alt_bars ---------------------------------------------------------------
 
 
 @pytest.mark.django_db
@@ -76,7 +70,6 @@ def test_alt_bars_tiingo_is_daily_only():
     _cred("tiingo")
     with patch("apps.market.services.tiingo.fetch_daily_bars", return_value=[{"close": 3}]):
         assert fallback.alt_bars("AAPL", "1d", limit=30) == [{"close": 3}]
-    # An intraday request is not served by a daily-only provider.
     assert fallback.alt_bars("AAPL", "5m") is None
 
 
@@ -86,9 +79,6 @@ def test_alt_bars_polygon_is_daily_only():
     with patch("apps.market.services.polygon.fetch_daily_bars", return_value=[{"close": 4}]):
         assert fallback.alt_bars("AAPL", "1d") == [{"close": 4}]
     assert fallback.alt_bars("AAPL", "1m") is None
-
-
-# --- alt_chain / alt_news ---------------------------------------------------
 
 
 @pytest.mark.django_db
@@ -116,9 +106,6 @@ def test_alt_news_prefers_marketaux_over_tiingo():
     with patch("apps.market.services.marketaux.fetch_news", return_value=[{"headline": "x"}]) as m:
         assert fallback.alt_news(["AAPL"]) == [{"headline": "x"}]
     m.assert_called_once()
-
-
-# --- service-level integration ---------------------------------------------
 
 
 @pytest.mark.django_db
@@ -150,9 +137,6 @@ def test_fetch_quotes_reraises_when_no_alt_provider():
         pytest.raises(SchwabNotConnectedError),
     ):
         quotes.fetch_quotes(["AAPL"])
-
-
-# --- .env-backed keys count as configured ------------------------------------------
 
 
 @pytest.mark.django_db

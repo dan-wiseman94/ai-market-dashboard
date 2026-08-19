@@ -110,7 +110,7 @@ def test_reaffirm_no_material_change_creates_no_revision(profile, provider_cfg, 
     assert rev is None
     assert CoverageRevision.objects.count() == before
     note.refresh_from_db()
-    assert note.stance == "bull"  # untouched
+    assert note.stance == "bull"
 
 
 def test_no_key_skips_without_calling_ai_or_creating_note(profile, snapshot):
@@ -148,5 +148,5 @@ def test_ai_failure_is_best_effort_no_revision(profile, provider_cfg, snapshot):
 
     assert rev is None
     note.refresh_from_db()
-    assert note.stance == "bull"  # unchanged
+    assert note.stance == "bull"
     assert not CoverageRevision.objects.exists()

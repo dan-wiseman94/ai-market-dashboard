@@ -37,18 +37,8 @@ def _get(path: str, params: dict, api_key: str) -> dict:
     return body if isinstance(body, dict) else {}
 
 
-# ---------------------------------------------------------------------------
-# OHLCBar persist helper (canonical shape from spec)
-# ---------------------------------------------------------------------------
-
-
 def _persist_bars(ticker: str, timeframe: str, bars: list[dict]) -> None:
     persist_bars(ticker, timeframe, bars, source="polygon")
-
-
-# ---------------------------------------------------------------------------
-# Normalization helpers
-# ---------------------------------------------------------------------------
 
 
 def _normalize_bar(raw: dict) -> dict:
@@ -80,11 +70,6 @@ def _normalize_prev_close(raw: dict) -> dict | None:
         "volume": r.get("v"),
         "ts": datetime.fromtimestamp(t_ms / 1000, tz=UTC).isoformat(),
     }
-
-
-# ---------------------------------------------------------------------------
-# Canned fixtures for MOCK_EXTERNAL / e2e mode
-# ---------------------------------------------------------------------------
 
 
 def _canned_daily_bars(ticker: str) -> list[dict]:
@@ -120,11 +105,6 @@ def _canned_prev_close(ticker: str) -> dict:
         "volume": 85_000_000,
         "ts": datetime.fromtimestamp(1_700_086_400, tz=UTC).isoformat(),
     }
-
-
-# ---------------------------------------------------------------------------
-# Public functions
-# ---------------------------------------------------------------------------
 
 
 def fetch_daily_bars(ticker: str, *, days: int = 120) -> list[dict]:

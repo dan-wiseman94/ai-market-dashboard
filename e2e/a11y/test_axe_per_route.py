@@ -31,7 +31,6 @@ ROUTES: list[tuple[str, str, str]] = [
     ("/settings/export", "threads", "export"),
     ("/briefing", "minimal", "briefing"),
     ("/events", "minimal", "events"),
-    # Strategy surface + secondary pages.
     ("/settings/system", "minimal", "settings_system"),
     ("/settings/connections", "minimal", "settings_connections"),
     ("/market-data", "market", "market_data"),

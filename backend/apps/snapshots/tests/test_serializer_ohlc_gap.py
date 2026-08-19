@@ -8,10 +8,6 @@ from apps.profiles.models import TradingProfile
 from apps.snapshots.models import Snapshot, SnapshotSection
 from apps.snapshots.serializer import _ohlc_gap_note, _render_ohlc, serialize_for_ai
 
-# ---------------------------------------------------------------------------
-# Unit tests for the pure helper _ohlc_gap_note(bars) -> str
-# ---------------------------------------------------------------------------
-
 
 def _daily_bars(dates: list[str]) -> list[dict]:
     """Build minimal bar dicts from a list of date strings (YYYY-MM-DD)."""
@@ -87,7 +83,6 @@ def test_gap_note_clear_multi_session_hole():
     note = _ohlc_gap_note(bars)
     assert note != "", "Expected a gap note for a clear multi-session hole"
     assert "history gap" in note
-    # The gap boundaries should name the dates on either side
     assert "2026-05-13" in note or "2026-05-20" in note
 
 
@@ -116,11 +111,6 @@ def test_gap_note_absent_for_two_bars_same_delta():
     assert note == ""
 
 
-# ---------------------------------------------------------------------------
-# Integration: _render_ohlc includes / omits the gap note
-# ---------------------------------------------------------------------------
-
-
 def _ohlc_payload(dates: list[str], ticker: str = "SPY", timeframe: str = "1d") -> dict:
     return {
         "ticker": ticker,
@@ -134,7 +124,6 @@ def test_render_ohlc_no_gap_note_for_contiguous():
     payload = _ohlc_payload(["2026-05-19", "2026-05-20", "2026-05-21", "2026-05-22", "2026-05-23"])
     out = _render_ohlc(payload)
     assert "history gap" not in out
-    # The CSV table is still there
     assert "ts,open,high,low,close,volume" in out
 
 
@@ -152,13 +141,7 @@ def test_render_ohlc_gap_note_present_for_gappy():
     )
     out = _render_ohlc(payload)
     assert "history gap" in out
-    # CSV table is still there
     assert "ts,open,high,low,close,volume" in out
-
-
-# ---------------------------------------------------------------------------
-# End-to-end: serialize_for_ai includes the gap note in the full payload
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.django_db

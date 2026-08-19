@@ -7,10 +7,6 @@ import pytest
 from apps.snapshots.serializer import _render_fundamentals, _title
 from apps.snapshots.services import _FETCHERS
 
-# ---------------------------------------------------------------------------
-# Renderer tests
-# ---------------------------------------------------------------------------
-
 
 def test_render_fundamentals_emits_markdown_table_with_known_values():
     payload = {
@@ -30,11 +26,11 @@ def test_render_fundamentals_emits_markdown_table_with_known_values():
     out = _render_fundamentals(payload)
     assert "## Company fundamentals" in out
     assert "AAPL" in out
-    assert "28.50" in out  # P/E rendered via _fmt
-    assert "6.42" in out  # EPS
-    assert "8.10" in out  # Rev growth
-    assert "25.30" in out  # Net margin
-    assert "Technology" in out  # Sector
+    assert "28.50" in out
+    assert "6.42" in out
+    assert "8.10" in out
+    assert "25.30" in out
+    assert "Technology" in out
 
 
 def test_render_fundamentals_handles_missing_fields_with_dash():
@@ -54,7 +50,6 @@ def test_render_fundamentals_handles_missing_fields_with_dash():
     }
     out = _render_fundamentals(payload)
     assert "NVDA" in out
-    # None values should render as em-dash, not crash
     assert "—" in out
 
 
@@ -84,13 +79,7 @@ def test_render_fundamentals_52wk_position():
         }
     }
     out = _render_fundamentals(payload)
-    # wk52_high and wk52_low both present → 52wk pos column is rendered
     assert "200" in out or "100" in out
-
-
-# ---------------------------------------------------------------------------
-# _FETCHERS["fundamentals"] test
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.django_db

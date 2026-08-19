@@ -30,9 +30,6 @@ from apps.snapshots.models import Snapshot
 from apps.thesis.models import PostMortem, Thesis
 
 
-# --------------------------------------------------------------------------- #
-# Fixtures / helpers
-# --------------------------------------------------------------------------- #
 @pytest.fixture
 def profile(db):
     return TradingProfile.objects.create(
@@ -88,9 +85,6 @@ def _report(bias="bullish", confs=(0.8,)):
     )
 
 
-# --------------------------------------------------------------------------- #
-# Commit 1 — labeled_examples selector
-# --------------------------------------------------------------------------- #
 def test_labeled_examples_returns_only_decisive_with_snapshot(profile):
     snap = _snapshot(profile)
     good = _postmortem(_thesis(profile, snapshot=snap), verdict="correct", fwd=5.0)
@@ -129,9 +123,6 @@ def test_labeled_examples_horizon_filters(profile):
     assert len(labeled_examples(horizon=30)) == 1
 
 
-# --------------------------------------------------------------------------- #
-# Commit 2 — replay_one + evaluate (mock mode)
-# --------------------------------------------------------------------------- #
 def test_replay_one_extracts_direction_confidence_and_hit(profile):
     snap = _snapshot(profile)
     pm = _postmortem(
@@ -250,9 +241,6 @@ def test_evaluate_empty_dataset(profile):
     assert res["brier"] is None
 
 
-# --------------------------------------------------------------------------- #
-# Commit 3 — management command
-# --------------------------------------------------------------------------- #
 def test_command_runs_and_prints(profile):
     _postmortem(
         _thesis(profile, direction="bullish", snapshot=_snapshot(profile)),
@@ -279,11 +267,6 @@ def test_command_zero_data_friendly_message(db):
     out = StringIO()
     call_command("aieval", "--model", "claude-opus-4-8", stdout=out)
     assert "no labeled data yet" in out.getvalue()
-
-
-# --------------------------------------------------------------------------- #
-# confidence_calibration reliability curve
-# --------------------------------------------------------------------------- #
 
 
 def test_confidence_calibration_bucket_assignment():
@@ -438,11 +421,6 @@ def test_command_prints_calibration_table(profile):
     assert "conf [" in text
 
 
-# --------------------------------------------------------------------------- #
-# Task 1 — predicted_confidence on ObservationReport; harness prefers it
-# --------------------------------------------------------------------------- #
-
-
 def test_predicted_confidence_field_accepted():
     """ObservationReport accepts an optional predicted_confidence in [0,1]."""
     r = ObservationReport(
@@ -453,7 +431,6 @@ def test_predicted_confidence_field_accepted():
         predicted_confidence=0.73,
     )
     assert r.predicted_confidence == 0.73
-    # Default is None (additive)
     r2 = ObservationReport(headline="h", bias="bullish", summary="s", next_check_in="t")
     assert r2.predicted_confidence is None
 
@@ -475,11 +452,6 @@ def test_confidence_falls_back_to_signal_mean_when_unset():
 def test_confidence_none_when_no_signals_and_no_predicted():
     r = ObservationReport(headline="h", bias="bullish", summary="s", next_check_in="t")
     assert _confidence_from_report(r) is None
-
-
-# --------------------------------------------------------------------------- #
-# Task 2 — EvalRun model + persist_eval_run helper
-# --------------------------------------------------------------------------- #
 
 
 def test_persist_eval_run_maps_result_to_row(db):
@@ -526,11 +498,6 @@ def test_persist_eval_run_defaults_source_manual(db):
     run = persist_eval_run({"label": "x", "model": "m", "n": 0})
     assert run.source == "manual"
     assert run.horizon is None and run.hit_rate is None
-
-
-# --------------------------------------------------------------------------- #
-# Task 3 — read-only DRF views at /api/aieval/runs/
-# --------------------------------------------------------------------------- #
 
 
 def test_eval_runs_list_endpoint(db):
@@ -580,11 +547,6 @@ def test_eval_runs_latest_endpoint(db):
 def test_eval_runs_latest_204_when_empty(db):
     resp = APIClient().get("/api/aieval/runs/latest/")
     assert resp.status_code == 204
-
-
-# --------------------------------------------------------------------------- #
-# Task 4 — cost-cap pre-flight + persist EvalRun on the manual command
-# --------------------------------------------------------------------------- #
 
 
 def _record_spend(provider="claude", cost="2.00"):
@@ -663,11 +625,6 @@ def test_command_persists_eval_run(profile):
     assert rows.first().source == "manual"
 
 
-# --------------------------------------------------------------------------- #
-# Task 5 — opt-in cost-capped scheduled beat task
-# --------------------------------------------------------------------------- #
-
-
 from apps.analytics.tasks import run_scheduled  # noqa: E402
 
 
@@ -716,11 +673,6 @@ def test_scheduled_skips_on_cost_cap(profile, settings):
 def test_scheduled_skips_when_no_data(settings, db):
     settings.AIEVAL_SCHEDULED_ENABLED = True
     assert run_scheduled() == {"skipped": "no_data"}
-
-
-# --------------------------------------------------------------------------- #
-# Task 6 — latest_eval_for_model helper
-# --------------------------------------------------------------------------- #
 
 
 def test_latest_eval_for_model(db):

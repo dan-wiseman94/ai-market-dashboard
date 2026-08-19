@@ -37,13 +37,10 @@ describe("OpenThesesTile", () => {
     expect(screen.getByText("AAPL")).toBeInTheDocument();
     expect(screen.getByText("TSLA")).toBeInTheDocument();
 
-    // Conviction badges
     expect(screen.getByText("c4")).toBeInTheDocument();
     expect(screen.getByText("c3")).toBeInTheDocument();
 
-    // Pct to target for bullish (positive)
     expect(screen.getByText("+8.1%")).toBeInTheDocument();
-    // Pct to target for bearish (negative)
     expect(screen.getByText("-18.2%")).toBeInTheDocument();
   });
 

@@ -13,10 +13,6 @@ from apps.market.returns import (
     price_path_summary,
 )
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
 
 def _aware(dt: datetime) -> datetime:
     return dt.replace(tzinfo=UTC) if dt.tzinfo is None else dt
@@ -36,10 +32,6 @@ def _mk_bar(
         volume=1,
     )
 
-
-# ---------------------------------------------------------------------------
-# nearest_bar_close
-# ---------------------------------------------------------------------------
 
 BASE = datetime(2026, 4, 10, 14, 0)
 
@@ -78,17 +70,12 @@ class TestNearestBarClose:
         assert result is None
 
 
-# ---------------------------------------------------------------------------
-# forward_return_pct
-# ---------------------------------------------------------------------------
-
-
 @pytest.mark.parametrize(
     "start_close, end_close, expected",
     [
-        (100.0, 110.0, 10.0),  # positive return
-        (100.0, 90.0, -10.0),  # negative return
-        (100.0, 100.0, 0.0),  # flat
+        (100.0, 110.0, 10.0),
+        (100.0, 90.0, -10.0),
+        (100.0, 100.0, 0.0),
     ],
 )
 def test_forward_return_pct_parametrized(db, start_close, end_close, expected) -> None:
@@ -117,7 +104,6 @@ def test_forward_return_pct_none_when_t0_has_no_bar(db) -> None:
     _mk_bar("AAPL", BASE, 100.0)  # unrelated ticker; ZEND has no bar at start
     _mk_bar("ZEND", BASE + timedelta(hours=26), 200.0)  # 2h after end+1h boundary
     result = forward_return_pct("ZEND", start, end)
-    # ZEND has no bar at start → t0=None → return None
     assert result is None
 
 
@@ -137,11 +123,6 @@ def test_forward_return_pct_none_for_unknown_ticker(db) -> None:
     _mk_bar("AAPL", BASE + timedelta(hours=24), 110.0)
     result = forward_return_pct("ZZZZ", start, end)
     assert result is None
-
-
-# ---------------------------------------------------------------------------
-# price_path_summary
-# ---------------------------------------------------------------------------
 
 
 class TestPricePathSummary:
@@ -166,7 +147,6 @@ class TestPricePathSummary:
         assert result["min_low"] == pytest.approx(95.0)
 
     def test_max_high_and_min_low_across_multiple_bars(self, db) -> None:
-        # Three bars with varying highs and lows
         _mk_bar("AAPL", BASE + timedelta(hours=1), 100.0, high=110.0, low=90.0)
         _mk_bar("AAPL", BASE + timedelta(hours=2), 102.0, high=120.0, low=85.0)
         _mk_bar("AAPL", BASE + timedelta(hours=3), 105.0, high=115.0, low=92.0)

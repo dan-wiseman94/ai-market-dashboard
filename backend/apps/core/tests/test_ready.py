@@ -15,10 +15,6 @@ from unittest.mock import patch
 import pytest
 from django.test import Client
 
-# ---------------------------------------------------------------------------
-# Happy-path contract (both deps up — true in any running test environment)
-# ---------------------------------------------------------------------------
-
 
 @pytest.mark.django_db
 def test_ready_happy_path_status_200() -> None:
@@ -59,11 +55,6 @@ def test_ready_method_not_allowed() -> None:
     client = Client()
     response = client.post("/api/ready/")
     assert response.status_code == 405
-
-
-# ---------------------------------------------------------------------------
-# Degraded-path contract: simulate DB failure → 503 + database=error
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.django_db

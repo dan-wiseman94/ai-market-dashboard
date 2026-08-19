@@ -58,7 +58,6 @@ def test_thesis_run_postmortem_queues(page, frontend_base_url, thesis) -> None:
     d.go(open_t.id)
     expect(d.run_postmortem_btn).to_be_visible()
     d.run_postmortem_btn.click()
-    # The mutation POSTs /run-postmortem/ and the page surfaces a success toast.
     d.expect_toast("Post-mortem queued", kind="success")
 
 

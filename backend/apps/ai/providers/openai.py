@@ -96,7 +96,6 @@ class OpenAIProvider:
                     # any tool_calls the model still emitted and take its text answer.
                     break
 
-                # Reconstruct the assistant tool_calls turn + run each tool for the next round.
                 async for ev in _run_tool_calls(st.tool_acc, raw, st.text):
                     yield ev
 

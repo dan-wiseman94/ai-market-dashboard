@@ -68,5 +68,4 @@ def test_citation_renders_news_link(page, frontend_base_url, threads) -> None:
     page.goto(f"{frontend_base_url}/threads/{t.id}")
     wait_for_app_ready(page)
     expect(page.get_by_text("Something went wrong")).to_have_count(0)
-    # The thread renders its transcript (at least one message bubble).
     expect(page.locator("[data-testid^='message-']").first).to_be_visible(timeout=10_000)

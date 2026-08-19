@@ -1,4 +1,3 @@
-# backend/apps/export/tests/test_build_export.py
 from __future__ import annotations
 
 import json

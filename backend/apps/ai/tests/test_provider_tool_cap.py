@@ -12,8 +12,6 @@ from apps.ai.providers.claude import ClaudeProvider
 from apps.ai.providers.openai import OpenAIProvider
 from apps.ai.types import RunRequest, ToolCallEvent
 
-# --- Claude -----------------------------------------------------------------
-
 
 class _Block:
     type = "tool_use"
@@ -72,9 +70,6 @@ async def test_claude_caps_tool_rounds(monkeypatch):
     )
     tool_calls = [e async for e in provider.run(req) if isinstance(e, ToolCallEvent)]
     assert len(tool_calls) == 2  # bounded: 2 rounds, then a tool-less concluding turn
-
-
-# --- OpenAI / Local ---------------------------------------------------------
 
 
 class _FN:

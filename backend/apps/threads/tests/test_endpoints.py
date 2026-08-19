@@ -116,7 +116,7 @@ def test_patch_thread_ignores_readonly_kind(api):
     assert resp.status_code == 200
     t.refresh_from_db()
     assert t.title == "y"
-    assert t.kind == "consult"  # unchanged
+    assert t.kind == "consult"
 
 
 @pytest.mark.django_db
@@ -140,7 +140,7 @@ def test_list_threads_is_paginated_and_omits_message_bodies(api):
     row = body["results"][0]
     assert row["id"] == t.id
     assert row["profile"]["id"] == p.id
-    assert "messages" not in row  # the whole point: no per-thread message payload
+    assert "messages" not in row
     assert row["message_count"] == 2
 
 

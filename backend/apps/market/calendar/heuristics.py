@@ -23,19 +23,16 @@ def classify(symbol: str) -> str:
 
     root = s[1:] if s.startswith("/") else s
 
-    # Futures (leading slash or a known root)
     if s.startswith("/") or root in _CME_ROOTS or root in _CFE_ROOTS:
         if root in _CFE_ROOTS:
             return "cfe_futures"
         return "cme_futures"
 
-    # Crypto (quote-currency suffix or a known base symbol)
     if any(s.endswith(suf) for suf in _CRYPTO_QUOTE_SUFFIXES):
         return "crypto"
     if s in _CRYPTO_BASES:
         return "crypto"
 
-    # International equity suffixes
     if s.endswith(".L"):
         return "lse"
     if s.endswith(".T"):

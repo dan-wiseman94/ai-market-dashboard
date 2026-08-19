@@ -223,7 +223,6 @@ def images_collection(request):
             return JsonResponse({"code": "too_large", "message": str(e)}, status=413)
         return JsonResponse(SnapshotImageSerializer(img).data, status=201)
 
-    # GET: list staged
     staged = request.GET.get("staged") == "true"
     qs = (
         SnapshotImage.objects.filter(snapshot__isnull=True)

@@ -139,7 +139,6 @@ describe("ScorecardPage", () => {
     render(<ScorecardPage />);
     expect(screen.getByText(/Thesis calibration/i)).toBeInTheDocument();
     expect(screen.getByText("claude")).toBeInTheDocument();
-    // The eval card stays hidden when no eval run exists.
     expect(screen.queryByText(/Model eval calibration/i)).not.toBeInTheDocument();
   });
 
@@ -196,8 +195,8 @@ describe("ScorecardPage", () => {
     mockAICal(AI_CAL);
     render(<ScorecardPage />);
     expect(screen.getByText(/Live AI prediction calibration/i)).toBeInTheDocument();
-    expect(screen.getByText("0.7-0.8")).toBeInTheDocument(); // a reliability band
-    expect(screen.getByText("gpt-5")).toBeInTheDocument(); // per-model row
+    expect(screen.getByText("0.7-0.8")).toBeInTheDocument();
+    expect(screen.getByText("gpt-5")).toBeInTheDocument();
     // #13 beat-the-straddle: actual move vs options-priced 1σ
     expect(screen.getByTestId("beat-the-straddle")).toHaveTextContent(/beyond the/i);
   });
@@ -218,7 +217,7 @@ describe("ScorecardPage", () => {
     const drift = screen.getByTestId("calibration-drift");
     expect(drift).toHaveTextContent(/opus/);
     expect(drift).toHaveTextContent(/overconfident/);
-    expect(drift).not.toHaveTextContent(/sonnet/); // non-drifting models are hidden
+    expect(drift).not.toHaveTextContent(/sonnet/);
   });
 
   it("renders open contradictions vs the house view", () => {
@@ -240,7 +239,7 @@ describe("ScorecardPage", () => {
     mock(POPULATED);
     mockDrill();
     mockEval();
-    mockAICal(); // undefined
+    mockAICal();
     render(<ScorecardPage />);
     expect(screen.queryByText(/Live AI prediction calibration/i)).not.toBeInTheDocument();
   });

@@ -1,4 +1,3 @@
-# backend/apps/export/tests/test_scope.py
 from __future__ import annotations
 
 import zipfile

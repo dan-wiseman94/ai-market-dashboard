@@ -18,8 +18,6 @@ import {
 } from "./testUtils";
 import SnapshotComposerPage from "@/pages/SnapshotComposerPage";
 
-// ---- Module-level mocks (same shape as SnapshotComposerPage.test.tsx) ----
-
 const mockCreateSnap = vi.fn();
 const mockCreateThread = vi.fn();
 const mockWaitForReady = vi.fn();
@@ -53,8 +51,6 @@ vi.mock("@/hooks/useAgentPresets", () => ({
   useAgentPresets: () => ({ data: [] }),
 }));
 
-// ---- Helper ----
-
 // Wrap with WebSocketProvider in addition to the standard providers so
 // useSnapshotProgress can subscribe to the snapshot.<id> channel.
 function renderWithWs() {
@@ -71,8 +67,6 @@ function renderWithWs() {
   );
   return { container, client };
 }
-
-// ---- Tests ----
 
 let fake: FakeWebSocketController;
 
@@ -104,13 +98,11 @@ describe("SnapshotComposerPage – capture progress (WS integration)", () => {
 
     renderWithWs();
 
-    // Wait for auto-select
     await waitFor(() => {
       const [sel] = screen.getAllByRole("combobox");
       expect((sel as HTMLSelectElement).value).toBe("1");
     });
 
-    // Click capture
     await user.click(screen.getByTestId("capture-btn"));
 
     // The page calls createSnap, then sets capturingId=55 and starts polling.
@@ -121,12 +113,10 @@ describe("SnapshotComposerPage – capture progress (WS integration)", () => {
 
     const sock = fake.find("/ws/snapshots/55/")!;
 
-    // Emit a running event for "quotes"
     act(() => {
       sock.emitMessage({ type: "snapshot.section", section: "quotes", status: "running" });
     });
 
-    // The checklist entry must be rendered with the section name and running icon
     await waitFor(() => {
       expect(screen.getByTestId("capture-progress")).toBeInTheDocument();
     });
@@ -134,7 +124,6 @@ describe("SnapshotComposerPage – capture progress (WS integration)", () => {
     expect(progress).toHaveTextContent("quotes");
     expect(progress).toHaveTextContent("⏳");
 
-    // Emit done for quotes, then failed for news
     act(() => {
       sock.emitMessage({ type: "snapshot.section", section: "quotes", status: "done" });
       sock.emitMessage({ type: "snapshot.section", section: "news", status: "failed" });

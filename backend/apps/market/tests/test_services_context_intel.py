@@ -18,7 +18,6 @@ from apps.market.services.context import CONTEXT_SYMBOLS, SECTOR_ETFS, fetch_mar
 BASE = datetime(2026, 5, 1, 0, 0, tzinfo=UTC)
 DAY = timedelta(days=1)
 
-# Canned quotes response — all symbols return a last price.
 _FAKE_QUOTES = {s: {"last": 100.0 + i} for i, s in enumerate(CONTEXT_SYMBOLS)}
 
 
@@ -55,9 +54,6 @@ def _spx_bars() -> None:
         _bar("$SPX", i, float(close))
 
 
-# ─── shape (no args still works) ─────────────────────────────────────────────
-
-
 @pytest.mark.django_db
 def test_no_args_returns_expected_shape():
     """fetch_market_context() with no tickers still returns spx/qqq/vix/sectors/breadth."""
@@ -87,9 +83,6 @@ def test_no_args_sector_rotation_present():
     assert isinstance(ctx["sector_rotation"], list)
 
 
-# ─── RS when tickers provided ────────────────────────────────────────────────
-
-
 @pytest.mark.django_db
 def test_with_tickers_includes_relative_strength():
     """fetch_market_context(tickers=["NVDA"]) includes RS for NVDA."""
@@ -115,14 +108,10 @@ def test_with_tickers_no_bars_relative_strength_is_none():
     assert ctx.get("relative_strength") is None
 
 
-# ─── sector_rotation when sector bars present ────────────────────────────────
-
-
 @pytest.mark.django_db
 def test_sector_rotation_populated_when_bars_present():
     """sector_rotation includes ETFs that have daily bars."""
     _spx_bars()
-    # XLF: closes 40..50
     for i, close in enumerate([40, 42, 44, 46, 48, 50]):
         _bar("XLF", i, float(close))
 
@@ -146,9 +135,6 @@ def test_sector_rotation_empty_when_no_sector_bars():
     with patch("apps.market.services.context.fetch_quotes", return_value=_FAKE_QUOTES):
         ctx = fetch_market_context()
     assert ctx["sector_rotation"] == []
-
-
-# ─── cache-key isolation ─────────────────────────────────────────────────────
 
 
 @pytest.mark.django_db
@@ -178,9 +164,6 @@ def test_cache_key_differs_no_args_vs_ticker():
 
     assert ctx_no_args.get("relative_strength") is None
     assert ctx_nvda.get("relative_strength") is not None
-
-
-# ─── existing callers don't break ────────────────────────────────────────────
 
 
 @pytest.mark.django_db

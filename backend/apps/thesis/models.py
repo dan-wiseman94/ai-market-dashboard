@@ -31,7 +31,7 @@ class Thesis(models.Model):
     rationale = models.TextField(blank=True, default="")
     conviction = models.PositiveSmallIntegerField(
         default=3, validators=[MinValueValidator(1), MaxValueValidator(5)]
-    )  # 1-5
+    )
     entry_price = models.DecimalField(max_digits=14, decimal_places=4, null=True, blank=True)
     target_price = models.DecimalField(max_digits=14, decimal_places=4, null=True, blank=True)
     invalidation_price = models.DecimalField(max_digits=14, decimal_places=4, null=True, blank=True)

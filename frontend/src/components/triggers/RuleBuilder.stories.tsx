@@ -41,7 +41,6 @@ type Story = StoryObj<typeof meta>;
 export const Default: Story = {
   args: { value: condition },
   play: async ({ canvas, userEvent, args }) => {
-    // Leaf descriptions the component actually renders.
     await expect(canvas.getByText(/price of AAPL is greater than 200/i)).toBeVisible();
     await expect(canvas.getByText(/SPY moved/i)).toBeVisible();
 

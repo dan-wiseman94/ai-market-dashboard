@@ -26,7 +26,6 @@ def test_connections_schwab_card_renders(page, frontend_base_url, minimal) -> No
     expect(p.schwab_card).to_be_visible(timeout=10_000)
     # The status pill resolves to a definite Connected / Not connected state.
     expect(p.status_pill).to_contain_text(re.compile(r"connected", re.IGNORECASE))
-    # The connect/reconnect affordance + the app-config credential fields render.
     connect = page.get_by_role("button", name="Connect Schwab").or_(
         page.get_by_role("button", name="Reconnect")
     )

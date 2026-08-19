@@ -46,7 +46,6 @@ export default function CostsPage() {
 
   return (
     <main className="px-8 py-8 max-w-[1400px] mx-auto ledger-fade-in">
-      {/* Header */}
       <header className="mb-8 pb-6 border-b border-rule">
         <div className="flex items-center gap-4 mb-3">
           <span className="ledger-eyebrow">Ledger · Costs</span>
@@ -70,7 +69,6 @@ export default function CostsPage() {
         </div>
       </header>
 
-      {/* Stat tiles */}
       <section className="mb-8 flex gap-4 flex-wrap ledger-stagger">
         <StatTile
           label="Today"
@@ -94,26 +92,22 @@ export default function CostsPage() {
         />
       </section>
 
-      {/* Range picker */}
       <section className="mb-6">
         <DateRangePicker value={range} onChange={setRange} />
       </section>
 
-      {/* Caps */}
       {capsQ.data && (
         <section className="mb-8">
           <CostCapBars rows={capsQ.data} />
         </section>
       )}
 
-      {/* Chart */}
       {summary.data && (
         <section className="mb-8">
           <DailyCostChart data={summary.data.daily} />
         </section>
       )}
 
-      {/* Breakdowns */}
       {summary.data && (
         <section>
           <BreakdownTables summary={summary.data} />

@@ -137,7 +137,6 @@ def test_persist_token_creates_or_updates_credential():
     persist_token(tok)
     cred = ApiCredential.objects.get(provider="schwab")
     assert cred.token["access_token"] == "A"
-    # Upsert
     tok2 = {"access_token": "A2", "refresh_token": "R2", "expires_at": 1800000000}
     persist_token(tok2)
     cred.refresh_from_db()

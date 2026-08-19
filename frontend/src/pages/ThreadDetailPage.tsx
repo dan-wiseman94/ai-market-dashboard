@@ -78,7 +78,6 @@ export default function ThreadDetailPage() {
 
   return (
     <main className="px-8 py-8 max-w-4xl mx-auto ledger-fade-in">
-      {/* Masthead */}
       <header className="mb-8 pb-6 border-b border-rule">
         <div className="flex items-center gap-3 mb-3">
           <span className="ledger-eyebrow">Thread · #{thread.id}</span>
@@ -112,7 +111,6 @@ export default function ThreadDetailPage() {
         />
       </header>
 
-      {/* New thesis inline form */}
       {thesisJournal.showThesisForm && (
         <ThesisForm
           promoteMode={thesisJournal.promoteMode}
@@ -141,7 +139,6 @@ export default function ThreadDetailPage() {
         />
       )}
 
-      {/* Close & journal panel */}
       {thesisJournal.showJournalPanel && (
         <JournalPanel
           decision={thesisJournal.journalDecision}
@@ -159,7 +156,6 @@ export default function ThreadDetailPage() {
         />
       )}
 
-      {/* Snapshot context — folded */}
       {snap && (
         <details className="group mb-8 ledger-surface">
           <summary className="cursor-pointer list-none px-5 py-3 flex items-center gap-3 hover:bg-copper-500/[0.04] transition-colors">
@@ -176,7 +172,6 @@ export default function ThreadDetailPage() {
         </details>
       )}
 
-      {/* Conversation */}
       <Conversation
         ordered={ordered}
         branchesByParent={branchesByParent}
@@ -187,7 +182,6 @@ export default function ThreadDetailPage() {
         threadChannel={tid ? `thread.${tid}` : null}
       />
 
-      {/* Compose bar */}
       <Composer
         picker={picker}
         onPickerChange={setPicker}

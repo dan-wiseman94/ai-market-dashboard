@@ -26,7 +26,6 @@ class BasePage:
     def wait_ready(self) -> None:
         wait_for_app_ready(self.page)
 
-    # --- shared locator properties ---
     @property
     def notification_bell(self) -> Locator:
         return self.page.get_by_test_id("notification-bell")
@@ -39,7 +38,6 @@ class BasePage:
     def breadcrumb_trail(self) -> Locator:
         return self.page.get_by_test_id("breadcrumb-trail")
 
-    # --- shared actions ---
     def expect_toast(self, text: str, kind: str = "info", timeout: int = 5_000) -> None:
         expect(self.page.get_by_test_id(f"toast-{kind}")).to_contain_text(text, timeout=timeout)
 

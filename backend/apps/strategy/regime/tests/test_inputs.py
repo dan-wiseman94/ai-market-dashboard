@@ -39,7 +39,7 @@ def test_gather_inputs_shape_and_degradation(monkeypatch):
 def test_gather_inputs_computes_spx_trend(monkeypatch):
     monkeypatch.setattr(I, "fetch_market_context", lambda: {"vix_last": 15.0, "breadth": {}})
     monkeypatch.setattr(I, "fetch_macro", lambda ids: {})
-    _seed_daily("$SPX", [100.0 + i for i in range(220)])  # rising series
+    _seed_daily("$SPX", [100.0 + i for i in range(220)])
     out = I.gather_inputs()
     assert out["spx_ma_spread"] is not None
     assert out["spx_dist_50"] is not None

@@ -7,10 +7,6 @@ import pytest
 from apps.market.models import CompanyFundamentals
 from apps.market.services import fundamentals as fundamentals_mod
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
 
 def _make_metric_response(
     pe=28.5,
@@ -45,11 +41,6 @@ def _make_profile_response(sector="Technology", industry="Consumer Electronics",
         "finnhubIndustry": industry,
         "name": name,
     }
-
-
-# ---------------------------------------------------------------------------
-# Tests: normalized dict values from mocked Finnhub responses
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.django_db
@@ -136,7 +127,6 @@ def test_fetch_fundamentals_mock_mode_returns_canned_dict():
 
     assert isinstance(result, dict)
     assert result.get("ticker") is not None
-    # canned dict has a real PE value
     assert result.get("pe") is not None
     assert isinstance(result["pe"], int | float)
 
@@ -180,5 +170,4 @@ def test_fetch_fundamentals_handles_missing_fields_gracefully():
     ):
         result = fundamentals_mod.fetch_fundamentals("AAPL")
 
-    # Should return a dict (even if empty due to no metric/profile data)
     assert isinstance(result, dict)

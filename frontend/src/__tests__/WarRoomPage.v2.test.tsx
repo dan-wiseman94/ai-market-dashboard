@@ -10,7 +10,6 @@ describe("WarRoomPage v2 controls", () => {
     vi.spyOn(client, "apiGet").mockResolvedValue([]);
     renderWithProviders(<WarRoomPage />);
     await waitFor(() => expect(screen.getByText(/War Room/)).toBeInTheDocument());
-    // a multi-provider option + a grounded toggle are present
     expect(screen.getByText(/multi-provider/i)).toBeInTheDocument();
     expect(screen.getByText(/grounded/i)).toBeInTheDocument();
   });

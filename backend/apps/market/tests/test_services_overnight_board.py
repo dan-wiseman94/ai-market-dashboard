@@ -12,7 +12,6 @@ def test_board_groups_symbols_and_drops_unquoted():
     }
     with patch("apps.market.services.overnight.fetch_quotes", return_value=fake) as fq:
         board = overnight_board()
-    # gap context must be requested
     assert fq.call_args.kwargs.get("gap_context") is True
     assert board["futures"]["/ES"]["last"] == 5000.0
     assert board["vol_rates"]["/VX"]["gap_pct"] == -1.0
