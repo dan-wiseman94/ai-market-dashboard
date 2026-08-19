@@ -23,7 +23,9 @@ dependencies = [
     "structlog>=25.5.0,<26.0",
     "django-structlog>=10.0.0,<11.0",
     "schwab-py>=1.4,<2.0",
-    "cryptography>=46.0.6,<50",
+    # Floor 50.0.0: PYSEC-2026-3552. Ceiling tracks the current major; raise it with a
+    # full-suite run — the encrypted-fields (Fernet) round-trip tests are the compat gate.
+    "cryptography>=50.0.0,<51",
     "pandas>=2.2,<3.0",
     "playwright>=1.59.0,<2.0",
     "drf-nested-routers>=0.94,<1.0",
@@ -76,6 +78,14 @@ dev = [
 
 [tool.uv]
 package = false
+# Supply-chain cooldown: don't resolve versions published in the last 7 days. A security
+# fix younger than the window gets a dated per-package exception below (remove it once
+# the release ages past the cooldown) — never weaken the global window instead.
+exclude-newer = "7 days"
+
+[tool.uv.exclude-newer-package]
+# sqlparse 0.6.0 (pip-audit fix for 0.5.x) published 2026-08-13; exception expires naturally.
+sqlparse = "2026-08-20T00:00:00Z"
 
 [build-system]
 requires = ["hatchling"]
