@@ -66,6 +66,17 @@ def test_ticker_already_upper_stays(profile):
 
 
 @pytest.mark.django_db
+def test_ticker_stripped_on_save(profile):
+    t = Thesis.objects.create(
+        title="Long NVDA",
+        ticker=" nvda ",
+        direction="bullish",
+        profile=profile,
+    )
+    assert t.ticker == "NVDA"
+
+
+@pytest.mark.django_db
 def test_defaults(profile):
     t = Thesis.objects.create(title="test", ticker="TSLA", direction="neutral", profile=profile)
     assert t.conviction == 3

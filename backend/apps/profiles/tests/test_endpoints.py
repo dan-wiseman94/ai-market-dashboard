@@ -68,3 +68,21 @@ def test_duplicate_symbol_returns_400(api):
     api.post(f"/api/watchlists/{w.id}/symbols/", {"ticker": "SPY"}, format="json")
     r = api.post(f"/api/watchlists/{w.id}/symbols/", {"ticker": "SPY"}, format="json")
     assert r.status_code == 400
+
+
+@pytest.mark.django_db
+def test_add_symbol_strips_whitespace(api):
+    w = Watchlist.objects.create(name="A")
+
+    r = api.post(f"/api/watchlists/{w.id}/symbols/", {"ticker": "nvda "}, format="json")
+    assert r.status_code == 201
+    assert WatchlistSymbol.objects.get(id=r.json()["id"]).ticker == "NVDA"
+
+
+@pytest.mark.django_db
+def test_padded_symbol_still_hits_duplicate_guard(api):
+    w = Watchlist.objects.create(name="A")
+    api.post(f"/api/watchlists/{w.id}/symbols/", {"ticker": "nvda "}, format="json")
+    r = api.post(f"/api/watchlists/{w.id}/symbols/", {"ticker": "NVDA"}, format="json")
+    assert r.status_code == 400
+    assert w.symbols.count() == 1
