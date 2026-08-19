@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import time
 from collections.abc import AsyncIterator
 
@@ -21,6 +22,8 @@ from apps.ai.types import (
     ToolResultEvent,
     UsageEvent,
 )
+
+log = logging.getLogger(__name__)
 
 
 class ClaudeProvider:
@@ -179,6 +182,9 @@ class ClaudeProvider:
             # the loop; only the completion marker remains.
             yield DoneEvent()
         except Exception as exc:
+            # ErrorEvent reaches the consumer, but the Celery task still
+            # "succeeds" — log here or the traceback is lost server-side.
+            log.exception("provider stream failed")
             yield ErrorEvent(message=f"{type(exc).__name__}: {exc}")
 
 

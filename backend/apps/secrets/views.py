@@ -21,6 +21,7 @@ from apps.ai.catalog import list_models as _list_catalog
 from apps.ai.cost import daily_spend_usd
 from apps.ai.providers import get_provider
 from apps.core import provider_health
+from apps.market.services.safe_log import scrub_secret_params
 from apps.secrets.credentials import env_token_fields
 from apps.secrets.data_source_test import test_credential
 from apps.secrets.data_sources import DATA_SOURCES, get_data_source
@@ -80,8 +81,11 @@ def schwab_callback(request: HttpRequest) -> JsonResponse | HttpResponseRedirect
     try:
         token = exchange_code_for_token(code)
     except Exception as exc:
+        # str(exc) from httpx can embed the token-request URL (credential-bearing query
+        # params) — keep the full traceback server-side, scrub the user-facing copy.
+        log.warning("Schwab OAuth code exchange failed", exc_info=True)
         return JsonResponse(
-            {"code": "oauth_exchange_failed", "message": str(exc)},
+            {"code": "oauth_exchange_failed", "message": scrub_secret_params(str(exc))},
             status=502,
         )
     persist_token(token)
