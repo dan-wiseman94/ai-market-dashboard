@@ -162,12 +162,19 @@ def test_fetch_macro_falls_back_to_seed_when_endpoint_empty():
     assert out[0].source == "seed"
 
 
-def test_seed_macro_events_extend_past_the_audit_date():
-    # The 2026-07-22 audit found every snapshot's macro list empty because all
-    # seed dates had lapsed. Guard this refresh: the seed must carry entries
-    # beyond that date (the runtime warning below guards future staleness).
+def test_seed_macro_events_have_headroom_before_lapsing():
+    # Tripwire: free Finnhub keys 403 the economic calendar, so this seed IS the
+    # macro source — once every entry lapses, snapshots ship macro: [] with only
+    # a runtime warning. Fail CI ~a sprint early: the latest seed entry must sit
+    # more than 14 days past now(UTC). Seed times are "YYYY-MM-DD HH:MM:SS" UTC
+    # strings; format the threshold identically so lexicographic order is
+    # chronological order.
+    horizon = (datetime.now(UTC) + timedelta(days=14)).strftime("%Y-%m-%d %H:%M:%S")
     latest = max(e["time"] for e in events.SEED_MACRO_EVENTS)
-    assert latest > "2026-07-22"
+    assert latest > horizon, (
+        f"SEED_MACRO_EVENTS lapses soon (latest entry {latest!r}, need > {horizon!r}); "
+        "refresh apps/market/services/events_seed.py from the official calendars"
+    )
     assert all(e["country"] == "US" and e["impact"] == "high" for e in events.SEED_MACRO_EVENTS)
 
 
