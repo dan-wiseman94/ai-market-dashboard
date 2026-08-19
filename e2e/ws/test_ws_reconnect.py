@@ -2,8 +2,9 @@
 
 ThreadConsumer implements seq-based replay (apps/threads/consumers.py + event_log),
 so reconnecting with ``?since=<last_seq>`` must redeliver the tail (incl.
-``message_done``) with contiguous seqs. The first leg still tolerates a slow
-mock stream (skips if no ``text_delta`` arrives in-window) to stay non-flaky.
+``message_done``) with contiguous seqs. The lane runs under ``MOCK_EXTERNAL``, so
+the stream is a canned fixture — no ``text_delta`` means the pipeline is broken,
+not the model slow.
 """
 
 from __future__ import annotations
@@ -35,16 +36,15 @@ async def test_ws_reconnect_replays_recent_events(ws_base_url, api_base_url, thr
     tid = _plain_thread_id(api_base_url)
 
     wc1 = await WsClient.connect(f"{ws_base_url}/ws/threads/{tid}/")
-    r = httpx.post(f"{api_base_url}/api/threads/{tid}/send/", json={"text": "hi"}, timeout=5)
-    assert r.status_code == 202, f"send failed: {r.status_code} {r.text}"
-
     try:
-        await wc1.wait_for_event("text_delta", timeout=10.0)
-    except TimeoutError:
+        r = httpx.post(f"{api_base_url}/api/threads/{tid}/send/", json={"text": "hi"}, timeout=5)
+        assert r.status_code == 202, f"send failed: {r.status_code} {r.text}"
+
+        # Generous wait: the mock stream runs on the worker, which can lag under load.
+        await wc1.wait_for_event("text_delta", timeout=90.0)
+        last_seq = wc1._events[-1].get("seq", 0)
+    finally:
         await wc1.close()
-        pytest.skip("backend did not produce text_delta within window")
-    last_seq = wc1._events[-1].get("seq", 0)
-    await wc1.close()
 
     await asyncio.sleep(1)
 
