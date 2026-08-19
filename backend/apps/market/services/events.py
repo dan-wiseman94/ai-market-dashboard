@@ -7,30 +7,17 @@ import re
 from datetime import UTC, datetime, timedelta
 from functools import partial
 
-import requests  # type: ignore[import-untyped]
-
 from apps.market import cache
 from apps.market.models import MarketEvent
+
+# Aliased so tests can patch apps.market.services.events._finnhub_get / _finnhub_api_key.
+from apps.market.services._finnhub import api_key as _finnhub_api_key
+from apps.market.services._finnhub import get_dict as _finnhub_get
 from apps.market.services.events_seed import SEED_MACRO_EVENTS
 from apps.market.services.safe_log import safe_err
 from apps.market.symbols import is_equity_like
-from apps.secrets.credentials import decrypt_token
 
 log = logging.getLogger(__name__)
-
-FINNHUB_BASE = "https://finnhub.io/api/v1"
-
-
-def _finnhub_api_key() -> str | None:
-    return (decrypt_token("finnhub") or {}).get("api_key")
-
-
-def _finnhub_get(path: str, params: dict, api_key: str) -> dict:
-    params = {**params, "token": api_key}
-    resp = requests.get(f"{FINNHUB_BASE}{path}", params=params, timeout=10)
-    resp.raise_for_status()
-    body = resp.json()
-    return body if isinstance(body, dict) else {}
 
 
 def _earnings_event_time(d: str, hour: str) -> datetime:

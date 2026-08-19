@@ -11,35 +11,23 @@ import logging
 from datetime import UTC, date, datetime, timedelta
 from functools import partial
 
-import requests  # type: ignore[import-untyped]
 from django.utils import timezone
 
 from apps.market import cache
 from apps.market.models import CorporateAction
+
+# Aliased so tests can patch
+# apps.market.services.corporate_actions._finnhub_get_list / _finnhub_api_key.
+from apps.market.services._finnhub import api_key as _finnhub_api_key
+from apps.market.services._finnhub import get_list as _finnhub_get_list
 from apps.market.services.safe_log import safe_err
-from apps.secrets.credentials import decrypt_token
 
 log = logging.getLogger(__name__)
-
-FINNHUB_BASE = "https://finnhub.io/api/v1"
 
 # How far back/ahead the scheduled refresh and on-demand fill look. Back covers the
 # longest post-mortem horizon (90d) with generous slack for cold-ticker backfill.
 DEFAULT_BACK_DAYS = 400
 DEFAULT_AHEAD_DAYS = 10
-
-
-def _finnhub_api_key() -> str | None:
-    return (decrypt_token("finnhub") or {}).get("api_key")
-
-
-def _finnhub_get_list(path: str, params: dict, api_key: str) -> list[dict]:
-    """GET a Finnhub endpoint that returns a JSON array (split/dividend feeds)."""
-    params = {**params, "token": api_key}
-    resp = requests.get(f"{FINNHUB_BASE}{path}", params=params, timeout=10)
-    resp.raise_for_status()
-    body = resp.json()
-    return body if isinstance(body, list) else []
 
 
 def _split_ratio(from_factor, to_factor) -> float | None:
