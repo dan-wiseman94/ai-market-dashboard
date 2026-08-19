@@ -26,8 +26,8 @@ jobs:
     # Playwright e2e/ui suite real headroom to complete.
     timeout-minutes: 35
     steps:
-      - uses: actions/checkout@v6
-      - uses: docker/setup-buildx-action@v4
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6
+      - uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e  # v4
       - name: Provision .env
         run: |
           cp .env.example .env
@@ -117,7 +117,7 @@ jobs:
         continue-on-error: true
         run: docker compose -f compose.yaml -f compose.e2e.yaml exec -T --workdir /app web uv run pytest e2e/ws/ -n 1 -m integration -v
       - if: failure()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
         with:
           name: ui-traces
           path: e2e/artifacts/

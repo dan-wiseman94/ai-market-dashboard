@@ -4,6 +4,9 @@ updates:
     directory: "/"
     schedule:
       interval: weekly
+    # Wait 7 days before proposing newly published versions (supply-chain cooldown).
+    cooldown:
+      default-days: 7
     open-pull-requests-limit: 5
     commit-message:
       prefix: "ci(deps)"
@@ -13,6 +16,9 @@ updates:
     directory: "/backend"
     schedule:
       interval: weekly
+    # Wait 7 days before proposing newly published versions (supply-chain cooldown).
+    cooldown:
+      default-days: 7
     open-pull-requests-limit: 5
     commit-message:
       prefix: "ci(deps)"
@@ -20,6 +26,9 @@ updates:
     directory: "/frontend"
     schedule:
       interval: weekly
+    # Wait 7 days before proposing newly published versions (supply-chain cooldown).
+    cooldown:
+      default-days: 7
     open-pull-requests-limit: 5
     commit-message:
       prefix: "ci(deps)"
@@ -28,6 +37,9 @@ updates:
     directory: "/"
     schedule:
       interval: weekly
+    # Wait 7 days before proposing newly published versions (supply-chain cooldown).
+    cooldown:
+      default-days: 7
     open-pull-requests-limit: 5
     commit-message:
       prefix: "chore(deps)"
@@ -56,6 +68,9 @@ updates:
     directory: "/frontend"
     schedule:
       interval: weekly
+    # Wait 7 days before proposing newly published versions (supply-chain cooldown).
+    cooldown:
+      default-days: 7
     open-pull-requests-limit: 5
     commit-message:
       prefix: "chore(deps)"
