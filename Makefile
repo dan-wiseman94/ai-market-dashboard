@@ -134,7 +134,7 @@ quality: vulture knip ## Advisory dead-code sweep (vulture + knip) — informati
 
 .PHONY: vulture
 vulture: ## Dead Python code (functions/classes ruff's F-rules miss). Advisory.
-	$(COMPOSE) exec -w /app web uv run vulture || true
+	-$(COMPOSE) exec -w /app web uv run vulture
 
 .PHONY: knip
 knip: ## Unused frontend files / exports / types / deps. Advisory.

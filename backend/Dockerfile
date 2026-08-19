@@ -31,6 +31,9 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 ENV FASTEMBED_CACHE_PATH=/app/.fastembed_cache
 RUN python -c "from fastembed import TextEmbedding; TextEmbedding('BAAI/bge-small-en-v1.5')"
 
+# tools/ holds the vulture whitelist ([tool.vulture].paths in pyproject.toml);
+# without it `uv run vulture` errors before scanning anything.
+COPY tools /app/tools
 COPY backend /app/backend
 
 WORKDIR /app/backend

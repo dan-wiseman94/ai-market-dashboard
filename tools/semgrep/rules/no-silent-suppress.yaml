@@ -1,0 +1,29 @@
+rules:
+  - id: no-silent-suppress
+    languages: [python]
+    severity: ERROR
+    message: >-
+      contextlib.suppress(Exception) swallows every failure with no trace — a dead feature
+      keeps looking healthy. The repo's degrade patterns all log; use try/except with
+      log.warning(..., exc_info=True) (or suppress only the narrow expected exception types).
+    metadata:
+      landmine: "backend degrade paths always log; suppress-without-log hides feature death"
+      category: correctness
+    paths:
+      include:
+        - "backend/apps/**"
+      # Grandfathered best-effort one-liners (Redis flag/cache/lock writes + a capability
+      # warning broadcast) whose contracts are explicitly degrade-silent — the caller
+      # records the outcome elsewhere. New suppress sites must log instead.
+      exclude:
+        - "backend/apps/threads/tasks.py"
+        - "backend/apps/threads/event_log.py"
+        - "backend/apps/threads/stop.py"
+        - "backend/apps/observer/triggers/metrics.py"
+        - "backend/apps/backups/services.py"
+    patterns:
+      - pattern-either:
+          - pattern: contextlib.suppress(Exception)
+          - pattern: contextlib.suppress(BaseException)
+          - pattern: suppress(Exception)
+          - pattern: suppress(BaseException)
