@@ -79,7 +79,6 @@ vi.mock("@/hooks/useAiModels", () => ({
   }),
 }));
 
-// Journal hooks — controlled per test
 const mockJournalMutate = vi.fn();
 const mockJournalMutateAsync = vi.fn();
 vi.mock("@/hooks/useJournal", () => ({
@@ -91,7 +90,6 @@ vi.mock("@/hooks/useJournal", () => ({
   })),
 }));
 
-// Thesis creation — controlled per test
 const mockThesisMutate = vi.fn();
 vi.mock("@/hooks/useTheses", () => ({
   useCreateThesis: vi.fn(() => ({
@@ -101,11 +99,8 @@ vi.mock("@/hooks/useTheses", () => ({
   })),
 }));
 
-// ---- Import mocked hooks for vi.mocked() ----
 import { useThread } from "@/hooks/useThread";
 import { useJournal } from "@/hooks/useJournal";
-
-// ---- Fixtures ----
 
 const defaultThread = {
   id: 42,
@@ -155,16 +150,12 @@ const journalEntries: JournalEntry[] = [
   },
 ];
 
-// ---- Render helper ----
-
 function renderThread() {
   return renderWithProviders(<ThreadDetailPage />, {
     routePath: "/threads/:id",
     initialEntries: ["/threads/42"],
   });
 }
-
-// ---- Tests ----
 
 describe("ThreadDetailPage — Close & journal panel", () => {
   beforeEach(() => {
@@ -208,15 +199,12 @@ describe("ThreadDetailPage — Close & journal panel", () => {
     renderThread();
     await user.click(await screen.findByTestId("journal-panel-btn"));
 
-    // Select "watching" from the decision selector
     const select = await screen.findByTestId("journal-decision-select");
     await user.selectOptions(select, "watching");
 
-    // Type a note
     const noteArea = await screen.findByTestId("journal-note-textarea");
     await user.type(noteArea, "Keeping an eye on this.");
 
-    // Click Log decision
     await user.click(await screen.findByTestId("journal-log-btn"));
 
     await waitFor(() => {
@@ -252,11 +240,9 @@ describe("ThreadDetailPage — Close & journal panel", () => {
     const list = await screen.findByTestId("journal-entries-list");
     expect(list).toBeInTheDocument();
 
-    // Both entries appear
     expect(await screen.findByTestId("journal-entry-10")).toBeInTheDocument();
     expect(await screen.findByTestId("journal-entry-11")).toBeInTheDocument();
 
-    // Notes visible
     expect(screen.getByText("Macro too uncertain.")).toBeInTheDocument();
     expect(screen.getByText("Went long, created thesis.")).toBeInTheDocument();
   });
@@ -268,11 +254,9 @@ describe("ThreadDetailPage — Close & journal panel", () => {
     renderThread();
     await user.click(await screen.findByTestId("journal-panel-btn"));
 
-    // Entry 11 has thesis_id = 7
     const link = await screen.findByTestId("journal-thesis-link-11");
     expect(link).toHaveAttribute("href", "/theses/7");
 
-    // Entry 10 has no thesis_id — no link
     expect(screen.queryByTestId("journal-thesis-link-10")).not.toBeInTheDocument();
   });
 
@@ -282,17 +266,14 @@ describe("ThreadDetailPage — Close & journal panel", () => {
     await user.click(await screen.findByTestId("journal-panel-btn"));
     await user.click(await screen.findByTestId("journal-promote-btn"));
 
-    // The thesis form should now appear
     const form = await screen.findByTestId("new-thesis-form");
     expect(form).toBeInTheDocument();
-    // The form heading (eyebrow div inside the form) should say "Promote to thesis"
     expect(form.querySelector(".ledger-eyebrow")).toHaveTextContent("Promote to thesis");
   });
 
   it("promote-to-thesis creates a thesis AND a linked journal entry", async () => {
     const user = userEvent.setup();
 
-    // Thesis creation succeeds and returns an object with id 99
     mockThesisMutate.mockImplementation(
       (_args: unknown, opts: { onSuccess?: (data: { id: number; title: string }) => void }) => {
         opts?.onSuccess?.({ id: 99, title: "SPY 600 Thesis" });
@@ -301,17 +282,13 @@ describe("ThreadDetailPage — Close & journal panel", () => {
 
     renderThread();
 
-    // Open journal panel
     await user.click(await screen.findByTestId("journal-panel-btn"));
 
-    // Fill in a note so the promote-linked entry uses it
     const noteArea = await screen.findByTestId("journal-note-textarea");
     await user.type(noteArea, "Acting on this thesis.");
 
-    // Promote to thesis
     await user.click(await screen.findByTestId("journal-promote-btn"));
 
-    // Fill in required thesis fields
     const titleInput = await screen.findByLabelText(/title/i);
     await user.type(titleInput, "SPY 600 Thesis");
     const tickerInput = await screen.findByLabelText(/ticker/i);
@@ -319,15 +296,12 @@ describe("ThreadDetailPage — Close & journal panel", () => {
     await user.type(await screen.findByLabelText(/rationale/i), "Breakout thesis");
     await user.type(await screen.findByLabelText(/what would invalidate/i), "loses 590");
 
-    // Submit the thesis form
     await user.click(screen.getByRole("button", { name: /create thesis/i }));
 
-    // Thesis should have been mutated
     await waitFor(() => {
       expect(mockThesisMutate).toHaveBeenCalled();
     });
 
-    // Journal entry linked to thesis_id 99 should also have been created
     await waitFor(() => {
       expect(mockJournalMutate).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -342,14 +316,12 @@ describe("ThreadDetailPage — Close & journal panel", () => {
   it("promote-to-thesis: journal POST failure shows error toast while thesis-created toast still fired", async () => {
     const user = userEvent.setup();
 
-    // Thesis creation succeeds
     mockThesisMutate.mockImplementation(
       (_args: unknown, opts: { onSuccess?: (data: { id: number; title: string }) => void }) => {
         opts?.onSuccess?.({ id: 77, title: "Failing Journal Thesis" });
       },
     );
 
-    // Journal creation invokes onError
     mockJournalMutate.mockImplementation(
       (_args: unknown, opts: { onError?: () => void }) => {
         opts?.onError?.();
@@ -358,27 +330,21 @@ describe("ThreadDetailPage — Close & journal panel", () => {
 
     renderThread();
 
-    // Open journal panel
     await user.click(await screen.findByTestId("journal-panel-btn"));
 
-    // Promote to thesis
     await user.click(await screen.findByTestId("journal-promote-btn"));
 
-    // Fill in required thesis fields
     await user.type(await screen.findByLabelText(/title/i), "Failing Journal Thesis");
     await user.type(await screen.findByLabelText(/ticker/i), "SPY");
     await user.type(await screen.findByLabelText(/rationale/i), "Breakout thesis");
     await user.type(await screen.findByLabelText(/what would invalidate/i), "loses 590");
 
-    // Submit
     await user.click(screen.getByRole("button", { name: /create thesis/i }));
 
-    // Thesis-created success toast should appear
     await waitFor(() => {
       expect(screen.getByTestId("toast-success")).toHaveTextContent(/thesis created/i);
     });
 
-    // Journal-failure error toast should also appear
     await waitFor(() => {
       expect(screen.getByTestId("toast-error")).toHaveTextContent(
         "Thesis created, but journaling the decision failed.",
@@ -397,11 +363,9 @@ describe("ThreadDetailPage — Close & journal panel", () => {
 
     renderThread();
 
-    // Click the original button (NOT promote)
     await user.click(await screen.findByTestId("new-thesis-btn"));
     expect(await screen.findByTestId("new-thesis-form")).toBeInTheDocument();
 
-    // Fill & submit
     await user.type(await screen.findByLabelText(/title/i), "Standalone Thesis");
     await user.type(await screen.findByLabelText(/ticker/i), "AAPL");
     await user.type(await screen.findByLabelText(/rationale/i), "Breakout thesis");
@@ -410,7 +374,6 @@ describe("ThreadDetailPage — Close & journal panel", () => {
 
     await waitFor(() => expect(mockThesisMutate).toHaveBeenCalled());
 
-    // Journal entry must NOT have been posted
     expect(mockJournalMutate).not.toHaveBeenCalled();
   });
 });

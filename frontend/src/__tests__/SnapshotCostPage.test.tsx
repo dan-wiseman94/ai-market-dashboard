@@ -61,7 +61,6 @@ test("Show diff fetches the diff and renders the delta", async () => {
 
   await userEvent.click(screen.getByRole("button", { name: /show diff/i }));
   expect(await screen.findByText(/\+ added a news section/)).toBeInTheDocument();
-  // The toggle flips its label once the diff is shown.
   expect(screen.getByRole("button", { name: /hide/i })).toBeInTheDocument();
 });
 

@@ -91,8 +91,6 @@ export const fetchUpcomingEvents = (tickers: string[] = [], withinDays = 14, inc
   return apiGet<UpcomingEvents>(`/api/market/events/?${params.toString()}`);
 };
 
-// --- Free data dimensions (FRED macro / SEC filings / US Treasury) -----------
-
 export interface MacroSeries {
   label: string;
   value: number | null;

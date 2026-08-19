@@ -7,10 +7,6 @@ import pytest
 from apps.profiles.models import TradingProfile
 from apps.thesis.models import Position, Thesis
 
-# ---------------------------------------------------------------------------
-# Fixtures
-# ---------------------------------------------------------------------------
-
 
 @pytest.fixture
 def profile(db):
@@ -25,11 +21,6 @@ def thesis(db, profile):
         direction="bullish",
         profile=profile,
     )
-
-
-# ---------------------------------------------------------------------------
-# Model tests
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.django_db
@@ -86,7 +77,6 @@ def test_thesis_fk_link(profile, thesis):
         profile=profile,
     )
     assert pos.thesis_id == thesis.id
-    # Reverse relation: thesis.positions should include this position
     assert thesis.positions.filter(id=pos.id).exists()
 
 

@@ -110,7 +110,7 @@ class TestOpenDivergences:
 
     def test_lists_diverging_theses(self):
         self._thesis(direction="bullish")
-        _pred(ticker="NVDA", direction="bearish")  # AI disagrees
+        _pred(ticker="NVDA", direction="bearish")
         [row] = open_divergences()
         assert row["ticker"] == "NVDA"
         assert row["agreement"] == "diverge"
@@ -128,7 +128,7 @@ class TestOpenDivergences:
 
     def test_partial_toggle(self):
         self._thesis(direction="bullish")
-        _pred(ticker="NVDA", direction="neutral")  # partial divergence
+        _pred(ticker="NVDA", direction="neutral")
         assert len(open_divergences(include_partial=True)) == 1
         assert open_divergences(include_partial=False) == []
 

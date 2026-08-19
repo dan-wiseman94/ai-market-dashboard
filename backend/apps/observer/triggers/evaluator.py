@@ -72,7 +72,6 @@ def leaf_key(node: dict) -> str:
             parts.append(node["window"])
         parts += [str(params.get(pk)) for pk in _INDICATOR_KEY_PARAMS[metric]]
         return ":".join(parts)
-    # price
     return f"price:{node['ticker']}"
 
 

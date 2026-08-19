@@ -41,9 +41,6 @@ def test_reuses_existing_directory(tmp_data) -> None:
     assert os.path.exists(os.path.join(p2, "note.md"))
 
 
-# --- Memory tool handler (memory_20250818 client-side command execution) ---
-
-
 @pytest.fixture
 def handler(tmp_path):
     from apps.ai.memory import MemoryToolHandler

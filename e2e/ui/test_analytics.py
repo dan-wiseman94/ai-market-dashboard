@@ -27,7 +27,6 @@ def test_leaderboard_orders_by_forward_return(page, frontend_base_url, analytics
     a = AnalyticsPage(page, frontend_base_url)
     a.go()
     a.expect_error_boundary_absent()
-    # The leaderboard card renders at least one provider/model row.
     expect(a.card_leaderboard.get_by_role("row").first).to_be_visible(timeout=10_000)
 
 
@@ -56,7 +55,6 @@ def test_trigger_heatmap_renders_cells(page, frontend_base_url, analytics) -> No
     a = AnalyticsPage(page, frontend_base_url)
     a.go()
     a.expect_error_boundary_absent()
-    # The heatmap renders a grid of day cells (data-testid="heat-cell").
     expect(a.card_heatmap.locator("[data-testid='heat-cell']").first).to_be_visible(timeout=10_000)
 
 
@@ -66,7 +64,6 @@ def test_unusual_options_card_shows_triggers(page, frontend_base_url, analytics)
     a = AnalyticsPage(page, frontend_base_url)
     a.go()
     a.expect_error_boundary_absent()
-    # Before a ticker is entered the card prompts to scan.
     expect(a.card_unusual()).to_contain_text("Enter a ticker", timeout=10_000)
     # Entering a ticker fires the scan — the prompt is replaced by results/loading/empty.
     a.set_ticker("AAPL")

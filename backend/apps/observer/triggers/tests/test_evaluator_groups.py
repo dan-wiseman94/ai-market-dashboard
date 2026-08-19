@@ -25,7 +25,6 @@ def test_all_group_false_short_circuits():
     }
     matched, values = evaluate(node, METRICS)
     assert matched is False
-    # Only the first leaf's key landed in values
     assert values == {"price:SPY": 551.0}
 
 

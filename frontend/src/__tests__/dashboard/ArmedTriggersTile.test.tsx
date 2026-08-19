@@ -46,7 +46,6 @@ describe("ArmedTriggersTile", () => {
       <ArmedTriggersTile triggers={{ armed_count: 2, latest_firings: [] }} />,
     );
     expect(screen.getByText(/No recent firings/i)).toBeInTheDocument();
-    // armed count still shown
     expect(screen.getByTestId("triggers-armed-count").textContent).toBe("2");
   });
 

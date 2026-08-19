@@ -12,8 +12,6 @@ from django.core.exceptions import ValidationError
 
 from apps.observer.triggers.dsl import validate_condition
 
-# ── pe_ratio ──────────────────────────────────────────────────────────────────
-
 
 def test_pe_ratio_valid_leaf():
     validate_condition({"metric": "pe_ratio", "ticker": "NVDA", "op": "<", "value": 30})
@@ -49,9 +47,6 @@ def test_pe_ratio_rejects_crosses_below():
     assert "crossing" in str(exc.value)
 
 
-# ── market_cap ────────────────────────────────────────────────────────────────
-
-
 def test_market_cap_valid_leaf():
     validate_condition({"metric": "market_cap", "ticker": "NVDA", "op": ">=", "value": 1_000_000})
 
@@ -82,9 +77,6 @@ def test_market_cap_rejects_crossing_op():
             {"metric": "market_cap", "ticker": "NVDA", "op": "crosses_above", "value": 1_000_000}
         )
     assert "crossing" in str(exc.value)
-
-
-# ── revenue_growth ────────────────────────────────────────────────────────────
 
 
 def test_revenue_growth_valid_leaf():
@@ -119,9 +111,6 @@ def test_revenue_growth_rejects_crossing_op():
     assert "crossing" in str(exc.value)
 
 
-# ── gross_margin ──────────────────────────────────────────────────────────────
-
-
 def test_gross_margin_valid_leaf():
     validate_condition({"metric": "gross_margin", "ticker": "NVDA", "op": ">", "value": 60.0})
 
@@ -146,9 +135,6 @@ def test_gross_margin_rejects_crossing_op():
             {"metric": "gross_margin", "ticker": "NVDA", "op": "crosses_above", "value": 60.0}
         )
     assert "crossing" in str(exc.value)
-
-
-# ── combined condition (the motivating use case) ──────────────────────────────
 
 
 def test_cheap_into_earnings_condition_is_valid():

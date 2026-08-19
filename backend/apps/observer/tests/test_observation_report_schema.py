@@ -11,8 +11,6 @@ import pytest
 
 from apps.observer.schemas import ObservationReport
 
-# --- minimal fixture (only the seven core required/defaulted fields) ---------
-
 MINIMAL_KWARGS = dict(
     headline="SPY grinding higher",
     bias="neutral",

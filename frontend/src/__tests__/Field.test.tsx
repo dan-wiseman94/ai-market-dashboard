@@ -1,4 +1,3 @@
-// frontend/src/__tests__/Field.test.tsx
 import { render, screen } from "@testing-library/react";
 import { describe, it, expect } from "vitest";
 import Field from "@/components/settings/Field";

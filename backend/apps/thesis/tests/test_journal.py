@@ -10,10 +10,6 @@ from apps.snapshots.models import Snapshot
 from apps.thesis.models import DecisionJournalEntry, Thesis
 from apps.threads.models import Thread
 
-# ---------------------------------------------------------------------------
-# Fixtures
-# ---------------------------------------------------------------------------
-
 
 @pytest.fixture
 def api():
@@ -47,11 +43,6 @@ def thesis(db, profile):
     return Thesis.objects.create(
         title="AAPL long", ticker="AAPL", direction="bullish", profile=profile
     )
-
-
-# ---------------------------------------------------------------------------
-# Create
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.django_db
@@ -102,7 +93,6 @@ def test_create_with_thesis_and_snapshot(api, thread, thesis, snapshot):
     body = resp.json()
     assert body["thesis_id"] == thesis.id
     assert body["snapshot_id"] == snapshot.id
-    # Verify DB
     entry = DecisionJournalEntry.objects.get(id=body["id"])
     assert entry.thesis_id == thesis.id
     assert entry.snapshot_id == snapshot.id
@@ -117,11 +107,6 @@ def test_create_watching_decision(api, thread):
     )
     assert resp.status_code == 201
     assert resp.json()["decision"] == "watching"
-
-
-# ---------------------------------------------------------------------------
-# Create validation
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.django_db
@@ -165,11 +150,6 @@ def test_create_invalid_thread_id_returns_400(api):
     assert resp.status_code == 400
 
 
-# ---------------------------------------------------------------------------
-# List + filter
-# ---------------------------------------------------------------------------
-
-
 @pytest.mark.django_db
 def test_list_all_returns_all_entries(api, thread, thread2):
     """GET /api/journal/ returns entries from all threads."""
@@ -201,7 +181,6 @@ def test_list_ordered_newest_first(api, thread):
     resp = api.get(f"/api/journal/?thread={thread.id}", format="json")
     data = resp.json()
     ids = [row["id"] for row in data]
-    # e2 was created after e1, so it should appear first
     assert ids.index(e2.id) < ids.index(e1.id)
 
 
@@ -221,11 +200,6 @@ def test_list_filter_non_integer_thread_returns_200_empty(api):
     assert resp.json() == []
 
 
-# ---------------------------------------------------------------------------
-# Response shape (*_id convention)
-# ---------------------------------------------------------------------------
-
-
 @pytest.mark.django_db
 def test_response_uses_star_id_keys(api, thread, thesis, snapshot):
     """Verify the response serializer uses thread_id / thesis_id / snapshot_id."""
@@ -241,7 +215,6 @@ def test_response_uses_star_id_keys(api, thread, thesis, snapshot):
     )
     assert resp.status_code == 201
     body = resp.json()
-    # Must use *_id keys, not nested objects
     assert "thread_id" in body
     assert "thesis_id" in body
     assert "snapshot_id" in body

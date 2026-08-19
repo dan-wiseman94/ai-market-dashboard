@@ -28,7 +28,6 @@ export default function BranchTabs({ branches, activeId, onSelect }: Props) {
               active ? "text-copper-200" : "text-ink-400 hover:text-ink-100",
             ].join(" ")}
           >
-            {/* bottom copper rule when active */}
             <span
               aria-hidden
               className={[

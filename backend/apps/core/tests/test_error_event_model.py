@@ -74,6 +74,5 @@ def test_record_never_raises_on_inner_failure(monkeypatch):
 
     monkeypatch.setattr(ErrorEvent.objects.__class__, "create", _boom)
 
-    # Must NOT raise — this is the core safety guarantee
     result = ErrorEvent.record(level="error", source="test", message="test")
     assert result is None

@@ -60,7 +60,6 @@ describe("MarketContextStrip", () => {
     mockUseMarketContext.mockReturnValue({ data: baseData } as unknown as ReturnType<typeof useMarketContext>);
     render(<MarketContextStrip />);
     expect(screen.queryByText("Sectors")).not.toBeInTheDocument();
-    // All 3 headlines are still shown
     expect(screen.getByText("SPX")).toBeInTheDocument();
     expect(screen.getByText("QQQ")).toBeInTheDocument();
     expect(screen.getByText("VIX")).toBeInTheDocument();

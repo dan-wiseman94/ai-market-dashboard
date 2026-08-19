@@ -1,4 +1,3 @@
-// frontend/src/__tests__/ModelSelect.test.tsx
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach } from "vitest";
@@ -45,7 +44,6 @@ describe("ModelSelect — explicit models", () => {
     );
     expect(screen.getByRole("option", { name: "llama3" })).toBeInTheDocument();
     expect(screen.getByRole("option", { name: "mistral" })).toBeInTheDocument();
-    // catalog (claude) models are NOT shown
     expect(screen.queryByRole("option", { name: "Claude Sonnet 4.6" })).not.toBeInTheDocument();
   });
 

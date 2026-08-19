@@ -103,7 +103,7 @@ def test_redis_error_in_cooldown_skips_tick_without_disabling():
     evaluate.assert_not_called()
     fire.delay.assert_not_called()
     t.refresh_from_db()
-    assert t.enabled is True  # NOT disabled on an infra hiccup
+    assert t.enabled is True
     assert result["fires"] == 0
 
 

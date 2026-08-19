@@ -31,11 +31,6 @@ def _get(path: str, params: dict) -> dict:
     return body if isinstance(body, dict) else {}
 
 
-# ---------------------------------------------------------------------------
-# Canned fixtures for MOCK_EXTERNAL / e2e mode
-# ---------------------------------------------------------------------------
-
-
 def _canned_rates() -> dict:
     """Deterministic fixture for average interest rates."""
     return {
@@ -58,18 +53,12 @@ def _canned_debt() -> dict:
     }
 
 
-# ---------------------------------------------------------------------------
-# Normalizers
-# ---------------------------------------------------------------------------
-
-
 def _normalize_rates(body: dict) -> dict:
     """Extract rates for the latest record_date from a raw avg_interest_rates response."""
     rows = body.get("data") or []
     if not rows:
         return {}
 
-    # Find the latest record_date across all returned rows
     latest_date = ""
     for row in rows:
         rd = row.get("record_date") or ""
@@ -111,11 +100,6 @@ def _normalize_debt(body: dict) -> dict:
         log.warning("treasury.debt.parse_failed raw=%r", raw_debt)
         return {}
     return {"record_date": record_date, "total_public_debt": total}
-
-
-# ---------------------------------------------------------------------------
-# Public fetch functions
-# ---------------------------------------------------------------------------
 
 
 def fetch_treasury_rates() -> dict:

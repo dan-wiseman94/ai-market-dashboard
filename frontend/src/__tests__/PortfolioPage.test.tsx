@@ -118,7 +118,6 @@ describe("PortfolioPage", () => {
     });
     renderWithProviders(<PortfolioPage />, { initialEntries: ["/portfolio"] });
 
-    // Wait for empty state then open the form
     await waitFor(() =>
       expect(screen.getByTestId("add-position-btn")).toBeInTheDocument(),
     );
@@ -180,7 +179,6 @@ describe("PortfolioPage", () => {
     });
     renderWithProviders(<PortfolioPage />, { initialEntries: ["/portfolio"] });
 
-    // Switch to closed view
     await waitFor(() =>
       expect(screen.getByTestId("view-closed-btn")).toBeInTheDocument(),
     );

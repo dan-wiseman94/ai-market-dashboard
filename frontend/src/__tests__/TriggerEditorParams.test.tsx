@@ -12,12 +12,10 @@ describe("TriggerEditorParams", () => {
     const metricSelect = screen.getByLabelText("metric") as HTMLSelectElement;
     fireEvent.change(metricSelect, { target: { value: "rsi" } });
 
-    // After onChange is called, re-render with the new leaf
     const emitted = onChange.mock.calls.at(-1)![0] as Condition;
     const leaf = ("all" in emitted ? emitted.all[0] : emitted) as Leaf;
     expect(leaf.metric).toBe("rsi");
 
-    // Now render with the updated RSI leaf to see the period input
     const { unmount } = render(
       <RuleBuilder
         value={{ all: [{ metric: "rsi", ticker: "SPY", op: ">", value: 30, window: "1d" }] }}
@@ -74,7 +72,6 @@ describe("TriggerEditorParams", () => {
     expect(onChange).toHaveBeenCalled();
     const emitted = onChange.mock.calls.at(-1)![0] as Condition;
     const leaves = ("all" in emitted ? emitted.all : []) as Leaf[];
-    // The new leaf should be the second one (appended)
     const newLeaf = leaves[leaves.length - 1];
     expect(newLeaf.metric).toBe("sma_spread_pct");
     expect(newLeaf.op).toBe("crosses_above");

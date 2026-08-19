@@ -22,10 +22,6 @@ import { CommandPalette, type Command } from "../components/CommandPalette";
 import * as briefingHooks from "@/hooks/useBriefing";
 import * as recallHooks from "@/hooks/useRecall";
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
 function makeQc() {
   return new QueryClient({ defaultOptions: { queries: { retry: false } } });
 }
@@ -37,10 +33,6 @@ function renderPalette(commands: Command[], extra: Command[] = [], onClose = vi.
     </MemoryRouter>,
   );
 }
-
-// ---------------------------------------------------------------------------
-// Part 1 — Existing static commands still filter correctly (regression guard)
-// ---------------------------------------------------------------------------
 
 describe("CommandPalette — existing static behaviour", () => {
   it("renders static commands unchanged", () => {
@@ -62,10 +54,6 @@ describe("CommandPalette — existing static behaviour", () => {
     expect(screen.getByText("Go to Triggers")).toBeInTheDocument();
   });
 });
-
-// ---------------------------------------------------------------------------
-// Part 1 — Action verbs (new)
-// ---------------------------------------------------------------------------
 
 describe("CommandPalette — action verb: run briefing", () => {
   const mutateSpy = vi.fn();
@@ -106,10 +94,6 @@ describe("CommandPalette — action verb: show keyboard shortcuts", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// Part 2 — Global search via recall (new)
-// ---------------------------------------------------------------------------
-
 describe("CommandPalette — extraCommands (recall search results)", () => {
   it("renders recall hits passed as extraCommands", () => {
     const recallCmd: Command = {
@@ -123,10 +107,8 @@ describe("CommandPalette — extraCommands (recall search results)", () => {
       [{ id: "static", label: "Static command", run: vi.fn() }],
       [recallCmd],
     );
-    // Both static and recall commands should appear
     expect(screen.getByText("Static command")).toBeInTheDocument();
     expect(screen.getByText("NVDA bullish into earnings — AI demand")).toBeInTheDocument();
-    // Section badge renders
     expect(screen.getByText("Recall")).toBeInTheDocument();
   });
 
@@ -151,9 +133,7 @@ describe("CommandPalette — extraCommands (recall search results)", () => {
       </MemoryRouter>,
     );
     fireEvent.click(screen.getByText("NVDA bullish into earnings"));
-    // run() was called
     expect(navSpy).toHaveBeenCalledTimes(1);
-    // palette closed after selection
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
@@ -169,9 +149,7 @@ describe("CommandPalette — extraCommands (recall search results)", () => {
       [{ id: "go-dashboard", label: "Dashboard", run: vi.fn() }],
       [recallCmd],
     );
-    // Type query that matches the static command
     fireEvent.change(screen.getByPlaceholderText(/search/i), { target: { value: "dashboard" } });
-    // Static command still shows
     expect(screen.getByText("Dashboard")).toBeInTheDocument();
     // recall extra should also be present (extraCommands are not filtered)
     expect(screen.getByText("SPY breadth divergence noted")).toBeInTheDocument();
@@ -193,10 +171,6 @@ describe("CommandPalette — extraCommands (recall search results)", () => {
     expect(onQueryChange).toHaveBeenCalledWith("earnings");
   });
 });
-
-// ---------------------------------------------------------------------------
-// Part 2 — useRecallCommands integration via mocked useRecall hook
-// ---------------------------------------------------------------------------
 
 describe("recall search integration — useRecallCommands shape", () => {
   beforeEach(() => vi.restoreAllMocks());
@@ -229,15 +203,9 @@ describe("recall search integration — useRecallCommands shape", () => {
 
     expect(getByText("AAPL puts on weak guidance")).toBeInTheDocument();
     fireEvent.click(getByText("AAPL puts on weak guidance"));
-    // Confirms the run() callback navigated to the hit's link
     expect(navigateSpy).toHaveBeenCalledWith("/theses/10");
   });
 });
-
-// ---------------------------------------------------------------------------
-// Part 2 — useRecall hook is enabled only for queries >= 2 chars
-// (tests the AppLayout-level guard via mocking useRecall)
-// ---------------------------------------------------------------------------
 
 describe("recall hook enabled guard", () => {
   beforeEach(() => vi.restoreAllMocks());
@@ -247,7 +215,7 @@ describe("recall hook enabled guard", () => {
 
     // Render the palette with a 1-char query — AppLayout passes paletteQuery
     // gated at length >= 2. We simulate the guard here directly.
-    const query = "A"; // length 1
+    const query = "A";
     const effectiveQuery = query.trim().length >= 2 ? query : "";
 
     // Validate the guard logic — empty string is passed to useRecall which disables it

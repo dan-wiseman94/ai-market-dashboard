@@ -12,10 +12,6 @@ from unittest.mock import patch
 import apps.market.services.edgar as edgar_mod
 from apps.market.services.edgar import fetch_filings, fetch_insider
 
-# ---------------------------------------------------------------------------
-# Shared raw-response fixtures
-# ---------------------------------------------------------------------------
-
 _TICKER_MAP_RAW: dict = {
     "0": {"cik_str": 320193, "ticker": "AAPL", "title": "Apple Inc."},
     "1": {"cik_str": 789019, "ticker": "MSFT", "title": "Microsoft Corporation"},
@@ -87,11 +83,6 @@ def _passthrough_cache(key: str, *, ttl_seconds: int, fetcher):
     return fetcher()
 
 
-# ---------------------------------------------------------------------------
-# fetch_filings — normalized output + form filtering + URL construction
-# ---------------------------------------------------------------------------
-
-
 def test_fetch_filings_returns_normalized_list():
     with (
         patch("apps.market.services.edgar._get", side_effect=_get_side_effect),
@@ -146,7 +137,6 @@ def test_fetch_filings_includes_10q_and_8k_by_default():
     assert "10-K" in forms_present
     assert "10-Q" in forms_present
     assert "8-K" in forms_present
-    # Form 4 not in default forms
     assert "4" not in forms_present
 
 
@@ -191,14 +181,8 @@ def test_fetch_filings_url_construction():
 
     assert len(result) == 1
     url = result[0]["url"]
-    # Dashes removed from accession in URL path
     assert "-" not in url.split("/Archives/edgar/data/")[-1].split("/")[1]
     assert url.startswith("https://www.sec.gov/Archives/edgar/data/")
-
-
-# ---------------------------------------------------------------------------
-# fetch_insider — Form 4 filtering
-# ---------------------------------------------------------------------------
 
 
 def test_fetch_insider_returns_form4_only():
@@ -233,7 +217,6 @@ def test_fetch_insider_url_contains_cik_and_nodash():
     assert len(result) > 0
     url = result[0]["url"]
     assert str(_APPLE_CIK) in url
-    # Accession number without dashes must appear in the URL
     expected_nodash = "000032019325000004"
     assert expected_nodash in url
 
@@ -249,11 +232,6 @@ def test_fetch_insider_respects_limit():
         result = fetch_insider("AAPL", limit=1)
 
     assert len(result) <= 1
-
-
-# ---------------------------------------------------------------------------
-# Mock mode
-# ---------------------------------------------------------------------------
 
 
 def test_fetch_filings_mock_mode_returns_canned():
@@ -291,11 +269,6 @@ def test_fetch_insider_mock_mode_returns_canned():
     assert "url" in first
     assert "title" in first
     assert "Form 4" in first["title"]
-
-
-# ---------------------------------------------------------------------------
-# Unknown ticker
-# ---------------------------------------------------------------------------
 
 
 def test_fetch_filings_and_insider_drop_stale_entries_by_default():
@@ -374,11 +347,6 @@ def test_fetch_insider_unknown_ticker_returns_empty():
     assert result == []
 
 
-# ---------------------------------------------------------------------------
-# Network failures — never raises
-# ---------------------------------------------------------------------------
-
-
 def test_fetch_filings_never_raises_on_network_error():
     def _boom(url: str, *, headers: dict) -> dict:
         raise RuntimeError("connection refused")
@@ -449,11 +417,6 @@ def test_fetch_insider_never_raises_on_submissions_error():
     assert result == []
 
 
-# ---------------------------------------------------------------------------
-# Ticker normalisation (case-insensitive)
-# ---------------------------------------------------------------------------
-
-
 def test_fetch_filings_case_insensitive_ticker():
     with (
         patch("apps.market.services.edgar._get", side_effect=_get_side_effect),
@@ -466,11 +429,6 @@ def test_fetch_filings_case_insensitive_ticker():
         result_upper = fetch_filings("AAPL")
 
     assert len(result_lower) == len(result_upper)
-
-
-# ---------------------------------------------------------------------------
-# _get helper — uses full URL, sends required headers
-# ---------------------------------------------------------------------------
 
 
 def test_get_helper_sends_user_agent(monkeypatch):

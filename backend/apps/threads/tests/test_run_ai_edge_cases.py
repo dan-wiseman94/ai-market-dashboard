@@ -23,8 +23,6 @@ from apps.threads.tasks import (
     run_ai_on_message,
 )
 
-# ---------- pure helpers ----------
-
 
 def test_extract_text_reads_block_text_not_repr():
     # A "blocks" content (e.g. a Files-API document attach) surfaces its text
@@ -70,9 +68,6 @@ def test_build_request_appends_pending_user_msg_and_carries_thinking_memory():
     assert req.thinking_budget == 2048
     assert req.memory_dir == "/data/memory/1"
     assert any(getattr(cm, "content", None) == "hi" for cm in req.messages)
-
-
-# ---------- early-return failure paths ----------
 
 
 @pytest.mark.django_db
@@ -121,9 +116,6 @@ def test_run_ai_fails_when_cost_cap_exceeded():
     assert out == {"ok": False, "error": "cost_capped", "message_id": failed.id}
 
 
-# ---------- scenario application (E2E mock mode) ----------
-
-
 def test_run_ai_applies_and_resets_scenario_in_mock_mode():
     with (
         patch("apps.core.mocks.is_mock_mode", return_value=True),
@@ -136,9 +128,6 @@ def test_run_ai_applies_and_resets_scenario_in_mock_mode():
     set_s.assert_called_once_with("tooluse")
     reset_s.assert_called_once()
     inner.assert_called_once()
-
-
-# ---------- stream runner: thinking delta branch ----------
 
 
 def test_stream_runner_broadcasts_thinking_delta():
@@ -168,9 +157,6 @@ def test_stream_runner_broadcasts_thinking_delta():
         asyncio.run(drive())
 
     assert any(e["event"] == "thinking_delta" and e["text"] == "pondering" for e in seen)
-
-
-# ---------- cancelled mid-run ----------
 
 
 @pytest.mark.django_db

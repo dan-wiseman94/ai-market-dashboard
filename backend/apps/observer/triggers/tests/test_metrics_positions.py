@@ -72,7 +72,7 @@ def test_position_pl_pct_handles_zero_mkt_value(fake_redis):
         patch("apps.observer.triggers.metrics.fetch_positions") as fp,
     ):
         fq.return_value = {}
-        fp.return_value = []  # no positions
+        fp.return_value = []
         snap = build_snapshot([t])
 
     assert snap["position_pl_pct"] is None

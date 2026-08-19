@@ -40,7 +40,7 @@ def _dec(v) -> str:
     s = format(_to_decimal(v), "f")  # plain fixed-point, no scientific notation
     if "." in s:
         integer, frac = s.split(".")
-        frac = frac.rstrip("0").ljust(2, "0")  # min 2 decimal places
+        frac = frac.rstrip("0").ljust(2, "0")
         return f"{integer}.{frac}"
     return s + ".00"
 

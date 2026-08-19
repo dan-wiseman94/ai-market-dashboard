@@ -6,7 +6,7 @@ from apps.snapshots.models import Snapshot, SnapshotSection
 
 @pytest.mark.django_db
 def test_backfill_populates_from_quotes():
-    from apps.snapshots.migrations import _backfill  # helper module (Step 3)
+    from apps.snapshots.migrations import _backfill
 
     p = TradingProfile.objects.create(name="P", default_includes=["quotes"])
     snap = Snapshot.objects.create(

@@ -77,12 +77,9 @@ describe("StreamingMessage", () => {
         report={STRUCTURED_REPORT}
       />,
     );
-    // Headline and summary are ObservationReportCard-rendered content
     expect(screen.getByText("SPY holds 20-EMA on rising breadth")).toBeInTheDocument();
     expect(screen.getByText(/Momentum intact/)).toBeInTheDocument();
-    // Signal ticker
     expect(screen.getByText("SPY")).toBeInTheDocument();
-    // Risk item
     expect(screen.getByText(/Fed minutes/)).toBeInTheDocument();
   });
 

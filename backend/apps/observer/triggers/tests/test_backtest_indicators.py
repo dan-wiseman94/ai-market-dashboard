@@ -8,7 +8,6 @@ from apps.observer.triggers.backtest import backtest
 
 @pytest.mark.django_db
 def test_backtest_rsi_and_crossing():
-    # 40 rising daily bars for NVDA — each bar gets a distinct ts
     base = datetime(2026, 1, 1, tzinfo=UTC)
     for i in range(40):
         OHLCBar.objects.create(

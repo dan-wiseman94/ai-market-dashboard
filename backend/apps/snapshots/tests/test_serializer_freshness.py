@@ -30,7 +30,6 @@ def test_capture_freshness_line_uses_captured_at():
     out = serialize_for_ai(snap)
 
     assert "Captured:" in out
-    # The formatted UTC timestamp should appear
     assert "2026-05-30 14:32 UTC" in out
     # Age relative to now — we can't predict exact minutes, but "ago" must be there
     assert "ago" in out
@@ -48,7 +47,6 @@ def test_capture_freshness_line_none_captured_at_no_crash():
     saved = Snapshot.objects.create(profile=profile, includes=[], status="ready")
     saved.captured_at = None  # in-memory override only — not persisted
 
-    # Must not raise; line should be absent
     out = serialize_for_ai(saved)
     assert "Captured:" not in out
 

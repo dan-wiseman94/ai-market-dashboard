@@ -79,7 +79,6 @@ def _normalize_item(raw: dict) -> dict | None:
 
     entities: list[dict] = raw.get("entities") or []
 
-    # Derive primary ticker and sentiment map from entities
     entity_symbols = [e["symbol"].upper() for e in entities if e.get("symbol")]
     ticker = entity_symbols[0] if entity_symbols else ""
     sentiment: dict[str, float] = {}
@@ -142,7 +141,6 @@ def fetch_news(tickers: list[str], *, limit: int = 15) -> list[dict]:
     if not tickers_upper:
         return []
 
-    # Chunk into groups of ≤3
     chunks: list[list[str]] = [
         tickers_upper[i : i + _MAX_SYMBOLS_PER_REQUEST]
         for i in range(0, len(tickers_upper), _MAX_SYMBOLS_PER_REQUEST)
@@ -162,7 +160,6 @@ def fetch_news(tickers: list[str], *, limit: int = 15) -> list[dict]:
         log.warning("market.marketaux.fetch_failed: %s", safe_err(exc))
         return []
 
-    # Normalize and deduplicate by uuid
     from apps.market.models import NewsItem
 
     seen: set[str] = set()
@@ -207,6 +204,5 @@ def fetch_news(tickers: list[str], *, limit: int = 15) -> list[dict]:
             }
         )
 
-    # Sort newest-first
     results.sort(key=lambda x: x["published_at"], reverse=True)
     return results[:limit]

@@ -15,10 +15,6 @@ from apps.market.services.alpaca import (
     fetch_quotes,
 )
 
-# ---------------------------------------------------------------------------
-# Raw Alpaca fixture helpers
-# ---------------------------------------------------------------------------
-
 _RAW_SNAPSHOT_AAPL = {
     "latestTrade": {"p": 189.30, "s": 100, "t": "2026-05-30T19:59:00Z"},
     "latestQuote": {"ap": 189.32, "bp": 189.28, "as": 5, "bs": 3},
@@ -62,11 +58,6 @@ _RAW_BARS_BODY = {
 }
 
 
-# ---------------------------------------------------------------------------
-# Unit tests: normalize helpers (no DB, no I/O)
-# ---------------------------------------------------------------------------
-
-
 def test_normalize_snapshot_aapl_quote_fields():
     result = _normalize_snapshot("AAPL", _RAW_SNAPSHOT_AAPL)
     assert result["last"] == 189.30
@@ -79,7 +70,6 @@ def test_normalize_snapshot_aapl_quote_fields():
 
 def test_normalize_snapshot_pct_change_computed_from_daily_vs_prev():
     result = _normalize_snapshot("AAPL", _RAW_SNAPSHOT_AAPL)
-    # pct_change = (189.30 - 187.95) / 187.95 * 100
     assert result["pct_change"] is not None
     assert abs(result["pct_change"] - (189.30 - 187.95) / 187.95 * 100) < 0.001
 
@@ -125,11 +115,6 @@ def test_normalize_bars_maps_alpaca_keys():
     assert result[1]["close"] == 190.75
 
 
-# ---------------------------------------------------------------------------
-# Credential helper
-# ---------------------------------------------------------------------------
-
-
 def test_credentials_returns_none_none_on_missing_row():
     with patch.object(alpaca_mod, "decrypt_token", return_value=None):
         key, secret = alpaca_mod._credentials()
@@ -149,11 +134,6 @@ def test_credentials_returns_none_none_when_secret_missing():
         key, secret = alpaca_mod._credentials()
     assert key is None
     assert secret is None
-
-
-# ---------------------------------------------------------------------------
-# fetch_quotes: normalized dict from mocked snapshot response
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.django_db
@@ -221,11 +201,6 @@ def test_fetch_quotes_never_raises_on_network_failure():
     ):
         result = fetch_quotes(["AAPL"])
     assert result == {}
-
-
-# ---------------------------------------------------------------------------
-# fetch_bars: normalized+persisted bars from mocked response
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.django_db
@@ -323,11 +298,6 @@ def test_fetch_bars_unsupported_timeframe_returns_empty():
     with patch("apps.market.services.alpaca._credentials", return_value=("k", "s")):
         result = fetch_bars("AAPL", timeframe="3m")
     assert result == []
-
-
-# ---------------------------------------------------------------------------
-# _persist_bars: standalone idempotency test
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.django_db

@@ -1,4 +1,3 @@
-// frontend/src/__tests__/SettingsLayout.test.tsx
 import { render, screen, within } from "@testing-library/react";
 import { MemoryRouter, Routes, Route } from "react-router-dom";
 import { describe, it, expect } from "vitest";

@@ -1,4 +1,3 @@
-// frontend/src/__tests__/hooks/useUpsertProviderConfig.test.tsx
 import { renderHook, waitFor } from "@testing-library/react";
 import { QueryClient } from "@tanstack/react-query";
 import { describe, it, expect, vi, beforeEach } from "vitest";

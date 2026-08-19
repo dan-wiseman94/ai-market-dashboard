@@ -38,10 +38,6 @@ import { Citation } from "../../components/Citation";
 import { FileAttachPanel } from "../../components/FileAttachPanel";
 import DailyCostChart from "../../components/costs/DailyCostChart";
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
 function makeQc() {
   return new QueryClient({ defaultOptions: { queries: { retry: false } } });
 }
@@ -61,10 +57,6 @@ function wrap(ui: React.ReactElement) {
 beforeEach(() => {
   installFakeWebSocket();
 });
-
-// ---------------------------------------------------------------------------
-// SchedulesPage — schedule-row-<id>
-// ---------------------------------------------------------------------------
 
 describe("SchedulesPage", () => {
   it("renders schedule-row-<id>", async () => {
@@ -98,10 +90,6 @@ describe("SchedulesPage", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// TriggersListPage — trigger-row-<id>
-// ---------------------------------------------------------------------------
-
 describe("TriggersListPage", () => {
   it("renders trigger-row-<id>", async () => {
     globalThis.fetch = vi.fn(() =>
@@ -122,10 +110,6 @@ describe("TriggersListPage", () => {
     expect(await screen.findByTestId("trigger-row-7")).toBeInTheDocument();
   });
 });
-
-// ---------------------------------------------------------------------------
-// ThreadsPage — thread-row-<id>
-// ---------------------------------------------------------------------------
 
 describe("ThreadsPage", () => {
   it("renders thread-row-<id>", async () => {
@@ -151,10 +135,6 @@ describe("ThreadsPage", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// WatchlistsList — watchlist-row-<name>
-// ---------------------------------------------------------------------------
-
 describe("WatchlistsList", () => {
   it("renders watchlist-row-<name>", async () => {
     globalThis.fetch = vi.fn(() =>
@@ -171,10 +151,6 @@ describe("WatchlistsList", () => {
     expect(await screen.findByTestId("watchlist-row-Tech")).toBeInTheDocument();
   });
 });
-
-// ---------------------------------------------------------------------------
-// ProfilesPage — profile-row-<name>
-// ---------------------------------------------------------------------------
 
 describe("ProfilesPage", () => {
   it("renders profile-row-<name>", async () => {
@@ -196,10 +172,6 @@ describe("ProfilesPage", () => {
     expect(await screen.findByTestId("profile-row-Swing")).toBeInTheDocument();
   });
 });
-
-// ---------------------------------------------------------------------------
-// BackupsPage — backup-row-<id>
-// ---------------------------------------------------------------------------
 
 describe("BackupsPage", () => {
   it("renders backup-row-<id>", async () => {
@@ -224,10 +196,6 @@ describe("BackupsPage", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// ExportPage — export-row-<id>
-// ---------------------------------------------------------------------------
-
 describe("ExportPage", () => {
   it("renders export-row-<id>", async () => {
     globalThis.fetch = vi.fn(() =>
@@ -250,10 +218,6 @@ describe("ExportPage", () => {
     expect(await screen.findByTestId("export-row-3")).toBeInTheDocument();
   });
 });
-
-// ---------------------------------------------------------------------------
-// AnalyticsPage — analytics-card-<kind>
-// ---------------------------------------------------------------------------
 
 describe("AnalyticsPage", () => {
   it("renders analytics-card-leaderboard", async () => {
@@ -285,10 +249,6 @@ describe("AnalyticsPage", () => {
     expect(screen.getByTestId("analytics-card-unusual-options")).toBeInTheDocument();
   });
 });
-
-// ---------------------------------------------------------------------------
-// SnapshotComposerPage — capture-btn, send-ai-btn
-// ---------------------------------------------------------------------------
 
 describe("SnapshotComposerPage", () => {
   it("renders capture-btn", async () => {
@@ -326,10 +286,6 @@ describe("SnapshotComposerPage", () => {
     expect(await screen.findByTestId("capture-btn")).toBeInTheDocument();
   });
 });
-
-// ---------------------------------------------------------------------------
-// ThreadDetailPage — compose-input, message-<id>
-// ---------------------------------------------------------------------------
 
 describe("ThreadDetailPage", () => {
   it("renders compose-input", async () => {
@@ -423,10 +379,6 @@ describe("ThreadDetailPage", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// BranchTabs — branch-cost-<n>  (already present per spec; just confirm)
-// ---------------------------------------------------------------------------
-
 describe("BranchTabs", () => {
   it("renders branch-cost-<id> when cost is set", async () => {
     render(
@@ -442,10 +394,6 @@ describe("BranchTabs", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// Citation — citation-<index>
-// ---------------------------------------------------------------------------
-
 describe("Citation", () => {
   it("renders citation-<index>", async () => {
     render(
@@ -456,10 +404,6 @@ describe("Citation", () => {
     expect(screen.getByTestId("citation-3")).toBeInTheDocument();
   });
 });
-
-// ---------------------------------------------------------------------------
-// FileAttachPanel — file-row-<id>
-// ---------------------------------------------------------------------------
 
 describe("FileAttachPanel", () => {
   it("renders file-row-<id>", async () => {
@@ -477,10 +421,6 @@ describe("FileAttachPanel", () => {
     expect(screen.getByTestId("file-row-22")).toBeInTheDocument();
   });
 });
-
-// ---------------------------------------------------------------------------
-// DailyCostChart — cost-tile-today
-// ---------------------------------------------------------------------------
 
 describe("DailyCostChart", () => {
   it("renders cost-tile-today wrapper", async () => {

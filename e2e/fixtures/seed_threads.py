@@ -29,7 +29,6 @@ def seed_threads() -> None:
     profile = TradingProfile.objects.get(name="E2E Default")
     snap = Snapshot.objects.filter(status="ready").first()
 
-    # 1. Pinned thread
     with transaction.atomic():
         pinned, _ = Thread.objects.get_or_create(
             title="E2E pinned thread",
@@ -48,13 +47,11 @@ def seed_threads() -> None:
                 snapshot_ref=snap,
             )
 
-    # 2. Plain thread
     Thread.objects.get_or_create(
         title="E2E plain thread",
         defaults={"profile": profile, "kind": "chat"},
     )
 
-    # 3. Compare thread (2 branches)
     with transaction.atomic():
         compare, _ = Thread.objects.get_or_create(
             title="E2E compare thread",
@@ -76,7 +73,6 @@ def seed_threads() -> None:
                     content={"text": f"Branch {branch_n} from {provider}"},
                 )
 
-    # 4. Tool-use thread
     with transaction.atomic():
         tools, _ = Thread.objects.get_or_create(
             title="E2E tool-use thread",
@@ -99,7 +95,6 @@ def seed_threads() -> None:
                 },
             )
 
-    # 5. Empty ready-to-send
     Thread.objects.get_or_create(
         title="E2E empty thread",
         defaults={"profile": profile, "kind": "chat"},

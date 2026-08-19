@@ -89,9 +89,8 @@ def test_three_takes_agreement_math():
     assert isinstance(result, ConsensusReport)
     assert result.n_providers == 3
     assert result.modal_bias == "bullish"
-    assert result.bias_agreement == round(2 / 3, 4)  # 0.6667
+    assert result.bias_agreement == round(2 / 3, 4)
     assert result.divergent is True
-    # Per-ticker: AAPL appears in all 3 takes; 2 bullish, 1 bearish.
     aapl = result.per_ticker["AAPL"]
     assert aapl["modal"] == "bullish"
     assert aapl["agreement"] == round(2 / 3, 4)
@@ -202,7 +201,7 @@ def test_error_pair_is_skipped_not_raised():
 
         result = consensus_report(system="sys", user="usr")
 
-    assert result.n_providers == 2  # survivors only
+    assert result.n_providers == 2
     assert result.bias_agreement == 0.5
     assert result.divergent is True
     assert sorted(t.bias for t in result.takes) == ["bearish", "bullish"]
@@ -234,7 +233,6 @@ def test_capped_provider_is_skipped():
 
         result = consensus_report(system="sys", user="usr")
 
-    # One provider survived (the capped one was skipped before run_structured).
     assert result.n_providers == 1
     assert result.modal_bias == "bullish"
     assert result.bias_agreement is None  # degraded — only 1 usable

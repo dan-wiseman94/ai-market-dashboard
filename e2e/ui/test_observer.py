@@ -46,12 +46,10 @@ def test_schedule_pause_resume(page, frontend_base_url, observer) -> None:
     s.expect_error_boundary_absent()
     cb = s.enabled_checkbox(sched.id)
     expect(cb).to_be_checked(timeout=10_000)
-    # Pause = uncheck → persisted to the backend.
     s.set_enabled(sched.id, False)
     expect(cb).not_to_be_checked(timeout=10_000)
     sched.refresh_from_db()
     assert sched.enabled is False
-    # Resume = re-check.
     s.set_enabled(sched.id, True)
     expect(cb).to_be_checked(timeout=10_000)
     sched.refresh_from_db()
@@ -69,7 +67,6 @@ def test_observer_structured_mode_produces_typed_card(
     pid = TradingProfile.objects.get(name="E2E Default").id
     page.goto(f"{frontend_base_url}/threads/observer/{pid}")
     wait_for_app_ready(page)
-    # The observer thread page renders without crashing and shows the thread surface.
     expect(page.get_by_text("Something went wrong")).to_have_count(0)
     expect(page.get_by_text("Loading")).to_have_count(0, timeout=10_000)
     # The seeded observer thread has messages — the timeline list should render.
@@ -85,7 +82,6 @@ def test_observer_diff_mode_sends_only_delta(page, frontend_base_url, observer) 
     page.goto(f"{frontend_base_url}/threads/observer/{pid}")
     wait_for_app_ready(page)
     expect(page.get_by_text("Something went wrong")).to_have_count(0)
-    # The seeded observer thread renders its title heading.
     expect(page.get_by_role("heading", level=1)).to_be_visible(timeout=10_000)
 
 

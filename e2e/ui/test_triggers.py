@@ -82,7 +82,6 @@ def test_trigger_cooldown_respected(page, frontend_base_url, triggers) -> None:
     e = TriggerEditorPage(page, frontend_base_url)
     e.go(trig.id)
     e.expect_error_boundary_absent()
-    # The editor loads the existing trigger's name into the form.
     expect(e.name).to_have_value("E2E always fires", timeout=10_000)
 
 
@@ -97,5 +96,4 @@ def test_trigger_edit_preserves_firings(page, frontend_base_url, triggers) -> No
     tl.go()
     tl.expect_error_boundary_absent()
     expect(tl.row(trig.id)).to_be_visible(timeout=10_000)
-    # Navigating the list does not mutate firings.
     assert TriggerFiring.objects.filter(trigger=trig).count() == before

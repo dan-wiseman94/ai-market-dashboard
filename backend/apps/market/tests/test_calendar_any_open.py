@@ -1,4 +1,3 @@
-# backend/apps/market/tests/test_calendar_any_open.py
 from freezegun import freeze_time
 
 from apps.market.calendar.sessions import any_market_open

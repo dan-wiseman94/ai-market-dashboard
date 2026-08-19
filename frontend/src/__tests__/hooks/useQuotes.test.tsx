@@ -27,7 +27,6 @@ describe("useQuotes", () => {
   it("sorts ticker input for stable query key", async () => {
     const client = newQueryClient();
     mockApi({ "GET /api/market/quotes/": quotesFixture });
-    // Input order is reversed — key should still use sorted order
     renderHook(() => useQuotes(["MSFT", "AAPL"]), { wrapper: hookWrapper(client) });
     await waitFor(() => {
       const keys = client.getQueryCache().findAll().map((q) => q.queryKey);

@@ -64,7 +64,6 @@ describe("CoveragePage", () => {
     );
     expect(screen.getByText("SPY")).toBeInTheDocument();
     expect(screen.getByText(/CPI risk into the print/)).toBeInTheDocument();
-    // revision history shows the reasons for each change
     expect(screen.getByText(/broke out of the range/)).toBeInTheDocument();
     expect(screen.getByText(/established coverage/)).toBeInTheDocument();
   });

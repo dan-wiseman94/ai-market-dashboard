@@ -231,7 +231,7 @@ def _record_pct_change(
     existing = cast("list[Any]", r.zrangebyscore(zkey, cutoff, now, start=0, num=1))
     r.zadd(zkey, {f"{now:.6f}|{last}": now})
     r.expire(zkey, 2 * win_s)
-    r.zremrangebyscore(zkey, 0, cutoff)  # drop samples now outside the window
+    r.zremrangebyscore(zkey, 0, cutoff)
     if not existing:
         snapshot[key] = None
         return

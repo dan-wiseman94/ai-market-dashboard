@@ -6,7 +6,6 @@ def test_describe_price_leaf():
 
 
 def test_describe_pct_change():
-    # Percentage with two decimals, leading +/-
     assert describe({"pct_change:SPY:5m": 0.0142}) == "SPY +1.42% / 5m"
     assert describe({"pct_change:NVDA:1h": -0.024}) == "NVDA -2.40% / 1h"
 

@@ -38,7 +38,6 @@ def test_universe_coverage_and_timeframe():
     called_tickers = {c.args[0] for c in mock_fetch.call_args_list}
     assert called_tickers == expected
 
-    # Every call must use timeframe="1d"
     for c in mock_fetch.call_args_list:
         assert c.kwargs.get("timeframe") == "1d", (
             f"Expected timeframe='1d' but got {c.kwargs} for {c.args}"
@@ -70,7 +69,6 @@ def test_never_raises_one_symbol_fails():
     WatchlistSymbol.objects.create(watchlist=wl, ticker="AAPL")
 
     universe = sorted(_expected_universe(["NVDA", "AAPL"]))
-    # Pick a symbol that is definitely in the universe to force a failure on
     failing_sym = "$TNX"
     assert failing_sym in universe, f"$TNX must be in universe; got {universe}"
 
@@ -80,7 +78,6 @@ def test_never_raises_one_symbol_fails():
         return []
 
     with patch("apps.market.services.ohlc.fetch_ohlc", side_effect=side_effect):
-        # Must not raise
         result = ingest_daily_bars()
 
     assert result["requested"] == len(universe)

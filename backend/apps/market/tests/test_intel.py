@@ -80,9 +80,6 @@ def _spx_bars() -> None:
         _bar("$SPX", i, float(close))
 
 
-# ─── return_over_sessions ────────────────────────────────────────────────────
-
-
 class TestReturnOverSessions:
     @pytest.mark.django_db
     def test_1_session_nvda(self):
@@ -152,7 +149,6 @@ class TestReturnOverSessions:
             close=200.0,
             volume=1,
         )
-        # No 1d bars → None
         assert return_over_sessions("INTRA", 1) is None
 
     @pytest.mark.django_db
@@ -168,9 +164,6 @@ class TestReturnOverSessions:
         _bar("ZERO", 0, 0.0)
         _bar("ZERO", 1, 100.0)
         assert return_over_sessions("ZERO", 1) is None
-
-
-# ─── relative_strength ───────────────────────────────────────────────────────
 
 
 class TestRelativeStrength:
@@ -189,12 +182,10 @@ class TestRelativeStrength:
 
         w = result["windows"]
 
-        # 1-day RS
         assert w[1]["ticker_pct"] == pytest.approx(10.0, rel=1e-4)
         assert w[1]["benchmark_pct"] == pytest.approx(2.0408, rel=1e-4)
         assert w[1]["rs"] == pytest.approx(7.9592, rel=1e-4)
 
-        # 5-day RS
         assert w[5]["ticker_pct"] == pytest.approx(83.3333, rel=1e-4)
         assert w[5]["benchmark_pct"] == pytest.approx(11.1111, rel=1e-4)
         assert w[5]["rs"] == pytest.approx(72.2222, rel=1e-4)
@@ -213,11 +204,9 @@ class TestRelativeStrength:
     def test_rs_none_per_window_when_benchmark_missing(self):
         """When benchmark has no bars, rs is None per window but ticker_pct is present."""
         _nvda_bars()
-        # No $SPX bars
         result = relative_strength("NVDA", benchmark="$SPX")
         assert result is not None  # ticker has bars → not None at top level
         w = result["windows"]
-        # ticker_pct should be present; benchmark_pct and rs should be None
         assert w[1]["ticker_pct"] == pytest.approx(10.0, rel=1e-4)
         assert w[1]["benchmark_pct"] is None
         assert w[1]["rs"] is None
@@ -249,7 +238,6 @@ class TestRelativeStrength:
     def test_custom_benchmark(self):
         """Custom benchmark is used and reflected in result."""
         _nvda_bars()
-        # QQQ: closes 300..350, 6 bars
         for i, close in enumerate([300, 310, 320, 330, 340, 350]):
             _bar("QQQ", i, float(close))
         result = relative_strength("NVDA", benchmark="QQQ")
@@ -260,9 +248,6 @@ class TestRelativeStrength:
         w = result["windows"]
         assert w[1]["benchmark_pct"] == pytest.approx(2.9412, rel=1e-4)
         assert w[1]["rs"] == pytest.approx(10.0 - 2.9412, rel=1e-3)
-
-
-# ─── sector_rotation ─────────────────────────────────────────────────────────
 
 
 class TestSectorRotation:
@@ -277,10 +262,8 @@ class TestSectorRotation:
     def test_skips_sectors_with_no_bars(self):
         """Only XLK + XLF have bars; result has only those two."""
         _spx_bars()
-        # XLK 6 bars: closes 180..190
         for i, close in enumerate([180, 182, 184, 186, 188, 190]):
             _bar("XLK", i, float(close))
-        # XLF 6 bars: closes 40..50
         for i, close in enumerate([40, 42, 44, 46, 48, 50]):
             _bar("XLF", i, float(close))
 
@@ -305,11 +288,9 @@ class TestSectorRotation:
 
         result = sector_rotation(sectors=["XLK", "XLF"])
         assert len(result) == 2
-        # XLF is leader (higher RS)
         assert result[0]["sector"] == "XLF"
         assert result[0]["return_pct"] == pytest.approx(25.0, rel=1e-4)
         assert result[0]["rs"] == pytest.approx(13.8889, rel=1e-4)
-        # XLK is laggard (lower RS)
         assert result[1]["sector"] == "XLK"
         assert result[1]["return_pct"] == pytest.approx(5.5556, rel=1e-4)
         assert result[1]["rs"] == pytest.approx(-5.5556, rel=1e-4)
@@ -317,7 +298,6 @@ class TestSectorRotation:
     @pytest.mark.django_db
     def test_rs_none_when_benchmark_missing(self):
         """When benchmark has no bars, rs is None but return_pct is still present."""
-        # No $SPX bars
         for i, close in enumerate([40, 42, 44, 46, 48, 50]):
             _bar("XLF", i, float(close))
 

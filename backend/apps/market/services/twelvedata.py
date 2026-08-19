@@ -25,7 +25,6 @@ log = logging.getLogger(__name__)
 
 TWELVEDATA_BASE = "https://api.twelvedata.com"
 
-# Map OUR timeframe codes → Twelve Data interval strings.
 _TF_TO_TD: dict[str, str] = {
     "1m": "1min",
     "5m": "5min",
@@ -34,7 +33,6 @@ _TF_TO_TD: dict[str, str] = {
     "1d": "1day",
 }
 
-# Reverse map: Twelve Data interval → OUR timeframe code (used when persisting bars).
 _TD_TO_TF: dict[str, str] = {v: k for k, v in _TF_TO_TD.items()}
 
 
@@ -48,11 +46,6 @@ def _get(path: str, params: dict) -> dict:
     resp.raise_for_status()
     body = resp.json()
     return body if isinstance(body, dict) else {}
-
-
-# ---------------------------------------------------------------------------
-# Normalisation helpers
-# ---------------------------------------------------------------------------
 
 
 def _safe_float(value: object) -> float | None:
@@ -128,11 +121,6 @@ def _persist_bars(ticker: str, timeframe: str, bars: list[dict]) -> None:
     persist_bars(ticker, timeframe, bars, source="twelvedata")
 
 
-# ---------------------------------------------------------------------------
-# Canned fixtures for MOCK_EXTERNAL / e2e mode
-# ---------------------------------------------------------------------------
-
-
 def _canned_quotes(symbols: list[str]) -> dict[str, dict]:
     """Deterministic quote fixture for MOCK_EXTERNAL mode."""
     return {
@@ -169,11 +157,6 @@ def _canned_time_series(symbol: str) -> list[dict]:
         }
         for i, d in enumerate(dates)
     ]
-
-
-# ---------------------------------------------------------------------------
-# Public functions
-# ---------------------------------------------------------------------------
 
 
 def fetch_quotes(symbols: list[str]) -> dict[str, dict]:
@@ -215,11 +198,9 @@ def fetch_quotes(symbols: list[str]) -> dict[str, dict]:
     # (the top-level object contains a "symbol" string key), and a symbol-keyed mapping
     # when multiple symbols are requested.
     if "symbol" in body:
-        # Single-symbol response — the body IS the quote object.
         sym = body.get("symbol", symbols[0]).upper()
         return {sym: _normalize_quote(body)}
 
-    # Multi-symbol response — each value is a quote object.
     result: dict[str, dict] = {}
     for sym, quote_raw in body.items():
         if not isinstance(quote_raw, dict):

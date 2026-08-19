@@ -58,7 +58,6 @@ const FIXTURE = {
 };
 
 afterEach(() => {
-  // Unstub fetch after each test
   import("vitest").then(({ vi }) => vi.unstubAllGlobals());
 });
 
@@ -70,11 +69,9 @@ describe("useDashboard", () => {
     });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
-    // The hook hit the right URL
     expect(calls[0].url).toContain("/api/dashboard/");
     expect(calls[0].method).toBe("GET");
 
-    // Data shape matches the full payload
     const data = result.current.data!;
     expect(data.theses).toHaveLength(1);
     expect(data.theses[0].ticker).toBe("AAPL");

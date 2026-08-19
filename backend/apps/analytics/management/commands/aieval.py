@@ -106,7 +106,6 @@ class Command(BaseCommand):
                 f"confidence={r['confidence']} hit={r['hit']}"
             )
 
-        # Calibration reliability table
         non_empty = [b for b in res.get("calibration", []) if b["n"] > 0]
         if non_empty:
             self.stdout.write("\ncalibration reliability curve:")

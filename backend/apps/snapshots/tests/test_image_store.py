@@ -76,9 +76,6 @@ def test_build_image_blocks_reads_offloaded_bytes(image_dir):
     assert base64.b64encode(PNG).decode("ascii") in str(blocks[0])
 
 
-# --- the offloaded /data file must be unlinked when the row goes away ---------
-
-
 @pytest.mark.django_db
 def test_image_file_unlinked_on_row_delete(image_dir):
     img = create_image(snapshot_id=None, kind="server_render", data=PNG)

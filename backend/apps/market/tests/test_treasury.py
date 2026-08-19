@@ -12,10 +12,6 @@ import pytest
 
 from apps.market.services import treasury as treasury_mod
 
-# ---------------------------------------------------------------------------
-# Raw API response fixtures
-# ---------------------------------------------------------------------------
-
 _RAW_RATES_RESPONSE = {
     "data": [
         {
@@ -51,17 +47,7 @@ _RAW_DEBT_RESPONSE = {
     "meta": {"count": 1, "total-count": 1},
 }
 
-
-# ---------------------------------------------------------------------------
-# Helper: make cache.get_or_fetch call through to fetcher()
-# ---------------------------------------------------------------------------
-
 _PASSTHROUGH_CACHE = lambda key, *, ttl_seconds, fetcher: fetcher()  # noqa: E731
-
-
-# ---------------------------------------------------------------------------
-# fetch_treasury_rates
-# ---------------------------------------------------------------------------
 
 
 def test_fetch_treasury_rates_normalized_latest_only():
@@ -81,11 +67,9 @@ def test_fetch_treasury_rates_normalized_latest_only():
 
     assert result["record_date"] == "2025-04-30"
     rates = result["rates"]
-    # Only the two 2025-04-30 rows should be present
     assert set(rates.keys()) == {"Treasury Bills", "Treasury Notes"}
     assert rates["Treasury Bills"] == pytest.approx(4.32)
     assert rates["Treasury Notes"] == pytest.approx(4.15)
-    # Older (2025-03-31) row must not bleed through
     assert len(rates) == 2
 
 
@@ -208,11 +192,6 @@ def test_fetch_treasury_rates_never_raises_on_cache_failure():
     assert result == {}
 
 
-# ---------------------------------------------------------------------------
-# fetch_debt_to_penny
-# ---------------------------------------------------------------------------
-
-
 def test_fetch_debt_to_penny_normalized():
     """Debt amount is coerced to float and record_date is returned."""
     with (
@@ -306,11 +285,6 @@ def test_fetch_debt_to_penny_never_raises_on_cache_failure():
         result = treasury_mod.fetch_debt_to_penny()
 
     assert result == {}
-
-
-# ---------------------------------------------------------------------------
-# fetch_treasury (combined)
-# ---------------------------------------------------------------------------
 
 
 def test_fetch_treasury_combined_shape():

@@ -1,4 +1,3 @@
-// frontend/src/__tests__/SnapshotComposer.banner.test.tsx
 import { render, screen } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import SnapshotComposerPage from "@/pages/SnapshotComposerPage";

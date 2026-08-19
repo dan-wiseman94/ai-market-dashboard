@@ -90,7 +90,6 @@ describe("PositionsBookTile", () => {
     await waitFor(() =>
       expect(screen.getByTestId("tile-pnl-1")).toBeInTheDocument(),
     );
-    // Gain: +150.00
     expect(screen.getByTestId("tile-pnl-1")).toHaveTextContent("+150.00");
   });
 

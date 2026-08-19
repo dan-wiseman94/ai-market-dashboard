@@ -13,10 +13,6 @@ from apps.snapshots.models import Snapshot, SnapshotSection
 from apps.thesis.models import Thesis
 from apps.threads.models import Thread
 
-# ---------------------------------------------------------------------------
-# Fixtures
-# ---------------------------------------------------------------------------
-
 
 @pytest.fixture
 def api():
@@ -50,11 +46,6 @@ def snapshot_with_quotes(db, snapshot):
         payload={"AAPL": {"last": 187.5, "bid": 187.0, "ask": 188.0}},
     )
     return snapshot
-
-
-# ---------------------------------------------------------------------------
-# Model tests
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.django_db
@@ -94,11 +85,6 @@ def test_str(profile):
     assert "open" in str(t)
 
 
-# ---------------------------------------------------------------------------
-# API CRUD
-# ---------------------------------------------------------------------------
-
-
 @pytest.mark.django_db
 def test_create_minimal(api, profile):
     resp = api.post(
@@ -132,17 +118,14 @@ def test_create_requires_rationale_and_invalidation(api, profile):
         "profile_id": profile.id,
     }
 
-    # Missing both -> 400 on rationale.
     r1 = api.post("/api/theses/", base, format="json")
     assert r1.status_code == 400
     assert "rationale" in r1.json()
 
-    # Rationale present, no invalidation (neither price nor note) -> 400.
     r2 = api.post("/api/theses/", {**base, "rationale": "AI demand"}, format="json")
     assert r2.status_code == 400
     assert "invalidation_note" in r2.json()
 
-    # Rationale + a price-level invalidation -> accepted.
     r3 = api.post(
         "/api/theses/",
         {**base, "rationale": "AI demand", "invalidation_price": "95.00"},
@@ -150,7 +133,6 @@ def test_create_requires_rationale_and_invalidation(api, profile):
     )
     assert r3.status_code == 201
 
-    # Rationale + a written invalidation note -> accepted.
     r4 = api.post(
         "/api/theses/",
         {**base, "rationale": "AI demand", "invalidation_note": "breaks below 100"},
@@ -195,11 +177,6 @@ def test_delete(api, profile):
     resp = api.delete(f"/api/theses/{t.id}/")
     assert resp.status_code == 204
     assert not Thesis.objects.filter(id=t.id).exists()
-
-
-# ---------------------------------------------------------------------------
-# close action
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.django_db
@@ -257,7 +234,6 @@ def test_close_rejects_open_status(api, profile):
         format="json",
     )
     assert resp.status_code == 400
-    # Status unchanged
     t.refresh_from_db()
     assert t.status == "open"
 
@@ -284,11 +260,6 @@ def test_run_postmortem_returns_202(api, profile):
     mock_delay.assert_called_once()
 
 
-# ---------------------------------------------------------------------------
-# create-from-source: entry_price defaulting from snapshot quotes
-# ---------------------------------------------------------------------------
-
-
 @pytest.mark.django_db
 def test_create_with_snapshot_defaults_entry_price(api, profile, snapshot_with_quotes):
     resp = api.post(
@@ -306,7 +277,6 @@ def test_create_with_snapshot_defaults_entry_price(api, profile, snapshot_with_q
     )
     assert resp.status_code == 201
     body = resp.json()
-    # entry_price should have been defaulted from the quotes section "last" price
     assert body["entry_price"] is not None
     assert float(body["entry_price"]) == pytest.approx(187.5)
     assert body["snapshot_id"] == snapshot_with_quotes.id
@@ -402,18 +372,12 @@ def test_create_with_snapshot_ticker_not_in_quotes_leaves_entry_price_null(api, 
     assert resp.json()["entry_price"] is None
 
 
-# ---------------------------------------------------------------------------
-# Fix C: status and closed_at are read-only — PATCH cannot reopen a thesis
-# ---------------------------------------------------------------------------
-
-
 @pytest.mark.django_db
 def test_patch_status_ignored_on_closed_thesis(api, profile):
     """PATCH {status: 'open'} on a closed thesis must NOT reopen it (fix C)."""
     t = Thesis.objects.create(
         title="closed one", ticker="AMZN", direction="bullish", profile=profile
     )
-    # Close via the proper action first
     close_resp = api.post(
         f"/api/theses/{t.id}/close/",
         {"status": "closed_win", "close_note": "nice profit"},
@@ -421,16 +385,10 @@ def test_patch_status_ignored_on_closed_thesis(api, profile):
     )
     assert close_resp.status_code == 200
 
-    # Now try to reopen via a plain PATCH
     patch_resp = api.patch(f"/api/theses/{t.id}/", {"status": "open"}, format="json")
     assert patch_resp.status_code == 200  # PATCH itself succeeds (field is silently ignored)
     t.refresh_from_db()
-    assert t.status == "closed_win"  # status unchanged — still closed
-
-
-# ---------------------------------------------------------------------------
-# Fix D: conviction validator — out-of-range values return HTTP 400
-# ---------------------------------------------------------------------------
+    assert t.status == "closed_win"
 
 
 @pytest.mark.django_db
@@ -471,21 +429,11 @@ def test_create_conviction_zero_returns_400(api, profile):
     assert resp.status_code == 400
 
 
-# ---------------------------------------------------------------------------
-# Fix G: run-postmortem returns 404 for unknown pk
-# ---------------------------------------------------------------------------
-
-
 @pytest.mark.django_db
 def test_run_postmortem_404_for_unknown_pk(api):
     """run-postmortem must return 404 when the thesis does not exist (fix G)."""
     resp = api.post("/api/theses/999999/run-postmortem/", format="json")
     assert resp.status_code == 404
-
-
-# ---------------------------------------------------------------------------
-# Fix F: re-closing without close_note does not erase existing note
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.django_db
@@ -494,7 +442,6 @@ def test_reclose_without_note_preserves_existing_note(api, profile):
     t = Thesis.objects.create(
         title="two closes", ticker="SPY", direction="neutral", profile=profile
     )
-    # First close — set a note
     api.post(
         f"/api/theses/{t.id}/close/",
         {"status": "closed_win", "close_note": "original note"},
@@ -503,19 +450,13 @@ def test_reclose_without_note_preserves_existing_note(api, profile):
     t.refresh_from_db()
     assert t.close_note == "original note"
 
-    # Second close — omit close_note entirely
     api.post(
         f"/api/theses/{t.id}/close/",
         {"status": "closed_loss"},
         format="json",
     )
     t.refresh_from_db()
-    assert t.close_note == "original note"  # note preserved
-
-
-# ---------------------------------------------------------------------------
-# Optional (Fix H): lowercase ticker + snapshot quotes key in uppercase
-# ---------------------------------------------------------------------------
+    assert t.close_note == "original note"
 
 
 @pytest.mark.django_db

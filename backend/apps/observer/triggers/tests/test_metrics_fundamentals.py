@@ -33,9 +33,6 @@ def _trigger(condition):
     return SimpleNamespace(condition=condition)
 
 
-# ── leaf_key ──────────────────────────────────────────────────────────────────
-
-
 def test_leaf_key_pe_ratio():
     assert (
         leaf_key({"metric": "pe_ratio", "ticker": "NVDA", "op": "<", "value": 30})
@@ -62,9 +59,6 @@ def test_leaf_key_gross_margin():
         leaf_key({"metric": "gross_margin", "ticker": "NVDA", "op": ">", "value": 60.0})
         == "gross_margin:NVDA"
     )
-
-
-# ── resolved values ───────────────────────────────────────────────────────────
 
 
 def test_build_snapshot_resolves_pe_ratio():
@@ -96,9 +90,6 @@ def test_build_snapshot_resolves_gross_margin():
     assert snap["gross_margin:NVDA"] == pytest.approx(74.5)
 
 
-# ── evaluate integration ──────────────────────────────────────────────────────
-
-
 def test_evaluate_pe_ratio_matches():
     cond = {"metric": "pe_ratio", "ticker": "NVDA", "op": "<", "value": 30}
     with patch(PATCH_TARGET, return_value=_FULL_FUND):
@@ -114,9 +105,6 @@ def test_evaluate_pe_ratio_no_match():
         snap = build_snapshot([_trigger(cond)])
     matched, _ = evaluate(cond, snap)
     assert matched is False
-
-
-# ── missing/cold fundamentals → leaf ABSENT, no crash ────────────────────────
 
 
 def test_missing_fundamentals_leaf_absent_from_snapshot():
@@ -143,9 +131,6 @@ def test_none_fundamental_value_leaf_absent():
     with patch(PATCH_TARGET, return_value=fund_with_none):
         snap = build_snapshot([_trigger(cond)])
     assert "pe_ratio:NVDA" not in snap
-
-
-# ── per-ticker batching (one fetch per distinct ticker) ───────────────────────
 
 
 def test_fundamentals_fetched_once_per_ticker():
@@ -176,9 +161,6 @@ def test_fundamentals_fetched_once_per_distinct_ticker():
     assert mock_fetch.call_count == 2
     assert snap["pe_ratio:NVDA"] == 25.0
     assert snap["pe_ratio:AAPL"] == 28.0
-
-
-# ── compound condition: cheap into earnings ───────────────────────────────────
 
 
 @pytest.mark.django_db

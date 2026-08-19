@@ -32,17 +32,11 @@ describe("TrackRecordHint", () => {
 
     render(<TrackRecordHint ticker="NVDA" />, { wrapper });
 
-    // testid present
     expect(screen.getByTestId("track-record-hint")).toBeInTheDocument();
-    // ticker label
     expect(screen.getByText(/Your NVDA track record:/)).toBeInTheDocument();
-    // closed count
     expect(screen.getByText(/3 closed/)).toBeInTheDocument();
-    // win/loss counts
     expect(screen.getByText(/2W \/ 1L/)).toBeInTheDocument();
-    // hit rate percentage
     expect(screen.getByText(/67%/)).toBeInTheDocument();
-    // slice conviction text
     expect(screen.getByText(/Conviction-4 bullish: 2\/2 correct/)).toBeInTheDocument();
   });
 
@@ -83,7 +77,6 @@ describe("TrackRecordHint", () => {
 
     expect(screen.getByTestId("track-record-hint")).toBeInTheDocument();
     expect(screen.getByText(/2W \/ 1L/)).toBeInTheDocument();
-    // No slice text
     expect(screen.queryByText(/Conviction-4/)).toBeNull();
   });
 });

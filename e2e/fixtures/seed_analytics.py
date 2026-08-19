@@ -64,12 +64,10 @@ def seed_analytics() -> None:
             latency_ms=rng.randint(300, 15_000),
             status="done",
         )
-        # Spread the created_at backwards
         AIRun.objects.filter(message=msg).update(
             created_at=now - timedelta(days=i % 7, hours=rng.randint(0, 23))
         )
 
-    # 15 extra firings for the heatmap.
     trig = EventTrigger.objects.filter(name="E2E always fires").first()
     if trig is not None:
         for i in range(15):

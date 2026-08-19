@@ -32,7 +32,6 @@ def test_snapshot_drill_down(page, frontend_base_url, snapshots) -> None:
     d = SnapshotCostPage(page, frontend_base_url)
     d.go(snap.id)
     d.expect_error_boundary_absent()
-    # The drill-down page renders the snapshot id in the heading.
     expect(page.get_by_role("heading", level=1)).to_contain_text(str(snap.id), timeout=10_000)
 
 
@@ -45,7 +44,6 @@ def test_snapshot_diff_endpoint_surfaced(page, frontend_base_url, api_client, sn
     ready = list(Snapshot.objects.filter(status="ready").order_by("id")[:2])
     assert len(ready) >= 2, "snapshots seed must provide ≥2 ready snapshots"
     prev, curr = ready[0], ready[1]
-    # Assert the diff endpoint's real contract: {delta, prev_id, curr_id}.
     r = api_client.get(f"/api/snapshots/{curr.id}/diff/", params={"against": prev.id})
     assert r.status_code == 200, r.text
     body = r.json()
@@ -53,7 +51,6 @@ def test_snapshot_diff_endpoint_surfaced(page, frontend_base_url, api_client, sn
     assert body["prev_id"] == prev.id
     assert body["curr_id"] == curr.id
     assert isinstance(body["delta"], str)
-    # …and the drill-down route that consumes it renders without crashing.
     page.goto(f"{frontend_base_url}/costs/snapshot/{curr.id}")
     wait_for_app_ready(page)
     expect(page.get_by_text("Something went wrong", exact=False)).to_have_count(0)

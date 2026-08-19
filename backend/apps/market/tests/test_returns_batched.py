@@ -35,7 +35,7 @@ def _bar(ticker: str, ts: datetime, close: float) -> None:
 @pytest.mark.django_db
 def test_batched_forward_returns_match_per_run():
     for i, ts in enumerate(_DAYS):
-        _bar("AAA", ts, 100.0 + i)  # rising closes
+        _bar("AAA", ts, 100.0 + i)
     # 2:1 split ex Apr 14 — a window spanning it must adjust (not read as a -50% crash).
     CorporateAction.objects.create(
         source="mock",

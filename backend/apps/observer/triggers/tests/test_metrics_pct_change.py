@@ -82,11 +82,11 @@ def test_pct_change_guards_division_by_zero_prior(fake_redis):
 
 @pytest.mark.django_db
 def test_pct_change_ignores_sample_older_than_window(fake_redis):
-    # THE FIX: a baseline recorded 400s ago is outside the 5m (300s) window and
-    # must NOT be used — the old single-key code held it for up to 2*window.
     import time
 
     t = _trigger()
+    # THE FIX: a baseline recorded 400s ago is outside the 5m (300s) window and
+    # must NOT be used — the old single-key code held it for up to 2*window.
     old = time.time() - 400
     fake_redis.zadd(ZKEY, {f"{old:.6f}|500.0": old})
     with patch(

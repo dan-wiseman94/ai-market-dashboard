@@ -16,10 +16,6 @@ import pytest
 
 from apps.market.services import twelvedata as td_mod
 
-# ---------------------------------------------------------------------------
-# Raw-fixture factories
-# ---------------------------------------------------------------------------
-
 _RAW_QUOTE_AAPL = {
     "symbol": "AAPL",
     "open": "170.10",
@@ -93,21 +89,12 @@ _RAW_TS_BODY = {
 }
 
 
-# ---------------------------------------------------------------------------
-# Helper: bypass the cache and call the fetcher directly
-# ---------------------------------------------------------------------------
-
 _BYPASS_CACHE = patch(
     "apps.market.services.twelvedata.cache.get_or_fetch",
     side_effect=lambda key, *, ttl_seconds, fetcher: fetcher(),
 )
 
 _FAKE_KEY = patch("apps.market.services.twelvedata._api_key", return_value="testkey")
-
-
-# ---------------------------------------------------------------------------
-# fetch_quotes — multi-symbol response shape
-# ---------------------------------------------------------------------------
 
 
 def test_fetch_quotes_multi_symbol_normalization():
@@ -210,11 +197,6 @@ def test_fetch_quotes_empty_list_returns_empty():
     assert result == {}
 
 
-# ---------------------------------------------------------------------------
-# fetch_quotes — guard / error paths
-# ---------------------------------------------------------------------------
-
-
 def test_fetch_quotes_no_credential_returns_empty():
     with patch("apps.market.services.twelvedata._api_key", return_value=None):
         result = td_mod.fetch_quotes(["AAPL"])
@@ -247,11 +229,6 @@ def test_fetch_quotes_mock_mode_returns_canned():
         assert isinstance(q["volume"], int)
         assert q["bid"] is None
         assert q["ask"] is None
-
-
-# ---------------------------------------------------------------------------
-# fetch_time_series — normalization
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.django_db
@@ -298,11 +275,6 @@ def test_fetch_time_series_intraday_datetime_parsed():
     assert bars[0]["ts"] == "2026-05-29T09:30:00+00:00"
 
 
-# ---------------------------------------------------------------------------
-# fetch_time_series — OHLCBar persistence (django_db)
-# ---------------------------------------------------------------------------
-
-
 @pytest.mark.django_db
 def test_fetch_time_series_persists_ohlcbar():
     """Bars are written to OHLCBar with the correct timeframe code."""
@@ -336,7 +308,7 @@ def test_fetch_time_series_persists_idempotent():
         td_mod.fetch_time_series("MSFT", interval="1day", outputsize=60)
 
     count = OHLCBar.objects.filter(ticker="MSFT", timeframe="1d").count()
-    assert count == 2  # two bars, not four
+    assert count == 2
 
 
 @pytest.mark.django_db
@@ -364,10 +336,10 @@ def test_fetch_time_series_upsert_updates_existing_bar():
             {
                 "datetime": "2026-05-28",
                 "open": "100.00",
-                "high": "105.00",  # updated high
+                "high": "105.00",
                 "low": "99.00",
-                "close": "104.50",  # updated close
-                "volume": "2000000",  # updated volume
+                "close": "104.50",
+                "volume": "2000000",
             }
         ],
         "status": "ok",
@@ -391,11 +363,6 @@ def test_fetch_time_series_upsert_updates_existing_bar():
     assert len(rows) == 1
     assert float(rows[0].close) == pytest.approx(104.50)
     assert rows[0].volume == 2_000_000
-
-
-# ---------------------------------------------------------------------------
-# fetch_time_series — guard / error paths
-# ---------------------------------------------------------------------------
 
 
 def test_fetch_time_series_no_credential_returns_empty():

@@ -8,8 +8,6 @@ from e2e.pages.base import BasePage
 
 
 class SchwabOAuthPage(BasePage):
-    # The Schwab card lives at /settings/connections (ConnectionsSettings component).
-    # The old path "/settings#schwab" was a hash anchor that doesn't exist in the router.
     PATH = "/settings/connections"
 
     def go(self) -> None:
@@ -22,7 +20,6 @@ class SchwabOAuthPage(BasePage):
 
     @property
     def schwab_card(self) -> Locator:
-        # The wrapper div for the whole Schwab connection card.
         return self.page.get_by_test_id("schwab-card")
 
     @property

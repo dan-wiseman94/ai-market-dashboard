@@ -76,10 +76,6 @@ export interface DashboardData {
 
 export type { DashboardBook, DashboardDesk, DashboardRegime };
 
-// ---------------------------------------------------------------------------
-// Hook
-// ---------------------------------------------------------------------------
-
 export function useDashboard() {
   return useQuery({
     queryKey: ["dashboard"],

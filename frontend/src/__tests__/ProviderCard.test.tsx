@@ -1,4 +1,3 @@
-// frontend/src/__tests__/ProviderCard.test.tsx
 import { render, screen, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach } from "vitest";

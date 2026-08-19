@@ -8,8 +8,6 @@ import AppLayout from "@/components/layout/AppLayout";
 import { WebSocketProvider } from "@/realtime/WebSocketProvider";
 import { installFakeWebSocket } from "./testUtils";
 
-// ── Hook unit tests ────────────────────────────────────────────────────────────
-
 describe("useDocumentTitle", () => {
   const original = document.title;
 
@@ -48,8 +46,6 @@ describe("useDocumentTitle", () => {
     expect(document.title).toBe("Second · Ledger");
   });
 });
-
-// ── AppLayout wiring test ──────────────────────────────────────────────────────
 
 function makeQc() {
   return new QueryClient({ defaultOptions: { queries: { retry: false } } });

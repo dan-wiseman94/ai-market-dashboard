@@ -37,4 +37,4 @@ def test_ttl_for_kind_returns_configured_values():
     assert cache_module.ttl_for_kind("ohlc_1m") == 30
     assert cache_module.ttl_for_kind("ohlc_1d") == 3600
     assert cache_module.ttl_for_kind("news") == 300
-    assert cache_module.ttl_for_kind("unknown-kind") == 30  # default
+    assert cache_module.ttl_for_kind("unknown-kind") == 30

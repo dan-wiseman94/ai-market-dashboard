@@ -120,7 +120,7 @@ app.conf.beat_schedule = {
     },
     "calibration-drift-sentinel": {
         "task": "analytics.calibration_drift_sentinel",
-        "schedule": crontab(hour=6, minute=0),  # daily
+        "schedule": crontab(hour=6, minute=0),
     },
     "lessons-distill": {
         "task": "thesis.distill",

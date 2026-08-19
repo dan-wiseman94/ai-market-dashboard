@@ -72,7 +72,6 @@ _CATALOG: list[ModelInfo] = [
         supports_cache=True,
         max_payload_tokens=150_000,
     ),
-    # OpenAI
     ModelInfo(
         provider="openai",
         id="gpt-5",

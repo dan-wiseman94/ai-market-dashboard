@@ -64,7 +64,6 @@ export function mockFetch(responder: (url: string) => FetchResponse | Promise<Fe
   globalThis.fetch = vi.fn((url: string) => Promise.resolve(responder(url))) as never;
 }
 
-// ---- New: hookWrapper for renderHook() ----
 export function hookWrapper(client: QueryClient = newQueryClient()) {
   return function Wrapper({ children }: { children: ReactNode }) {
     return (
@@ -78,14 +77,12 @@ export function hookWrapper(client: QueryClient = newQueryClient()) {
   };
 }
 
-// ---- New: LocationProbe for asserting navigation ----
 export function LocationProbe({ onChange }: { onChange: (path: string) => void }) {
   const loc = useLocation();
   onChange(loc.pathname + loc.search);
   return null;
 }
 
-// ---- New: mockApi / mockApiError ----
 type Method = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 export type Route = `${Method} ${string}`;
 type ErrorHandler = { status: number; body?: unknown; code?: string; message?: string };
@@ -158,7 +155,6 @@ export function mockApiError(route: string, status: number, code = "error", mess
   return mockApi({ [route]: { status, code, message } } as Record<Route, Handler>);
 }
 
-// ---- New: installFakeWebSocket / FakeSocket ----
 type FakeListener = (ev: MessageEvent | Event | CloseEvent) => void;
 
 export class FakeSocket {

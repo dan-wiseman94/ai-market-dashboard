@@ -159,7 +159,7 @@ def schwab_app_config(request: HttpRequest) -> JsonResponse:
         if "client_id" in body:
             cfg.client_id = (body.get("client_id") or "").strip()
         secret = body.get("client_secret_write")
-        if secret:  # only overwrite when a non-empty value is supplied
+        if secret:
             cfg.client_secret = secret.strip()
         cfg.save()
     return JsonResponse(_app_config_payload(cfg))
@@ -268,11 +268,6 @@ def ai_usage(_request: HttpRequest) -> JsonResponse:
     )
 
 
-# ---------------------------------------------------------------------------
-# Data-source credentials — the settings "Data sources" GUI
-# ---------------------------------------------------------------------------
-
-
 def _ds_err(code: str, message: str, status: int) -> JsonResponse:
     return JsonResponse({"code": code, "message": message}, status=status)
 
@@ -308,7 +303,6 @@ def _data_source_payload(ds: dict, present: set[str]) -> dict:
     keys = ("provider", "label", "auth", "fields", "blurb", "signup_url", "docs_url")
     entry = {k: ds[k] for k in keys}
     if ds["auth"] == "none":
-        # keyless → always on
         entry["status"] = {"configured": True, "fields_present": [], "env_fields": []}
     elif ds["provider"] not in present and not env_token_fields(ds["provider"]):
         # no row and nothing in .env → skip the query

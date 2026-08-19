@@ -86,9 +86,6 @@ def test_unknown_provider_404(api):
     assert r.status_code == 404
 
 
-# --- "Test key" endpoint + probe -------------------------------------------
-
-
 @pytest.mark.django_db
 def test_test_endpoint_returns_probe_result(api):
     with patch(

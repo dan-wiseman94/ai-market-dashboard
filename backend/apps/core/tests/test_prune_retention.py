@@ -24,10 +24,6 @@ from apps.market.models import OHLCBar, OptionChainSnapshot
 from apps.observer.models import Notification
 from apps.strategy.models import DeskEntry, RegimeReading
 
-# ---------------------------------------------------------------------------
-# helpers
-# ---------------------------------------------------------------------------
-
 _NOW = timezone.now
 
 
@@ -40,7 +36,7 @@ def _ohlc(days_ago: int, ticker: str = "SPY") -> OHLCBar:
         low=99,
         close=100,
         volume=1_000_000,
-        ts=_NOW(),  # placeholder; update after
+        ts=_NOW(),
     )
     OHLCBar.objects.filter(pk=bar.pk).update(ts=_NOW() - timedelta(days=days_ago))
     return bar
@@ -112,11 +108,6 @@ def test_prunes_old_strategy_series_keeps_recent(settings):
     assert result["book"] == 1
 
 
-# ---------------------------------------------------------------------------
-# 1. prunes-old-keeps-recent
-# ---------------------------------------------------------------------------
-
-
 @pytest.mark.django_db
 def test_prunes_old_ohlc_keeps_recent(settings):
     settings.AI_RETENTION_OHLC_DAYS = 400
@@ -130,12 +121,9 @@ def test_prunes_old_ohlc_keeps_recent(settings):
 
     result = prune_retention()
 
-    # old rows gone
     assert not OHLCBar.objects.filter(pk=old1.pk).exists()
     assert not OHLCBar.objects.filter(pk=old2.pk).exists()
-    # recent row survives
     assert OHLCBar.objects.filter(pk=recent.pk).exists()
-    # count matches
     assert result["ohlc"] == 2
 
 
@@ -187,18 +175,11 @@ def test_prunes_only_resolved_old_errors_keeps_recent(settings):
 
     result = prune_retention()
 
-    # resolved+old: gone
     assert not ErrorEvent.objects.filter(pk=resolved_old.pk).exists()
     # unresolved+old: KEPT regardless of age (safety — don't lose unresolved errors)
     assert ErrorEvent.objects.filter(pk=unresolved_old.pk).exists()
-    # resolved+recent: KEPT
     assert ErrorEvent.objects.filter(pk=resolved_recent.pk).exists()
     assert result["errors"] == 1
-
-
-# ---------------------------------------------------------------------------
-# 2. unresolved-errors-survive (explicit, standalone)
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.django_db
@@ -209,7 +190,6 @@ def test_unresolved_errors_survive_regardless_of_age(settings):
     settings.AI_RETENTION_NOTIFICATION_DAYS = 90
     settings.AI_RETENTION_ERROR_DAYS = 90
 
-    # 10 years old, unresolved
     ancient_unresolved = _error(days_ago=3650, resolved=False)
 
     result = prune_retention()
@@ -218,11 +198,6 @@ def test_unresolved_errors_survive_regardless_of_age(settings):
         "Unresolved ErrorEvent must NEVER be pruned regardless of age"
     )
     assert result["errors"] == 0
-
-
-# ---------------------------------------------------------------------------
-# 3. protected-models-untouched
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.django_db
@@ -245,38 +220,28 @@ def test_protected_models_never_pruned(settings):
 
     profile = TradingProfile.objects.create(name="Test", style="scalper")
 
-    # Snapshot — recent
     snap_recent = Snapshot.objects.create(profile=profile, status="ready")
     # Snapshot — very old (Snapshot uses captured_at, not created_at)
     snap_old = Snapshot.objects.create(profile=profile, status="ready")
     Snapshot.objects.filter(pk=snap_old.pk).update(captured_at=_NOW() - timedelta(days=3650))
 
-    # Thread + Message
     thread = Thread.objects.create(kind="consult", profile=profile)
     msg_recent = Message.objects.create(thread=thread, role="user", content={"text": "hi"})
     msg_old = Message.objects.create(thread=thread, role="user", content={"text": "old"})
     Message.objects.filter(pk=msg_old.pk).update(created_at=_NOW() - timedelta(days=3650))
 
-    # Thesis — requires only title, ticker, direction
     thesis_recent = Thesis.objects.create(title="T1", ticker="AAPL", direction="bullish")
     thesis_old = Thesis.objects.create(title="T2", ticker="AAPL", direction="bearish")
     Thesis.objects.filter(pk=thesis_old.pk).update(created_at=_NOW() - timedelta(days=3650))
 
-    # Run with windows of 0 — if the task touched these models, everything would vanish
     prune_retention()
 
-    # Every single protected row must still exist
     assert Snapshot.objects.filter(pk=snap_recent.pk).exists(), "recent Snapshot deleted"
     assert Snapshot.objects.filter(pk=snap_old.pk).exists(), "old Snapshot deleted"
     assert Message.objects.filter(pk=msg_recent.pk).exists(), "recent Message deleted"
     assert Message.objects.filter(pk=msg_old.pk).exists(), "old Message deleted"
     assert Thesis.objects.filter(pk=thesis_recent.pk).exists(), "recent Thesis deleted"
     assert Thesis.objects.filter(pk=thesis_old.pk).exists(), "old Thesis deleted"
-
-
-# ---------------------------------------------------------------------------
-# 4. never-raises
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.django_db
@@ -291,7 +256,6 @@ def test_never_raises_when_one_model_explodes(settings, monkeypatch):
     # Create an old notification that WILL be pruned (proves others still run)
     old_notification = _notification(days_ago=91)
 
-    # Blow up OHLCBar.objects.filter
     original_filter = OHLCBar.objects.filter
 
     def _exploding_filter(*args, **kwargs):
@@ -301,22 +265,14 @@ def test_never_raises_when_one_model_explodes(settings, monkeypatch):
 
     monkeypatch.setattr(OHLCBar.objects, "filter", _exploding_filter)
 
-    # Must NOT raise
     result = prune_retention()
 
-    # Failed label == -1
     assert result["ohlc"] == -1, "exploding model must produce label == -1"
 
-    # Other models still ran — notification was pruned
     assert not Notification.objects.filter(pk=old_notification.pk).exists(), (
         "other models must still run when one fails"
     )
     assert result["notifications"] >= 1
-
-
-# ---------------------------------------------------------------------------
-# 5. idempotent
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.django_db
@@ -345,11 +301,6 @@ def test_idempotent_second_run_deletes_zero(settings):
     assert second["errors"] == 0
 
 
-# ---------------------------------------------------------------------------
-# 6. beat-registration
-# ---------------------------------------------------------------------------
-
-
 def test_beat_registration():
     """'prune-retention' must exist in the beat schedule with the correct task name."""
     from config.celery import app
@@ -359,11 +310,6 @@ def test_beat_registration():
         "'prune-retention' not found in beat_schedule — beat task won't fire"
     )
     assert schedule["prune-retention"]["task"] == "core.prune_retention"
-
-
-# ---------------------------------------------------------------------------
-# 7. non-positive window is a no-op (NOT a delete-everything)
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.django_db

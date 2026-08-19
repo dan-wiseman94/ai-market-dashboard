@@ -78,7 +78,6 @@ export const Empty: Story = {
   },
   play: async ({ canvas }) => {
     await expect(await canvas.findByText(/share of runs with a real price bar/i)).toBeVisible();
-    // Header is present, but no model rows rendered.
     await expect(canvas.getByText("Model")).toBeVisible();
     await expect(canvas.queryByText("claude-opus-4-8")).toBeNull();
   },

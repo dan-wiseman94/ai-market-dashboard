@@ -43,11 +43,6 @@ def _to_float(v: object) -> float | None:
         return None
 
 
-# ---------------------------------------------------------------------------
-# Top-level entry point
-# ---------------------------------------------------------------------------
-
-
 def chain_analytics(
     contracts: list[dict],
     *,
@@ -90,11 +85,6 @@ def chain_analytics(
     }
 
 
-# ---------------------------------------------------------------------------
-# P/C ratios
-# ---------------------------------------------------------------------------
-
-
 def _put_call(contracts: list[dict]) -> dict:
     call_vol = put_vol = 0.0
     call_oi = put_oi = 0.0
@@ -117,11 +107,6 @@ def _put_call(contracts: list[dict]) -> dict:
     }
 
 
-# ---------------------------------------------------------------------------
-# Max-pain strike
-# ---------------------------------------------------------------------------
-
-
 def _max_pain(contracts: list[dict]) -> float | None:
     """Max-pain strike for the nearest expiry.
 
@@ -130,7 +115,6 @@ def _max_pain(contracts: list[dict]) -> float | None:
         sum_calls(max(K - strike_c, 0) * OI_c) + sum_puts(max(strike_p - K, 0) * OI_p)
     Returns the K that minimises this sum.
     """
-    # Gather nearest expiry
     expiries = sorted({e for c in contracts if (e := c.get("expiry"))})
     if not expiries:
         return None
@@ -140,7 +124,6 @@ def _max_pain(contracts: list[dict]) -> float | None:
     if not near:
         return None
 
-    # Collect unique valid strikes
     strikes: list[float] = []
     for c in near:
         s = _to_float(c.get("strike"))
@@ -171,11 +154,6 @@ def _max_pain(contracts: list[dict]) -> float | None:
             min_strike = k
 
     return min_strike
-
-
-# ---------------------------------------------------------------------------
-# 25-delta IV skew
-# ---------------------------------------------------------------------------
 
 
 def _iv_skew_25d(contracts: list[dict]) -> float | None:
@@ -215,11 +193,6 @@ def _iv_skew_25d(contracts: list[dict]) -> float | None:
     if call_iv is None or put_iv is None:
         return None
     return round(put_iv - call_iv, 4)
-
-
-# ---------------------------------------------------------------------------
-# ATM term structure
-# ---------------------------------------------------------------------------
 
 
 def _term_structure(contracts: list[dict], *, spot: float | None) -> list[dict]:
@@ -267,11 +240,6 @@ def _atm_iv_for_expiry(contracts: list[dict], *, spot: float | None) -> float | 
             best_dist = dist
             best_iv = iv
     return best_iv
-
-
-# ---------------------------------------------------------------------------
-# Dealer GEX (gamma exposure)
-# ---------------------------------------------------------------------------
 
 
 def _gex(contracts: list[dict], *, spot: float | None) -> dict:
@@ -334,7 +302,6 @@ def _find_flip_strike(strike_gex: dict[float, float]) -> float | None:
     if not strikes:
         return None
 
-    # Walk ascending; find first pair where sign changes from positive to negative.
     for i in range(len(strikes) - 1):
         k0, k1 = strikes[i], strikes[i + 1]
         g0, g1 = strike_gex[k0], strike_gex[k1]

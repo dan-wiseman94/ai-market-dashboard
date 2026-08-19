@@ -19,7 +19,6 @@ def test_compare_totals_aggregation() -> None:
         content={"text": "hi"},
         status="done",
     )
-    # three branches
     costs = [Decimal("0.0100"), Decimal("0.0080"), Decimal("0.0068")]
     durations = [1200, 1800, 1500]
     for cost, dur in zip(costs, durations, strict=True):

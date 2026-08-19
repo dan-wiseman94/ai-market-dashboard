@@ -41,9 +41,6 @@ async def _ok_secondary(self, req):
     yield DoneEvent()
 
 
-# --------------------------------------------------------------------------- #
-# _failover_target unit
-# --------------------------------------------------------------------------- #
 @pytest.mark.django_db
 def test_failover_target_none_when_disabled():
     ProviderConfig.objects.create(provider="openai", api_key="sk", default_model="gpt-5")
@@ -86,9 +83,6 @@ def test_failover_target_none_when_secondary_disabled():
         assert _failover_target("claude") is None
 
 
-# --------------------------------------------------------------------------- #
-# Integration
-# --------------------------------------------------------------------------- #
 @pytest.mark.django_db
 def test_failover_retries_secondary_when_primary_fails_before_token():
     ProviderConfig.objects.create(provider="claude", api_key="sk-ant")

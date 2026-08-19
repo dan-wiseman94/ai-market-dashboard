@@ -8,10 +8,6 @@ from __future__ import annotations
 
 from apps.snapshots.serializer import _render_breadth
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
 
 def _base_payload(**extra) -> dict:
     """Minimal valid breadth payload (original fields only, no RS/rotation)."""
@@ -43,11 +39,6 @@ def _rs_payload(*, int_keys: bool = True) -> dict:
     return {"ticker": "NVDA", "benchmark": "$SPX", "windows": windows}
 
 
-# ---------------------------------------------------------------------------
-# Tolerates payloads missing RS/rotation keys
-# ---------------------------------------------------------------------------
-
-
 def test_render_breadth_without_rs_unchanged():
     """Payload with no relative_strength or sector_rotation renders the base breadth block."""
     payload = _base_payload()
@@ -75,11 +66,6 @@ def test_render_breadth_empty_rotation_no_rotation_line():
     assert "Sector rotation" not in result
 
 
-# ---------------------------------------------------------------------------
-# RS line — integer window keys (in-memory, no JSON round-trip)
-# ---------------------------------------------------------------------------
-
-
 def test_rs_line_rendered_with_int_keys():
     """RS line produced when relative_strength present with int keys.
 
@@ -99,11 +85,6 @@ def test_rs_line_omits_windows_with_none_rs():
     payload = _base_payload(relative_strength=_rs_payload(int_keys=True))
     result = _render_breadth(payload)
     assert "20d" not in result
-
-
-# ---------------------------------------------------------------------------
-# RS line — string window keys (JSON round-trip simulation)
-# ---------------------------------------------------------------------------
 
 
 def test_rs_line_rendered_with_str_keys():
@@ -129,11 +110,6 @@ def test_rs_line_skipped_when_all_rs_none():
     payload = _base_payload(relative_strength=rs)
     result = _render_breadth(payload)
     assert "Relative strength" not in result
-
-
-# ---------------------------------------------------------------------------
-# Sector rotation line
-# ---------------------------------------------------------------------------
 
 
 def test_rotation_line_leader_and_laggard():
@@ -172,11 +148,6 @@ def test_rotation_negative_returns_formatted_correctly():
     # leader is XLE (higher rs -14.61), laggard is XLK (lower rs -19.11)
     assert "leader XLE -3.50%" in result
     assert "laggard XLK -8.00%" in result
-
-
-# ---------------------------------------------------------------------------
-# Both RS and rotation present together
-# ---------------------------------------------------------------------------
 
 
 def test_rs_and_rotation_both_rendered():

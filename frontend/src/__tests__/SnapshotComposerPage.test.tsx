@@ -6,8 +6,6 @@ import SnapshotComposerPage from "@/pages/SnapshotComposerPage";
 import { ApiError } from "@/api/client";
 import type { AgentPreset } from "@/api/presets";
 
-// ---- Module-level mocks ----
-
 const mockCreateSnap = vi.fn();
 const mockCreateThread = vi.fn();
 const mockWaitForReady = vi.fn();
@@ -64,8 +62,6 @@ vi.mock("@/hooks/useAgentPresets", () => ({
 import { useAgentPresets } from "@/hooks/useAgentPresets";
 const mockUseAgentPresets = vi.mocked(useAgentPresets);
 
-// ---- Helpers ----
-
 function renderComposer(navigatePath?: { captured: string }) {
   const routes = navigatePath
     ? [
@@ -90,8 +86,6 @@ function renderComposer(navigatePath?: { captured: string }) {
   });
 }
 
-// ---- Tests ----
-
 describe("SnapshotComposerPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -104,7 +98,6 @@ describe("SnapshotComposerPage", () => {
 
   it("renders profile select with options from hook data", () => {
     renderComposer();
-    // Profile select is the first combobox; its placeholder says "Select profile…"
     expect(screen.getByRole("option", { name: "Select profile…" })).toBeInTheDocument();
     expect(screen.getByRole("option", { name: "Day Trader" })).toBeInTheDocument();
     expect(screen.getByRole("option", { name: "Swing Trader" })).toBeInTheDocument();
@@ -119,7 +112,6 @@ describe("SnapshotComposerPage", () => {
 
   it("auto-selects the first profile on mount", async () => {
     renderComposer();
-    // First combobox is the profile select
     const [profileSelect] = screen.getAllByRole("combobox");
     await waitFor(() => {
       expect((profileSelect as HTMLSelectElement).value).toBe("1");
@@ -128,7 +120,6 @@ describe("SnapshotComposerPage", () => {
 
   it("auto-selects the first watchlist on mount", async () => {
     renderComposer();
-    // Second combobox is the watchlist select
     const selects = screen.getAllByRole("combobox");
     const watchlistSelect = selects[1];
     await waitFor(() => {
@@ -154,10 +145,8 @@ describe("SnapshotComposerPage", () => {
       expect(quotesCheckbox).toBeChecked();
     });
     const ohlcCheckbox = screen.getByRole("checkbox", { name: /ohlc/i });
-    // Toggle OHLC off
     await user.click(ohlcCheckbox);
     expect(ohlcCheckbox).not.toBeChecked();
-    // Toggle OHLC back on
     await user.click(ohlcCheckbox);
     expect(ohlcCheckbox).toBeChecked();
   });
@@ -180,7 +169,6 @@ describe("SnapshotComposerPage", () => {
   });
 
   it("Capture button is disabled when no profile is selected", async () => {
-    // Override the profiles mock to return empty
     vi.doMock("@/hooks/useProfiles", () => ({
       useProfiles: () => ({ data: [] }),
     }));
@@ -207,17 +195,14 @@ describe("SnapshotComposerPage", () => {
     const nav = { captured: "" };
     renderComposer(nav);
 
-    // Wait for auto-select (profile is first combobox)
     await waitFor(() => {
       const [profileSelect] = screen.getAllByRole("combobox");
       expect((profileSelect as HTMLSelectElement).value).toBe("1");
     });
 
-    // Type objective
     const objective = screen.getByPlaceholderText(/what do you want/i);
     await user.type(objective, "Morning check");
 
-    // Submit
     const btn = screen.getByTestId("capture-btn");
     await user.click(btn);
 
@@ -286,13 +271,11 @@ describe("SnapshotComposerPage", () => {
     const nav = { captured: "" };
     renderComposer(nav);
 
-    // Wait for the watchlist (Tech → AAPL, GOOGL) to auto-select.
     await waitFor(() => {
       const selects = screen.getAllByRole("combobox");
       expect((selects[1] as HTMLSelectElement).value).toBe("10");
     });
 
-    // Add an ad-hoc ticker that isn't in the watchlist.
     await user.type(screen.getByLabelText("Add tickers"), "tsla{Enter}");
 
     await user.click(screen.getByTestId("capture-btn"));
@@ -327,11 +310,9 @@ describe("SnapshotComposerPage", () => {
 
     await user.click(screen.getByTestId("capture-btn"));
 
-    // The composer must wait on capture; no thread is created while pending.
     await waitFor(() => expect(mockWaitForReady).toHaveBeenCalledWith(100));
     expect(mockCreateThread).not.toHaveBeenCalled();
 
-    // Once capture finishes, the thread is pinned to the now-ready snapshot.
     resolveReady({ id: 100, status: "ready" });
     await waitFor(() =>
       expect(mockCreateThread).toHaveBeenCalledWith(
@@ -371,7 +352,6 @@ describe("SnapshotComposerPage", () => {
     expect(await screen.findByLabelText("drop staged image 7")).toBeInTheDocument();
     expect(screen.getByLabelText("drop staged image 8")).toBeInTheDocument();
 
-    // Drop image 7
     await user.click(screen.getByLabelText("drop staged image 7"));
 
     await waitFor(() => {
@@ -379,7 +359,6 @@ describe("SnapshotComposerPage", () => {
     });
     expect(screen.getByLabelText("drop staged image 8")).toBeInTheDocument();
 
-    // localStorage should reflect removal
     expect(JSON.parse(localStorage.getItem("staged_image_ids") ?? "[]")).toEqual([8]);
   });
 
@@ -409,8 +388,6 @@ describe("SnapshotComposerPage", () => {
   });
 });
 
-// ---- Preset dropdown tests ----
-
 const PRESET_A: AgentPreset = {
   id: 10,
   name: "Morning Scan",
@@ -428,7 +405,6 @@ describe("SnapshotComposerPage – preset dropdown", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
-    // Reset to no presets by default
     mockUseAgentPresets.mockReturnValue({ data: [] } as never);
   });
 
@@ -454,7 +430,6 @@ describe("SnapshotComposerPage – preset dropdown", () => {
     mockUseAgentPresets.mockReturnValue({ data: [PRESET_A] } as never);
     renderComposer();
 
-    // Capture which section boxes are checked before applying the preset.
     const positionsBefore = (screen.getByRole("checkbox", { name: /positions/i }) as HTMLInputElement).checked;
 
     // The auto-selected profile (Day Trader, default_includes: ["quotes","ohlc"]) has
@@ -465,7 +440,6 @@ describe("SnapshotComposerPage – preset dropdown", () => {
     const presetSelect = screen.getByLabelText("Apply a preset");
     await user.selectOptions(presetSelect, String(PRESET_A.id));
 
-    // Objective is filled from the preset's template.
     const objectiveTextarea = screen.getByPlaceholderText(/what do you want/i);
     expect(objectiveTextarea).toHaveValue(PRESET_A.objective_template);
 
@@ -473,7 +447,6 @@ describe("SnapshotComposerPage – preset dropdown", () => {
     // behavior: preset apply must NOT touch section boxes).
     expect((screen.getByRole("checkbox", { name: /ohlc/i }) as HTMLInputElement).checked).toBe(true);
 
-    // Section boxes are untouched by the preset.
     expect((screen.getByRole("checkbox", { name: /positions/i }) as HTMLInputElement).checked).toBe(positionsBefore);
   });
 });

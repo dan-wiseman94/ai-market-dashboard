@@ -44,10 +44,8 @@ describe("EventsPage", () => {
     } as unknown as ReturnType<typeof useUpcomingEvents>);
 
     const { container } = renderWithProviders(<EventsPage />);
-    // SkeletonRows renders animated placeholder divs; the main page content should not appear
     expect(screen.queryByText("Upcoming earnings")).not.toBeInTheDocument();
     expect(screen.queryByText("Macro calendar")).not.toBeInTheDocument();
-    // There should be some skeleton content in the container
     expect(container.firstChild).not.toBeNull();
   });
 
@@ -104,9 +102,7 @@ describe("EventsPage", () => {
 
     expect(screen.getByText(/AAPL earnings \(AMC\)/)).toBeInTheDocument();
     expect(screen.getByText(/MSFT earnings \(BMO\)/)).toBeInTheDocument();
-    // EPS estimate appears for AAPL
     expect(screen.getByText(/est EPS 1.55/)).toBeInTheDocument();
-    // No-macro empty state still shows
     expect(screen.getByText("No macro events")).toBeInTheDocument();
   });
 
@@ -136,7 +132,6 @@ describe("EventsPage", () => {
 
     expect(screen.getByText("CPI Report")).toBeInTheDocument();
     expect(screen.getByText(/in 7d/)).toBeInTheDocument();
-    // No-earnings empty state still shows
     expect(screen.getByText("No upcoming earnings")).toBeInTheDocument();
   });
 

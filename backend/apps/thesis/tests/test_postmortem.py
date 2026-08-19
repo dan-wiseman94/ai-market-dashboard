@@ -31,10 +31,6 @@ from apps.thesis.services.postmortem import (
 )
 from apps.threads.models import Message
 
-# ---------------------------------------------------------------------------
-# Fixtures
-# ---------------------------------------------------------------------------
-
 
 @pytest.fixture
 def api():
@@ -86,11 +82,6 @@ def _seed_bars(ticker: str, start, *, start_close: float, end_close: float, end)
     )
 
 
-# ---------------------------------------------------------------------------
-# objective_verdict truth table
-# ---------------------------------------------------------------------------
-
-
 def _thesis(direction: str) -> Thesis:
     return Thesis(title="x", ticker="X", direction=direction)
 
@@ -98,25 +89,21 @@ def _thesis(direction: str) -> Thesis:
 @pytest.mark.parametrize(
     ("direction", "fwd", "expected"),
     [
-        # None => inconclusive regardless of direction
         ("bullish", None, "inconclusive"),
         ("bearish", None, "inconclusive"),
         ("neutral", None, "inconclusive"),
-        # bullish
         ("bullish", 5.0, "correct"),  # strong up
         ("bullish", -5.0, "incorrect"),  # strong down
         ("bullish", 0.5, "mixed"),  # within deadzone
         ("bullish", DEADZONE, "correct"),  # boundary inclusive
         ("bullish", -DEADZONE, "incorrect"),  # boundary inclusive
         ("bullish", 0.999, "mixed"),  # just inside deadzone
-        # bearish
         ("bearish", -5.0, "correct"),  # strong down
         ("bearish", 5.0, "incorrect"),  # strong up
         ("bearish", -0.5, "mixed"),  # within deadzone
         ("bearish", -DEADZONE, "correct"),  # boundary inclusive
         ("bearish", DEADZONE, "incorrect"),  # boundary inclusive
         ("bearish", 0.5, "mixed"),
-        # neutral
         ("neutral", 0.0, "correct"),  # flat => correct
         ("neutral", 0.5, "correct"),  # inside deadzone
         ("neutral", DEADZONE, "correct"),  # boundary inclusive
@@ -128,11 +115,6 @@ def _thesis(direction: str) -> Thesis:
 )
 def test_objective_verdict_truth_table(direction, fwd, expected):
     assert objective_verdict(_thesis(direction), fwd) == expected
-
-
-# ---------------------------------------------------------------------------
-# schedule_postmortems
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.django_db
@@ -149,7 +131,7 @@ def test_schedule_postmortems_creates_one_per_horizon(thesis):
 @pytest.mark.django_db
 def test_schedule_postmortems_idempotent(thesis):
     schedule_postmortems(thesis)
-    schedule_postmortems(thesis)  # second call must not duplicate
+    schedule_postmortems(thesis)
     assert PostMortem.objects.filter(thesis=thesis).count() == 3
 
 
@@ -160,11 +142,6 @@ def test_schedule_postmortems_respects_settings(thesis):
     assert sorted(
         PostMortem.objects.filter(thesis=thesis).values_list("horizon_days", flat=True)
     ) == [1, 14]
-
-
-# ---------------------------------------------------------------------------
-# run_due_postmortems beat task — only scheduled+due get dispatched
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.django_db
@@ -192,11 +169,6 @@ def test_run_due_postmortems_dispatches_only_due_scheduled(thesis):
     assert already_done.id not in dispatched_ids
 
 
-# ---------------------------------------------------------------------------
-# run_postmortem — degradation contract (no key / non-claude)
-# ---------------------------------------------------------------------------
-
-
 @pytest.mark.django_db
 def test_run_postmortem_no_provider_records_objective_and_does_not_raise(thesis):
     """No ProviderConfig at all: objective verdict + return recorded, report={}."""
@@ -215,7 +187,7 @@ def test_run_postmortem_no_provider_records_objective_and_does_not_raise(thesis)
         end=pm.due_at,
     )
 
-    run_postmortem(pm.id)  # must not raise
+    run_postmortem(pm.id)
 
     pm.refresh_from_db()
     assert pm.status == "done"
@@ -307,18 +279,13 @@ def test_run_postmortem_provider_error_does_not_raise(thesis):
     _seed_bars("AAPL", thesis.opened_at, start_close=100.0, end_close=120.0, end=pm.due_at)
 
     with patch.object(pm_service, "run_structured", side_effect=RuntimeError("boom")):
-        run_postmortem(pm.id)  # must not raise
+        run_postmortem(pm.id)
 
     pm.refresh_from_db()
     assert pm.status == "done"
     assert pm.verdict == "correct"
     assert pm.report == {}
     assert pm.message is None
-
-
-# ---------------------------------------------------------------------------
-# run_postmortem — AI happy path (run_structured mocked, NOT MOCK_EXTERNAL)
-# ---------------------------------------------------------------------------
 
 
 @pytest.fixture
@@ -354,13 +321,11 @@ def test_run_postmortem_ai_path_populates_report_and_posts_message(thesis, fake_
     assert pm.status == "done"
     assert pm.forward_return_pct == pytest.approx(15.0)
     assert pm.verdict == "correct"
-    # Report populated from the mocked structured output.
     assert pm.report["summary"] == fake_report.summary
     assert pm.report["would_repeat"] is True
     # The verdict is deterministic (objective_verdict), not an AI-emitted field.
     assert "narrative_verdict" not in pm.report
 
-    # An assistant Message was posted into the per-thesis review thread.
     assert pm.message is not None
     msg = pm.message
     assert msg.role == "assistant"
@@ -372,7 +337,6 @@ def test_run_postmortem_ai_path_populates_report_and_posts_message(thesis, fake_
     assert "forward_return_pct" not in msg.content
     assert "horizon_days" not in msg.content
 
-    # The review thread was linked back onto the thesis.
     thesis.refresh_from_db()
     assert thesis.review_thread_id == msg.thread_id
     assert thesis.review_thread.kind == "consult"
@@ -402,11 +366,6 @@ def test_run_postmortem_ai_path_uses_existing_review_thread(thesis, fake_report)
 
     pm.refresh_from_db()
     assert pm.message.thread_id == existing.id
-
-
-# ---------------------------------------------------------------------------
-# create() auto-schedules post-mortems
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.django_db
@@ -451,11 +410,6 @@ def test_create_thesis_response_nests_postmortems(api, profile):
     assert pm["status"] == "scheduled"
     assert pm["verdict"] == ""
     assert pm["forward_return_pct"] is None
-
-
-# ---------------------------------------------------------------------------
-# run-now endpoint
-# ---------------------------------------------------------------------------
 
 
 @override_settings(CELERY_TASK_ALWAYS_EAGER=True, CELERY_TASK_EAGER_PROPAGATES=True)
@@ -505,11 +459,6 @@ def test_run_now_404_for_unknown_pk(api):
     assert resp.status_code == 404
 
 
-# ---------------------------------------------------------------------------
-# Idempotency — the atomic status claim makes a second run a no-op
-# ---------------------------------------------------------------------------
-
-
 @pytest.mark.django_db
 def test_run_postmortem_is_idempotent_when_already_done(thesis, fake_report):
     """Calling run_postmortem twice exercises the AI once and posts ONE message.
@@ -531,16 +480,14 @@ def test_run_postmortem_is_idempotent_when_already_done(thesis, fake_report):
     _seed_bars("AAPL", thesis.opened_at, start_close=100.0, end_close=115.0, end=pm.due_at)
 
     with patch.object(pm_service, "run_structured", return_value=fake_report) as mock_run:
-        run_postmortem(pm.id)  # first run: claims, runs AI, posts message
-        run_postmortem(pm.id)  # second run: status is "done" → no-op
+        run_postmortem(pm.id)
+        run_postmortem(pm.id)
 
-    # The AI path ran exactly once.
     mock_run.assert_called_once()
 
     pm.refresh_from_db()
     assert pm.status == "done"
 
-    # Exactly ONE assistant message exists in the review thread — not two.
     thesis.refresh_from_db()
     msgs = Message.objects.filter(thread=thesis.review_thread, role="assistant")
     assert msgs.count() == 1
@@ -568,15 +515,10 @@ def test_run_postmortem_noop_when_already_running(thesis, fake_report):
     # Claim filter (status="scheduled") did not match → AI never ran.
     mock_run.assert_not_called()
     pm.refresh_from_db()
-    assert pm.status == "running"  # untouched
+    assert pm.status == "running"
     assert pm.verdict == ""
     assert pm.report == {}
     assert Message.objects.filter(thread=thesis.review_thread).count() == 0
-
-
-# ---------------------------------------------------------------------------
-# Null-profile provider fallback — resolve claude via ProviderConfig
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.django_db
@@ -603,7 +545,7 @@ def test_run_postmortem_null_profile_falls_back_to_provider_config(db, fake_repo
     _seed_bars("AAPL", thesis.opened_at, start_close=100.0, end_close=112.0, end=pm.due_at)
 
     with patch.object(pm_service, "run_structured", return_value=fake_report) as mock_run:
-        run_postmortem(pm.id)  # must not crash with profile=None
+        run_postmortem(pm.id)
 
     mock_run.assert_called_once()
     pm.refresh_from_db()
@@ -612,11 +554,6 @@ def test_run_postmortem_null_profile_falls_back_to_provider_config(db, fake_repo
     # Report populated via the ProviderConfig fallback (no profile to read from).
     assert pm.report["summary"] == fake_report.summary
     assert pm.message is not None
-
-
-# ---------------------------------------------------------------------------
-# _build_prompt / notify None formatting — "unavailable", not "None%"
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.django_db
@@ -632,7 +569,6 @@ def test_build_prompt_renders_unavailable_for_none_forward_return(thesis):
     assert "unavailable" in prompt
     assert "None%" not in prompt
 
-    # A real value still renders as a percentage.
     prompt_with_value = _build_prompt(thesis, pm, 12.5, {"return_pct": 12.5})
     assert "12.5%" in prompt_with_value
 
@@ -653,11 +589,6 @@ def test_run_postmortem_notify_body_says_unavailable_when_no_bars(thesis):
     body = mock_notify.call_args.kwargs["body"]
     assert "unavailable" in body
     assert "None%" not in body
-
-
-# ---------------------------------------------------------------------------
-# run-now replay — POST twice, both 202, PM ends "done" (not stuck)
-# ---------------------------------------------------------------------------
 
 
 @override_settings(CELERY_TASK_ALWAYS_EAGER=True, CELERY_TASK_EAGER_PROPAGATES=True)
@@ -698,15 +629,14 @@ def test_run_now_replay_twice_ends_done(api, thesis):
     resp1 = api.post(f"/api/theses/{thesis.id}/run-postmortem/", format="json")
     assert resp1.status_code == 202
     pm1 = PostMortem.objects.get(id=resp1.json()["postmortem_id"])
-    assert pm1.horizon_days == 7  # earliest due chosen first
-    assert pm1.status == "done"  # not stuck in "running"
+    assert pm1.horizon_days == 7
+    assert pm1.status == "done"
     assert pm1.completed_at is not None
 
     resp2 = api.post(f"/api/theses/{thesis.id}/run-postmortem/", format="json")
     assert resp2.status_code == 202
     pm2 = PostMortem.objects.get(id=resp2.json()["postmortem_id"])
-    assert pm2.status == "done"  # second click also completes cleanly
+    assert pm2.status == "done"
     assert pm2.completed_at is not None
 
-    # No PM left stuck in the "running" claim state.
     assert not PostMortem.objects.filter(thesis=thesis, status="running").exists()

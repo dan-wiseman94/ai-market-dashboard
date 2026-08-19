@@ -1,4 +1,3 @@
-# backend/apps/costs/tests/test_caps.py
 from __future__ import annotations
 
 from decimal import Decimal

@@ -195,7 +195,7 @@ describe("WebSocketProvider", () => {
     expect(sock!.readyState).toBe(0); // CONNECTING — never opened
     const closeSpy = vi.spyOn(sock!, "close");
 
-    act(() => unmount()); // teardown while the handshake is still in flight
+    act(() => unmount());
 
     // Must NOT close mid-handshake (that is what logs the browser warning)...
     expect(closeSpy).not.toHaveBeenCalled();
@@ -225,7 +225,6 @@ describe("WebSocketProvider", () => {
       const all = fake.sockets.filter((s) => s.url.endsWith("/ws/threads/1/"));
       expect(all.length).toBe(2);
 
-      // The replacement socket delivers to the still-registered handler.
       const second = all[all.length - 1];
       act(() => {
         second.emitOpen();
@@ -249,7 +248,6 @@ describe("WebSocketProvider", () => {
       expect(fake.sockets.filter((s) => s.url.endsWith("/ws/threads/5/")).length).toBe(1);
       act(() => unmount());
       act(() => void vi.runAllTimers());
-      // No replacement socket: a deliberate teardown must not trigger a reconnect.
       expect(fake.sockets.filter((s) => s.url.endsWith("/ws/threads/5/")).length).toBe(1);
     } finally {
       vi.useRealTimers();
@@ -285,12 +283,10 @@ describe("WebSocketProvider", () => {
         first!.emitMessage({ type: "tok", text: "a", seq: 3 });
         first!.emitMessage({ type: "tok", text: "b", seq: 7 });
       });
-      // Unexpected drop -> backoff -> reconnect.
       act(() => first!.emitClose(1006));
       act(() => void vi.runOnlyPendingTimers());
       const all = fake.sockets.filter((s) => s.url.includes("/ws/threads/1/"));
       expect(all.length).toBe(2);
-      // The replacement asks the server to replay everything after the last seq.
       expect(all[all.length - 1].url).toMatch(/\/ws\/threads\/1\/\?since=7$/);
     } finally {
       vi.useRealTimers();
@@ -307,7 +303,7 @@ describe("WebSocketProvider", () => {
       );
       const first = fake.find("/ws/notifications/");
       act(() => first!.emitOpen());
-      act(() => first!.emitMessage({ type: "notification.event", payload: {} })); // no seq
+      act(() => first!.emitMessage({ type: "notification.event", payload: {} }));
       act(() => first!.emitClose(1006));
       act(() => void vi.runOnlyPendingTimers());
       const all = fake.sockets.filter((s) => s.url.includes("/ws/notifications/"));
@@ -332,7 +328,7 @@ describe("WebSocketProvider", () => {
       // duplicate must be dropped (text_delta handlers append non-idempotently).
       sock!.emitMessage({ event: "text_delta", text: "a", seq: 1 });
       sock!.emitMessage({ event: "text_delta", text: "b", seq: 2 });
-      sock!.emitMessage({ event: "text_delta", text: "a", seq: 1 }); // stale
+      sock!.emitMessage({ event: "text_delta", text: "a", seq: 1 });
     });
     expect(handler.mock.calls.map((c) => c[0])).toEqual([
       { event: "text_delta", text: "a", seq: 1 },
@@ -423,8 +419,8 @@ describe("WebSocketProvider", () => {
     act(() => sock!.emitOpen());
     act(() => {
       sock!.emitMessage({ event: "text_delta", text: "a", seq: 40 });
-      sock!.emitMessage({ event: "text_delta", text: "a", seq: 40 }); // duplicate
-      sock!.emitMessage({ event: "text_delta", text: "b", seq: 39 }); // stale
+      sock!.emitMessage({ event: "text_delta", text: "a", seq: 40 });
+      sock!.emitMessage({ event: "text_delta", text: "b", seq: 39 });
     });
     expect(handler.mock.calls.map((c) => c[0])).toEqual([
       { event: "text_delta", text: "a", seq: 40 },

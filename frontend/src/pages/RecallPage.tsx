@@ -83,7 +83,6 @@ export default function RecallPage() {
     setSubmitted(query.trim());
   }
 
-  // Group results by kind
   const grouped: Record<string, RecallHit[]> = {};
   for (const hit of results) {
     (grouped[hit.kind] ??= []).push(hit);
@@ -101,7 +100,6 @@ export default function RecallPage() {
         </h1>
       </header>
 
-      {/* Search form */}
       <form onSubmit={handleSubmit} className="mb-6">
         <div className="flex flex-wrap gap-3 items-end">
           <label className="flex flex-col gap-1 text-xs text-ink-400 flex-1 min-w-64">
@@ -149,7 +147,6 @@ export default function RecallPage() {
         </div>
       </form>
 
-      {/* Mode badge + result count */}
       {submitted && (
         <div className="flex items-center gap-3 mb-4">
           {mode && <ModeBadge mode={mode} />}
@@ -159,7 +156,6 @@ export default function RecallPage() {
         </div>
       )}
 
-      {/* Results */}
       {isLoading ? (
         <SkeletonRows rows={5} />
       ) : submitted && results.length === 0 ? (

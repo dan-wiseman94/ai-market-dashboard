@@ -80,7 +80,7 @@ def test_reconcile_deletes_orphaned_recall_docs():
     deleted = reconcile()
 
     assert deleted == 2
-    assert RecallDocument.objects.filter(pk=live.pk).exists()  # live source → kept
+    assert RecallDocument.objects.filter(pk=live.pk).exists()
     assert not RecallDocument.objects.filter(pk=orphan_thesis.pk).exists()
     assert not RecallDocument.objects.filter(pk=orphan_message.pk).exists()
 

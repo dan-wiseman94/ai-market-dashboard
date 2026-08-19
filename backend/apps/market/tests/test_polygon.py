@@ -10,10 +10,6 @@ import pytest
 from apps.market.models import OHLCBar
 from apps.market.services import polygon as polygon_mod
 
-# ---------------------------------------------------------------------------
-# Raw Polygon API response fixtures
-# ---------------------------------------------------------------------------
-
 _T1_MS = 1_700_000_000_000  # 2023-11-14 22:13:20 UTC
 _T2_MS = _T1_MS + 86_400_000  # + 1 day
 
@@ -35,11 +31,6 @@ _RAW_PREV_BODY = {
 }
 
 _RAW_EMPTY_BODY = {"status": "OK", "resultsCount": 0}
-
-
-# ---------------------------------------------------------------------------
-# 1. Normalized daily bars — correct field mapping + value types
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.django_db
@@ -69,11 +60,6 @@ def test_fetch_daily_bars_returns_normalized_list():
     assert b1["ts"] == datetime.fromtimestamp(_T2_MS / 1000, tz=UTC).isoformat()
 
 
-# ---------------------------------------------------------------------------
-# 2. Normalized + persisted — OHLCBar rows are created, idempotent on 2nd call
-# ---------------------------------------------------------------------------
-
-
 @pytest.mark.django_db
 def test_fetch_daily_bars_upserts_ohlcbar_rows_idempotent():
     with (
@@ -85,7 +71,7 @@ def test_fetch_daily_bars_upserts_ohlcbar_rows_idempotent():
         ),
     ):
         polygon_mod.fetch_daily_bars("TSLA", days=120)
-        polygon_mod.fetch_daily_bars("TSLA", days=120)  # idempotent second call
+        polygon_mod.fetch_daily_bars("TSLA", days=120)
 
     assert OHLCBar.objects.filter(ticker="TSLA", timeframe="1d").count() == 2
 
@@ -97,11 +83,6 @@ def test_fetch_daily_bars_upserts_ohlcbar_rows_idempotent():
     assert float(bar.open) == 150.0
     assert float(bar.close) == 153.0
     assert bar.volume == 80_000_000
-
-
-# ---------------------------------------------------------------------------
-# 3. prev_close — correct field mapping
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.django_db
@@ -125,11 +106,6 @@ def test_fetch_prev_close_returns_dict():
     assert result["ts"] == datetime.fromtimestamp(_T2_MS / 1000, tz=UTC).isoformat()
 
 
-# ---------------------------------------------------------------------------
-# 4. prev_close — missing results → None
-# ---------------------------------------------------------------------------
-
-
 @pytest.mark.django_db
 def test_fetch_prev_close_returns_none_when_no_results():
     with (
@@ -143,11 +119,6 @@ def test_fetch_prev_close_returns_none_when_no_results():
         result = polygon_mod.fetch_prev_close("UNKNOWN")
 
     assert result is None
-
-
-# ---------------------------------------------------------------------------
-# 5. Mock mode — canned fixtures, no real API call
-# ---------------------------------------------------------------------------
 
 
 def test_fetch_daily_bars_mock_mode_returns_canned():
@@ -170,11 +141,6 @@ def test_fetch_prev_close_mock_mode_returns_canned():
     assert "ts" in result
 
 
-# ---------------------------------------------------------------------------
-# 6. Missing credential → empty / None (never raises)
-# ---------------------------------------------------------------------------
-
-
 def test_fetch_daily_bars_no_credential_returns_empty():
     with patch("apps.market.services.polygon._api_key", return_value=None):
         result = polygon_mod.fetch_daily_bars("AAPL")
@@ -187,11 +153,6 @@ def test_fetch_prev_close_no_credential_returns_none():
         result = polygon_mod.fetch_prev_close("AAPL")
 
     assert result is None
-
-
-# ---------------------------------------------------------------------------
-# 7. Network failure → empty / None (never raises)
-# ---------------------------------------------------------------------------
 
 
 def test_fetch_daily_bars_never_raises_on_network_failure():
@@ -226,11 +187,6 @@ def test_fetch_prev_close_never_raises_on_network_failure():
         result = polygon_mod.fetch_prev_close("BOOM")
 
     assert result is None
-
-
-# ---------------------------------------------------------------------------
-# 8. daily bars with missing "results" key → empty list (no KeyError)
-# ---------------------------------------------------------------------------
 
 
 @pytest.mark.django_db

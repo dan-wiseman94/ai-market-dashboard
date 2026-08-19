@@ -121,14 +121,12 @@ describe("ProfilesPage", () => {
   it("renders form blank by default with default_includes prefilled", () => {
     renderWithProviders(<ProfilesPage />);
     expect(screen.getByPlaceholderText("Profile name")).toHaveValue("");
-    // quotes, positions, breadth should be checked
     const quotesCheckbox = screen.getByRole("checkbox", { name: /quotes/i });
     const positionsCheckbox = screen.getByRole("checkbox", { name: /positions/i });
     const breadthCheckbox = screen.getByRole("checkbox", { name: /breadth/i });
     expect(quotesCheckbox).toBeChecked();
     expect(positionsCheckbox).toBeChecked();
     expect(breadthCheckbox).toBeChecked();
-    // ohlc should NOT be checked
     const ohlcCheckbox = screen.getByRole("checkbox", { name: /ohlc/i });
     expect(ohlcCheckbox).not.toBeChecked();
   });
@@ -160,7 +158,6 @@ describe("ProfilesPage", () => {
 
   it("after create succeeds, form resets to BLANK_DRAFT", async () => {
     const user = userEvent.setup();
-    // createMutate immediately invokes onSuccess
     const createMutate = vi.fn().mockImplementation((_body, opts) => opts?.onSuccess?.());
     mockUseCreateProfile.mockReturnValue({ mutate: createMutate, isPending: false } as never);
 
@@ -183,7 +180,6 @@ describe("ProfilesPage", () => {
     await user.click(ohlcCheckbox);
     expect(ohlcCheckbox).toBeChecked();
 
-    // Submit and verify ohlc is in body
     await user.type(screen.getByPlaceholderText("Profile name"), "X");
     fireEvent.click(screen.getByRole("button", { name: /create/i }));
     const [body] = createMutate.mock.calls[0];
@@ -276,11 +272,9 @@ describe("ProfilesPage", () => {
 
     renderWithProviders(<ProfilesPage />);
 
-    // Catalog models render as <option>s in a combobox (dropdown)
     expect(screen.getByRole("option", { name: "Claude Sonnet 4.6" })).toBeInTheDocument();
     expect(screen.getByRole("option", { name: "Claude Opus 4.8" })).toBeInTheDocument();
 
-    // Selecting a different model feeds through to the submitted body
     const modelSelect = screen.getByDisplayValue("Claude Sonnet 4.6");
     await user.selectOptions(modelSelect, "claude-opus-4-8");
     await user.type(screen.getByPlaceholderText("Profile name"), "Deep Diver");
@@ -297,10 +291,8 @@ describe("ProfilesPage", () => {
 
     renderWithProviders(<ProfilesPage />);
 
-    // Default is claude/claude-sonnet-4-6; switch provider to OpenAI
     await user.selectOptions(screen.getByLabelText("Default provider"), "openai");
 
-    // Model dropdown now reflects the OpenAI catalog, not the stale claude model
     expect(screen.getByDisplayValue("GPT-5")).toBeInTheDocument();
 
     await user.type(screen.getByPlaceholderText("Profile name"), "Generalist");
@@ -317,8 +309,6 @@ describe("ProfilesPage", () => {
     expect(screen.getByText("Swing Trader")).toBeInTheDocument();
   });
 });
-
-// ---- Preset management section ----
 
 const PRESET_A: AgentPreset = {
   id: 1,
@@ -377,7 +367,6 @@ describe("ProfilesPage – preset management", () => {
     mockUseCreatePreset.mockReturnValue({ mutate: createMutate, isPending: false } as never);
 
     renderWithProviders(<ProfilesPage />);
-    // Open the preset form first
     await user.click(screen.getByRole("button", { name: /new preset/i }));
     await user.type(screen.getByPlaceholderText("Preset name"), "Earnings Check");
     await user.type(
@@ -399,7 +388,6 @@ describe("ProfilesPage – preset management", () => {
     const user = userEvent.setup();
     renderWithProviders(<ProfilesPage />);
 
-    // Find the edit button in the preset row
     const presetRow = screen.getByTestId("preset-row-Morning Scan");
     const editBtn = presetRow.querySelector("button");
     await user.click(editBtn!);

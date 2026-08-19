@@ -78,12 +78,10 @@ export default function ErrorsPage() {
               key={row.id}
               className="rounded-ledger border border-rule bg-ink-900 px-4 py-3 flex items-start gap-4"
             >
-              {/* Level badge */}
               <span className={levelBadge(row.level)} aria-label={`level: ${row.level}`}>
                 {row.level}
               </span>
 
-              {/* Source + message */}
               <div className="flex-1 min-w-0">
                 <span className="font-mono text-xs text-ink-400 mr-2">
                   {row.source}
@@ -93,7 +91,6 @@ export default function ErrorsPage() {
                 </p>
               </div>
 
-              {/* Time + resolve */}
               <div className="flex flex-col items-end gap-2 shrink-0">
                 <time
                   className="text-xs text-ink-500 font-mono"

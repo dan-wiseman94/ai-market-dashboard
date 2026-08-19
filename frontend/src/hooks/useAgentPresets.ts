@@ -31,5 +31,4 @@ export function useDeletePreset() {
   });
 }
 
-// Re-export type for convenience
 export type { AgentPreset };

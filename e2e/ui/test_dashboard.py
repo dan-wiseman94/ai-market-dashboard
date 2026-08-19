@@ -14,9 +14,7 @@ def test_dashboard_renders_all_cards(page, frontend_base_url, minimal) -> None:
     d = DashboardPage(page, frontend_base_url)
     d.go()
     d.expect_error_boundary_absent()
-    # Hero heading is always rendered.
     expect(d.hero_heading).to_be_visible(timeout=10_000)
-    # Market context and book sections are always present.
     expect(d.market_context_section).to_be_visible()
     expect(d.book_section).to_be_visible()
 
@@ -29,7 +27,6 @@ def test_dashboard_empty_state(page, frontend_base_url, minimal) -> None:
     d.go()
     d.expect_error_boundary_absent()
     expect(d.hero_heading).to_be_visible(timeout=10_000)
-    # No skeleton left mounted after load.
     expect(page.locator("[data-testid^='skeleton-']")).to_have_count(0)
 
 
@@ -39,7 +36,6 @@ def test_dashboard_cost_tile_reflects_airuns(page, frontend_base_url, analytics)
     d = DashboardPage(page, frontend_base_url)
     d.go()
     d.expect_error_boundary_absent()
-    # CostChip is always rendered in the header and shows a $ amount.
     cost_chip = page.get_by_title("Today's AI spend — click to see costs")
     expect(cost_chip).to_be_visible(timeout=10_000)
     expect(cost_chip).to_contain_text("$")

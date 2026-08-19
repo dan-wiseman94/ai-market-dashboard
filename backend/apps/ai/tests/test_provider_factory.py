@@ -18,7 +18,6 @@ def test_get_provider_openai():
     with patch("apps.ai.providers.openai.AsyncOpenAI"):
         p = get_provider("openai", api_key="sk-oai-x")
     assert isinstance(p, OpenAIProvider)
-    # Must not be the Local subclass
     assert not isinstance(p, LocalProvider)
 
 

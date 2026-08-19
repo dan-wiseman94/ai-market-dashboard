@@ -9,8 +9,6 @@ import {
 import { ApiError } from "@/api/client";
 import { mockApi, mockApiError } from "../testUtils";
 
-// ---- Shared fixture ----
-
 const profileFixture = {
   id: 1,
   name: "Swing Trader",
@@ -20,8 +18,6 @@ const profileFixture = {
   default_model: "claude-opus-4-8",
   active: true,
 };
-
-// ---- fetchProfiles ----
 
 describe("api/profiles", () => {
   describe("fetchProfiles", () => {
@@ -50,8 +46,6 @@ describe("api/profiles", () => {
     });
   });
 
-  // ---- fetchProfile ----
-
   describe("fetchProfile", () => {
     it("GETs /api/profiles/:id/ and returns the profile", async () => {
       const api = mockApi({ "GET /api/profiles/1/": profileFixture });
@@ -76,8 +70,6 @@ describe("api/profiles", () => {
       expect(api.calls[0].url).toMatch(/\/api\/profiles\/42\/$/);
     });
   });
-
-  // ---- createProfile ----
 
   describe("createProfile", () => {
     it("POSTs to /api/profiles/ and returns the created profile", async () => {
@@ -121,8 +113,6 @@ describe("api/profiles", () => {
     });
   });
 
-  // ---- updateProfile ----
-
   describe("updateProfile", () => {
     it("PATCHes /api/profiles/:id/ and returns the updated profile", async () => {
       const updated = { ...profileFixture, name: "Renamed" };
@@ -148,8 +138,6 @@ describe("api/profiles", () => {
       expect(api.calls[0].url).toMatch(/\/api\/profiles\/7\/$/);
     });
   });
-
-  // ---- deleteProfile ----
 
   describe("deleteProfile", () => {
     it("DELETEs /api/profiles/:id/ and resolves on 204", async () => {

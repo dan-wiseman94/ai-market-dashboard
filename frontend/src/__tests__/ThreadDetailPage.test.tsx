@@ -11,8 +11,6 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderWithProviders } from "./testUtils";
 import ThreadDetailPage from "@/pages/ThreadDetailPage";
 
-// ---- Module-level mocks (hoisted by Vitest) ----
-
 // WebSocket subscription must be a no-op (ThreadDetailPage + BranchGroup both
 // call useChannel which calls ws.subscribe internally)
 vi.mock("@/realtime/WebSocketProvider", () => ({
@@ -89,8 +87,6 @@ vi.mock("@/hooks/useAiModels", () => ({
 // This import happens after the vi.mock calls above are hoisted.
 import { useThread } from "@/hooks/useThread";
 
-// ---- Fixtures ----
-
 const defaultThread = {
   id: 42,
   title: "Morning consultation",
@@ -139,16 +135,12 @@ const streamingThread = {
   ],
 };
 
-// ---- Render helper ----
-
 function renderThread() {
   return renderWithProviders(<ThreadDetailPage />, {
     routePath: "/threads/:id",
     initialEntries: ["/threads/42"],
   });
 }
-
-// ---- Tests ----
 
 describe("ThreadDetailPage", () => {
   beforeEach(() => {

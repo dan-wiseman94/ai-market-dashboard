@@ -44,7 +44,7 @@ def test_hook_noop_when_ticker_not_covered(ready_snapshot):
 
 
 def test_hook_noop_when_no_primary_ticker(db, profile):
-    snap = Snapshot.objects.create(profile=profile, status="ready")  # primary_ticker is None
+    snap = Snapshot.objects.create(profile=profile, status="ready")
     CoverageNote.objects.create(ticker="SPY", stance="bull", conviction=3)
     with patch(DELAY) as delay:
         maybe_revise_from_snapshot(snap)

@@ -32,7 +32,6 @@ class PositionSerializer(serializers.ModelSerializer):
         default=None,
     )
 
-    # Computed mark-to-market P&L (read-only, injected from service).
     unrealized = serializers.SerializerMethodField()
 
     def get_unrealized(self, obj: Position) -> dict:  # type: ignore[type-arg]
@@ -57,12 +56,9 @@ class PositionSerializer(serializers.ModelSerializer):
             "realized_pnl",
             "status",
             "note",
-            # FK ids — explicit PrimaryKeyRelatedField above
             "thesis_id",
             "profile_id",
-            # computed
             "unrealized",
-            # timestamps
             "created_at",
             "updated_at",
         ]

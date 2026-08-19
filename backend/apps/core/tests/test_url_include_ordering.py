@@ -31,7 +31,7 @@ def _resolved_module(path: str) -> str:
 # that precedes the generic /api/ includes and could be swallowed by a reorder.
 SPECIFIC_ROUTES = [
     ("/api/schema/", "drf_spectacular"),  # the schema endpoint the drift gate depends on
-    ("/api/costs/today/", "apps.ai"),  # include-ordering-sensitive route
+    ("/api/costs/today/", "apps.ai"),
     ("/api/observer/market-status/", "apps.observer"),
     ("/api/analytics/calibration/", "apps.analytics"),
     ("/api/market/quotes/", "apps.market"),

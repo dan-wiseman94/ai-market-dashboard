@@ -63,16 +63,13 @@ describe("ThesesPage", () => {
       expect(screen.getByText("SPY hits 600")).toBeInTheDocument(),
     );
 
-    // Both thesis titles appear
     expect(screen.getByText("AAPL earnings pop")).toBeInTheDocument();
 
-    // Section headings (h2 elements)
     const headings = screen.getAllByRole("heading", { level: 2 });
     const headingTexts = headings.map((h) => h.textContent);
     expect(headingTexts).toContain("Open");
     expect(headingTexts).toContain("Closed");
 
-    // Status badges identified by testid
     expect(screen.getByTestId("status-badge-open")).toBeInTheDocument();
     expect(screen.getByTestId("status-badge-closed_win")).toBeInTheDocument();
   });

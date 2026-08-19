@@ -179,7 +179,6 @@ def fetch_chain(ticker: str, *, max_expiries: int = 2) -> dict:
         return empty
 
     try:
-        # 1. Fetch expiration dates
         exp_body = cache.get_or_fetch(
             f"market:tradier:expirations:{ticker}",
             ttl_seconds=cache.ttl_for_kind("chain"),
@@ -195,7 +194,6 @@ def fetch_chain(ticker: str, *, max_expiries: int = 2) -> dict:
             log.info("market.tradier: no expirations found for %s", ticker)
             return empty
 
-        # 2. Fetch underlying last price
         quote_body = cache.get_or_fetch(
             f"market:tradier:quote:{ticker}",
             ttl_seconds=cache.ttl_for_kind("chain"),
@@ -207,7 +205,6 @@ def fetch_chain(ticker: str, *, max_expiries: int = 2) -> dict:
         )
         underlying_last = _normalize_quote(quote_body, ticker)
 
-        # 3. Fetch chain per expiry
         expiries: dict[str, dict] = {}
         for expiry in expiry_dates:
             chain_body = cache.get_or_fetch(

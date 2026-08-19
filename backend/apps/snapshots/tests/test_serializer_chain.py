@@ -82,13 +82,8 @@ def test_render_chain_preserves_zero_bid_does_not_emit_dash():
         },
     }
     md = _render_chain(payload, ticker="XYZ")
-    # zero values render as their string, not em-dash
     assert "| 100.00 | 0.00 | 0.05 | 0.50 | 0.0 | — | — | — | — |" in md
 
-
-# ---------------------------------------------------------------------------
-# Chain analytics block rendered into the AI payload
-# ---------------------------------------------------------------------------
 
 # Minimal chain for hand-verifiable analytics:
 #   underlying = 100.00
@@ -195,14 +190,12 @@ def test_render_chain_analytics_block_present():
     """The '### Chain analytics' section must appear after the per-expiry table."""
     md = _render_chain(ANALYTICS_PAYLOAD, ticker="TST")
     assert "### Chain analytics" in md
-    # Per-expiry table still present (not removed)
     assert "### Expiry 2026-01-01" in md
 
 
 def test_render_chain_analytics_max_pain():
     """Max-pain = 100.0 for this fixture (verified by hand above)."""
     md = _render_chain(ANALYTICS_PAYLOAD, ticker="TST")
-    # Max-pain line must contain the value 100.00
     assert "Max-pain" in md
     assert "100.00" in md
 
@@ -264,11 +257,6 @@ def test_render_chain_analytics_no_crash_on_missing_greeks():
     assert "### Chain analytics" in md
     # With no valid data, values degrade to em-dash — must not raise
     assert "Max-pain" in md
-
-
-# ---------------------------------------------------------------------------
-# Options-implied expected move line (1σ) — fed to the AI alongside the chain
-# ---------------------------------------------------------------------------
 
 
 def test_render_chain_includes_expected_move_when_iv_present():

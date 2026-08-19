@@ -36,7 +36,6 @@ from apps.market.services.option_analytics import (
 SPOT = 100.0
 
 CONTRACTS: list[dict] = [
-    # --- expiry 2026-01-01 calls ---
     {
         "expiry": "2026-01-01",
         "side": "call",
@@ -67,7 +66,6 @@ CONTRACTS: list[dict] = [
         "volume": 200,
         "oi": 600,
     },
-    # --- expiry 2026-01-01 puts ---
     {
         "expiry": "2026-01-01",
         "side": "put",
@@ -98,7 +96,6 @@ CONTRACTS: list[dict] = [
         "volume": 400,
         "oi": 900,
     },
-    # --- expiry 2026-02-01 calls ---
     {
         "expiry": "2026-02-01",
         "side": "call",
@@ -109,7 +106,6 @@ CONTRACTS: list[dict] = [
         "volume": 50,
         "oi": 200,
     },
-    # --- expiry 2026-02-01 puts ---
     {
         "expiry": "2026-02-01",
         "side": "put",
@@ -121,11 +117,6 @@ CONTRACTS: list[dict] = [
         "oi": 200,
     },
 ]
-
-
-# ---------------------------------------------------------------------------
-# P/C ratios
-# ---------------------------------------------------------------------------
 
 
 class TestPutCall:
@@ -169,11 +160,6 @@ class TestPutCall:
         assert result["oi_ratio"] == pytest.approx(2.0)
 
 
-# ---------------------------------------------------------------------------
-# Max pain
-# ---------------------------------------------------------------------------
-
-
 class TestMaxPain:
     def test_max_pain_nearest_expiry(self):
         # Nearest expiry "2026-01-01", strikes [95, 100, 105].
@@ -214,11 +200,6 @@ class TestMaxPain:
         result = _max_pain(only_far)
         # Only one strike in this expiry
         assert result == pytest.approx(100.0)
-
-
-# ---------------------------------------------------------------------------
-# 25-delta IV skew
-# ---------------------------------------------------------------------------
 
 
 class TestIvSkew25d:
@@ -286,11 +267,6 @@ class TestIvSkew25d:
         assert _iv_skew_25d(contracts) is None
 
 
-# ---------------------------------------------------------------------------
-# ATM term structure
-# ---------------------------------------------------------------------------
-
-
 class TestTermStructure:
     def test_term_structure_two_expiries(self):
         # "2026-01-01" → ATM call iv = 18.0 (call 100, |strike-spot|=0)
@@ -309,7 +285,6 @@ class TestTermStructure:
         assert all(r["atm_iv"] is None for r in result)
 
     def test_term_structure_sorted_by_expiry(self):
-        # Reversed input order; output should still be sorted ascending by expiry
         reversed_contracts = list(reversed(CONTRACTS))
         result = _term_structure(reversed_contracts, spot=SPOT)
         expiries = [r["expiry"] for r in result]
@@ -336,11 +311,6 @@ class TestTermStructure:
         ]
         result = _term_structure(contracts, spot=100.0)
         assert result[0]["atm_iv"] == pytest.approx(18.0)
-
-
-# ---------------------------------------------------------------------------
-# Dealer GEX
-# ---------------------------------------------------------------------------
 
 
 class TestGex:
@@ -422,11 +392,6 @@ class TestGex:
         result = _gex(CONTRACTS, spot=SPOT)
         assert "convention" in result
         assert "heuristic" in result["convention"]
-
-
-# ---------------------------------------------------------------------------
-# chain_analytics top-level integration
-# ---------------------------------------------------------------------------
 
 
 class TestChainAnalytics:

@@ -46,11 +46,6 @@ def _get(url: str, *, headers: dict) -> dict:
     return body if isinstance(body, dict) else {}
 
 
-# ---------------------------------------------------------------------------
-# Ticker → CIK map
-# ---------------------------------------------------------------------------
-
-
 def _load_ticker_map() -> dict[str, int]:
     """Return {TICKER_UPPER: cik_int} from EDGAR company_tickers.json (cached 24h)."""
     try:
@@ -84,11 +79,6 @@ def _cik_for(ticker: str) -> int | None:
     return tmap.get(ticker.upper())
 
 
-# ---------------------------------------------------------------------------
-# Submissions fetch
-# ---------------------------------------------------------------------------
-
-
 def _fetch_submissions(ticker: str, cik: int) -> dict:
     """Fetch and cache the submissions JSON for a company by CIK."""
     padded = f"CIK{cik:010d}"
@@ -98,11 +88,6 @@ def _fetch_submissions(ticker: str, cik: int) -> dict:
         ttl_seconds=cache.ttl_for_kind("filings"),
         fetcher=lambda: _get(url, headers=_headers()),
     )
-
-
-# ---------------------------------------------------------------------------
-# Canned fixtures for MOCK_EXTERNAL / e2e mode
-# ---------------------------------------------------------------------------
 
 
 def _canned_filings(ticker: str) -> list[dict]:
@@ -147,11 +132,6 @@ def _canned_insider(ticker: str) -> list[dict]:
             "title": f"{name} Form 4",
         },
     ]
-
-
-# ---------------------------------------------------------------------------
-# Normalization helpers
-# ---------------------------------------------------------------------------
 
 
 def _build_filing_url(cik: int, accession: str, primary_doc: str) -> str:
@@ -249,11 +229,6 @@ def _normalize_insider(
             break
 
     return results
-
-
-# ---------------------------------------------------------------------------
-# Public API
-# ---------------------------------------------------------------------------
 
 
 def fetch_filings(

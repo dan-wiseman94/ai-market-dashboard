@@ -6,10 +6,6 @@ from unittest.mock import patch
 
 from apps.ai.tools.registry import _recall, _track_record, default_toolset
 
-# ---------------------------------------------------------------------------
-# recall tool — kinds + ticker filters forwarded to search()
-# ---------------------------------------------------------------------------
-
 
 def test_recall_forwards_kinds_and_ticker_to_search() -> None:
     """_recall passes kinds and ticker kwargs through to search()."""
@@ -62,16 +58,10 @@ def test_recall_input_schema_declares_kinds_and_ticker() -> None:
     props = spec.input_schema["properties"]
     assert "kinds" in props, "recall input_schema missing 'kinds' property"
     assert "ticker" in props, "recall input_schema missing 'ticker' property"
-    # kinds must not be in required (optional)
     assert "kinds" not in spec.input_schema.get("required", [])
     assert "ticker" not in spec.input_schema.get("required", [])
-    # query is still required
     assert "query" in spec.input_schema["required"]
 
-
-# ---------------------------------------------------------------------------
-# track_record tool
-# ---------------------------------------------------------------------------
 
 _TRACK_RECORD_DATA = {
     "ticker": "NVDA",
@@ -148,11 +138,6 @@ def test_track_record_handler_passes_direction_and_conviction() -> None:
         mock_fn.assert_called_once_with("TSLA", direction="bullish", conviction=3)
 
 
-# ---------------------------------------------------------------------------
-# toolset includes track_record
-# ---------------------------------------------------------------------------
-
-
 def test_default_toolset_includes_track_record() -> None:
     """default_toolset() registers a 'track_record' spec."""
     ts = default_toolset()
@@ -160,7 +145,6 @@ def test_default_toolset_includes_track_record() -> None:
     spec = ts.specs["track_record"]
     assert spec.name == "track_record"
     assert "ticker" in spec.input_schema["required"]
-    # direction and conviction are optional
     props = spec.input_schema["properties"]
     assert "direction" in props
     assert "conviction" in props

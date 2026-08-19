@@ -109,7 +109,6 @@ class _FakeToolCallStream:
 
     def __aiter__(self):
         async def gen():
-            # fragment 1: id + name, arguments start
             c1 = MagicMock()
             ch1 = MagicMock()
             ch1.delta.content = None
@@ -123,7 +122,6 @@ class _FakeToolCallStream:
             c1.choices = [ch1]
             c1.usage = None
             yield c1
-            # fragment 2: more arguments, no id/name
             c2 = MagicMock()
             ch2 = MagicMock()
             ch2.delta.content = None
@@ -276,7 +274,7 @@ def test_openai_dispatches_tools_off_the_loop_thread():
 
     result_evt = next(e for e in events if isinstance(e, ToolResultEvent))
     assert result_evt.ok is True
-    assert sink["tool_thread"] != loop["thread"]  # dispatched off the loop thread
+    assert sink["tool_thread"] != loop["thread"]
 
 
 @pytest.mark.asyncio

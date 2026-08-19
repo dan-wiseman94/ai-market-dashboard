@@ -24,7 +24,6 @@ def test_oauth_authorize_redirects_to_stub(api_client, minimal, scenario) -> Non
 @pytest.mark.ui
 def test_oauth_callback_persists_encrypted_token(api_client, minimal, scenario) -> None:
     scenario.use("schwab-oauth-ok")
-    # The callback exchanges the (mock) code and persists an encrypted token.
     r = api_client.get("/api/schwab/callback/", params={"code": "MOCK_OAUTH"})
     assert r.status_code in (302, 200), r.text
     if r.status_code == 302:

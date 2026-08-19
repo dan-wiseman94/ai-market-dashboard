@@ -38,7 +38,6 @@ function closedMarketsOf(marketStatus: ReturnType<typeof useMarketStatus>["data"
 }
 
 function threadTitle(title: string, objective: string): string {
-  // Explicit title wins; otherwise fall back to the objective / a timestamp.
   return title.trim() || objective.slice(0, 80) || `Consult ${new Date().toLocaleString()}`;
 }
 

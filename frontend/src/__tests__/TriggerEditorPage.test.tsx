@@ -92,7 +92,7 @@ describe("TriggerEditorPage", () => {
     // Cooldown's label isn't htmlFor-associated and RuleBuilder also renders number
     // inputs, so target the cooldown field by its unique default value (1800).
     fireEvent.change(screen.getByDisplayValue("1800"), { target: { value: "60" } });
-    fireEvent.click(screen.getByLabelText(/enabled/i)); // toggle Enabled off
+    fireEvent.click(screen.getByLabelText(/enabled/i));
     await waitFor(() => expect(save).toBeEnabled());
 
     fireEvent.click(save);
@@ -118,7 +118,6 @@ describe("TriggerEditorPage", () => {
     });
     renderFlow("/triggers/5", "/triggers/:id");
 
-    // Heading + name input are seeded from the loaded trigger.
     expect(await screen.findByDisplayValue("SPY breakout")).toBeInTheDocument();
     expect(screen.getByText(/Edit trigger: SPY breakout/)).toBeInTheDocument();
 

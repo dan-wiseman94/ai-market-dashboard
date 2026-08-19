@@ -66,7 +66,6 @@ function useDefaultCommands(onShowHelp: () => void): Command[] {
         run: () => nav("/recall") },
       { id: "toggle-theme", label: "Toggle theme", keywords: "light dark system appearance mode",
         run: cycle },
-      // --- Action verbs ---
       {
         id: "action-run-briefing",
         label: "Run morning briefing now",

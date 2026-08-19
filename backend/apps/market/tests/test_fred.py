@@ -8,10 +8,6 @@ import pytest
 
 from apps.market.services import fred as fred_mod
 
-# ---------------------------------------------------------------------------
-# Raw API response fixtures
-# ---------------------------------------------------------------------------
-
 _OBS_CPIAUCSL = {
     "observations": [
         {"date": "2025-04-01", "value": "314.5"},
@@ -34,18 +30,8 @@ _OBS_MISSING = {
 }
 
 
-# ---------------------------------------------------------------------------
-# Helper: bypass cache transparently
-# ---------------------------------------------------------------------------
-
-
 def _passthrough_cache(key: str, *, ttl_seconds: int, fetcher):
     return fetcher()
-
-
-# ---------------------------------------------------------------------------
-# 1. Normalized multi-series dict
-# ---------------------------------------------------------------------------
 
 
 def test_fred_returns_normalized_dict():
@@ -108,7 +94,6 @@ def test_fred_uses_cache_get_or_fetch():
 
     def _fake_get_or_fetch(key: str, *, ttl_seconds: int, fetcher):
         captured_calls.append(key)
-        # The fetcher would call _get; we intercept _get instead
         return _OBS_CPIAUCSL
 
     with (
@@ -120,11 +105,6 @@ def test_fred_uses_cache_get_or_fetch():
 
     assert "market:fred:CPIAUCSL" in captured_calls
     assert "CPIAUCSL" in result
-
-
-# ---------------------------------------------------------------------------
-# 2. Per-series resilience: one series raising must not kill the rest
-# ---------------------------------------------------------------------------
 
 
 def test_fred_per_series_resilience():
@@ -142,7 +122,6 @@ def test_fred_per_series_resilience():
     ):
         result = fred_mod.fetch_macro(series_ids=["CPIAUCSL", "DGS10"])
 
-    # CPIAUCSL is skipped; DGS10 is present
     assert "CPIAUCSL" not in result
     assert "DGS10" in result
     assert result["DGS10"]["value"] == pytest.approx(4.32)
@@ -164,11 +143,6 @@ def test_fred_all_series_fail_returns_empty_dict():
     assert result == {}
 
 
-# ---------------------------------------------------------------------------
-# 3. Mock mode
-# ---------------------------------------------------------------------------
-
-
 def test_fred_mock_mode_returns_canned():
     """With MOCK_EXTERNAL=true the function returns the canned dict without hitting
     the credential store or the network."""
@@ -177,18 +151,12 @@ def test_fred_mock_mode_returns_canned():
 
     assert isinstance(result, dict)
     assert len(result) >= 1
-    # The canned dict must satisfy the output contract
     for _sid, entry in result.items():
         assert "label" in entry
         assert "value" in entry
         assert "date" in entry
         assert "prev" in entry
         assert "change" in entry
-
-
-# ---------------------------------------------------------------------------
-# 4. Missing credential → {}
-# ---------------------------------------------------------------------------
 
 
 def test_fred_no_credential_returns_empty():
@@ -200,11 +168,6 @@ def test_fred_no_credential_returns_empty():
         result = fred_mod.fetch_macro()
 
     assert result == {}
-
-
-# ---------------------------------------------------------------------------
-# 5. Network-level failure (cache.get_or_fetch re-raises through _fetch_series)
-# ---------------------------------------------------------------------------
 
 
 def test_fred_network_error_per_series_skipped():
