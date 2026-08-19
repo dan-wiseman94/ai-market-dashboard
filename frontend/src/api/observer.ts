@@ -69,7 +69,7 @@ export interface NotificationDTO {
 }
 
 export const listNotifications = (unread = false) =>
-  apiGet<{ results: NotificationDTO[] } | NotificationDTO[]>(
+  apiGet<NotificationDTO[]>(
     `/api/observer/notifications/?limit=50${unread ? "&unread=true" : ""}`,
   );
 export const markNotificationRead = (id: number) =>

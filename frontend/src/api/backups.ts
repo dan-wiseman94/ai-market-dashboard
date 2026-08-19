@@ -6,7 +6,9 @@ export type Backup = {
 };
 
 export const fetchBackups = () =>
-  apiGet<{ results: Backup[] } | Backup[]>("/api/backups/");
+  apiGet<{ count: number; next: string | null; previous: string | null; results: Backup[] }>(
+    "/api/backups/",
+  );
 
 export const runBackupNow = () => apiPost<{ queued: boolean }>("/api/backups/run/", {});
 

@@ -21,13 +21,13 @@ function readStagedIds(): number[] {
   }
 }
 
-// Effective ticker set = the selected watchlist's symbols plus any ad-hoc
-// tickers the user typed, de-duplicated with watchlist symbols kept first.
+// Effective ticker set = the selected watchlist's tickers plus any ad-hoc
+// tickers the user typed, de-duplicated with watchlist tickers kept first.
 function watchlistTickersOf(
   watchlists: ReturnType<typeof useWatchlists>["data"],
   watchlistId: number | null,
 ): string[] {
-  return watchlists?.find((w) => w.id === watchlistId)?.symbols.map((s) => s.ticker) ?? [];
+  return watchlists?.find((w) => w.id === watchlistId)?.tickers.map((s) => s.ticker) ?? [];
 }
 
 function closedMarketsOf(marketStatus: ReturnType<typeof useMarketStatus>["data"]): string[] {

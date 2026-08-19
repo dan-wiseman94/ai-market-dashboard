@@ -43,7 +43,7 @@ export default function WatchlistsList() {
           {(data ?? []).map((w) => (
             <li key={w.id} data-testid={`watchlist-row-${w.name}`} className="flex items-center justify-between p-3 rounded border border-rule">
               <Link to={`/watchlists/${w.id}`} className="hover:underline">
-                {w.name} <span className="text-ink-500 text-sm">({w.symbols.length} symbols)</span>
+                {w.name} <span className="text-ink-500 text-sm">({w.tickers.length} symbols)</span>
               </Link>
               <button
                 onClick={() => del.mutate(w.id)}

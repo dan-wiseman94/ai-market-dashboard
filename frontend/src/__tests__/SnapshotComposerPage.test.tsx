@@ -50,8 +50,8 @@ vi.mock("@/hooks/useProfiles", () => ({
 vi.mock("@/hooks/useWatchlists", () => ({
   useWatchlists: () => ({
     data: [
-      { id: 10, name: "Tech", symbols: [{ ticker: "AAPL" }, { ticker: "GOOGL" }] },
-      { id: 11, name: "Energy", symbols: [{ ticker: "XOM" }] },
+      { id: 10, name: "Tech", tickers: [{ ticker: "AAPL" }, { ticker: "GOOGL" }] },
+      { id: 11, name: "Energy", tickers: [{ ticker: "XOM" }] },
     ],
   }),
 }));
@@ -129,7 +129,7 @@ describe("SnapshotComposerPage", () => {
 
   it("shows tickers for selected watchlist", async () => {
     renderComposer();
-    // The watchlist symbols appear in both the watchlist line and the "Using:"
+    // The watchlist tickers appear in both the watchlist line and the "Using:"
     // effective-set summary, so match all and assert at least one is present.
     await waitFor(() => {
       expect(screen.getAllByText(/AAPL.*GOOGL|GOOGL.*AAPL/).length).toBeGreaterThanOrEqual(1);

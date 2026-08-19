@@ -34,7 +34,7 @@ def test_get_errors_returns_newest_first():
     resp = client.get("/api/errors/")
     assert resp.status_code == 200
     body = resp.json()
-    ids = [e["id"] for e in body["errors"]]
+    ids = [e["id"] for e in body["results"]]
     assert ids.index(e3.pk) < ids.index(e2.pk) < ids.index(e1.pk), (
         "Events must be ordered newest-first"
     )
@@ -54,11 +54,11 @@ def test_get_errors_response_shape():
     resp = client.get("/api/errors/")
     assert resp.status_code == 200
     body = resp.json()
-    assert "errors" in body
+    assert "results" in body
     assert "count" in body
     assert body["count"] >= 1
 
-    row = next(e for e in body["errors"] if e["id"] == ev.pk)
+    row = next(e for e in body["results"] if e["id"] == ev.pk)
     assert row["level"] == "warning"
     assert row["source"] == "celery.task:observer.run"
     assert row["message"] == "msg"
@@ -78,7 +78,7 @@ def test_get_errors_unresolved_filter():
     resp = client.get("/api/errors/?unresolved=true")
     assert resp.status_code == 200
     body = resp.json()
-    ids = [e["id"] for e in body["errors"]]
+    ids = [e["id"] for e in body["results"]]
     assert unresolved.pk in ids
     assert resolved.pk not in ids
 
@@ -106,13 +106,13 @@ def test_get_errors_limit_cap():
     resp = client.get("/api/errors/?limit=3")
     assert resp.status_code == 200
     body = resp.json()
-    assert len(body["errors"]) == 3
+    assert len(body["results"]) == 3
     assert body["count"] == 3
 
     resp2 = client.get("/api/errors/?limit=9999")
     assert resp2.status_code == 200
     body2 = resp2.json()
-    assert len(body2["errors"]) <= 200
+    assert len(body2["results"]) <= 200
 
 
 @pytest.mark.django_db
@@ -125,7 +125,7 @@ def test_get_errors_default_limit_is_50():
     resp = client.get("/api/errors/")
     assert resp.status_code == 200
     body = resp.json()
-    assert len(body["errors"]) == 50
+    assert len(body["results"]) == 50
 
 
 @pytest.mark.django_db

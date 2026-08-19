@@ -4,7 +4,7 @@ import { http, HttpResponse } from "msw";
 import type { WatchlistSymbol } from "@/api/watchlists";
 import WatchlistTable from "./WatchlistTable";
 
-const symbols: WatchlistSymbol[] = [
+const tickers: WatchlistSymbol[] = [
   { id: 1, ticker: "AAPL", sort_order: 0 },
   { id: 2, ticker: "NVDA", sort_order: 1 },
   { id: 3, ticker: "MSFT", sort_order: 2 },
@@ -26,13 +26,13 @@ const meta = {
     docs: {
       description: {
         component:
-          "Watchlist rows with live quote cells. Symbols come in as props; quotes are fetched (and mocked here) from `/api/market/quotes/`.",
+          "Watchlist rows with live quote cells. Tickers come in as props; quotes are fetched (and mocked here) from `/api/market/quotes/`.",
       },
     },
   },
-  args: { symbols },
+  args: { tickers },
   argTypes: {
-    symbols: { control: "object", description: "Watchlist symbols to render." },
+    tickers: { control: "object", description: "Watchlist tickers to render." },
     onRemove: { description: "Optional remove handler; shows a Remove action per row." },
   },
 } satisfies Meta<typeof WatchlistTable>;

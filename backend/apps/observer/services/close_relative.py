@@ -30,8 +30,8 @@ def fire_due_close_relative(now: datetime | None = None) -> dict:
             continue  # once-per-day guard (closes the double-fire race)
         s.last_fired_at = now
         s.save(update_fields=["last_fired_at"])
-        from apps.observer.tasks import run_observer_task
+        from apps.observer.tasks import fire_observer_task
 
-        run_observer_task.delay(schedule_id=s.id)
+        fire_observer_task.delay(schedule_id=s.id)
         fired += 1
     return {"fired": fired}

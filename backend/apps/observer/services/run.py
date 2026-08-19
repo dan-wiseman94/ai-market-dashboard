@@ -35,7 +35,7 @@ def _stamp_fired(sched: ObserverSchedule) -> None:
     sched.save(update_fields=["last_fired_at"])
 
 
-def run_observer(schedule_id: int) -> int | None:
+def fire_observer(schedule_id: int) -> int | None:
     """Fire one observer iteration. Returns snapshot_id, or None on skip."""
     sched = ObserverSchedule.objects.select_related("profile").get(id=schedule_id)
 

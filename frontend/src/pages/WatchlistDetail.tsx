@@ -48,15 +48,15 @@ export default function WatchlistDetail() {
         <p className="text-loss-400 text-sm">{(add.error as Error).message}</p>
       )}
 
-      <WatchlistTable symbols={wl.symbols} onRemove={(sid) => remove.mutate(sid)} />
+      <WatchlistTable tickers={wl.tickers} onRemove={(sid) => remove.mutate(sid)} />
 
-      {wl.symbols.length > 0 && (
+      {wl.tickers.length > 0 && (
         <section>
           <h2 className="mb-1 text-sm font-semibold text-ink-300">
             What changed since your last look
           </h2>
           <div className="ledger-surface px-4">
-            {wl.symbols.map((s) => (
+            {wl.tickers.map((s) => (
               <TickerChanges key={s.id} ticker={s.ticker} />
             ))}
           </div>

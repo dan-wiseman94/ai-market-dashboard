@@ -25,7 +25,7 @@ const bellButton = () => screen.getByRole("button", { name: /notifications/i });
 let fake: FakeWebSocketController;
 
 beforeEach(() => {
-  mockApi({ "GET /api/observer/notifications/": { results: NOTIFS } });
+  mockApi({ "GET /api/observer/notifications/": NOTIFS });
   fake = installFakeWebSocket();
 });
 

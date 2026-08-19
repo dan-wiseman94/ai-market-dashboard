@@ -12,7 +12,7 @@ const watchlistFixture = {
   id: 1,
   name: "My list",
   created_at: "2026-05-17T00:00:00Z",
-  symbols: [],
+  tickers: [],
 };
 
 describe("useWatchlists", () => {

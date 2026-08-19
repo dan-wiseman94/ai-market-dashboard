@@ -22,7 +22,7 @@ function EventRow({ e }: { e: MarketEvent }) {
 export default function EventsPage() {
   const { data: watchlists } = useWatchlists();
   const tickers = (watchlists ?? []).flatMap((w) =>
-    w.symbols.map((s) => s.ticker),
+    w.tickers.map((s) => s.ticker),
   );
   const { data, isLoading } = useUpcomingEvents(tickers, 30);
 

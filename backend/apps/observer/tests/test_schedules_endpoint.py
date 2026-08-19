@@ -102,7 +102,7 @@ def test_consensus_mode_is_settable_via_api(api, profile):
 
 
 @pytest.mark.django_db
-def test_run_now_calls_run_observer(api, profile):
+def test_run_now_calls_fire_observer(api, profile):
     resp = api.post(
         "/api/observer/schedules/",
         {
@@ -113,7 +113,7 @@ def test_run_now_calls_run_observer(api, profile):
         format="json",
     )
     sid = resp.json()["id"]
-    with patch("apps.observer.views.run_observer_task") as fake:
+    with patch("apps.observer.views.fire_observer_task") as fake:
         resp2 = api.post(f"/api/observer/schedules/{sid}/run-now/")
     assert resp2.status_code == 202
     fake.delay.assert_called_once_with(schedule_id=sid)

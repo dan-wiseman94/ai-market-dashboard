@@ -142,7 +142,7 @@ describe("EventsPage", () => {
           id: 1,
           name: "Tech",
           created_at: "2026-01-01T00:00:00Z",
-          symbols: [
+          tickers: [
             { id: 1, ticker: "AAPL", sort_order: 0 },
             { id: 2, ticker: "GOOG", sort_order: 1 },
           ],

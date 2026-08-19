@@ -3,32 +3,32 @@ from unittest.mock import patch
 import pytest
 
 from apps.observer.models import ObserverSchedule
-from apps.observer.services.run import run_observer
+from apps.observer.services.run import fire_observer
 from apps.snapshots.models import Snapshot
 from apps.threads.models import Thread
 
 
 @pytest.mark.django_db
-def test_run_observer_skips_when_disabled(profile):
+def test_fire_observer_skips_when_disabled(profile):
     s = ObserverSchedule.objects.create(name="x", profile=profile, enabled=False)
-    assert run_observer(s.id) is None
+    assert fire_observer(s.id) is None
     assert Snapshot.objects.count() == 0
 
 
 @pytest.mark.django_db
-def test_run_observer_skips_when_market_closed(profile):
+def test_fire_observer_skips_when_market_closed(profile):
     s = ObserverSchedule.objects.create(
         name="x",
         profile=profile,
         market_hours_only=True,
     )
     with patch("apps.observer.services.run.any_market_open", return_value=False):
-        assert run_observer(s.id) is None
+        assert fire_observer(s.id) is None
     assert Snapshot.objects.count() == 0
 
 
 @pytest.mark.django_db
-def test_run_observer_writes_placeholder_when_cost_capped(profile):
+def test_fire_observer_writes_placeholder_when_cost_capped(profile):
     p = profile
     s = ObserverSchedule.objects.create(
         name="x",
@@ -43,7 +43,7 @@ def test_run_observer_writes_placeholder_when_cost_capped(profile):
             "apps.observer.services.run.check_daily_cap", side_effect=CostCapExceededError("cap")
         ),
     ):
-        assert run_observer(s.id) is None
+        assert fire_observer(s.id) is None
     thread = Thread.objects.get(profile=p, kind="observer")
     placeholder = thread.messages.first()
     assert placeholder is not None
@@ -56,7 +56,7 @@ def test_run_observer_writes_placeholder_when_cost_capped(profile):
 
 
 @pytest.mark.django_db
-def test_run_observer_happy_path_creates_snapshot_message_and_notification(profile):
+def test_fire_observer_happy_path_creates_snapshot_message_and_notification(profile):
     p = profile
     s = ObserverSchedule.objects.create(
         name="hourly",
@@ -83,7 +83,7 @@ def test_run_observer_happy_path_creates_snapshot_message_and_notification(profi
         patch("apps.observer.services.run.run_ai_on_message") as run_ai,
         patch("apps.observer.services.run.notify") as notif,
     ):
-        result = run_observer(s.id)
+        result = fire_observer(s.id)
 
     assert result == fake_snap.id
     cap.assert_called_once()
@@ -115,7 +115,7 @@ def test_run_observer_happy_path_creates_snapshot_message_and_notification(profi
 
 
 @pytest.mark.django_db
-def test_run_observer_batch_submit_failure_writes_failed_message(profile):
+def test_fire_observer_batch_submit_failure_writes_failed_message(profile):
     """A failed batch submit must surface in the observer thread — the timeline
     reads Messages, so a log-only failure is invisible in the UI."""
     p = profile
@@ -136,7 +136,7 @@ def test_run_observer_batch_submit_failure_writes_failed_message(profile):
             side_effect=ValueError("no claude key"),
         ) as submit,
     ):
-        result = run_observer(s.id)
+        result = fire_observer(s.id)
 
     assert result == fake_snap.id
     # The submit is grounded in the snapshot the fire just captured.
@@ -150,7 +150,7 @@ def test_run_observer_batch_submit_failure_writes_failed_message(profile):
 
 
 @pytest.mark.django_db
-def test_run_observer_coverage_hook_failure_is_logged_not_fatal(caplog, profile):
+def test_fire_observer_coverage_hook_failure_is_logged_not_fatal(caplog, profile):
     """A broken coverage auto-revise hook must not fail the fire, and must leave
     a warning in the logs — a silent suppress would hide the breakage forever."""
     p = profile
@@ -175,7 +175,7 @@ def test_run_observer_coverage_hook_failure_is_logged_not_fatal(caplog, profile)
         ),
         caplog.at_level("WARNING"),
     ):
-        result = run_observer(s.id)
+        result = fire_observer(s.id)
 
     assert result == fake_snap.id
     notif.assert_called_once()

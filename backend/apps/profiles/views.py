@@ -16,7 +16,7 @@ from .serializers import (
 
 
 class WatchlistViewSet(viewsets.ModelViewSet):
-    queryset = Watchlist.objects.prefetch_related("symbols")
+    queryset = Watchlist.objects.prefetch_related("tickers")
     serializer_class = WatchlistSerializer
 
     @action(detail=True, methods=["post"])
@@ -57,7 +57,7 @@ class WatchlistSymbolViewSet(
                 sym = WatchlistSymbol.objects.create(
                     watchlist=wl,
                     ticker=ticker,
-                    sort_order=wl.symbols.count(),
+                    sort_order=wl.tickers.count(),
                 )
         except IntegrityError:
             return Response(

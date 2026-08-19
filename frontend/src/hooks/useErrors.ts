@@ -15,7 +15,7 @@ export function useErrors(unresolved = false) {
   return useQuery({
     queryKey: ["errors", unresolved],
     queryFn: () =>
-      apiGet<{ errors: ErrorRow[]; count: number }>(
+      apiGet<{ results: ErrorRow[]; count: number }>(
         `/api/errors/?unresolved=${unresolved}`,
       ),
   });

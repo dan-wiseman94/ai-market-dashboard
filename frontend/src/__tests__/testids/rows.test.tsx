@@ -110,7 +110,7 @@ describe("WatchlistsList", () => {
   it("renders watchlist-row-<name>", async () => {
     mockFetch(() => ({
       ok: true,
-      json: async () => [{ id: 1, name: "Tech", symbols: [{ ticker: "AAPL" }] }],
+      json: async () => [{ id: 1, name: "Tech", tickers: [{ ticker: "AAPL" }] }],
     }));
 
     renderWithProviders(<WatchlistsList />);
@@ -140,15 +140,20 @@ describe("BackupsPage", () => {
   it("renders backup-row-<id>", async () => {
     mockFetch(() => ({
       ok: true,
-      json: async () => [
-        {
-          id: 11, status: "ok", kind: "scheduled",
-          filename: "backup_11.dump",
-          size_bytes: 1024 * 500,
-          created_at: "2026-04-17T02:30:00Z",
-          error: null,
-        },
-      ],
+      json: async () => ({
+        count: 1,
+        next: null,
+        previous: null,
+        results: [
+          {
+            id: 11, status: "ok", kind: "scheduled",
+            filename: "backup_11.dump",
+            size_bytes: 1024 * 500,
+            created_at: "2026-04-17T02:30:00Z",
+            error: null,
+          },
+        ],
+      }),
     }));
 
     renderWithProviders(<BackupsPage />);
@@ -160,15 +165,20 @@ describe("ExportPage", () => {
   it("renders export-row-<id>", async () => {
     mockFetch(() => ({
       ok: true,
-      json: async () => [
-        {
-          id: 3, status: "done", size_bytes: 2048,
-          filename: "export_3.zip",
-          created_at: "2026-04-17T10:00:00Z",
-          scope: {},
-          error: null,
-        },
-      ],
+      json: async () => ({
+        count: 1,
+        next: null,
+        previous: null,
+        results: [
+          {
+            id: 3, status: "done", size_bytes: 2048,
+            filename: "export_3.zip",
+            created_at: "2026-04-17T10:00:00Z",
+            scope: {},
+            error: null,
+          },
+        ],
+      }),
     }));
 
     renderWithProviders(<ExportPage />);
@@ -216,7 +226,7 @@ describe("SnapshotComposerPage", () => {
           ];
         }
         if (url.includes("/api/watchlists/")) {
-          return [{ id: 1, name: "Tech", symbols: [] }];
+          return [{ id: 1, name: "Tech", tickers: [] }];
         }
         return [];
       },
