@@ -1,7 +1,7 @@
 # Snapshot 24-hour data window — design
 
 - **Date:** 2026-06-25
-- **Status:** Draft (pending user review)
+- **Status:** Shipped (amended 2026-08-19 — see §3.1)
 - **Scope:** `apps.market` (OHLC service), `apps.snapshots` (capture services, model, views, serializers), `frontend` (composer/table/api types), OpenAPI schema.
 
 ## 1. Problem
@@ -78,6 +78,15 @@ session (e.g. Friday on a Monday pre-market capture), the 1m segment covers that
 session through `now` and the 5m segment is empty. This is the faithful reading of "1m
 for the current session." The token budget trims if the series is large.
 
+**Amendment (2026-08-19) — shipped code differs; prefer it.** `market/services/ohlc.py`
+does not split at `session_open` alone: the 1m tail is additionally capped at a fixed
+recency window, `fine_start = max(start, session_open, end − _FINE_WINDOW)` with
+`_FINE_WINDOW = 4h`. The 1m segment still never starts before the current session's
+open, but a long session (a 23h futures session, or a pre-market capture reaching back
+into the prior session) is coarsened to 5m beyond the newest ~4h — so the weekend /
+pre-market edge case above does not ship as written (a whole session at 1m would emit
+~1,000 bars).
+
 ## 4. Component changes
 
 ### 4.1 Market layer — `backend/apps/market/services/ohlc.py`
@@ -117,7 +126,7 @@ for the current session." The token budget trims if the series is large.
 ### 4.3 Serializer — `backend/apps/snapshots/serializer.py`
 
 - `_render_ohlc`: replace the `window == "overnight"` header suffix with a `window == "24h"`
-  suffix, e.g. `— last 24h (1m current session, 5m prior)` when blended, else `— last 24h`.
+  suffix, e.g. `— last 24h (1m recent, 5m earlier)` when blended, else `— last 24h`.
 - `_render_news`: drop the `window == "overnight"` branch; always title `## News (last 24h)`.
 - `_ohlc_gap_note` is unchanged. Note: a 24h window legitimately contains overnight/weekend
   gaps, so the existing gap caveat may render — this already happened for overnight captures

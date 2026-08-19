@@ -141,8 +141,9 @@ def _fetch_ohlc_section(
     ticker = _pick_ticker(ohlc_ticker, watchlist_tickers)
     watchlist_daily = _watchlist_daily_bars(list(watchlist_tickers), ticker)
     if ohlc_timeframe in INTRADAY_TIMEFRAMES:
-        # Always the rolling last-24h window; 1m blends the current session (1m)
-        # with the older portion coarsened to 5m (see apps.market.services.ohlc).
+        # Always the rolling last-24h window; a 1m request keeps only the newest
+        # ~4h at 1m (never before the current session's open), earlier portion
+        # coarsened to 5m (see apps.market.services.ohlc._FINE_WINDOW).
         bars = fetch_ohlc_24h(ticker, timeframe=ohlc_timeframe)
         data: dict = {"ticker": ticker, "timeframe": ohlc_timeframe, "bars": bars, "window": "24h"}
         if ohlc_timeframe == "1m":
