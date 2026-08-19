@@ -1,11 +1,26 @@
-"""Shared HTTP query-param helpers."""
+"""Shared HTTP helpers: query-param parsing + the {code, message} error envelope."""
 
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
-from django.http import HttpRequest
+from django.http import HttpRequest, JsonResponse
 from rest_framework.request import Request
+from rest_framework.response import Response
+
+
+def error_response(code: str, message: str = "", *, status: int) -> Response:
+    """The standard ``{code, message}`` error envelope as a DRF ``Response``."""
+    return Response({"code": code, "message": message}, status=status)
+
+
+def json_error_response(code: str, message: str = "", *, status: int) -> JsonResponse:
+    """The standard ``{code, message}`` error envelope as a ``JsonResponse``.
+
+    Plain-Django function views must use this variant — a DRF ``Response``
+    rendered outside a DRF view has no negotiated renderer.
+    """
+    return JsonResponse({"code": code, "message": message}, status=status)
 
 
 def _parse_iso_utc(value: str) -> datetime:

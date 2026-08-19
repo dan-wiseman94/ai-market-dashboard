@@ -6,6 +6,7 @@ from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.request import Request
 from rest_framework.response import Response
 
+from apps.core.http import error_response
 from apps.profiles.models import TradingProfile
 from apps.snapshots.models import Snapshot
 from apps.snapshots.serializer import serialize_for_ai
@@ -34,7 +35,7 @@ def _e2e_scenario() -> str | None:
 
 
 def _error(code: str, message: str, status: int) -> Response:
-    return Response({"code": code, "message": message}, status=status)
+    return error_response(code, message, status=status)
 
 
 def _user_text(request: Request) -> str:

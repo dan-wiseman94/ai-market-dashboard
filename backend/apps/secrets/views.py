@@ -21,6 +21,7 @@ from apps.ai.catalog import list_models as _list_catalog
 from apps.ai.cost import daily_spend_usd
 from apps.ai.providers import get_provider
 from apps.core import provider_health
+from apps.core.http import json_error_response
 from apps.market.services.safe_log import scrub_secret_params
 from apps.secrets.credentials import env_token_fields
 from apps.secrets.data_source_test import test_credential
@@ -273,7 +274,7 @@ def ai_usage(_request: HttpRequest) -> JsonResponse:
 
 
 def _ds_err(code: str, message: str, status: int) -> JsonResponse:
-    return JsonResponse({"code": code, "message": message}, status=status)
+    return json_error_response(code, message, status=status)
 
 
 def _schwab_connected() -> bool:
