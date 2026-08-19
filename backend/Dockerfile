@@ -18,7 +18,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 
-COPY --from=ghcr.io/astral-sh/uv:0.8@sha256:1d31be550ff927957472b2a491dc3de1ea9b5c2d319a9cea5b6a48021e2990a6 /uv /usr/local/bin/uv
+COPY --from=ghcr.io/astral-sh/uv:0.11@sha256:8876e42c633ff18826b6bc2c1ebe8b4b0c4e056a2cab6e6a48e736ccc0bcad64 /uv /usr/local/bin/uv
 
 WORKDIR /app
 
