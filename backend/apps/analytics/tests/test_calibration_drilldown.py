@@ -20,6 +20,11 @@ from apps.thesis.models import PostMortem, Thesis
 NOW = datetime(2026, 5, 1, 12, 0, tzinfo=UTC)
 WIN = (NOW - timedelta(days=90), NOW + timedelta(days=1))
 
+# The endpoint's default window tracks the real clock (views._parse_range), while the
+# fixtures are frozen at NOW — endpoint tests must pin the window explicitly or the
+# fixtures age out of range.
+RANGE_PARAMS = {"start": WIN[0].isoformat(), "end": WIN[1].isoformat()}
+
 
 @pytest.fixture
 def profile(db):
@@ -131,7 +136,10 @@ def test_drilldown_respects_horizon_and_window(profile):
 def test_drilldown_endpoint_shape(api, profile):
     t = _thesis(5)
     _pm(t, horizon=30, verdict="correct", fwd=4.0)
-    r = api.get("/api/analytics/calibration/drilldown/?conviction=5&horizon=30")
+    r = api.get(
+        "/api/analytics/calibration/drilldown/",
+        {"conviction": 5, "horizon": 30, **RANGE_PARAMS},
+    )
     assert r.status_code == 200
     body = r.json()
     assert body["count"] == 1
@@ -144,6 +152,9 @@ def test_drilldown_endpoint_shape(api, profile):
 def test_drilldown_endpoint_no_filters_returns_all_in_window(api, profile):
     _pm(_thesis(1), horizon=30, verdict="correct", fwd=1.0)
     _pm(_thesis(4), horizon=30, verdict="incorrect", fwd=-1.0)
-    body = api.get("/api/analytics/calibration/drilldown/?horizon=30").json()
+    body = api.get(
+        "/api/analytics/calibration/drilldown/",
+        {"horizon": 30, **RANGE_PARAMS},
+    ).json()
     assert body["count"] == 2
     assert body["filters"] == {"conviction": None, "direction": None, "verdict": None}
