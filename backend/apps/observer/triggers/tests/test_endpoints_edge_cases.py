@@ -5,15 +5,8 @@ from unittest.mock import patch
 
 import fakeredis
 import pytest
-from rest_framework.test import APIClient
 
 from apps.observer.models import EventTrigger
-from apps.profiles.models import TradingProfile
-
-
-@pytest.fixture
-def api():
-    return APIClient()
 
 
 @pytest.fixture
@@ -21,11 +14,6 @@ def fake_redis():
     client = fakeredis.FakeStrictRedis()
     with patch("apps.observer.triggers.metrics._redis", return_value=client):
         yield client
-
-
-@pytest.fixture
-def profile(db):
-    return TradingProfile.objects.create(name="P", style="x")
 
 
 @pytest.mark.django_db

@@ -5,18 +5,10 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
-import pytest
-
 from apps.analytics.services.cpi import cost_per_insight
 from apps.observer.models import EventTrigger, TriggerFiring
-from apps.profiles.models import TradingProfile
 from apps.snapshots.models import Snapshot
 from apps.threads.models import AIRun, Message, Thread
-
-
-@pytest.fixture
-def profile(db):
-    return TradingProfile.objects.create(name="p", style="s")
 
 
 def _aware(dt):

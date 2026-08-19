@@ -4,27 +4,22 @@ import pytest
 
 from apps.observer.models import ObserverSchedule
 from apps.observer.services.run import run_observer
-from apps.profiles.models import TradingProfile
 from apps.snapshots.models import Snapshot
 from apps.threads.models import Thread
 
 
-def _profile():
-    return TradingProfile.objects.create(name="P", style="x")
-
-
 @pytest.mark.django_db
-def test_run_observer_skips_when_disabled():
-    s = ObserverSchedule.objects.create(name="x", profile=_profile(), enabled=False)
+def test_run_observer_skips_when_disabled(profile):
+    s = ObserverSchedule.objects.create(name="x", profile=profile, enabled=False)
     assert run_observer(s.id) is None
     assert Snapshot.objects.count() == 0
 
 
 @pytest.mark.django_db
-def test_run_observer_skips_when_market_closed():
+def test_run_observer_skips_when_market_closed(profile):
     s = ObserverSchedule.objects.create(
         name="x",
-        profile=_profile(),
+        profile=profile,
         market_hours_only=True,
     )
     with patch("apps.observer.services.run.any_market_open", return_value=False):
@@ -33,8 +28,8 @@ def test_run_observer_skips_when_market_closed():
 
 
 @pytest.mark.django_db
-def test_run_observer_writes_placeholder_when_cost_capped():
-    p = _profile()
+def test_run_observer_writes_placeholder_when_cost_capped(profile):
+    p = profile
     s = ObserverSchedule.objects.create(
         name="x",
         profile=p,
@@ -61,8 +56,8 @@ def test_run_observer_writes_placeholder_when_cost_capped():
 
 
 @pytest.mark.django_db
-def test_run_observer_happy_path_creates_snapshot_message_and_notification():
-    p = _profile()
+def test_run_observer_happy_path_creates_snapshot_message_and_notification(profile):
+    p = profile
     s = ObserverSchedule.objects.create(
         name="hourly",
         profile=p,
@@ -120,10 +115,10 @@ def test_run_observer_happy_path_creates_snapshot_message_and_notification():
 
 
 @pytest.mark.django_db
-def test_run_observer_batch_submit_failure_writes_failed_message():
+def test_run_observer_batch_submit_failure_writes_failed_message(profile):
     """A failed batch submit must surface in the observer thread — the timeline
     reads Messages, so a log-only failure is invisible in the UI."""
-    p = _profile()
+    p = profile
     s = ObserverSchedule.objects.create(
         name="overnight",
         profile=p,
@@ -155,10 +150,10 @@ def test_run_observer_batch_submit_failure_writes_failed_message():
 
 
 @pytest.mark.django_db
-def test_run_observer_coverage_hook_failure_is_logged_not_fatal(caplog):
+def test_run_observer_coverage_hook_failure_is_logged_not_fatal(caplog, profile):
     """A broken coverage auto-revise hook must not fail the fire, and must leave
     a warning in the logs — a silent suppress would hide the breakage forever."""
-    p = _profile()
+    p = profile
     s = ObserverSchedule.objects.create(
         name="hourly",
         profile=p,

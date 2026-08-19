@@ -11,18 +11,12 @@ from unittest.mock import patch
 
 import pytest
 
-from apps.profiles.models import TradingProfile
 from apps.snapshots.models import Snapshot
 from apps.strategy.coverage.hooks import maybe_revise_from_snapshot
 from apps.strategy.models import CoverageNote
 from apps.strategy.tasks import revise_from_observation
 
 DELAY = "apps.strategy.tasks.revise_from_observation.delay"
-
-
-@pytest.fixture
-def profile(db) -> TradingProfile:
-    return TradingProfile.objects.create(name="p", style="s", default_provider="claude")
 
 
 @pytest.fixture

@@ -4,13 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from apps.profiles.models import TradingProfile
 from apps.thesis.models import Position, Thesis
-
-
-@pytest.fixture
-def profile(db):
-    return TradingProfile.objects.create(name="Test Profile", style="swing trader")
 
 
 @pytest.fixture

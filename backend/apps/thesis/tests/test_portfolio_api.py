@@ -9,21 +9,9 @@ from decimal import Decimal
 
 import pytest
 from django.utils import timezone
-from rest_framework.test import APIClient
 
 from apps.market.models import OHLCBar
-from apps.profiles.models import TradingProfile
 from apps.thesis.models import Position, Thesis
-
-
-@pytest.fixture
-def api():
-    return APIClient()
-
-
-@pytest.fixture
-def profile(db):
-    return TradingProfile.objects.create(name="API Test Profile", style="swing trader")
 
 
 @pytest.fixture

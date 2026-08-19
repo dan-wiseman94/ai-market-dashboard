@@ -6,13 +6,6 @@ from django.utils import timezone
 from apps.market.models import MarketEvent
 
 
-@pytest.fixture
-def api():
-    from rest_framework.test import APIClient
-
-    return APIClient()
-
-
 @pytest.mark.django_db
 def test_events_endpoint_returns_upcoming(api):
     MarketEvent.objects.create(

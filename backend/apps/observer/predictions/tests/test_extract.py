@@ -7,12 +7,7 @@ import pytest
 from apps.observer.models import AIPrediction
 from apps.observer.predictions.services.extract import extract_from_observation
 from apps.observer.schemas import ObservationReport, Signal
-from apps.profiles.models import TradingProfile
 from apps.snapshots.models import Snapshot
-
-
-def _profile() -> TradingProfile:
-    return TradingProfile.objects.create(name="p", style="s")
 
 
 def _snap(profile, ticker="NVDA") -> Snapshot:
@@ -59,9 +54,8 @@ def _extract(report, snap, profile):
 
 @pytest.mark.django_db
 class TestExtract:
-    def test_creates_prediction_from_directional_call(self):
-        p = _profile()
-        pred = _extract(_report(), _snap(p), p)
+    def test_creates_prediction_from_directional_call(self, profile):
+        pred = _extract(_report(), _snap(profile), profile)
         assert pred is not None
         assert pred.ticker == "NVDA"
         assert pred.direction == "bullish"
@@ -72,22 +66,19 @@ class TestExtract:
         assert pred.provider == "claude"
         assert pred.resolve_at > pred.predicted_at
 
-    def test_no_directional_call_returns_none(self):
-        p = _profile()
+    def test_no_directional_call_returns_none(self, profile):
         r = _report()
         r.predicted_direction = None
-        assert _extract(r, _snap(p), p) is None
+        assert _extract(r, _snap(profile), profile) is None
         assert AIPrediction.objects.count() == 0
 
-    def test_confidence_falls_back_to_signal_mean(self):
-        p = _profile()
+    def test_confidence_falls_back_to_signal_mean(self, profile):
         r = _report(confidence=0.6)
         r.predicted_confidence = None  # the per-signal 0.6 should be used
-        pred = _extract(r, _snap(p), p)
+        pred = _extract(r, _snap(profile), profile)
         assert pred.confidence == pytest.approx(0.6)
 
-    def test_no_confidence_anywhere_returns_none(self):
-        p = _profile()
+    def test_no_confidence_anywhere_returns_none(self, profile):
         r = ObservationReport(
             headline="h",
             bias="neutral",
@@ -97,28 +88,25 @@ class TestExtract:
             predicted_direction="bullish",
             predicted_horizon_days=7,
         )
-        assert _extract(r, _snap(p), p) is None
+        assert _extract(r, _snap(profile), profile) is None
 
-    def test_default_horizon_when_unset(self):
-        p = _profile()
+    def test_default_horizon_when_unset(self, profile):
         r = _report()
         r.predicted_horizon_days = None
-        pred = _extract(r, _snap(p), p)
+        pred = _extract(r, _snap(profile), profile)
         assert pred.horizon_days == 7  # DEFAULT_HORIZON_DAYS
 
-    def test_dedup_same_direction_is_noop(self):
-        p = _profile()
-        snap = _snap(p)
-        a = _extract(_report(direction="bullish"), snap, p)
-        b = _extract(_report(direction="bullish"), snap, p)
+    def test_dedup_same_direction_is_noop(self, profile):
+        snap = _snap(profile)
+        a = _extract(_report(direction="bullish"), snap, profile)
+        b = _extract(_report(direction="bullish"), snap, profile)
         assert a.id == b.id  # the open call stands, frozen
         assert AIPrediction.objects.filter(status="open").count() == 1
 
-    def test_direction_flip_invalidates_old_and_creates_new(self):
-        p = _profile()
-        snap = _snap(p)
-        a = _extract(_report(direction="bullish"), snap, p)
-        b = _extract(_report(direction="bearish"), snap, p)
+    def test_direction_flip_invalidates_old_and_creates_new(self, profile):
+        snap = _snap(profile)
+        a = _extract(_report(direction="bullish"), snap, profile)
+        b = _extract(_report(direction="bearish"), snap, profile)
         a.refresh_from_db()
         assert a.status == "invalidated"
         assert a.invalidated_at is not None
@@ -153,13 +141,12 @@ def _open_kwargs(profile, **over):
 
 
 @pytest.mark.django_db
-def test_second_open_prediction_violates_unique_constraint():
+def test_second_open_prediction_violates_unique_constraint(profile):
     from django.db import IntegrityError, transaction
 
-    p = _profile()
-    AIPrediction.objects.create(direction="bullish", **_open_kwargs(p))
+    AIPrediction.objects.create(direction="bullish", **_open_kwargs(profile))
     with pytest.raises(IntegrityError), transaction.atomic():
-        AIPrediction.objects.create(direction="bearish", **_open_kwargs(p))
+        AIPrediction.objects.create(direction="bearish", **_open_kwargs(profile))
 
 
 @pytest.mark.django_db
@@ -173,16 +160,15 @@ def test_null_profile_still_collides_on_open_constraint():
 
 
 @pytest.mark.django_db
-def test_constraint_allows_second_when_first_is_not_open():
-    p = _profile()
-    AIPrediction.objects.create(direction="bullish", **_open_kwargs(p, status="resolved"))
+def test_constraint_allows_second_when_first_is_not_open(profile):
+    AIPrediction.objects.create(direction="bullish", **_open_kwargs(profile, status="resolved"))
     # No IntegrityError — the partial index only covers status="open".
-    AIPrediction.objects.create(direction="bearish", **_open_kwargs(p))
+    AIPrediction.objects.create(direction="bearish", **_open_kwargs(profile))
     assert AIPrediction.objects.count() == 2
 
 
 @pytest.mark.django_db
-def test_extract_race_loser_returns_the_concurrent_open():
+def test_extract_race_loser_returns_the_concurrent_open(profile):
     """When a concurrent fire opens a prediction between our dedup .first() and our
     create(), the DB constraint rejects ours (IntegrityError) — extract must swallow
     it and return the already-open winner, not crash the fire."""
@@ -190,9 +176,10 @@ def test_extract_race_loser_returns_the_concurrent_open():
 
     from apps.observer.predictions.services import extract as extract_mod
 
-    p = _profile()
-    snap = _snap(p, "NVDA")
-    winner = AIPrediction.objects.create(direction="bearish", **_open_kwargs(p, confidence=0.4))
+    snap = _snap(profile, "NVDA")
+    winner = AIPrediction.objects.create(
+        direction="bearish", **_open_kwargs(profile, confidence=0.4)
+    )
 
     real_filter = AIPrediction.objects.filter
     state = {"n": 0}
@@ -216,7 +203,7 @@ def test_extract_race_loser_returns_the_concurrent_open():
             message=None,
             provider="claude",
             model="m",
-            profile=p,
+            profile=profile,
         )
 
     assert result is not None
@@ -231,13 +218,12 @@ def test_extract_race_loser_returns_the_concurrent_open():
 
 
 @pytest.mark.django_db
-def test_extract_freezes_expected_move_from_chain():
+def test_extract_freezes_expected_move_from_chain(profile):
     from datetime import date, timedelta
 
     from apps.market.services import expected_move as em
     from apps.snapshots.models import SnapshotSection
 
-    profile = _profile()
     snap = _snap(profile, ticker="NVDA")
     future = (date.today() + timedelta(days=10)).isoformat()
     chain_payload = {
@@ -263,8 +249,7 @@ def test_extract_freezes_expected_move_from_chain():
 
 
 @pytest.mark.django_db
-def test_extract_without_chain_freezes_none():
-    profile = _profile()
+def test_extract_without_chain_freezes_none(profile):
     snap = _snap(profile, ticker="NVDA")  # no chain section
     pred = _extract(_report(), snap, profile)
     assert pred is not None

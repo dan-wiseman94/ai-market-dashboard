@@ -14,10 +14,8 @@ from unittest.mock import patch
 import pytest
 from django.test import override_settings
 from django.utils import timezone
-from rest_framework.test import APIClient
 
 from apps.market.models import OHLCBar
-from apps.profiles.models import TradingProfile
 from apps.secrets.models import ProviderConfig
 from apps.thesis.models import PostMortem, Thesis
 from apps.thesis.schemas import PostMortemReport
@@ -30,18 +28,6 @@ from apps.thesis.services.postmortem import (
     schedule_postmortems,
 )
 from apps.threads.models import Message
-
-
-@pytest.fixture
-def api():
-    return APIClient()
-
-
-@pytest.fixture
-def profile(db):
-    return TradingProfile.objects.create(
-        name="PM Profile", style="swing trader", default_provider="claude"
-    )
 
 
 @pytest.fixture
