@@ -45,6 +45,15 @@ describe("MirrorPage", () => {
     expect(screen.getByText(/Inverted/i)).toBeInTheDocument();
   });
 
+  it("derives horizon buttons from the payload's horizons field", async () => {
+    renderWith({ ...FAKE, horizons: [5, 30, 60] });
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "5d" })).toBeInTheDocument(),
+    );
+    expect(screen.getByRole("button", { name: "60d" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "7d" })).not.toBeInTheDocument();
+  });
+
   it("shows an empty state when there is not enough history", async () => {
     renderWith({
       horizon_days: 30,

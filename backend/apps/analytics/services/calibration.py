@@ -9,7 +9,12 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-VALID_HORIZONS = (7, 30, 90)
+from django.conf import settings
+
+# settings.THESIS_POSTMORTEM_HORIZONS is the source of truth for the horizon set.
+VALID_HORIZONS = tuple(settings.THESIS_POSTMORTEM_HORIZONS)
+# Out-of-set horizons clamp to the middle of the sorted set (30 for [7, 30, 90]).
+DEFAULT_HORIZON = sorted(VALID_HORIZONS)[len(VALID_HORIZONS) // 2]
 _DECISIVE = ("correct", "incorrect")
 _ALL_VERDICTS = ("correct", "incorrect", "mixed", "inconclusive")
 
@@ -193,10 +198,10 @@ def track_record_for_ticker(
     }
 
 
-def calibration(*, start: datetime, end: datetime, horizon: int = 30) -> dict:
+def calibration(*, start: datetime, end: datetime, horizon: int = DEFAULT_HORIZON) -> dict:
     from apps.thesis.models import PostMortem
 
-    horizon = horizon if horizon in VALID_HORIZONS else 30
+    horizon = horizon if horizon in VALID_HORIZONS else DEFAULT_HORIZON
     pms = list(
         PostMortem.objects.filter(
             status="done",
@@ -224,7 +229,7 @@ def calibration_drilldown(
     *,
     start: datetime,
     end: datetime,
-    horizon: int = 30,
+    horizon: int = DEFAULT_HORIZON,
     conviction: int | None = None,
     direction: str | None = None,
     verdict: str | None = None,
@@ -239,7 +244,7 @@ def calibration_drilldown(
     """
     from apps.thesis.models import PostMortem
 
-    horizon = horizon if horizon in VALID_HORIZONS else 30
+    horizon = horizon if horizon in VALID_HORIZONS else DEFAULT_HORIZON
     qs = (
         PostMortem.objects.filter(
             status="done",

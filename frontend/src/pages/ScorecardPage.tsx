@@ -16,23 +16,24 @@ import {
 } from "@/hooks/useAnalytics";
 import { SkeletonRows } from "@/components/Skeleton";
 import { EmptyState } from "@/components/EmptyState";
-
-const HORIZONS = [7, 30, 90] as const;
+import { horizonsFrom } from "@/lib/horizons";
 
 function pct(v: number | null): string {
   return v === null ? "—" : `${(v * 100).toFixed(0)}%`;
 }
 
 function HorizonPicker({
+  horizons,
   horizon,
   onPick,
 }: {
+  horizons: readonly number[];
   horizon: number;
   onPick: (h: number) => void;
 }) {
   return (
     <div className="flex gap-1 text-sm">
-      {HORIZONS.map((h) => (
+      {horizons.map((h) => (
         <button
           key={h}
           onClick={() => onPick(h)}
@@ -380,6 +381,7 @@ export default function ScorecardPage() {
   const { data: aiCal } = useAICalibration(90, horizon);
   const { data: drift } = useCalibrationDrift();
   const { data: contra } = useContradictions();
+  const horizons = horizonsFrom(data);
 
   function pickHorizon(h: number) {
     setHorizon(h);
@@ -394,7 +396,7 @@ export default function ScorecardPage() {
     <div className="px-8 py-8 max-w-5xl mx-auto space-y-8 ledger-fade-in">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">Calibration scorecard</h1>
-        <HorizonPicker horizon={horizon} onPick={pickHorizon} />
+        <HorizonPicker horizons={horizons} horizon={horizon} onPick={pickHorizon} />
       </div>
 
       <ThesisAndProvider
