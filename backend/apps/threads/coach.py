@@ -42,7 +42,9 @@ from zoneinfo import ZoneInfo
 
 from django.conf import settings
 
+from apps.market.services.fundamentals import sector_for_ticker
 from apps.recall.services.search import related_to_situation, search
+from apps.snapshots.primary import last_price
 
 log = logging.getLogger(__name__)
 
@@ -165,16 +167,6 @@ def _fmt_num(v) -> str:
         return str(v)
 
 
-def _snapshot_last(snapshot, ticker: str):
-    """Primary-ticker last price from the snapshot's own quotes section (no fetch)."""
-    for sec in snapshot.sections.all():
-        if sec.kind == "quotes" and isinstance(sec.payload, dict):
-            row = sec.payload.get(ticker)
-            if isinstance(row, dict):
-                return row.get("last")
-    return None
-
-
 def _open_theses_qs(ticker: str):
     """Open theses on ``ticker``, highest-conviction then newest — the single ordering
     every coach block that keys off the leading open thesis shares (was inlined 4×)."""
@@ -188,7 +180,7 @@ def _theses_block(ticker: str, snapshot, last: Any = _UNSET) -> str:
     if not theses:
         return ""
     if last is _UNSET:
-        last = _snapshot_last(snapshot, ticker)
+        last = last_price(snapshot, ticker)
     lines = [f"### Open theses on {ticker}"]
     for t in theses:
         bits = [f'[{t.direction} · conviction {t.conviction}/5] "{t.title}"']
@@ -321,21 +313,6 @@ _MIN_LESSON_SUPPORT = 2
 _MAX_DISTILLED = 2
 
 
-def _sector_for_ticker(ticker: str) -> str:
-    """Sector for a ticker from CompanyFundamentals (best-effort), else ""."""
-    if not ticker:
-        return ""
-    from apps.market.models import CompanyFundamentals
-
-    sector = (
-        CompanyFundamentals.objects.filter(ticker=ticker.upper())
-        .exclude(sector="")
-        .values_list("sector", flat=True)
-        .first()
-    )
-    return sector or ""
-
-
 def _distilled_lessons_block(ticker: str, top: Any = _UNSET) -> str:
     """Distilled recurring lessons matching the current situation's tags:
     same direction (leading open thesis) and/or same sector. Cross-ticker by
@@ -346,7 +323,7 @@ def _distilled_lessons_block(ticker: str, top: Any = _UNSET) -> str:
     if top is _UNSET:
         top = _open_theses_qs(ticker).first()
     direction = top.direction if top else None
-    sector = _sector_for_ticker(ticker)
+    sector = sector_for_ticker(ticker)
     if not direction and not sector:
         return ""
     matched = []
@@ -468,7 +445,7 @@ def _recall_block(snapshot, ticker: str, last: Any = _UNSET) -> str:
     if not ticker:
         return ""
     if last is _UNSET:
-        last = _snapshot_last(snapshot, ticker)
+        last = last_price(snapshot, ticker)
     query = _situation_query(ticker, last)
     hits = related_to_situation(ticker, query, k=_MAX_RECALL_ITEMS, kinds=list(_RECALL_KINDS))
     return _format_recall_hits(hits)
@@ -543,7 +520,7 @@ def assemble_coach_context(snapshot, profile) -> str:
     # _safe_value yields _UNSET, so the block self-recomputes and its own _safe still
     # isolates the failure — same behavior, fewer queries on the happy path.
     top = _safe_value(lambda: _open_theses_qs(ticker).first())
-    last = _safe_value(lambda: _snapshot_last(snapshot, ticker))
+    last = _safe_value(lambda: last_price(snapshot, ticker))
     sections = [
         _safe(_regime_block),
         _safe(lambda: _theses_block(ticker, snapshot, last)),
