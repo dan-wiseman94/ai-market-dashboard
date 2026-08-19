@@ -8,6 +8,7 @@ from django.views.decorators.http import require_GET
 from rest_framework import viewsets
 from rest_framework.exceptions import ValidationError
 
+from apps.core.http import json_error_response
 from apps.market.calendar import MARKETS, calendar_for, market_state
 from apps.market.models import CalendarOverride
 from apps.market.schwab_client import SchwabNotConnectedError
@@ -25,7 +26,7 @@ from apps.market.services.treasury import fetch_treasury
 
 
 def _err(code: str, message: str, status: int) -> JsonResponse:
-    return JsonResponse({"code": code, "message": message}, status=status)
+    return json_error_response(code, message, status=status)
 
 
 def _wrap_schwab(fn):
