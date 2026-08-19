@@ -49,16 +49,44 @@ function closeSocket(ws: WebSocket): void {
 const RECONNECT_BASE_MS = 1000;
 const RECONNECT_MAX_MS = 10000;
 
-// Mirrors the backend replay buffer (event_log._MAX_EVENTS): a genuine
-// replay/live duplicate is always an event still inside the buffered tail, so
-// its seq trails the cursor by less than the buffer size.
+// The server announces its replay-buffer geometry in a replay_config frame
+// (the consumer's first frame on every connect); the values below are only
+// fallbacks until that frame arrives. They match today's backend constants
+// (event_log.MAX_EVENTS / TTL_SECONDS) but the frame is authoritative.
+//
+// Buffer size: a genuine replay/live duplicate is always an event still inside
+// the buffered tail, so its seq trails the cursor by less than the buffer size.
 const REPLAY_BUFFER_EVENTS = 256;
-// Mirrors the backend seq-counter TTL (event_log._TTL_SECONDS = 1h): the
-// counter restarts only after >=1h with no recorded events, so a backwards seq
-// arriving that long after the cursor last advanced is a restart, not a
-// duplicate. Kept below the backend TTL so receipt-latency skew can't
-// misclassify (real duplicates arrive within moments of the original anyway).
-const SEQ_RESTART_IDLE_MS = 55 * 60 * 1000;
+// Seq-counter TTL: the counter restarts only after that long with no recorded
+// events, so a backwards seq arriving after the cursor has idled past the TTL
+// is a restart, not a duplicate. The restart threshold sits a safety margin
+// below the TTL so receipt-latency skew can't misclassify (real duplicates
+// arrive within moments of the original anyway).
+const SEQ_RESTART_SAFETY_MARGIN_MS = 5 * 60 * 1000;
+const SEQ_RESTART_IDLE_MS = 60 * 60 * 1000 - SEQ_RESTART_SAFETY_MARGIN_MS;
+
+type ReplayConfig = { buffer: number; idleRestartMs: number };
+
+function replayConfigFromFrame(cfg: { buffer?: unknown; ttl_seconds?: unknown }): ReplayConfig {
+  return {
+    buffer: typeof cfg.buffer === "number" ? cfg.buffer : REPLAY_BUFFER_EVENTS,
+    idleRestartMs:
+      typeof cfg.ttl_seconds === "number"
+        ? cfg.ttl_seconds * 1000 - SEQ_RESTART_SAFETY_MARGIN_MS
+        : SEQ_RESTART_IDLE_MS,
+  };
+}
+
+function seqIndicatesRestart(
+  cursor: { seq: number; at: number },
+  seq: number,
+  cfg: ReplayConfig | undefined,
+): boolean {
+  return (
+    cursor.seq - seq >= (cfg?.buffer ?? REPLAY_BUFFER_EVENTS) ||
+    Date.now() - cursor.at >= (cfg?.idleRestartMs ?? SEQ_RESTART_IDLE_MS)
+  );
+}
 
 export function WebSocketProvider({ children }: { children: React.ReactNode }) {
   const broker = useMemo(() => new Broker(), []);
@@ -71,6 +99,10 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
   // silently loses those events. The timestamp detects a server-side counter
   // restart (see the message handler).
   const lastSeq = useRef(new Map<string, { seq: number; at: number }>());
+  // Server-announced replay geometry (replay_config, first frame per
+  // connection); each reconnect's frame overwrites the entry. Until it arrives
+  // the heuristic falls back to the mirrored literals above.
+  const replayConfig = useRef(new Map<string, { buffer: number; idleRestartMs: number }>());
   // Set once the provider unmounts so in-flight close handlers / timers don't reopen.
   const disposed = useRef(false);
   // Empty VITE_WS_BASE_URL means same-origin: build the base from the current
@@ -92,6 +124,17 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
       ws.addEventListener("message", (ev) => {
         try {
           const msg = JSON.parse(ev.data);
+          if ((msg as { type?: unknown })?.type === "replay_config") {
+            // Consumed here, never dispatched: the server's replay-buffer
+            // geometry for the duplicate-vs-counter-restart heuristic below.
+            // It carries no seq (never enters the replay buffer), so it can't
+            // move the cursor.
+            replayConfig.current.set(
+              channel,
+              replayConfigFromFrame(msg as { buffer?: unknown; ttl_seconds?: unknown }),
+            );
+            return;
+          }
           if ((msg as { type?: unknown })?.type === "replay_gap") {
             // Handled BEFORE the seq filter: a gap frame must never be dropped,
             // and it also means the server's seq counter may have restarted
@@ -123,10 +166,7 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
               // counter's idle TTL. Treat that as a fresh stream and dispatch,
               // or every subsequent event is silently dropped as a
               // "duplicate" and the streaming UI goes dead.
-              const restarted =
-                cursor.seq - seq >= REPLAY_BUFFER_EVENTS ||
-                Date.now() - cursor.at >= SEQ_RESTART_IDLE_MS;
-              if (!restarted) return;
+              if (!seqIndicatesRestart(cursor, seq, replayConfig.current.get(channel))) return;
             }
             lastSeq.current.set(channel, { seq, at: Date.now() });
           }
@@ -177,6 +217,7 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
       // A deliberate teardown resets the replay cursor: a later re-subscribe is a
       // fresh first-connect (live tail), not a replay of everything since you left.
       lastSeq.current.delete(channel);
+      replayConfig.current.delete(channel);
       if (ws) closeSocket(ws);
     }
 
@@ -198,6 +239,7 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
     const pending = timers.current;
     const counts = attempts.current;
     const seqs = lastSeq.current;
+    const configs = replayConfig.current;
     return () => {
       disposed.current = true;
       pending.forEach((timer) => clearTimeout(timer));
@@ -206,6 +248,7 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
       open.clear();
       counts.clear();
       seqs.clear();
+      configs.clear();
     };
   }, []);
 
