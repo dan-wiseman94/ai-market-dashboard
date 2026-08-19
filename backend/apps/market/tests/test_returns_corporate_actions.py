@@ -14,9 +14,10 @@ from django.test import override_settings
 
 from apps.market.models import CorporateAction
 from apps.market.returns import (
+    _corporate_actions,
+    _split_product,
     forward_return_pct,
     price_path_summary,
-    split_factor,
 )
 
 START = datetime(2026, 1, 5, 15, 0, tzinfo=UTC)
@@ -87,20 +88,26 @@ class TestSplitAdjustment:
         assert forward_return_pct("NVDA", START, END) == pytest.approx(0.0)
 
 
+def _window_split_factor(ticker: str) -> float:
+    """Π split ratios for ex-dates in ``(START, END]`` — the exact composition
+    :func:`_adjusted_end_value` uses to restore an end close to the start basis."""
+    return _split_product(_corporate_actions(ticker, START, END))
+
+
 class TestSplitFactor:
     def test_no_actions_is_one(self, db) -> None:
-        assert split_factor("AAPL", START, END) == 1.0
+        assert _window_split_factor("AAPL") == 1.0
 
     def test_multiple_splits_multiply(self, db) -> None:
         _split("X", date(2026, 1, 20), 2.0)
         _split("X", date(2026, 2, 20), 3.0)
-        assert split_factor("X", START, END) == pytest.approx(6.0)
+        assert _window_split_factor("X") == pytest.approx(6.0)
 
     def test_only_splits_strictly_in_window_count(self, db) -> None:
         _split("X", date(2025, 12, 1), 2.0)  # before start
         _split("X", date(2026, 2, 1), 3.0)  # inside
         _split("X", date(2026, 6, 1), 5.0)  # after end
-        assert split_factor("X", START, END) == pytest.approx(3.0)
+        assert _window_split_factor("X") == pytest.approx(3.0)
 
 
 class TestPricePathSummary:

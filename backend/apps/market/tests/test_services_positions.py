@@ -20,9 +20,6 @@ def fake_redis(monkeypatch):
 @pytest.mark.django_db
 def test_fetch_positions_extracts_from_account():
     # schwab-py returns a list from get_accounts with fields=positions
-    hash_resp = MagicMock()
-    hash_resp.json.return_value = [{"accountNumber": "111", "hashValue": "HASH1"}]
-
     accounts_resp = MagicMock()
     accounts_resp.json.return_value = [
         {
@@ -52,7 +49,6 @@ def test_fetch_positions_extracts_from_account():
     ]
 
     client = MagicMock()
-    client.get_account_numbers.return_value = hash_resp
     client.get_accounts.return_value = accounts_resp
 
     with patch("apps.market.services.positions.get_schwab_client", return_value=client):

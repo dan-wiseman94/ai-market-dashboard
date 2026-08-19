@@ -74,11 +74,6 @@ class TradingProfile(models.Model):
         "snapshot, per-ticker track record, recall) plus a base observational "
         "system prompt. Off = the system prompt is just the style.",
     )
-    skills = models.JSONField(
-        default=list,
-        blank=True,
-        help_text="List of Anthropic Skill ids to attach per run. Empty = none.",
-    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

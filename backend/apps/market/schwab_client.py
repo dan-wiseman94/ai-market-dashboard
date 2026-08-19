@@ -148,8 +148,6 @@ class _MockSchwabClient:
     class Options:
         class ContractType:
             ALL = "ALL"
-            CALL = "CALL"
-            PUT = "PUT"
 
     class Account:
         class Fields:
@@ -199,18 +197,10 @@ class _MockSchwabClient:
             }
         )
 
-    def get_account_numbers(self):
-        self._gate()
-        return _mock_resp([])
-
     def get_accounts(self, *_args, **_kwargs):
         """Mock-mode positions surface — empty list keeps the positions view at zero."""
         self._gate()
         return _mock_resp([])
-
-    def get_movers(self, *_args, **_kwargs):
-        self._gate()
-        return _mock_resp({"screeners": []})
 
     def __getattr__(self, name: str):
         """Return a callable that yields an empty candles response for any OHLC method."""

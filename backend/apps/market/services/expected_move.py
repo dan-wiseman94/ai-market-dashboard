@@ -122,16 +122,6 @@ def _spot_of(payload: dict) -> float | None:
         return None
 
 
-def term_structure(
-    payload: dict, *, horizons: tuple[int, ...] = _DEFAULT_HORIZONS, today: date | None = None
-) -> list[dict]:
-    """``[{horizon_days, move_pct, move_abs}]`` for each horizon, or ``[]`` on no IV."""
-    by_exp = _atm_iv_by_expiry(payload)
-    if not by_exp:
-        return []
-    return _moves_from_by_exp(by_exp, _spot_of(payload), horizons=horizons, today=today or _today())
-
-
 def moves_from_term_structure(
     term_structure_rows: list,
     spot: float | None,
@@ -139,10 +129,10 @@ def moves_from_term_structure(
     horizons: tuple[int, ...] = _DEFAULT_HORIZONS,
     today: date | None = None,
 ) -> list[dict]:
-    """Same output as :func:`term_structure`, but from an ALREADY-computed
-    ``chain_analytics`` term structure (``[{expiry, atm_iv}, ...]``) plus ``spot`` — so a
-    caller that already ran ``chain_analytics`` (the snapshot chain renderer) gets the
-    expected-move rows without re-flattening the chain and re-running the analytics."""
+    """``[{horizon_days, move_pct, move_abs}]`` for each horizon (``[]`` on no IV) from an
+    ALREADY-computed ``chain_analytics`` term structure (``[{expiry, atm_iv}, ...]``) plus
+    ``spot`` — so a caller that already ran ``chain_analytics`` (the snapshot chain renderer)
+    gets the expected-move rows without re-flattening the chain and re-running the analytics."""
     by_exp = {
         row["expiry"]: row["atm_iv"]
         for row in (term_structure_rows or [])

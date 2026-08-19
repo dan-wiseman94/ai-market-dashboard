@@ -1,12 +1,12 @@
-"""SEC EDGAR company filings + Form 4 insider transactions. No API key required.
+"""SEC EDGAR company filings. No API key required.
 
 Sourced from SEC EDGAR full-text search / data APIs (public, no auth):
 - https://www.sec.gov/files/company_tickers.json   → ticker→CIK map (cached 24h)
 - https://data.sec.gov/submissions/CIK##########.json → filing arrays per company
 
 Caches ticker-map 24h (key "market:edgar:tickermap") and submissions per ticker
-at filings TTL (default 3600s, registered by the parent). Both fetch functions
-never raise — they return [] on any failure, including unknown ticker.
+at filings TTL (default 3600s, registered by the parent). fetch_filings never
+raises — it returns [] on any failure, including unknown ticker.
 
 SEC fair-use is ~10 req/sec. A descriptive User-Agent is required per SEC policy;
 configure via optional setting SEC_EDGAR_USER_AGENT (a safe default is baked in).
@@ -121,19 +121,6 @@ def _canned_filings(ticker: str) -> list[dict]:
     ]
 
 
-def _canned_insider(ticker: str) -> list[dict]:
-    t = ticker.upper()
-    name = f"{t} Corp"
-    return [
-        {
-            "filed": "2025-10-20",
-            "accession": "0000000000-25-000010",
-            "url": "https://www.sec.gov/Archives/edgar/data/1/000000000025000010/form4.xml",
-            "title": f"{name} Form 4",
-        },
-    ]
-
-
 def _build_filing_url(cik: int, accession: str, primary_doc: str) -> str:
     acc_nodash = accession.replace("-", "")
     return f"https://www.sec.gov/Archives/edgar/data/{cik}/{acc_nodash}/{primary_doc}"
@@ -191,46 +178,6 @@ def _normalize_filings(
     return results
 
 
-def _normalize_insider(
-    company_name: str,
-    cik: int,
-    submissions: dict,
-    *,
-    limit: int,
-    min_filed: str = "",
-) -> list[dict]:
-    """Extract Form 4 filings from a EDGAR submissions payload."""
-    recent = (submissions.get("filings") or {}).get("recent") or {}
-    form_list: list[str] = recent.get("form") or []
-    filed_list: list[str] = recent.get("filingDate") or []
-    acc_list: list[str] = recent.get("accessionNumber") or []
-    doc_list: list[str] = recent.get("primaryDocument") or []
-
-    length = min(len(form_list), len(filed_list), len(acc_list), len(doc_list))
-
-    results: list[dict] = []
-    for i in range(length):
-        if form_list[i] != "4":
-            continue
-        if min_filed and filed_list[i] < min_filed:
-            continue
-        accession = acc_list[i]
-        primary_doc = doc_list[i]
-        url = _build_filing_url(cik, accession, primary_doc)
-        results.append(
-            {
-                "filed": filed_list[i],
-                "accession": accession,
-                "url": url,
-                "title": f"{company_name} Form 4",
-            }
-        )
-        if len(results) >= limit:
-            break
-
-    return results
-
-
 def fetch_filings(
     ticker: str,
     *,
@@ -275,38 +222,4 @@ def fetch_filings(
         forms=forms,
         limit=limit,
         min_filed=_min_filed(max_age_days),
-    )
-
-
-def fetch_insider(ticker: str, *, limit: int = 15, max_age_days: int = 548) -> list[dict]:
-    """Return the `limit` most-recent Form 4 insider-transaction filings (newest-first).
-
-    Each item: {"filed", "accession", "url", "title"}. Form 4s older than
-    `max_age_days` are dropped (stale insider activity is noise, not signal).
-    Returns [] for an unknown ticker or any network error. Never raises.
-    """
-    from apps.core.mocks import is_mock_mode
-
-    ticker = ticker.upper()
-
-    if is_mock_mode():
-        return _canned_insider(ticker)[:limit]
-
-    if not is_equity_like(ticker):
-        return []  # futures roots / cash indices are not SEC filers
-
-    cik = _cik_for(ticker)
-    if cik is None:
-        log.info("market.edgar.fetch_insider: unknown ticker %s", ticker)
-        return []
-
-    try:
-        submissions = _fetch_submissions(ticker, cik)
-    except Exception as exc:
-        log.warning("market.edgar.fetch_insider.failed ticker=%s: %s", ticker, exc)
-        return []
-
-    company_name = submissions.get("name") or ticker
-    return _normalize_insider(
-        company_name, cik, submissions, limit=limit, min_filed=_min_filed(max_age_days)
     )

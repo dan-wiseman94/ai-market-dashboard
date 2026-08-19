@@ -1,11 +1,10 @@
-"""Daily OHLC bars and previous-close via Polygon.io (free tier, end-of-day only).
+"""Daily OHLC bars via Polygon.io (free tier, end-of-day only).
 
-Endpoints used:
+Endpoint used:
 - GET /v2/aggs/ticker/<T>/range/1/day/<from>/<to>  — daily aggregates, up to 120 bars
-- GET /v2/aggs/ticker/<T>/prev                     — previous session close
 
 Cached at ohlc_1d TTL (3600 s). Persists bars to OHLCBar via _persist_bars.
-Never raises — returns [] / None on any failure.
+Never raises — returns [] on any failure.
 """
 
 from __future__ import annotations
@@ -55,23 +54,6 @@ def _normalize_bar(raw: dict) -> dict:
     }
 
 
-def _normalize_prev_close(raw: dict) -> dict | None:
-    """Return prev-close dict from a /prev response, or None if no results."""
-    results = raw.get("results") or []
-    if not results:
-        return None
-    r = results[0]
-    t_ms = r.get("t", 0)
-    return {
-        "open": r.get("o"),
-        "high": r.get("h"),
-        "low": r.get("l"),
-        "close": r.get("c"),
-        "volume": r.get("v"),
-        "ts": datetime.fromtimestamp(t_ms / 1000, tz=UTC).isoformat(),
-    }
-
-
 def _canned_daily_bars(ticker: str) -> list[dict]:
     """Deterministic fixture: two daily bars for any ticker."""
     base_ts_ms = 1_700_000_000_000
@@ -93,18 +75,6 @@ def _canned_daily_bars(ticker: str) -> list[dict]:
             "ts": datetime.fromtimestamp((base_ts_ms + 86_400_000) / 1000, tz=UTC).isoformat(),
         },
     ]
-
-
-def _canned_prev_close(ticker: str) -> dict:
-    """Deterministic fixture for previous-close."""
-    return {
-        "open": 153.0,
-        "high": 157.0,
-        "low": 152.0,
-        "close": 156.0,
-        "volume": 85_000_000,
-        "ts": datetime.fromtimestamp(1_700_086_400, tz=UTC).isoformat(),
-    }
 
 
 def fetch_daily_bars(ticker: str, *, days: int = 120) -> list[dict]:
@@ -148,37 +118,3 @@ def fetch_daily_bars(ticker: str, *, days: int = 120) -> list[dict]:
     bars = [_normalize_bar(r) for r in results]
     _persist_bars(ticker, "1d", bars)
     return bars
-
-
-def fetch_prev_close(ticker: str) -> dict | None:
-    """Fetch the previous session close from Polygon.io.
-
-    Returns a single dict with open/high/low/close/volume/ts, or None on
-    missing credential, missing data, or any fetch failure (never raises).
-    """
-    from apps.core.mocks import is_mock_mode
-
-    ticker = ticker.upper()
-
-    if is_mock_mode():
-        return _canned_prev_close(ticker)
-
-    api_key = _api_key()
-    if not api_key:
-        log.info("market.polygon: no credential configured, skipping fetch_prev_close")
-        return None
-
-    path = f"/v2/aggs/ticker/{ticker}/prev"
-    params: dict = {"adjusted": "false"}  # raw bars — see fetch_daily_bars note
-
-    try:
-        body = cache.get_or_fetch(
-            f"market:polygon:prev:{ticker}",
-            ttl_seconds=cache.ttl_for_kind("ohlc_1d"),
-            fetcher=lambda: _get(path, params, api_key),
-        )
-    except Exception as exc:
-        log.warning("market.polygon.fetch_prev_close ticker=%s: %s", ticker, safe_err(exc))
-        return None
-
-    return _normalize_prev_close(body)
