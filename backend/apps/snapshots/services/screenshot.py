@@ -2,11 +2,16 @@
 
 from __future__ import annotations
 
+from django.conf import settings
+
 from apps.snapshots.image_store import create_image
 from apps.snapshots.models import SnapshotImage
 
 PNG_MAGIC = b"\x89PNG\r\n\x1a\n"
-MAX_BYTES = 5 * 1024 * 1024
+# The upload cap has one knob: Django's body-buffer guard. This validator must agree
+# with it — a larger value here is unreachable (Django rejects the body first) and a
+# smaller one splits the limit across two constants.
+MAX_BYTES = settings.DATA_UPLOAD_MAX_MEMORY_SIZE
 
 
 class InvalidPNGError(ValueError):

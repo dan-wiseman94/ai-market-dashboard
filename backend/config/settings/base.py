@@ -144,9 +144,10 @@ STATICFILES_DIRS = (
     [REPO_ROOT / "frontend" / "dist"] if (REPO_ROOT / "frontend" / "dist").exists() else []
 )
 
-# Raw-bytes uploads (snapshot client captures): align Django's body-buffer cap with
-# apps.snapshots.services_image.MAX_BYTES so oversized PNGs produce a structured 413
-# response from the view rather than Django's bare 400 RequestDataTooBig.
+# Raw-bytes uploads (snapshot client captures): the single knob for the upload cap.
+# apps.snapshots.services.screenshot.MAX_BYTES derives from this setting, so the
+# view-level size check stays aligned with Django's body-buffer guard and oversized
+# PNGs produce a structured 413 rather than Django's bare 400 RequestDataTooBig.
 DATA_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024
 
 # Snapshot image bytes are written here (on the persistent app_data:/data volume)
