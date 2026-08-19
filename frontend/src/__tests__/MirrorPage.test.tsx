@@ -1,7 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { describe, it, expect } from "vitest";
+import { screen, waitFor } from "@testing-library/react";
+import { mockApi, renderWithProviders } from "./testUtils";
 import MirrorPage from "../pages/MirrorPage";
 
 const FAKE = {
@@ -20,24 +19,12 @@ const FAKE = {
   },
 };
 
-const qc = () => new QueryClient({ defaultOptions: { queries: { retry: false } } });
-
 function renderWith(payload: unknown) {
-  globalThis.fetch = vi.fn(() =>
-    Promise.resolve({ ok: true, json: () => Promise.resolve(payload) }),
-  ) as never;
-  render(
-    <QueryClientProvider client={qc()}>
-      <MemoryRouter>
-        <MirrorPage />
-      </MemoryRouter>
-    </QueryClientProvider>,
-  );
+  mockApi({ "GET /api/analytics/trader-calibration/": payload });
+  renderWithProviders(<MirrorPage />);
 }
 
 describe("MirrorPage", () => {
-  beforeEach(() => vi.restoreAllMocks());
-
   it("renders decision outcomes and an inverted conviction verdict", async () => {
     renderWith(FAKE);
     await waitFor(() => expect(screen.getByText("Passed")).toBeInTheDocument());
@@ -47,8 +34,10 @@ describe("MirrorPage", () => {
 
   it("derives horizon buttons from the payload's horizons field", async () => {
     renderWith({ ...FAKE, horizons: [5, 30, 60] });
-    await waitFor(() =>
-      expect(screen.getByRole("button", { name: "5d" })).toBeInTheDocument(),
+    // 3s: the default 1s waitFor window flakes when the full suite saturates the runner.
+    await waitFor(
+      () => expect(screen.getByRole("button", { name: "5d" })).toBeInTheDocument(),
+      { timeout: 3000 },
     );
     expect(screen.getByRole("button", { name: "60d" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "7d" })).not.toBeInTheDocument();

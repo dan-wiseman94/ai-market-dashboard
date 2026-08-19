@@ -9,14 +9,9 @@ import {
   useDeletePosition,
 } from "@/hooks/usePortfolio";
 import type { PortfolioPosition, PositionDirection, PositionStatus } from "@/api/portfolio";
+import { pctSigned, plClass400, signed } from "@/utils/format";
 
 type ViewStatus = "open" | "closed";
-
-function pnlColor(pnl: number): string {
-  if (pnl > 0) return "text-gain-400";
-  if (pnl < 0) return "text-loss-400";
-  return "text-ink-400";
-}
 
 interface AddPositionFormProps {
   onCreated: () => void;
@@ -270,14 +265,12 @@ function UnrealizedPnl({
 }) {
   return (
     <>
-      <span data-testid={`pnl-${position.id}`} className={pnlColor(pnl)}>
-        {pnl >= 0 ? "+" : ""}
-        {pnl.toFixed(2)}
+      <span data-testid={`pnl-${position.id}`} className={plClass400(pnl)}>
+        {signed(pnl)}
       </span>
       {pct != null && (
-        <div className={`text-[10px] ${pnlColor(pnl)}`}>
-          {pct >= 0 ? "+" : ""}
-          {pct.toFixed(1)}%
+        <div className={`text-[10px] ${plClass400(pnl)}`}>
+          {pctSigned(pct, 1)}
         </div>
       )}
     </>
@@ -302,10 +295,9 @@ function PositionPnlCell({
       ) : realized != null ? (
         <span
           data-testid={`realized-${position.id}`}
-          className={pnlColor(realized)}
+          className={plClass400(realized)}
         >
-          {realized >= 0 ? "+" : ""}
-          {realized.toFixed(2)}
+          {signed(realized)}
         </span>
       ) : (
         <span className="text-ink-600">—</span>

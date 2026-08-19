@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { EmptyState } from "@/components/EmptyState";
+import { SkeletonRows } from "@/components/Skeleton";
 import { useCreateWatchlist, useDeleteWatchlist, useWatchlists } from "@/hooks/useWatchlists";
 
 export default function WatchlistsList() {
@@ -30,7 +32,12 @@ export default function WatchlistsList() {
       </form>
 
       {isLoading ? (
-        <p>Loading…</p>
+        <SkeletonRows rows={4} />
+      ) : (data ?? []).length === 0 ? (
+        <EmptyState
+          title="No watchlists yet"
+          body="Create one above to start tracking a group of tickers."
+        />
       ) : (
         <ul className="space-y-1">
           {(data ?? []).map((w) => (

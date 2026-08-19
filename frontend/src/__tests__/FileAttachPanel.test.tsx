@@ -1,23 +1,19 @@
-import { render, screen, fireEvent } from "@testing-library/react";
+import { screen, fireEvent } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
-import type { ReactNode } from "react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { FileAttachPanel } from "../components/FileAttachPanel";
-
-function wrap(ui: ReactNode) {
-  const qc = new QueryClient();
-  return render(<QueryClientProvider client={qc}>{ui}</QueryClientProvider>);
-}
+import { renderWithProviders } from "./testUtils";
 
 describe("FileAttachPanel", () => {
   it("renders empty state when no files", () => {
-    wrap(<FileAttachPanel threadId={1} files={[]} onAttach={vi.fn()} />);
+    renderWithProviders(
+      <FileAttachPanel threadId={1} files={[]} onAttach={vi.fn()} />,
+    );
     expect(screen.getByText(/no files/i)).toBeInTheDocument();
   });
 
   it("renders a list of files with an Attach button per row", () => {
     const onAttach = vi.fn();
-    wrap(
+    renderWithProviders(
       <FileAttachPanel
         threadId={7}
         files={[

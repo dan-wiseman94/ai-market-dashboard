@@ -71,10 +71,10 @@ describe("WatchlistDetail", () => {
     expect(screen.getByText("Invalid watchlist")).toBeInTheDocument();
   });
 
-  it("shows loading state when isLoading is true", () => {
+  it("shows skeleton rows when isLoading is true", () => {
     mockUseWatchlist.mockReturnValue({ data: undefined, isLoading: true } as never);
     renderDetail();
-    expect(screen.getByText("Loading…")).toBeInTheDocument();
+    expect(screen.getAllByTestId("skeleton-row").length).toBeGreaterThan(0);
   });
 
   it("renders watchlist name as h1 when loaded", () => {

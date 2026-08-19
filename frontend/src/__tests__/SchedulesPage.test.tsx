@@ -1,6 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { describe, it, expect } from "vitest";
+import { screen, fireEvent, waitFor } from "@testing-library/react";
+import { mockApi, renderWithProviders } from "./testUtils";
 import SchedulesPage from "../pages/SchedulesPage";
 
 const SCHEDULES = [
@@ -13,61 +13,44 @@ const SCHEDULES = [
   },
 ];
 
-beforeEach(() => {
-  globalThis.fetch = vi.fn((url: string, init?: RequestInit) => {
-    if (url.startsWith("/api/observer/schedules/") && (!init || init.method === "GET" || !init.method)) {
-      return Promise.resolve({ ok: true, json: () => Promise.resolve(SCHEDULES) });
-    }
-    if (url.startsWith("/api/profiles/")) {
-      return Promise.resolve({ ok: true, json: () => Promise.resolve([{ id: 1, name: "P", default_includes: [] }]) });
-    }
-    return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
-  }) as never;
-});
-
-const qc = () => new QueryClient({ defaultOptions: { queries: { retry: false } } });
+const PROFILES = [{ id: 1, name: "P", default_includes: [] }];
 
 describe("SchedulesPage", () => {
   it("renders schedules list", async () => {
-    render(<QueryClientProvider client={qc()}><SchedulesPage /></QueryClientProvider>);
+    mockApi({
+      "GET /api/observer/schedules/": SCHEDULES,
+      "GET /api/profiles/": PROFILES,
+    });
+    renderWithProviders(<SchedulesPage />);
     await waitFor(() => expect(screen.getByText("Hourly")).toBeInTheDocument());
     expect(screen.getByText(/0 \* \* \* \*/)).toBeInTheDocument();
   });
 
   it("renders empty state when no schedules", async () => {
-    globalThis.fetch = vi.fn(() =>
-      Promise.resolve({ ok: true, json: () => Promise.resolve([]) }),
-    ) as never;
-    render(<QueryClientProvider client={qc()}><SchedulesPage /></QueryClientProvider>);
+    mockApi({
+      "GET /api/observer/schedules/": [],
+      "GET /api/profiles/": [],
+    });
+    renderWithProviders(<SchedulesPage />);
     await waitFor(() => expect(screen.getByText(/no schedules/i)).toBeInTheDocument());
   });
 
   it("submits selected preset cron via create form", async () => {
-    const postSpy = vi.fn((_url: string, _init: RequestInit) =>
-      Promise.resolve({ ok: true, status: 201, json: () => Promise.resolve({}) }),
-    );
-    globalThis.fetch = vi.fn((url: string, init?: RequestInit) => {
-      if (init?.method === "POST" && url.startsWith("/api/observer/schedules/")) {
-        return postSpy(url, init);
-      }
-      if (url.startsWith("/api/observer/schedules/")) {
-        return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
-      }
-      if (url.startsWith("/api/profiles/")) {
-        return Promise.resolve({ ok: true, json: () => Promise.resolve([{ id: 1, name: "P", default_includes: [] }]) });
-      }
-      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
-    }) as never;
+    const mock = mockApi({
+      "GET /api/observer/schedules/": [],
+      "GET /api/profiles/": PROFILES,
+      "POST /api/observer/schedules/": {},
+    });
 
-    render(<QueryClientProvider client={qc()}><SchedulesPage /></QueryClientProvider>);
+    renderWithProviders(<SchedulesPage />);
     await waitFor(() => expect(screen.getByText(/no schedules/i)).toBeInTheDocument());
     fireEvent.click(screen.getByRole("button", { name: /new schedule/i }));
     fireEvent.change(screen.getByLabelText(/name/i), { target: { value: "TestSched" } });
     // Default preset is "Every 15 minutes"
     fireEvent.click(screen.getByRole("button", { name: /^create$/i }));
 
-    await waitFor(() => expect(postSpy).toHaveBeenCalled());
-    const body = JSON.parse((postSpy.mock.calls[0][1] as RequestInit).body as string);
+    await waitFor(() => expect(mock.calls.some((c) => c.method === "POST")).toBe(true));
+    const body = mock.calls.find((c) => c.method === "POST")!.body as Record<string, unknown>;
     expect(body.name).toBe("TestSched");
     expect(body.cron).toBe("*/15 * * * *");
     expect(body.profile).toBe(1);

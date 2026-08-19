@@ -1,19 +1,8 @@
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { screen, fireEvent, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import type { ReactNode } from "react";
+import { renderWithProviders } from "./testUtils";
 import { TickerChanges } from "@/pages/watchlist/TickerChanges";
 import * as snapshotsApi from "@/api/snapshots";
-
-function wrapper({ children }: { children: ReactNode }) {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return (
-    <QueryClientProvider client={client}>
-      <MemoryRouter>{children}</MemoryRouter>
-    </QueryClientProvider>
-  );
-}
 
 const SNAP = {
   id: 7,
@@ -35,7 +24,7 @@ describe("TickerChanges", () => {
 
   it("is collapsed by default and fetches nothing until expanded", () => {
     const timelineSpy = vi.spyOn(snapshotsApi, "fetchSnapshotTimeline");
-    render(<TickerChanges ticker="NVDA" />, { wrapper });
+    renderWithProviders(<TickerChanges ticker="NVDA" />);
     expect(screen.getByText("NVDA")).toBeInTheDocument();
     expect(screen.getByText("What changed?")).toBeInTheDocument();
     expect(timelineSpy).not.toHaveBeenCalled();
@@ -48,7 +37,7 @@ describe("TickerChanges", () => {
       prev_id: 6,
       curr_id: 7,
     });
-    render(<TickerChanges ticker="NVDA" />, { wrapper });
+    renderWithProviders(<TickerChanges ticker="NVDA" />);
     fireEvent.click(screen.getByRole("button", { name: /what changed/i }));
     await waitFor(() => expect(screen.getByText(/AAPL last 150/)).toBeInTheDocument());
     expect(screen.getByText(/snapshot #7/)).toBeInTheDocument();
@@ -56,7 +45,7 @@ describe("TickerChanges", () => {
 
   it("shows a friendly message when the ticker has no snapshots", async () => {
     vi.spyOn(snapshotsApi, "fetchSnapshotTimeline").mockResolvedValue({ results: [] } as never);
-    render(<TickerChanges ticker="TSLA" />, { wrapper });
+    renderWithProviders(<TickerChanges ticker="TSLA" />);
     fireEvent.click(screen.getByRole("button", { name: /what changed/i }));
     await waitFor(() => expect(screen.getByText(/No snapshots of TSLA yet/)).toBeInTheDocument());
   });

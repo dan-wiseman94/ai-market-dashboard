@@ -1,12 +1,12 @@
 import { renderHook, act } from "@testing-library/react";
 import { render, screen } from "@testing-library/react";
 import { createMemoryRouter, RouterProvider } from "react-router-dom";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import AppLayout from "@/components/layout/AppLayout";
 import { WebSocketProvider } from "@/realtime/WebSocketProvider";
-import { installFakeWebSocket } from "./testUtils";
+import { installFakeWebSocket, mockFetch, newQueryClient } from "./testUtils";
 
 describe("useDocumentTitle", () => {
   const original = document.title;
@@ -47,17 +47,14 @@ describe("useDocumentTitle", () => {
   });
 });
 
-function makeQc() {
-  return new QueryClient({ defaultOptions: { queries: { retry: false } } });
-}
-
+// These tests hand-roll createMemoryRouter/RouterProvider (not
+// renderWithProviders) because route `handle`s — the crumb source under test —
+// only exist in a data router, which a plain MemoryRouter cannot express.
 describe("AppLayout document.title wiring", () => {
   const original = document.title;
 
   beforeEach(() => {
-    globalThis.fetch = vi.fn(() =>
-      Promise.resolve({ ok: true, json: () => Promise.resolve({ results: [] }) }),
-    ) as never;
+    mockFetch(() => ({ ok: true, json: () => Promise.resolve({ results: [] }) }));
     installFakeWebSocket();
   });
 
@@ -85,7 +82,7 @@ describe("AppLayout document.title wiring", () => {
     );
 
     render(
-      <QueryClientProvider client={makeQc()}>
+      <QueryClientProvider client={newQueryClient()}>
         <WebSocketProvider>
           <RouterProvider router={router} />
         </WebSocketProvider>
@@ -119,7 +116,7 @@ describe("AppLayout document.title wiring", () => {
     );
 
     render(
-      <QueryClientProvider client={makeQc()}>
+      <QueryClientProvider client={newQueryClient()}>
         <WebSocketProvider>
           <RouterProvider router={router} />
         </WebSocketProvider>

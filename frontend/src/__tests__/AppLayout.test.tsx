@@ -1,19 +1,18 @@
 import { render, screen } from "@testing-library/react";
 import { createMemoryRouter, RouterProvider } from "react-router-dom";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider } from "@tanstack/react-query";
 import AppLayout from "@/components/layout/AppLayout";
 import { WebSocketProvider } from "@/realtime/WebSocketProvider";
-import { beforeEach, vi } from "vitest";
-import { installFakeWebSocket } from "./testUtils";
+import { beforeEach } from "vitest";
+import { installFakeWebSocket, mockFetch, newQueryClient } from "./testUtils";
 import userEvent from "@testing-library/user-event";
 
-function makeQc() {
-  return new QueryClient({ defaultOptions: { queries: { retry: false } } });
-}
-
-function renderWithProviders(router: ReturnType<typeof createMemoryRouter>) {
+// AppLayout needs a data router (Outlet children + useMatches breadcrumbs), so
+// testUtils' renderWithProviders (plain MemoryRouter) can't host it — a
+// RouterProvider nested inside another Router throws.
+function renderLayout(router: ReturnType<typeof createMemoryRouter>) {
   return render(
-    <QueryClientProvider client={makeQc()}>
+    <QueryClientProvider client={newQueryClient()}>
       <WebSocketProvider>
         <RouterProvider router={router} />
       </WebSocketProvider>
@@ -28,7 +27,7 @@ test("AppLayout renders Outlet children", () => {
     ]}],
     { initialEntries: ["/"] },
   );
-  renderWithProviders(router);
+  renderLayout(router);
   expect(screen.getByText("child-page")).toBeInTheDocument();
 });
 
@@ -37,7 +36,7 @@ test("TopNav renders primary route links", () => {
     [{ path: "/", element: <AppLayout />, children: [{ index: true, element: <div>x</div> }] }],
     { initialEntries: ["/"] },
   );
-  renderWithProviders(router);
+  renderLayout(router);
   expect(screen.getByRole("link", { name: /dashboard/i })).toHaveAttribute("href", "/");
   // Exact match: the SideNav now also has a "Snapshots" browser link (/snapshots),
   // so /snapshot/i would match two elements. The TopNav composer link is exactly "Snapshot".
@@ -51,9 +50,7 @@ test("TopNav renders primary route links", () => {
 beforeEach(() => {
   localStorage.clear();
   // Stub network deps needed by NotificationBell (now mounted in TopNav)
-  globalThis.fetch = vi.fn(() =>
-    Promise.resolve({ ok: true, json: () => Promise.resolve({ results: [] }) }),
-  ) as never;
+  mockFetch(() => ({ ok: true, json: () => Promise.resolve({ results: [] }) }));
   installFakeWebSocket();
 });
 
@@ -64,7 +61,7 @@ test("NotificationBell present on arbitrary child route", () => {
     ]}],
     { initialEntries: ["/anything"] },
   );
-  renderWithProviders(router);
+  renderLayout(router);
   expect(screen.getByTestId("notification-bell")).toBeInTheDocument();
 });
 
@@ -73,7 +70,7 @@ test("SideNav toggles and persists collapsed state", async () => {
     [{ path: "/", element: <AppLayout />, children: [{ index: true, element: <div>x</div> }] }],
     { initialEntries: ["/"] },
   );
-  const { unmount } = renderWithProviders(router);
+  const { unmount } = renderLayout(router);
   const toggle = screen.getByRole("button", { name: /toggle sidebar/i });
   expect(screen.getByText("Trading")).toBeVisible();
 
@@ -82,6 +79,6 @@ test("SideNav toggles and persists collapsed state", async () => {
   expect(screen.queryByText("Trading")).not.toBeInTheDocument();
 
   unmount();
-  renderWithProviders(router);
+  renderLayout(router);
   expect(screen.queryByText("Trading")).not.toBeInTheDocument();
 });

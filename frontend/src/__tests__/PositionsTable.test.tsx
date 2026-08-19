@@ -25,10 +25,10 @@ describe("PositionsTable", () => {
     mockUsePositions.mockReturnValue({ data: undefined, isLoading: false, error: null } as unknown as ReturnType<typeof usePositions>);
   });
 
-  it("renders loading state", () => {
+  it("renders skeleton rows while loading", () => {
     mockUsePositions.mockReturnValue({ data: undefined, isLoading: true, error: null } as unknown as ReturnType<typeof usePositions>);
     render(<PositionsTable />);
-    expect(screen.getByText("Loading the book…")).toBeInTheDocument();
+    expect(screen.getAllByTestId("skeleton-row").length).toBeGreaterThan(0);
   });
 
   it("renders error message from error.message", () => {

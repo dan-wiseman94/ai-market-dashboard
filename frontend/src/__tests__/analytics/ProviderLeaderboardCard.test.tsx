@@ -1,11 +1,11 @@
-import { render, screen } from "@testing-library/react";
-import { describe, it, expect, vi } from "vitest";
-import type { ReactNode } from "react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { screen } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { ProviderLeaderboardCard } from "@/components/analytics/ProviderLeaderboardCard";
+import * as analytics from "@/hooks/useAnalytics";
+import { renderWithProviders } from "../testUtils";
 
-vi.mock("@/hooks/useAnalytics", () => ({
-  useLeaderboard: () => ({
+function mockHook(overrides: Partial<{ data: unknown; isLoading: boolean; error: Error | null }> = {}) {
+  vi.spyOn(analytics, "useLeaderboard").mockReturnValue({
     data: {
       rows: [
         {
@@ -22,24 +22,30 @@ vi.mock("@/hooks/useAnalytics", () => ({
     },
     isLoading: false,
     error: null,
-  }),
-}));
-
-function wrap(ui: ReactNode) {
-  const qc = new QueryClient();
-  return render(<QueryClientProvider client={qc}>{ui}</QueryClientProvider>);
+    ...overrides,
+  } as ReturnType<typeof analytics.useLeaderboard>);
 }
 
 describe("ProviderLeaderboardCard", () => {
+  beforeEach(() => vi.restoreAllMocks());
+
   it("renders one row per (provider,model)", () => {
-    wrap(<ProviderLeaderboardCard />);
+    mockHook();
+    renderWithProviders(<ProviderLeaderboardCard />);
     expect(screen.getByText("claude-opus-4-8")).toBeInTheDocument();
     expect(screen.getByText("gpt-5")).toBeInTheDocument();
   });
 
   it("shows — when forward-return is null", () => {
-    wrap(<ProviderLeaderboardCard />);
+    mockHook();
+    renderWithProviders(<ProviderLeaderboardCard />);
     const dashes = screen.getAllByText("—");
     expect(dashes.length).toBeGreaterThan(0);
+  });
+
+  it("renders skeleton rows while loading", () => {
+    mockHook({ data: undefined, isLoading: true });
+    renderWithProviders(<ProviderLeaderboardCard />);
+    expect(screen.getAllByTestId("skeleton-row")).toHaveLength(3);
   });
 });

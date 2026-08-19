@@ -66,6 +66,17 @@ describe("BranchTabs", () => {
     expect(screen.getByTestId("branch-cost-pending-3")).toBeInTheDocument();
   });
 
+  it("done branch with cost shows the formatted cost badge", () => {
+    render(
+      <BranchTabs
+        branches={[{ id: 1, label: "claude/sonnet", status: "done", cost: 0.0123 }]}
+        activeId={1}
+        onSelect={() => {}}
+      />,
+    );
+    expect(screen.getByTestId("branch-cost-1")).toHaveTextContent("$0.0123");
+  });
+
   it("failed branch shows the X marker", () => {
     render(
       <BranchTabs

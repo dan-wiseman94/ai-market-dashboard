@@ -15,6 +15,7 @@ import { TrackRecordHint } from "@/components/TrackRecordHint";
 import { AISecondOpinion } from "@/components/AISecondOpinion";
 import { ConveneWarRoomButton } from "@/components/ConveneWarRoomButton";
 import ThesisChart from "@/components/ThesisChart";
+import { plClass400, signed } from "@/utils/format";
 
 function PriceGuardToggle({ thesis }: { thesis: Thesis }) {
   const hasTargetOrInvalidation =
@@ -98,14 +99,7 @@ function LinkedPositionsSection({ thesisId }: { thesisId: number }) {
             const pnl = p.unrealized?.unrealized_pnl ?? null;
             const realized = p.realized_pnl ? Number(p.realized_pnl) : null;
             const displayPnl = p.status === "open" ? pnl : realized;
-            const pnlColor =
-              displayPnl == null
-                ? "text-ink-600"
-                : displayPnl > 0
-                  ? "text-gain-400"
-                  : displayPnl < 0
-                    ? "text-loss-400"
-                    : "text-ink-400";
+            const pnlColor = displayPnl == null ? "text-ink-600" : plClass400(displayPnl);
             return (
               <li
                 key={p.id}
@@ -134,8 +128,7 @@ function LinkedPositionsSection({ thesisId }: { thesisId: number }) {
                     data-testid={`thesis-pnl-${p.id}`}
                     className={`font-mono text-[12px] tabular-nums ${pnlColor}`}
                   >
-                    {displayPnl >= 0 ? "+" : ""}
-                    {displayPnl.toFixed(2)}
+                    {signed(displayPnl)}
                   </span>
                 )}
                 <Link

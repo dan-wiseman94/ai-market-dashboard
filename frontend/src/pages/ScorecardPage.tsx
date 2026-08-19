@@ -17,6 +17,7 @@ import {
 import { SkeletonRows } from "@/components/Skeleton";
 import { EmptyState } from "@/components/EmptyState";
 import { horizonsFrom } from "@/lib/horizons";
+import { pctSigned, plClass400 } from "@/utils/format";
 
 function pct(v: number | null): string {
   return v === null ? "—" : `${(v * 100).toFixed(0)}%`;
@@ -82,11 +83,8 @@ function BucketDrilldown({
               <span className="flex shrink-0 items-center gap-3 text-ink-400">
                 <span>{r.direction}</span>
                 <span>{r.verdict}</span>
-                <span
-                  className={r.forward_return_pct >= 0 ? "text-gain-400" : "text-loss-400"}
-                >
-                  {r.forward_return_pct >= 0 ? "+" : ""}
-                  {r.forward_return_pct.toFixed(1)}%
+                <span className={plClass400(r.forward_return_pct)}>
+                  {pctSigned(r.forward_return_pct, 1)}
                 </span>
               </span>
             </li>

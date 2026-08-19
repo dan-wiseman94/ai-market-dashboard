@@ -1,18 +1,16 @@
 import { render, screen } from "@testing-library/react";
 import { createMemoryRouter, RouterProvider } from "react-router-dom";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { beforeEach, vi } from "vitest";
-import { installFakeWebSocket } from "./testUtils";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { beforeEach } from "vitest";
+import { installFakeWebSocket, mockFetch, newQueryClient } from "./testUtils";
 import { WebSocketProvider } from "@/realtime/WebSocketProvider";
 import AppLayout from "@/components/layout/AppLayout";
 
-function makeQc() {
-  return new QueryClient({ defaultOptions: { queries: { retry: false } } });
-}
-
-function renderWithProviders(router: ReturnType<typeof createMemoryRouter>) {
+// Breadcrumbs read route `handle` via useMatches, which needs a data router —
+// testUtils' renderWithProviders (plain MemoryRouter) can't supply one.
+function renderLayout(router: ReturnType<typeof createMemoryRouter>) {
   return render(
-    <QueryClientProvider client={makeQc()}>
+    <QueryClientProvider client={newQueryClient()}>
       <WebSocketProvider>
         <RouterProvider router={router} />
       </WebSocketProvider>
@@ -21,9 +19,7 @@ function renderWithProviders(router: ReturnType<typeof createMemoryRouter>) {
 }
 
 beforeEach(() => {
-  globalThis.fetch = vi.fn(() =>
-    Promise.resolve({ ok: true, json: () => Promise.resolve({ results: [] }) }),
-  ) as never;
+  mockFetch(() => ({ ok: true, json: () => Promise.resolve({ results: [] }) }));
   installFakeWebSocket();
 });
 
@@ -37,7 +33,7 @@ test("static crumb renders for a route", () => {
     }],
     { initialEntries: ["/triggers"] },
   );
-  renderWithProviders(router);
+  renderLayout(router);
   const nav = screen.getByRole("navigation", { name: /breadcrumb/i });
   expect(nav).toHaveTextContent("Home");
   expect(nav).toHaveTextContent("Triggers");
@@ -57,6 +53,6 @@ test("function crumb receives route params", () => {
     }],
     { initialEntries: ["/threads/42"] },
   );
-  renderWithProviders(router);
+  renderLayout(router);
   expect(screen.getByRole("navigation", { name: /breadcrumb/i })).toHaveTextContent("Thread 42");
 });

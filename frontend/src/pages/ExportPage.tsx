@@ -5,15 +5,9 @@ import { SkeletonRows } from "@/components/Skeleton";
 import { EmptyState } from "@/components/EmptyState";
 import { useToast } from "@/hooks/useToast";
 import SettingsSection from "@/components/settings/SettingsSection";
+import { fmtSize } from "@/utils/format";
 
 const ONE_GB = 1024 * 1024 * 1024;
-
-function fmtSize(n: number | null): string {
-  if (!n) return "—";
-  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
-  if (n < 1024 * 1024 * 1024) return `${(n / 1024 / 1024).toFixed(1)} MB`;
-  return `${(n / 1024 / 1024 / 1024).toFixed(2)} GB`;
-}
 
 export default function ExportPage() {
   const { data = [], isLoading } = useExports();

@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useSystemSettings } from "@/hooks/useSystemSettings";
 import { updateSystemSettings, type SystemSettings as Settings } from "@/api/settings";
 import SettingsSection from "@/components/settings/SettingsSection";
+import { SkeletonRows } from "@/components/Skeleton";
 import { useToast } from "@/hooks/useToast";
 
 // The numeric-valued keys of Settings, derived from the interface so it can't drift.
@@ -20,7 +21,7 @@ export default function SystemSettings() {
   if (isLoading || !data) {
     return (
       <SettingsSection title="System" description="Runtime knobs — take effect without a restart.">
-        <p className="text-ink-400 text-sm">Loading…</p>
+        <SkeletonRows rows={6} />
       </SettingsSection>
     );
   }
