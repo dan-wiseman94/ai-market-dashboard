@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import logging
 
+import httpx
 import openai
 from asgiref.sync import async_to_sync
 from cryptography.fernet import InvalidToken
@@ -210,8 +211,10 @@ class ProviderConfigViewSet(viewsets.ModelViewSet):
                 {"ok": False, "error": "Model discovery isn't supported for this provider."}
             )
 
-        provider_obj = get_provider(cfg.provider, api_key=cfg.api_key, base_url=cfg.base_url)
         try:
+            # Client construction parses base_url and raises on malformed input
+            # (httpx.InvalidURL) — it must sit inside the guard with the call.
+            provider_obj = get_provider(cfg.provider, api_key=cfg.api_key, base_url=cfg.base_url)
             # Gated to openai/local above; both implement list_models. It's not on the
             # base Provider protocol (Claude has no model-listing), and the concrete
             # provider can't be imported here (import-linter), so narrow at the call.
@@ -238,6 +241,10 @@ def _friendly_probe_error(exc: Exception, base_url: str) -> str:
             f"Couldn't reach {base_url}. Is the server running? "
             "On Linux use http://host.docker.internal:<port>/v1."
         )
+    # httpx.InvalidURL (raised while constructing the client) subclasses Exception
+    # directly; ValueError covers stdlib/openai URL-parsing rejections.
+    if isinstance(exc, (httpx.InvalidURL, ValueError)):
+        return f"{base_url!r} isn't a valid URL."
     return "Reached the server, but it doesn't respond like an OpenAI-compatible API."
 
 
