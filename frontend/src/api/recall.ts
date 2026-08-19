@@ -27,6 +27,12 @@ export interface RecallRelatedParams {
   k?: number;
 }
 
+export interface RecallStatus {
+  /** Per-kind indexed-document counts, plus a "total" key. */
+  counts: Record<string, number>;
+  mode: "semantic" | "keyword";
+}
+
 export function recallSearch(params: RecallSearchParams): Promise<RecallResult> {
   const qs = new URLSearchParams();
   qs.set("q", params.q);
@@ -42,4 +48,8 @@ export function recallRelated(params: RecallRelatedParams): Promise<RecallResult
   qs.set("id", String(params.id));
   if (params.k != null) qs.set("k", String(params.k));
   return apiGet<RecallResult>(`/api/recall/related/?${qs.toString()}`);
+}
+
+export function recallStatus(): Promise<RecallStatus> {
+  return apiGet<RecallStatus>("/api/recall/status/");
 }
