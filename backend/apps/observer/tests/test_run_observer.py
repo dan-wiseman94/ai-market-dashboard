@@ -152,3 +152,40 @@ def test_run_observer_batch_submit_failure_writes_failed_message():
     assert msg.status == "failed"
     assert "batch submit failed" in msg.content["text"]
     assert "no claude key" in msg.error
+
+
+@pytest.mark.django_db
+def test_run_observer_coverage_hook_failure_is_logged_not_fatal(caplog):
+    """A broken coverage auto-revise hook must not fail the fire, and must leave
+    a warning in the logs — a silent suppress would hide the breakage forever."""
+    p = _profile()
+    s = ObserverSchedule.objects.create(
+        name="hourly",
+        profile=p,
+        market_hours_only=False,
+        default_watchlist_tickers=["SPY"],
+    )
+    fake_snap = Snapshot.objects.create(profile=p, source="observer", status="ready")
+
+    with (
+        patch("apps.observer.services.run.any_market_open", return_value=True),
+        patch("apps.observer.services.run.check_daily_cap"),
+        patch("apps.observer.services.run.capture", return_value=fake_snap),
+        patch("apps.observer.services.run.serialize_for_ai", return_value="## SNAPSHOT BODY"),
+        patch("apps.observer.services.run.run_ai_on_message"),
+        patch("apps.observer.services.run.notify") as notif,
+        patch(
+            "apps.observer.services.run.maybe_revise_from_snapshot",
+            side_effect=RuntimeError("db down"),
+        ),
+        caplog.at_level("WARNING"),
+    ):
+        result = run_observer(s.id)
+
+    assert result == fake_snap.id
+    notif.assert_called_once()
+    s.refresh_from_db()
+    assert s.last_fired_at is not None
+    hook_warnings = [r for r in caplog.records if "coverage auto-revise hook failed" in r.message]
+    assert hook_warnings, "expected a warning about the failed coverage hook"
+    assert hook_warnings[0].exc_info is not None
