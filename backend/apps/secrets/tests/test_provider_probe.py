@@ -72,3 +72,24 @@ def test_probe_does_not_leak_api_key(api):
         )
     assert "secret-xyz" not in r.text
     assert "api_key" not in r.json()
+
+
+@pytest.mark.django_db
+def test_probe_malformed_base_url_is_clean_error_not_500(api):
+    """Client construction parses base_url; garbage input must degrade, not 500.
+
+    Regression: schemathesis fuzzed base_url="%!e?..." and the InvalidURL raised
+    outside the probe's error guard, surfacing as a 500.
+    """
+    ProviderConfig.objects.create(provider="local", base_url="http://x:11434/v1")
+    # A control character makes httpx's URL parser raise at client construction —
+    # no network attempt, unlike merely-odd strings that parse as relative URLs.
+    r = api.post(
+        "/api/schwab/providers/local/probe/",
+        {"base_url": "http://bad\nurl/v1"},
+        format="json",
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["ok"] is False
+    assert "valid URL" in body["error"]
