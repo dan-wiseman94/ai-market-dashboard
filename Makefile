@@ -74,10 +74,10 @@ fmt: ## Format backend (ruff) + frontend (prettier via eslint)
 lint: lint-backend lint-imports typecheck lint-frontend deptry depcruise type-coverage semgrep-rules ## Lint everything (+ dep hygiene, FE architecture, type-coverage, landmine rules)
 
 .PHONY: lint-backend
-lint-backend: ## ruff + ty (ruff scans repo root incl. e2e/, like CI)
+lint-backend: ## ruff (gate) + ty (advisory, like CI's continue-on-error; ruff scans repo root incl. e2e/)
 	$(COMPOSE) exec -w /app web uv run ruff check .
 	$(COMPOSE) exec -w /app web uv run ruff format --check .
-	$(COMPOSE) exec web uv run ty check .
+	-$(COMPOSE) exec web uv run ty check .
 
 .PHONY: lint-imports
 lint-imports: ## Enforce architecture import contracts (import-linter)
