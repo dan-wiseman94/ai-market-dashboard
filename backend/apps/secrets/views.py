@@ -81,7 +81,7 @@ def schwab_callback(request: HttpRequest) -> JsonResponse | HttpResponseRedirect
         )
     try:
         token = exchange_code_for_token(code)
-    except Exception as exc:
+    except Exception:
         # Keep detailed exception context server-side; return a generic client-safe message.
         log.warning("Schwab OAuth code exchange failed", exc_info=True)
         return JsonResponse(

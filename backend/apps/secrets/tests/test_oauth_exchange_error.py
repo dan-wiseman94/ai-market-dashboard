@@ -6,10 +6,10 @@ from django.test import Client
 
 
 @pytest.mark.django_db
-def test_callback_exchange_failure_scrubs_secret_and_logs(caplog):
-    """A failed token exchange must not echo credential-bearing query params (httpx
-    error strings embed the full request URL) in the 502 body — the raw detail belongs
-    in the server log, with the traceback, for diagnosis."""
+def test_callback_exchange_failure_returns_generic_message_and_logs(caplog):
+    """A failed token exchange must not echo exception detail (httpx error strings
+    embed the credential-bearing request URL) in the 502 body — the client gets a
+    generic message; the raw detail belongs in the server log, with the traceback."""
     import fakeredis
 
     fake = fakeredis.FakeStrictRedis()
@@ -29,7 +29,8 @@ def test_callback_exchange_failure_scrubs_secret_and_logs(caplog):
     body = response.json()
     assert body["code"] == "oauth_exchange_failed"
     assert "SECRET" not in body["message"]
-    assert "token=***" in body["message"]
+    assert "https://" not in body["message"]
+    assert body["message"] == "Failed to complete Schwab OAuth. Please try again."
 
     warned = [
         r

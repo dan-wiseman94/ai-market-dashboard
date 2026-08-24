@@ -25,7 +25,7 @@ from apps.market.returns import nearest_bar_close
 _UNSET = object()
 
 
-def unrealized_pnl(position, *, last: float | None | object = _UNSET) -> dict:  # type: ignore[type-arg]
+def unrealized_pnl(position, *, last: float | object | None = _UNSET) -> dict:  # type: ignore[type-arg]
     """Mark-to-market P&L for an OPEN position using the latest stored OHLC close.
 
     Returns a dict with keys:

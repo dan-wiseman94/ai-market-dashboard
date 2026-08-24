@@ -13,7 +13,6 @@ from django.utils import timezone
 from apps.core import provider_health
 from apps.market.models import MarketEvent
 from apps.market.services import events as events_service
-from apps.market.services.safe_log import scrub_secret_params
 from apps.profiles.models import WatchlistSymbol
 from apps.secrets.models import ApiCredential
 from apps.secrets.schwab_oauth import persist_token, refresh_token
@@ -74,7 +73,8 @@ def refresh_schwab_token() -> dict:
         return {"ok": False, "reason": "refresh_error"}
     except httpx.HTTPError as exc:
         # Network/timeout reaching Schwab's token endpoint — transient, retry next tick.
-        # Do not log exception text here because it may contain sensitive request details.
+        # Exception text may embed the credential-bearing request URL; log the class only.
+        # nosemgrep: python.lang.security.audit.logging.logger-credential-leak.python-logger-credential-disclosure -- interpolates the exception class name only
         log.warning(
             "Schwab token refresh network error (%s); will retry next tick.",
             type(exc).__name__,
