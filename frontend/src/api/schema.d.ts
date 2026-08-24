@@ -2783,9 +2783,10 @@ export interface components {
          *     * `macro` - Macro indicators
          *     * `filings` - SEC filings
          *     * `treasury` - Treasury rates
+         *     * `vix` - VIX term structure
          * @enum {string}
          */
-        SnapshotSectionKindEnum: "quotes" | "ohlc" | "chain" | "positions" | "breadth" | "news" | "notes" | "image" | "overnight" | "events" | "fundamentals" | "macro" | "filings" | "treasury";
+        SnapshotSectionKindEnum: "quotes" | "ohlc" | "chain" | "positions" | "breadth" | "news" | "notes" | "image" | "overnight" | "events" | "fundamentals" | "macro" | "filings" | "treasury" | "vix";
         /**
          * @description * `pending` - Pending
          *     * `done` - Done
