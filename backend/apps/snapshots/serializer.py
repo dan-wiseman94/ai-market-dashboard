@@ -155,6 +155,7 @@ def _title(kind: str) -> str:
         "events": "Upcoming events",
         "overnight": "Overnight board",
         "fundamentals": "Company fundamentals",
+        "vix": "VIX term structure",
     }.get(kind, kind.title())
 
 
@@ -729,6 +730,51 @@ def _render_macro(payload: dict) -> str:
     return "\n".join(lines)
 
 
+def _signed_pct(v) -> str:
+    return f" ({v:+.2f}%)" if isinstance(v, int | float) else ""
+
+
+def _render_vix(payload) -> str:
+    """Spot $VIX vs /VX futures legs. Always-on section: a degenerate payload
+    renders an explicit empty marker rather than vanishing from the prompt."""
+    if not isinstance(payload, dict) or not payload:
+        return "## VIX term structure\n_(empty)_"
+    lines = ["## VIX term structure"]
+    spot = payload.get("spot")
+    if isinstance(spot, dict):
+        lines.append(
+            f"- Spot {spot.get('symbol', '$VIX')}: "
+            f"{_fmt(spot.get('last'))}{_signed_pct(spot.get('pct_change'))}"
+        )
+    front = payload.get("front")
+    if isinstance(front, dict):
+        label = "(continuous)" if front.get("continuous") else f"(exp {front.get('expiry')})"
+        line = (
+            f"- Front {front.get('symbol')} {label}: "
+            f"{_fmt(front.get('last'))}{_signed_pct(front.get('pct_change'))}"
+        )
+        basis = front.get("basis")
+        if isinstance(basis, int | float):
+            line += f", basis {basis:+.2f}"
+            basis_pct = front.get("basis_pct")
+            if isinstance(basis_pct, int | float):
+                line += f" ({basis_pct:+.2f}% vs spot)"
+        lines.append(line)
+    second = payload.get("second")
+    if isinstance(second, dict):
+        lines.append(
+            f"- Second {second.get('symbol')} (exp {second.get('expiry')}): "
+            f"{_fmt(second.get('last'))}{_signed_pct(second.get('pct_change'))}"
+        )
+    contango = payload.get("contango_pct")
+    if isinstance(contango, int | float) and payload.get("structure"):
+        lines.append(f"- Structure: {payload['structure']} ({contango:+.2f}% front→second)")
+    note = payload.get("note")
+    if note:
+        lines.append(f"_({note})_")
+    return "\n".join(lines)
+
+
 _RENDERERS = {
     "quotes": _render_quotes,
     "ohlc": _render_ohlc,
@@ -742,4 +788,5 @@ _RENDERERS = {
     "fundamentals": _render_fundamentals,
     "macro": _render_macro,
     "notes": lambda _p: "",
+    "vix": _render_vix,
 }

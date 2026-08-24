@@ -5280,6 +5280,7 @@ components:
       - macro
       - filings
       - treasury
+      - vix
       type: string
       description: |-
         * `quotes` - Quotes
@@ -5296,6 +5297,7 @@ components:
         * `macro` - Macro indicators
         * `filings` - SEC filings
         * `treasury` - Treasury rates
+        * `vix` - VIX term structure
     SnapshotSectionStatusEnum:
       enum:
       - pending
