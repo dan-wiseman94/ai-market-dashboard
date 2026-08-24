@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+
 from django.db import IntegrityError, transaction
 from django.http import HttpRequest, JsonResponse
 from django.views.decorators.http import require_GET
@@ -24,6 +26,8 @@ from apps.market.services.positions import fetch_positions
 from apps.market.services.quotes import fetch_quotes
 from apps.market.services.treasury import fetch_treasury
 
+logger = logging.getLogger(__name__)
+
 
 def _err(code: str, message: str, status: int) -> JsonResponse:
     return json_error_response(code, message, status=status)
@@ -35,8 +39,9 @@ def _wrap_schwab(fn):
     def inner(request: HttpRequest, *args, **kwargs):
         try:
             return fn(request, *args, **kwargs)
-        except SchwabNotConnectedError as e:
-            return _err("schwab_not_connected", str(e), 503)
+        except SchwabNotConnectedError:
+            logger.exception("Schwab not connected while handling market request.")
+            return _err("schwab_not_connected", "Schwab is not connected.", 503)
 
     return inner
 
@@ -63,8 +68,9 @@ def ohlc(request: HttpRequest) -> JsonResponse:
         return _err("missing_ticker", "Provide ?ticker=", 400)
     try:
         result = fetch_ohlc(ticker, timeframe=timeframe, bars=bars)
-    except ValueError as e:
-        return _err("invalid_timeframe", str(e), 400)
+    except ValueError:
+        logger.exception("Invalid timeframe provided for ohlc request.")
+        return _err("invalid_timeframe", "Invalid timeframe.", 400)
     return JsonResponse({"ticker": ticker.upper(), "timeframe": timeframe, "bars": result})
 
 
