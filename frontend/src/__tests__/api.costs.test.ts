@@ -18,9 +18,10 @@ test("fetchCostsSummary GETs /api/costs/summary with range", async () => {
   expect(url).toContain("to=2026-04-18");
 });
 
-test("fetchCostsCaps returns list", async () => {
-  vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(new Response("[]"));
+test("fetchCostsCaps GETs /api/costs/caps", async () => {
+  const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(new Response("[]"));
   const out = await fetchCostsCaps();
+  expect(fetchSpy.mock.calls[0][0]).toContain("/api/costs/caps");
   expect(Array.isArray(out)).toBe(true);
 });
 

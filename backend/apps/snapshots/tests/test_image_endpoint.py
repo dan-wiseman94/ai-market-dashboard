@@ -1,16 +1,10 @@
 import pytest
-from rest_framework.test import APIClient
 
 from apps.snapshots.image_store import read_image_bytes
 from apps.snapshots.models import SnapshotImage
 
 PNG_BYTES = b"\x89PNG\r\n\x1a\n" + b"\x00" * 100
 NOT_PNG = b"GIF89a" + b"\x00" * 50
-
-
-@pytest.fixture
-def api():
-    return APIClient()
 
 
 @pytest.mark.django_db

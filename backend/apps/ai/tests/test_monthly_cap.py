@@ -20,11 +20,6 @@ from apps.threads.models import AIRun, Message, Thread
 
 
 @pytest.fixture
-def profile(db) -> TradingProfile:
-    return TradingProfile.objects.create(name="test", style="test")
-
-
-@pytest.fixture
 def thread(db, profile: TradingProfile) -> Thread:
     return Thread.objects.create(kind="consult", profile=profile)
 

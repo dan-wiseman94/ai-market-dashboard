@@ -15,7 +15,7 @@ vi.mock("@/hooks/useCalendarOverrides", () => ({
 }));
 
 const rows: CalendarOverride[] = [
-  { id: 1, symbol: "BTC-USD", market_key: "crypto", note: "", created_at: "", updated_at: "" },
+  { id: 1, ticker: "BTC-USD", market_key: "crypto", note: "", created_at: "", updated_at: "" },
 ];
 
 beforeEach(() => {
@@ -31,14 +31,14 @@ describe("SymbolCalendarOverridesCard", () => {
     expect(screen.getByText(/crypto/i)).toBeInTheDocument();
   });
 
-  it("submitting the add form calls create with the symbol + market", async () => {
+  it("submitting the add form calls create with the ticker + market", async () => {
     const user = userEvent.setup();
     render(<SymbolCalendarOverridesCard />);
     await user.type(screen.getByPlaceholderText(/symbol/i), "eth-usd");
     await user.selectOptions(screen.getByLabelText(/market/i), "crypto");
     await user.click(screen.getByRole("button", { name: /add/i }));
     expect(mockCreate).toHaveBeenCalledTimes(1);
-    expect(mockCreate.mock.calls[0][0]).toMatchObject({ symbol: "eth-usd", market_key: "crypto" });
+    expect(mockCreate.mock.calls[0][0]).toMatchObject({ ticker: "eth-usd", market_key: "crypto" });
   });
 
   it("clicking delete calls delete with the id", async () => {

@@ -134,7 +134,7 @@ quality: vulture knip ## Advisory dead-code sweep (vulture + knip) — informati
 
 .PHONY: vulture
 vulture: ## Dead Python code (functions/classes ruff's F-rules miss). Advisory.
-	$(COMPOSE) exec -w /app web uv run vulture || true
+	-$(COMPOSE) exec -w /app web uv run vulture
 
 .PHONY: knip
 knip: ## Unused frontend files / exports / types / deps. Advisory.
@@ -182,20 +182,24 @@ E2E_COMPOSE = $(COMPOSE) -p $(E2E_PROJECT) -f compose.yaml -f compose.e2e.yaml
 E2E_RUN = $(E2E_COMPOSE) exec -T --workdir /app
 E2E_UI_LANES = e2e/ui/ e2e/visual/ e2e/a11y/
 E2E_TXT_LANES = e2e/api/ e2e/ws/
+# 180s (not the repo-wide 60s): a test's SETUP includes waiting behind the cross-worker
+# pg_advisory seed lock, and a 60s SIGALRM mid-seed poisons the worker's DB connection,
+# cascading "another command is already in progress" over every later test on that worker.
+E2E_PT = uv run pytest --timeout=180
 
 .PHONY: e2e
 e2e: ## Run all E2E lanes sequentially
 	$(E2E_COMPOSE) up -d
-	$(E2E_RUN) web uv run pytest $(E2E_TXT_LANES) -n 2 -m integration -v
-	$(E2E_RUN) worker uv run pytest $(E2E_UI_LANES) -n 2 --dist=loadscope -m integration -v
+	$(E2E_RUN) web $(E2E_PT) $(E2E_TXT_LANES) -n 2 -m integration -v
+	$(E2E_RUN) worker $(E2E_PT) $(E2E_UI_LANES) -n 2 --dist=loadscope -m integration -v
 	$(E2E_COMPOSE) down
 
 .PHONY: e2e-one
 e2e-one: ## Run a single test by path. Usage: make e2e-one t=ui/test_dashboard.py
 	@case "$(t)" in \
-		ui/*|visual/*|a11y/*|perf/*) $(E2E_RUN) worker uv run pytest e2e/$(t) -m integration -v ;; \
-		api/*|ws/*) $(E2E_RUN) web uv run pytest e2e/$(t) -m integration -v ;; \
-		*) $(E2E_RUN) web uv run pytest e2e/$(t) -m integration -v ;; \
+		ui/*|visual/*|a11y/*|perf/*) $(E2E_RUN) worker $(E2E_PT) e2e/$(t) -m integration -v ;; \
+		api/*|ws/*) $(E2E_RUN) web $(E2E_PT) e2e/$(t) -m integration -v ;; \
+		*) $(E2E_RUN) web $(E2E_PT) e2e/$(t) -m integration -v ;; \
 	esac
 
 .PHONY: e2e-up
@@ -209,12 +213,12 @@ e2e-down: ## Tear down e2e stack
 .PHONY: e2e-ui
 e2e-ui: ## E2E UI lane (Playwright journeys)
 	$(E2E_COMPOSE) up -d
-	$(E2E_RUN) worker uv run pytest e2e/ui/ -n 2 --dist=loadscope -m integration -v
+	$(E2E_RUN) worker $(E2E_PT) e2e/ui/ -n 2 --dist=loadscope -m integration -v
 
 .PHONY: e2e-api
 e2e-api: ## E2E API lane (httpx contract)
 	$(E2E_COMPOSE) up -d
-	$(E2E_RUN) web uv run pytest e2e/api/ -n 2 -m integration -v
+	$(E2E_RUN) web $(E2E_PT) e2e/api/ -n 2 -m integration -v
 
 .PHONY: e2e-schemathesis
 e2e-schemathesis: ## Fuzz every endpoint for 5xx crashes (schemathesis, under MOCK_EXTERNAL)
@@ -224,12 +228,12 @@ e2e-schemathesis: ## Fuzz every endpoint for 5xx crashes (schemathesis, under MO
 .PHONY: e2e-ws
 e2e-ws: ## E2E WebSocket lane
 	$(E2E_COMPOSE) up -d
-	$(E2E_RUN) web uv run pytest e2e/ws/ -n 2 -m integration -v
+	$(E2E_RUN) web $(E2E_PT) e2e/ws/ -n 2 -m integration -v
 
 .PHONY: e2e-visual
 e2e-visual: ## E2E visual regression lane
 	$(E2E_COMPOSE) up -d
-	$(E2E_RUN) worker uv run pytest e2e/visual/ -n 2 -m integration -v
+	$(E2E_RUN) worker $(E2E_PT) e2e/visual/ -n 2 -m integration -v
 
 .PHONY: e2e-visual-update
 e2e-visual-update: ## Regenerate visual baselines
@@ -237,13 +241,13 @@ e2e-visual-update: ## Regenerate visual baselines
 	# helpers/visual.capture_or_compare creates a baseline if the file is missing.
 	# Wipe via the container — baselines are owned by root inside the worker.
 	$(E2E_RUN) worker rm -rf /app/e2e/visual/__screenshots__
-	$(E2E_RUN) worker uv run pytest e2e/visual/ -n 2 -m integration -v
+	$(E2E_RUN) worker $(E2E_PT) e2e/visual/ -n 2 -m integration -v
 	@echo "Inspect diffs: git diff e2e/visual/__screenshots__/"
 
 .PHONY: e2e-a11y
 e2e-a11y: ## E2E accessibility lane
 	$(E2E_COMPOSE) up -d
-	$(E2E_RUN) worker uv run pytest e2e/a11y/ -n 4 -m integration -v
+	$(E2E_RUN) worker $(E2E_PT) e2e/a11y/ -n 4 -m integration -v
 
 .PHONY: e2e-perf
 e2e-perf: ## E2E performance lane (runs prod overlay)

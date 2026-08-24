@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useParams } from "react-router-dom";
 import WatchlistTable from "@/components/WatchlistTable";
+import { SkeletonRows } from "@/components/Skeleton";
 import { TickerChanges } from "./watchlist/TickerChanges";
 import { useAddSymbol, useRemoveSymbol, useWatchlist } from "@/hooks/useWatchlist";
 
@@ -13,7 +14,13 @@ export default function WatchlistDetail() {
   const [ticker, setTicker] = useState("");
 
   if (!wid) return <main className="p-6">Invalid watchlist</main>;
-  if (isLoading || !wl) return <main className="p-6">Loading…</main>;
+  if (isLoading || !wl) {
+    return (
+      <main className="p-6 max-w-4xl mx-auto">
+        <SkeletonRows rows={6} />
+      </main>
+    );
+  }
 
   return (
     <main className="p-6 max-w-4xl mx-auto space-y-4">
@@ -41,15 +48,15 @@ export default function WatchlistDetail() {
         <p className="text-loss-400 text-sm">{(add.error as Error).message}</p>
       )}
 
-      <WatchlistTable symbols={wl.symbols} onRemove={(sid) => remove.mutate(sid)} />
+      <WatchlistTable tickers={wl.tickers} onRemove={(sid) => remove.mutate(sid)} />
 
-      {wl.symbols.length > 0 && (
+      {wl.tickers.length > 0 && (
         <section>
           <h2 className="mb-1 text-sm font-semibold text-ink-300">
             What changed since your last look
           </h2>
           <div className="ledger-surface px-4">
-            {wl.symbols.map((s) => (
+            {wl.tickers.map((s) => (
               <TickerChanges key={s.id} ticker={s.ticker} />
             ))}
           </div>

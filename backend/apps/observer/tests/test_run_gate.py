@@ -4,7 +4,7 @@ import pytest
 from freezegun import freeze_time
 
 from apps.observer.models import ObserverSchedule
-from apps.observer.services.run import run_observer
+from apps.observer.services.run import fire_observer
 from apps.profiles.models import TradingProfile
 
 
@@ -19,7 +19,7 @@ def test_skips_when_all_watched_markets_closed():
         default_watchlist_tickers=["SPY"],
     )
     with patch("apps.observer.services.run.capture") as cap:
-        assert run_observer(sched.id) is None
+        assert fire_observer(sched.id) is None
         cap.assert_not_called()
 
 
@@ -41,5 +41,5 @@ def test_proceeds_when_a_watched_market_open():
         patch("apps.observer.services.run.capture", return_value=snap) as cap,
         patch("apps.observer.services.run.run_ai_on_message"),
     ):
-        run_observer(sched.id)
+        fire_observer(sched.id)
         cap.assert_called_once()

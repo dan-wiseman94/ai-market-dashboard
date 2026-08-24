@@ -11,10 +11,8 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 
 import pytest
-from rest_framework.test import APIClient
 
 from apps.analytics.services.calibration import calibration, calibration_drilldown
-from apps.profiles.models import TradingProfile
 from apps.thesis.models import PostMortem, Thesis
 
 NOW = datetime(2026, 5, 1, 12, 0, tzinfo=UTC)
@@ -24,16 +22,6 @@ WIN = (NOW - timedelta(days=90), NOW + timedelta(days=1))
 # fixtures are frozen at NOW — endpoint tests must pin the window explicitly or the
 # fixtures age out of range.
 RANGE_PARAMS = {"start": WIN[0].isoformat(), "end": WIN[1].isoformat()}
-
-
-@pytest.fixture
-def profile(db):
-    return TradingProfile.objects.create(name="p", style="s")
-
-
-@pytest.fixture
-def api():
-    return APIClient()
 
 
 def _thesis(conviction: int, *, direction: str = "bullish", title: str = "t") -> Thesis:

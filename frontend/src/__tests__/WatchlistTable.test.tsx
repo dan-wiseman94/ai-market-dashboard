@@ -15,7 +15,7 @@ vi.mock("@/hooks/useQuotes", () => ({
 
 const mockUseQuotes = vi.mocked(useQuotes);
 
-const symbols: WatchlistSymbol[] = [
+const tickers: WatchlistSymbol[] = [
   { id: 1, ticker: "AAPL", sort_order: 0 },
   { id: 2, ticker: "TSLA", sort_order: 1 },
 ];
@@ -42,8 +42,8 @@ beforeEach(() => {
 });
 
 describe("WatchlistTable", () => {
-  it("renders table headers even when symbols is empty", () => {
-    render(wrap(<WatchlistTable symbols={[]} />));
+  it("renders table headers even when tickers is empty", () => {
+    render(wrap(<WatchlistTable tickers={[]} />));
     expect(screen.getByText("Ticker")).toBeInTheDocument();
     expect(screen.getByText("Last")).toBeInTheDocument();
     expect(screen.getByText("Bid")).toBeInTheDocument();
@@ -52,8 +52,8 @@ describe("WatchlistTable", () => {
     expect(screen.queryByRole("link")).not.toBeInTheDocument();
   });
 
-  it("renders one row per symbol with ticker link to /market/<ticker>", () => {
-    render(wrap(<WatchlistTable symbols={symbols} />));
+  it("renders one row per ticker with ticker link to /market/<ticker>", () => {
+    render(wrap(<WatchlistTable tickers={tickers} />));
     const aaplLink = screen.getByRole("link", { name: "AAPL" });
     const tslaLink = screen.getByRole("link", { name: "TSLA" });
     expect(aaplLink).toHaveAttribute("href", "/market/AAPL");
@@ -66,7 +66,7 @@ describe("WatchlistTable", () => {
       TSLA: makeQuote({ bid: null, ask: null, volume: null }),
     };
     mockUseQuotes.mockReturnValue({ data: quotes } as ReturnType<typeof useQuotes>);
-    render(wrap(<WatchlistTable symbols={symbols} />));
+    render(wrap(<WatchlistTable tickers={tickers} />));
     expect(screen.getByText("149.90")).toBeInTheDocument();
     expect(screen.getByText("150.10")).toBeInTheDocument();
     expect(screen.getByText("1,234,567")).toBeInTheDocument();
@@ -76,18 +76,18 @@ describe("WatchlistTable", () => {
   });
 
   it("Remove button is hidden when onRemove is not provided", () => {
-    render(wrap(<WatchlistTable symbols={symbols} />));
+    render(wrap(<WatchlistTable tickers={tickers} />));
     expect(screen.queryByRole("button", { name: /Remove/i })).not.toBeInTheDocument();
   });
 
   it("Remove button is shown and calls onRemove(symbolId) when clicked", async () => {
     const user = userEvent.setup();
     const onRemove = vi.fn();
-    render(wrap(<WatchlistTable symbols={symbols} onRemove={onRemove} />));
+    render(wrap(<WatchlistTable tickers={tickers} onRemove={onRemove} />));
     const removeButtons = screen.getAllByRole("button", { name: /Remove/i });
     expect(removeButtons.length).toBe(2);
     await user.click(removeButtons[0]);
     expect(onRemove).toHaveBeenCalledTimes(1);
-    expect(onRemove).toHaveBeenCalledWith(1); // symbols[0].id
+    expect(onRemove).toHaveBeenCalledWith(1); // tickers[0].id
   });
 });

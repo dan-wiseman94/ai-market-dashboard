@@ -26,6 +26,34 @@ def primary_ticker(snapshot: Snapshot) -> str | None:
     return None
 
 
+def last_price(snapshot, ticker: str | None = None) -> float | None:
+    """Last price for ``ticker`` (default: the snapshot's primary ticker) from the
+    snapshot's own quotes section — no fetch, best-effort.
+
+    Only ``status=="done"`` sections count ("done" is the section terminal state; a
+    failed/pending quotes section carries no trustworthy payload). Iterates
+    ``sections.all()`` (prefetch-friendly — no extra query when the caller has
+    prefetched). Returns None on a missing snapshot/ticker/section or when the
+    value won't coerce to float.
+    """
+    if snapshot is None:
+        return None
+    key = ticker or getattr(snapshot, "primary_ticker", None)
+    if not key:
+        return None
+    for sec in snapshot.sections.all():
+        if sec.kind != "quotes" or sec.status != "done" or not isinstance(sec.payload, dict):
+            continue
+        row = sec.payload.get(key)
+        if not isinstance(row, dict):
+            continue
+        try:
+            return float(row["last"])
+        except (KeyError, TypeError, ValueError):
+            return None
+    return None
+
+
 def previous_snapshot_for(snap: Snapshot) -> Snapshot | None:
     """Most-recent prior READY snapshot sharing snap.primary_ticker."""
     if not snap.primary_ticker:

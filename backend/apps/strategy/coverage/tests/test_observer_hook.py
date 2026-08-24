@@ -11,18 +11,12 @@ from unittest.mock import patch
 
 import pytest
 
-from apps.profiles.models import TradingProfile
 from apps.snapshots.models import Snapshot
 from apps.strategy.coverage.hooks import maybe_revise_from_snapshot
 from apps.strategy.models import CoverageNote
 from apps.strategy.tasks import revise_from_observation
 
 DELAY = "apps.strategy.tasks.revise_from_observation.delay"
-
-
-@pytest.fixture
-def profile(db) -> TradingProfile:
-    return TradingProfile.objects.create(name="p", style="s", default_provider="claude")
 
 
 @pytest.fixture
@@ -67,7 +61,7 @@ def test_task_noop_when_snapshot_missing(db):
     revise.assert_not_called()
 
 
-def test_run_observer_invokes_coverage_hook(db, profile):
+def test_fire_observer_invokes_coverage_hook(db, profile):
     from apps.observer.models import ObserverSchedule
     from apps.observer.services import run as run_service
 
@@ -81,6 +75,6 @@ def test_run_observer_invokes_coverage_hook(db, profile):
         patch.object(run_service.run_ai_on_message, "delay"),
         patch("apps.observer.services.run.maybe_revise_from_snapshot") as hook,
     ):
-        run_service.run_observer(sched.id)
+        run_service.fire_observer(sched.id)
 
     hook.assert_called_once_with(snap)

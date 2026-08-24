@@ -1,11 +1,9 @@
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { renderWithProviders } from "./testUtils";
 import SystemSettings from "@/pages/settings/SystemSettings";
 import { updateSystemSettings } from "@/api/settings";
-import { ToastProvider } from "@/hooks/useToast";
-import { Toasts } from "@/components/Toasts";
 
 const mockUseSystemSettings = vi.fn();
 vi.mock("@/hooks/useSystemSettings", () => ({
@@ -34,15 +32,7 @@ const DEFAULTS = {
 };
 
 function renderPage() {
-  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(
-    <QueryClientProvider client={qc}>
-      <ToastProvider>
-        <SystemSettings />
-        <Toasts />
-      </ToastProvider>
-    </QueryClientProvider>,
-  );
+  return renderWithProviders(<SystemSettings />);
 }
 
 beforeEach(() => {
@@ -57,10 +47,10 @@ describe("SystemSettings", () => {
     expect(screen.getByRole("button", { name: /save changes/i })).toBeDisabled();
   });
 
-  it("shows a loading state before data arrives", () => {
+  it("shows skeleton rows before data arrives", () => {
     mockUseSystemSettings.mockReturnValue({ data: undefined, isLoading: true });
     renderPage();
-    expect(screen.getByText(/loading/i)).toBeInTheDocument();
+    expect(screen.getAllByTestId("skeleton-row").length).toBeGreaterThan(0);
   });
 
   it("PATCHes only the changed fields and toasts on save", async () => {

@@ -1,25 +1,17 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
+from datetime import datetime
 from decimal import Decimal
 
 from django.http import HttpRequest, JsonResponse, StreamingHttpResponse
 from django.views.decorators.http import require_GET
 
 from apps.ai import cost_reporting as services
+from apps.core.http import parse_datetime_range
 
 
 def _parse_range(request: HttpRequest) -> tuple[datetime, datetime]:
-    now = datetime.now(tz=UTC)
-    end_q = request.GET.get("to")
-    start_q = request.GET.get("from")
-    # Django's query-string parser decodes '+' as a space; restore it so that
-    # timezone offsets like '+00:00' survive fromisoformat().
-    end = datetime.fromisoformat(end_q.replace(" ", "+")) if end_q else now
-    start = (
-        datetime.fromisoformat(start_q.replace(" ", "+")) if start_q else (end - timedelta(days=30))
-    )
-    return start, end
+    return parse_datetime_range(request, start_param="from", end_param="to", default_days=30)
 
 
 def _to_decimal(v) -> Decimal:

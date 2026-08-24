@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import logging
 
+import httpx
 import openai
 from asgiref.sync import async_to_sync
 from cryptography.fernet import InvalidToken
@@ -21,6 +22,7 @@ from apps.ai.catalog import list_models as _list_catalog
 from apps.ai.cost import daily_spend_usd
 from apps.ai.providers import get_provider
 from apps.core import provider_health
+from apps.core.http import json_error_response
 from apps.secrets.credentials import env_token_fields
 from apps.secrets.data_source_test import test_credential
 from apps.secrets.data_sources import DATA_SOURCES, get_data_source
@@ -79,9 +81,14 @@ def schwab_callback(request: HttpRequest) -> JsonResponse | HttpResponseRedirect
         )
     try:
         token = exchange_code_for_token(code)
-    except Exception as exc:
+    except Exception:
+        # Keep detailed exception context server-side; return a generic client-safe message.
+        log.warning("Schwab OAuth code exchange failed", exc_info=True)
         return JsonResponse(
-            {"code": "oauth_exchange_failed", "message": str(exc)},
+            {
+                "code": "oauth_exchange_failed",
+                "message": "Failed to complete Schwab OAuth. Please try again.",
+            },
             status=502,
         )
     persist_token(token)
@@ -205,8 +212,10 @@ class ProviderConfigViewSet(viewsets.ModelViewSet):
                 {"ok": False, "error": "Model discovery isn't supported for this provider."}
             )
 
-        provider_obj = get_provider(cfg.provider, api_key=cfg.api_key, base_url=cfg.base_url)
         try:
+            # Client construction parses base_url and raises on malformed input
+            # (httpx.InvalidURL) — it must sit inside the guard with the call.
+            provider_obj = get_provider(cfg.provider, api_key=cfg.api_key, base_url=cfg.base_url)
             # Gated to openai/local above; both implement list_models. It's not on the
             # base Provider protocol (Claude has no model-listing), and the concrete
             # provider can't be imported here (import-linter), so narrow at the call.
@@ -233,6 +242,10 @@ def _friendly_probe_error(exc: Exception, base_url: str) -> str:
             f"Couldn't reach {base_url}. Is the server running? "
             "On Linux use http://host.docker.internal:<port>/v1."
         )
+    # httpx.InvalidURL (raised while constructing the client) subclasses Exception
+    # directly; ValueError covers stdlib/openai URL-parsing rejections.
+    if isinstance(exc, (httpx.InvalidURL, ValueError)):
+        return f"{base_url!r} isn't a valid URL."
     return "Reached the server, but it doesn't respond like an OpenAI-compatible API."
 
 
@@ -269,7 +282,7 @@ def ai_usage(_request: HttpRequest) -> JsonResponse:
 
 
 def _ds_err(code: str, message: str, status: int) -> JsonResponse:
-    return JsonResponse({"code": code, "message": message}, status=status)
+    return json_error_response(code, message, status=status)
 
 
 def _schwab_connected() -> bool:

@@ -24,13 +24,14 @@ def cohort_base_rate(*, direction: str, ticker: str) -> dict | None:
     """
     if not direction:
         return None
+    from apps.market.services.fundamentals import sector_for_ticker
     from apps.thesis.models import PostMortem
 
     base = PostMortem.objects.filter(
         status="done", verdict__in=["correct", "incorrect"], thesis__direction=direction
     ).exclude(thesis__ticker=(ticker or "").upper())
 
-    sector = _sector_for(ticker)
+    sector = sector_for_ticker(ticker)
     if sector:
         sector_tickers = _sector_tickers(sector)
         if sector_tickers:
@@ -47,20 +48,6 @@ def _summarize(qs, *, scope: str) -> dict | None:
         return None
     correct = sum(1 for v in verdicts if v == "correct")
     return {"scope": scope, "n": n, "correct": correct, "hit_rate": round(correct / n, 4)}
-
-
-def _sector_for(ticker: str) -> str:
-    if not ticker:
-        return ""
-    from apps.market.models import CompanyFundamentals
-
-    sector = (
-        CompanyFundamentals.objects.filter(ticker=ticker.upper())
-        .exclude(sector="")
-        .values_list("sector", flat=True)
-        .first()
-    )
-    return sector or ""
 
 
 def _sector_tickers(sector: str) -> list[str]:

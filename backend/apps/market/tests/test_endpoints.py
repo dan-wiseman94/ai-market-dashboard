@@ -1,7 +1,6 @@
 from unittest.mock import patch
 
 import pytest
-from rest_framework.test import APIClient
 
 from apps.market import cache as cache_module
 
@@ -23,11 +22,6 @@ def fake_redis(monkeypatch):
     r = fakeredis.FakeRedis()
     monkeypatch.setattr(cache_module, "_redis", lambda: r)
     return r
-
-
-@pytest.fixture
-def api():
-    return APIClient()
 
 
 @pytest.fixture

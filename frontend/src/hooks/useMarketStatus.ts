@@ -2,10 +2,10 @@ import { useQuery } from "@tanstack/react-query";
 
 import { getCalendarStatus } from "@/api/market";
 
-export function useMarketStatus(symbols: string[] = []) {
+export function useMarketStatus(tickers: string[] = []) {
   return useQuery({
-    queryKey: ["market-status", [...symbols].sort()],
-    queryFn: () => getCalendarStatus(symbols),
+    queryKey: ["market-status", [...tickers].sort()],
+    queryFn: () => getCalendarStatus(tickers),
     refetchInterval: 60_000,
   });
 }

@@ -2,8 +2,7 @@ import { ConveneWarRoomButton } from "@/components/ConveneWarRoomButton";
 import { EmptyState } from "@/components/EmptyState";
 import { Skeleton } from "@/components/Skeleton";
 import { useCurrentBook, useRecomputeBook } from "@/hooks/useBook";
-
-const usd = (n?: number) => (n == null ? "—" : `$${Math.round(n).toLocaleString()}`);
+import { plClass, signed, usd } from "@/utils/format";
 
 function RecomputeBookButton() {
   const recompute = useRecomputeBook();
@@ -55,10 +54,10 @@ export default function BookPage() {
           <h2 className="mt-6 text-lg font-medium">Value-at-Risk &amp; factor beta</h2>
           <p className="mt-1 text-sm text-ink/70" data-testid="book-var-summary">
             1-day 95% VaR{" "}
-            <span className="font-medium">{usd(book.var_beta.portfolio.diversified_var_usd)}</span>{" "}
-            diversified vs {usd(book.var_beta.portfolio.undiversified_var_usd)} undiversified —{" "}
-            {usd(book.var_beta.portfolio.diversification_benefit_usd)} diversification benefit. Net
-            $SPX-equivalent exposure {usd(book.var_beta.portfolio.beta_adjusted_net_exposure_usd)}.
+            <span className="font-medium">{usd(book.var_beta.portfolio.diversified_var_usd, 0)}</span>{" "}
+            diversified vs {usd(book.var_beta.portfolio.undiversified_var_usd, 0)} undiversified —{" "}
+            {usd(book.var_beta.portfolio.diversification_benefit_usd, 0)} diversification benefit. Net
+            $SPX-equivalent exposure {usd(book.var_beta.portfolio.beta_adjusted_net_exposure_usd, 0)}.
             {book.var_beta.skipped ? ` (${book.var_beta.skipped} unpriced.)` : ""}
           </p>
           <ul className="mt-2 divide-y divide-rule">
@@ -68,7 +67,7 @@ export default function BookPage() {
                   {q.ticker} <span className="text-ink/50">β {q.beta ?? "—"}</span>
                 </span>
                 <span className="text-ink/70">
-                  VaR {usd(q.var_usd)} · vol {q.daily_vol_pct}%
+                  VaR {usd(q.var_usd, 0)} · vol {q.daily_vol_pct}%
                 </span>
               </li>
             ))}
@@ -106,9 +105,8 @@ export default function BookPage() {
             <span>
               {e.ticker} <span className="text-ink/50">({e.sources.join("+")})</span>
             </span>
-            <span className={e.net_signed >= 0 ? "text-emerald-600" : "text-copper"}>
-              {e.net_signed > 0 ? "+" : ""}
-              {e.net_signed}
+            <span className={plClass(e.net_signed)}>
+              {signed(e.net_signed, 0)}
             </span>
           </li>
         ))}

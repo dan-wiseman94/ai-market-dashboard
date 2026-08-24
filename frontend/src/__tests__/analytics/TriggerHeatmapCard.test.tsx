@@ -1,11 +1,11 @@
-import { render, screen } from "@testing-library/react";
-import { describe, it, expect, vi } from "vitest";
-import type { ReactNode } from "react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { screen } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { TriggerHeatmapCard } from "@/components/analytics/TriggerHeatmapCard";
+import * as analytics from "@/hooks/useAnalytics";
+import { renderWithProviders } from "../testUtils";
 
-vi.mock("@/hooks/useAnalytics", () => ({
-  useTriggerHeatmap: () => ({
+function mockHook(overrides: Partial<{ data: unknown; isLoading: boolean; error: Error | null }> = {}) {
+  vi.spyOn(analytics, "useTriggerHeatmap").mockReturnValue({
     data: {
       cells: Array.from({ length: 168 }, (_, i) => ({
         weekday: Math.floor(i / 24),
@@ -13,20 +13,26 @@ vi.mock("@/hooks/useAnalytics", () => ({
         count: i === 50 ? 7 : 0,
       })),
     },
-    isLoading: false, error: null,
-  }),
-}));
-
-function wrap(ui: ReactNode) {
-  const qc = new QueryClient();
-  return render(<QueryClientProvider client={qc}>{ui}</QueryClientProvider>);
+    isLoading: false,
+    error: null,
+    ...overrides,
+  } as ReturnType<typeof analytics.useTriggerHeatmap>);
 }
 
 describe("TriggerHeatmapCard", () => {
+  beforeEach(() => vi.restoreAllMocks());
+
   it("renders 168 cells + highlights the hottest one", () => {
-    const { container } = wrap(<TriggerHeatmapCard />);
+    mockHook();
+    const { container } = renderWithProviders(<TriggerHeatmapCard />);
     const cells = container.querySelectorAll("[data-testid=heat-cell]");
     expect(cells.length).toBe(168);
     expect(screen.getByText(/7 fires/)).toBeInTheDocument();
+  });
+
+  it("renders skeleton rows while loading", () => {
+    mockHook({ data: undefined, isLoading: true });
+    renderWithProviders(<TriggerHeatmapCard />);
+    expect(screen.getAllByTestId("skeleton-row")).toHaveLength(3);
   });
 });

@@ -1,18 +1,7 @@
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import { describe, it, expect } from "vitest";
-import { mockApi } from "./testUtils";
+import { mockApi, renderWithProviders } from "./testUtils";
 import SnapshotsPage from "../pages/SnapshotsPage";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { MemoryRouter } from "react-router-dom";
-
-function wrap(ui: React.ReactNode) {
-  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return (
-    <MemoryRouter initialEntries={["/snapshots"]}>
-      <QueryClientProvider client={qc}>{ui}</QueryClientProvider>
-    </MemoryRouter>
-  );
-}
 
 describe("SnapshotsPage", () => {
   it("renders captured snapshots in the table", async () => {
@@ -21,7 +10,7 @@ describe("SnapshotsPage", () => {
         objective: "Scalp", status: "ready", source: "manual", primary_ticker: "NVDA",
         section_kinds: ["quotes"], section_statuses: { quotes: "done" }, has_image: false,
         total_payload_tokens: 10 } ] } });
-    render(wrap(<SnapshotsPage />));
+    renderWithProviders(<SnapshotsPage />, { initialEntries: ["/snapshots"] });
     expect(await screen.findByText("NVDA")).toBeInTheDocument();
     expect(screen.getByText(/Scalp/)).toBeInTheDocument();
   });

@@ -1,12 +1,12 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, act } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { WebSocketProvider } from "@/realtime/WebSocketProvider";
-import { ToastProvider } from "@/hooks/useToast";
-import { Toasts } from "@/components/Toasts";
+import { screen, act } from "@testing-library/react";
 import Dashboard from "@/pages/Dashboard";
-import { installFakeWebSocket, type FakeWebSocketController } from "./testUtils";
+import {
+  installFakeWebSocket,
+  newQueryClient,
+  renderWithProviders,
+  type FakeWebSocketController,
+} from "./testUtils";
 
 vi.mock("@/hooks/useMarketContext", () => ({
   useMarketContext: vi.fn(() => ({ data: null, isLoading: false })),
@@ -106,23 +106,10 @@ afterEach(() => {
   fake.restore();
 });
 
-/**
- * Dashboard uses useChannel → useWebSocket → requires WebSocketProvider.
- * Wrap with the full provider tree including the shared WS broker.
- */
-function renderDashboard(client = new QueryClient({ defaultOptions: { queries: { retry: false } } })) {
-  render(
-    <QueryClientProvider client={client}>
-      <WebSocketProvider>
-        <ToastProvider>
-          <Toasts />
-          <MemoryRouter>
-            <Dashboard />
-          </MemoryRouter>
-        </ToastProvider>
-      </WebSocketProvider>
-    </QueryClientProvider>,
-  );
+// Dashboard uses useChannel → useWebSocket, which needs the WebSocketProvider
+// that renderWithProviders mounts. The client is returned so tests can spy on it.
+function renderDashboard(client = newQueryClient()) {
+  renderWithProviders(<Dashboard />, { client });
   return client;
 }
 
@@ -233,7 +220,7 @@ describe("Dashboard", () => {
   });
 
   it("invalidates the dashboard query when a notification.event arrives over /ws/notifications/", () => {
-    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const client = newQueryClient();
     const invalidateSpy = vi.spyOn(client, "invalidateQueries");
 
     renderDashboard(client);
@@ -256,7 +243,7 @@ describe("Dashboard", () => {
   });
 
   it("does not invalidate dashboard query on non-notification messages", () => {
-    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const client = newQueryClient();
     const invalidateSpy = vi.spyOn(client, "invalidateQueries");
 
     renderDashboard(client);

@@ -6,17 +6,11 @@ from decimal import Decimal
 import pytest
 
 from apps.analytics.services.calibration import _prob_for_conviction, calibration
-from apps.profiles.models import TradingProfile
 from apps.thesis.models import PostMortem, Thesis
 from apps.threads.models import AIRun, Message, Thread
 
 NOW = datetime(2026, 5, 1, 12, 0, tzinfo=UTC)
 WIN = (NOW - timedelta(days=90), NOW + timedelta(days=1))
-
-
-@pytest.fixture
-def profile(db):
-    return TradingProfile.objects.create(name="p", style="s")
 
 
 def _thesis(conviction: int, direction: str = "bullish", thread=None) -> Thesis:

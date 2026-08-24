@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import contextlib
 import hashlib
 import logging
 from datetime import timedelta
@@ -36,7 +35,7 @@ def _stamp_fired(sched: ObserverSchedule) -> None:
     sched.save(update_fields=["last_fired_at"])
 
 
-def run_observer(schedule_id: int) -> int | None:
+def fire_observer(schedule_id: int) -> int | None:
     """Fire one observer iteration. Returns snapshot_id, or None on skip."""
     sched = ObserverSchedule.objects.select_related("profile").get(id=schedule_id)
 
@@ -170,8 +169,12 @@ def run_observer(schedule_id: int) -> int | None:
             )
 
     # Auto-revise the house view when this snapshot's ticker is covered.
-    with contextlib.suppress(Exception):
+    # Isolated: a hook failure must never fail the fire, but it must be logged —
+    # a silent suppress hides a permanently-broken auto-revise path.
+    try:
         maybe_revise_from_snapshot(snap)
+    except Exception:
+        log.warning("coverage auto-revise hook failed for snapshot %s", snap.id, exc_info=True)
 
     _stamp_fired(sched)
 

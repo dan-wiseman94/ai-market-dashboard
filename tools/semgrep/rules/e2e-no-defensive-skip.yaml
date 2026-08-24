@@ -1,0 +1,25 @@
+rules:
+  - id: e2e-no-defensive-skip
+    languages: [python]
+    severity: ERROR
+    message: >-
+      Never pytest.skip() in the ws/api e2e lanes — a defensive skip silently passes CI
+      while the regression the lane exists to catch goes unexercised (the a11y lane
+      documents the same rule: a miss is a hard failure, not a skip). Assert the expected
+      condition instead so the failure is visible.
+    metadata:
+      landmine: "e2e/a11y/test_keyboard_only.py — skips must be failures; same holds for ws/api"
+      category: correctness
+    paths:
+      # Globs resolve against the git project root, whatever target dir the scan is
+      # given — deliberately scoped to the ws/api lanes only; other lanes (perf, the
+      # scenario-engine prod-posture tests) have legitimately env-dependent skips.
+      include:
+        - "e2e/ws/**"
+        - "e2e/api/**"
+      # test_scenario_engine_disabled_in_prod asserts PROD posture; under the e2e overlay
+      # (MOCK_EXTERNAL=true) its premise doesn't hold, so its posture skip is sanctioned
+      # (documented in that file's docstring).
+      exclude:
+        - "e2e/api/test_scenario_engine_disabled_in_prod.py"
+    pattern: pytest.skip(...)

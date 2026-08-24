@@ -1,4 +1,4 @@
-from apps.ai.catalog import KNOWN_PROVIDERS, ceiling_for_provider, get_model, list_models
+from apps.ai.catalog import ceiling_for_provider, get_model, list_models
 
 
 def test_lists_claude_models():
@@ -20,12 +20,6 @@ def test_get_model_returns_pricing():
 
 def test_get_model_unknown_returns_none():
     assert get_model("claude", "imaginary-model") is None
-
-
-def test_known_providers_contains_claude_openai_local():
-    assert "claude" in KNOWN_PROVIDERS
-    assert "openai" in KNOWN_PROVIDERS
-    assert "local" in KNOWN_PROVIDERS
 
 
 def test_list_models_without_provider_returns_full_catalog():

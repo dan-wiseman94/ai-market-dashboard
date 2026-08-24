@@ -35,13 +35,15 @@ def _find_id(api_base_url: str, path: str, name: str) -> int | None:
 @pytest.mark.ws
 async def test_notifications_trigger_fire_delivered(ws_base_url, api_base_url, triggers) -> None:
     trig_id = _find_id(api_base_url, "/api/triggers/", "E2E always fires")
-    if trig_id is None:
-        pytest.skip("seeded trigger 'E2E always fires' not found")
+    assert trig_id is not None, (
+        "seeded trigger 'E2E always fires' not found — the triggers fixture guarantees it"
+    )
     wc = await WsClient.connect(f"{ws_base_url}/ws/notifications/")
     try:
         r = httpx.post(f"{api_base_url}/api/triggers/{trig_id}/fire/", timeout=5)
-        if r.status_code in (404, 405):
-            pytest.skip("trigger fire endpoint not exposed in this build")
+        assert r.status_code not in (404, 405), (
+            f"trigger fire route missing: {r.status_code} {r.text}"
+        )
         assert r.status_code in (200, 201, 202), f"fire failed: {r.status_code} {r.text}"
 
         # Generous wait: the fire runs on the worker, which can lag under load.
@@ -56,13 +58,15 @@ async def test_notifications_trigger_fire_delivered(ws_base_url, api_base_url, t
 @pytest.mark.ws
 async def test_notifications_observer_done_delivered(ws_base_url, api_base_url, observer) -> None:
     sched_id = _find_id(api_base_url, "/api/observer/schedules/", "E2E active schedule")
-    if sched_id is None:
-        pytest.skip("seeded schedule 'E2E active schedule' not found")
+    assert sched_id is not None, (
+        "seeded schedule 'E2E active schedule' not found — the observer fixture guarantees it"
+    )
     wc = await WsClient.connect(f"{ws_base_url}/ws/notifications/")
     try:
         r = httpx.post(f"{api_base_url}/api/observer/schedules/{sched_id}/run-now/", timeout=5)
-        if r.status_code in (404, 405):
-            pytest.skip("observer run-now endpoint not exposed in this build")
+        assert r.status_code not in (404, 405), (
+            f"observer run-now route missing: {r.status_code} {r.text}"
+        )
         assert r.status_code in (200, 201, 202), f"run-now failed: {r.status_code} {r.text}"
 
         # Generous wait: the observer fire runs on the worker, which can lag under
@@ -80,8 +84,7 @@ async def test_notifications_backup_done_delivered(ws_base_url, api_base_url, mi
     wc = await WsClient.connect(f"{ws_base_url}/ws/notifications/")
     try:
         r = httpx.post(f"{api_base_url}/api/backups/run/", timeout=5)
-        if r.status_code not in (200, 201, 202):
-            pytest.skip(f"backup run returned {r.status_code}")
+        assert r.status_code in (200, 201, 202), f"backup run failed: {r.status_code} {r.text}"
         ev = await wc.wait_for_event("notification.event", timeout=90.0)
         assert ev.get("payload"), ev
     finally:

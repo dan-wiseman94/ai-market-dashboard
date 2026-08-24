@@ -4,24 +4,23 @@ around a service in apps.analytics.services.
 
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
+from datetime import datetime
 
+from django.conf import settings
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.core.http import parse_datetime_range
+
 
 def _parse_range(request: Request, default_days: int) -> tuple[datetime, datetime]:
-    now = datetime.now(tz=UTC)
-    end_raw = request.query_params.get("end")
-    start_raw = request.query_params.get("start")
-    end = datetime.fromisoformat(end_raw).replace(tzinfo=UTC) if end_raw else now
-    start = (
-        datetime.fromisoformat(start_raw).replace(tzinfo=UTC)
-        if start_raw
-        else end - timedelta(days=default_days)
-    )
-    return start, end
+    return parse_datetime_range(request, default_days=default_days)
+
+
+def _horizons() -> list[int]:
+    """The valid post-mortem horizon set; the FE derives its pickers from this."""
+    return list(settings.THESIS_POSTMORTEM_HORIZONS)
 
 
 class LeaderboardView(APIView):
@@ -97,17 +96,18 @@ class UnusualOptionsView(APIView):
 
 class CalibrationView(APIView):
     def get(self, request: Request) -> Response:
-        from apps.analytics.services.calibration import calibration
+        from apps.analytics.services.calibration import DEFAULT_HORIZON, calibration
 
         start, end = _parse_range(request, default_days=90)
         try:
-            horizon = int(request.query_params.get("horizon", "30"))
+            horizon = int(request.query_params.get("horizon", DEFAULT_HORIZON))
         except ValueError:
-            horizon = 30
+            horizon = DEFAULT_HORIZON
         return Response(
             {
                 "start": start.isoformat(),
                 "end": end.isoformat(),
+                "horizons": _horizons(),
                 **calibration(start=start, end=end, horizon=horizon),
             }
         )
@@ -117,13 +117,13 @@ class CalibrationDrilldownView(APIView):
     """The theses behind a calibration bucket (scorecard drill-down)."""
 
     def get(self, request: Request) -> Response:
-        from apps.analytics.services.calibration import calibration_drilldown
+        from apps.analytics.services.calibration import DEFAULT_HORIZON, calibration_drilldown
 
         start, end = _parse_range(request, default_days=90)
         try:
-            horizon = int(request.query_params.get("horizon", "30"))
+            horizon = int(request.query_params.get("horizon", DEFAULT_HORIZON))
         except ValueError:
-            horizon = 30
+            horizon = DEFAULT_HORIZON
         raw_conviction = request.query_params.get("conviction")
         conviction = int(raw_conviction) if raw_conviction and raw_conviction.isdigit() else None
         direction = request.query_params.get("direction") or None
@@ -132,6 +132,7 @@ class CalibrationDrilldownView(APIView):
             {
                 "start": start.isoformat(),
                 "end": end.isoformat(),
+                "horizons": _horizons(),
                 **calibration_drilldown(
                     start=start,
                     end=end,
@@ -217,14 +218,15 @@ class TraderCalibrationView(APIView):
     + post-mortem data. `?horizon=` (7/30/90, default 30)."""
 
     def get(self, request: Request) -> Response:
+        from apps.analytics.services.calibration import DEFAULT_HORIZON
         from apps.analytics.services.trader_calibration import trader_calibration
 
         horizon_raw = request.query_params.get("horizon")
         try:
-            horizon = int(horizon_raw) if horizon_raw else 30
+            horizon = int(horizon_raw) if horizon_raw else DEFAULT_HORIZON
         except ValueError:
-            horizon = 30
-        return Response(trader_calibration(horizon_days=horizon))
+            horizon = DEFAULT_HORIZON
+        return Response({"horizons": _horizons(), **trader_calibration(horizon_days=horizon)})
 
 
 class CalibrationDriftView(APIView):

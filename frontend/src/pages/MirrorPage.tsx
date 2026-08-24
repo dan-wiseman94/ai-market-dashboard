@@ -3,8 +3,7 @@ import { useState } from "react";
 import { EmptyState } from "@/components/EmptyState";
 import { SkeletonRows } from "@/components/Skeleton";
 import { useTraderCalibration } from "@/hooks/useAnalytics";
-
-const HORIZONS = [7, 30, 90] as const;
+import { horizonsFrom } from "@/lib/horizons";
 
 const DECISION_LABELS: Record<string, string> = {
   acted: "Acted",
@@ -44,6 +43,7 @@ export default function MirrorPage() {
   const { data, isLoading } = useTraderCalibration(horizon);
   const decisions = data?.decision_outcomes;
   const conviction = data?.conviction_reliability;
+  const horizons = horizonsFrom(data);
 
   return (
     <div className="px-8 py-8 max-w-5xl mx-auto space-y-8 ledger-fade-in">
@@ -57,7 +57,7 @@ export default function MirrorPage() {
           </p>
         </div>
         <div className="flex gap-1 text-sm">
-          {HORIZONS.map((h) => (
+          {horizons.map((h) => (
             <button
               key={h}
               onClick={() => setHorizon(h)}

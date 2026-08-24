@@ -2,6 +2,7 @@ import type { UseMutationResult, UseQueryResult } from "@tanstack/react-query";
 import type { Condition, EvaluateResult, EventTrigger } from "@/api/triggers";
 import type { TradingProfile } from "@/api/profiles";
 import RuleBuilder from "@/components/triggers/RuleBuilder";
+import { Skeleton } from "@/components/Skeleton";
 
 export type TriggerForm = Pick<
   EventTrigger,
@@ -90,7 +91,7 @@ export default function ConditionForm({
 
       <div className="border-t border-neutral-800 pt-4 text-sm">
         <div className="text-neutral-400 mb-1">Preview — would currently fire?</div>
-        {preview.isLoading && <div>Evaluating…</div>}
+        {preview.isLoading && <Skeleton where="trigger-preview" className="h-5 w-40" />}
         {preview.isError && <div className="text-rose-700 dark:text-rose-400">Invalid condition</div>}
         {preview.data && (
           <div>

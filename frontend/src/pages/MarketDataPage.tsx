@@ -3,11 +3,7 @@ import { useMacro, useTreasury, useFilings } from "@/hooks/useMarketData";
 import type { MacroSeries, Filing } from "@/api/market";
 import { SkeletonRows } from "@/components/Skeleton";
 import { EmptyState } from "@/components/EmptyState";
-
-function fmt(n: number | null | undefined, digits = 2): string {
-  if (n == null) return "—";
-  return n.toLocaleString(undefined, { maximumFractionDigits: digits });
-}
+import { fmt, signed } from "@/utils/format";
 
 function MacroSection() {
   const { data, isLoading } = useMacro();
@@ -33,8 +29,7 @@ function MacroSection() {
               <div className="mt-1 flex items-center gap-2">
                 {s.change != null && (
                   <span className="ledger-pill" data-tone={s.change >= 0 ? "gain" : "loss"}>
-                    {s.change >= 0 ? "+" : ""}
-                    {fmt(s.change)}
+                    {signed(s.change)}
                   </span>
                 )}
                 <span className="font-mono text-[10px] text-ink-500">{s.date}</span>

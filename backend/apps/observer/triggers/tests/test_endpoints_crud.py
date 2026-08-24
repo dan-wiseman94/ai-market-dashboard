@@ -1,13 +1,7 @@
 import pytest
-from rest_framework.test import APIClient
 
 from apps.observer.models import EventTrigger
 from apps.profiles.models import TradingProfile
-
-
-@pytest.fixture
-def api():
-    return APIClient()
 
 
 @pytest.mark.django_db

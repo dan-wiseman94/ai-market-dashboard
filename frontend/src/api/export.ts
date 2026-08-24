@@ -16,7 +16,9 @@ export type ExportScope = {
 };
 
 export const fetchExports = () =>
-  apiGet<{ results: ExportJob[] } | ExportJob[]>("/api/export/");
+  apiGet<{ count: number; next: string | null; previous: string | null; results: ExportJob[] }>(
+    "/api/export/",
+  );
 
 export const createExport = (scope: ExportScope) =>
   apiPost<ExportJob>("/api/export/", { scope });

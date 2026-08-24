@@ -8,6 +8,7 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db.models import Count
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.request import Request
 from rest_framework.response import Response
 
@@ -16,6 +17,12 @@ from apps.observer.triggers import evaluator, metrics
 from apps.observer.triggers.dsl import validate_condition
 from apps.observer.triggers.serializers import EventTriggerSerializer, TriggerFiringSerializer
 from apps.observer.triggers.tasks import fire_trigger
+
+
+class _FiringPagination(PageNumberPagination):
+    page_size = 20
+    page_size_query_param = "page_size"
+    max_page_size = 50
 
 
 class EventTriggerViewSet(viewsets.ModelViewSet):
@@ -72,22 +79,9 @@ class EventTriggerViewSet(viewsets.ModelViewSet):
     def firings(self, request: Request, pk: str | None = None) -> Response:
         trigger = self.get_object()
         qs = trigger.firings.select_related("snapshot", "thread").order_by("-fired_at")
-        try:
-            page = max(1, int(request.query_params.get("page", "1")))
-            size = max(1, min(50, int(request.query_params.get("size", "20"))))
-        except ValueError:
-            page, size = 1, 20
-        total = qs.count()
-        start = (page - 1) * size
-        rows = qs[start : start + size]
-        return Response(
-            {
-                "results": TriggerFiringSerializer(rows, many=True).data,
-                "count": total,
-                "page": page,
-                "size": size,
-            }
-        )
+        paginator = _FiringPagination()
+        rows = paginator.paginate_queryset(qs, request, view=self)
+        return paginator.get_paginated_response(TriggerFiringSerializer(rows, many=True).data)
 
     @action(detail=False, methods=["post"])
     def backtest(self, request: Request) -> Response:

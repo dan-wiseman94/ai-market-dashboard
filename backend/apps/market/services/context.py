@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
+import logging
+
 from apps.market import cache
 from apps.market.services.quotes import fetch_quotes
+
+log = logging.getLogger(__name__)
 
 SECTOR_ETFS = ["XLK", "XLF", "XLE", "XLV", "XLY", "XLP", "XLI", "XLU", "XLB", "XLRE", "XLC"]
 MACRO = {
@@ -61,9 +65,13 @@ def _fetch(primary: str | None = None) -> dict:
     rotation: list[dict] = []
     try:
         rs = intel.relative_strength(primary) if primary else None
+    except Exception:
+        log.warning("intel.relative_strength failed for %s", primary, exc_info=True)
+        rs = None
+    try:
         rotation = intel.sector_rotation()
     except Exception:
-        rs = None
+        log.warning("intel.sector_rotation failed", exc_info=True)
         rotation = []
     return {
         "spx_last": _last(quotes, "$SPX"),

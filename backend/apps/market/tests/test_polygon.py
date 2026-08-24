@@ -1,4 +1,4 @@
-"""Tests for the Polygon.io service (fetch_daily_bars, fetch_prev_close)."""
+"""Tests for the Polygon.io service (fetch_daily_bars)."""
 
 from __future__ import annotations
 
@@ -21,16 +21,6 @@ _RAW_AGGS_BODY = {
         {"t": _T2_MS, "o": 153.0, "h": 157.0, "l": 152.0, "c": 156.0, "v": 85_000_000},
     ],
 }
-
-_RAW_PREV_BODY = {
-    "status": "OK",
-    "resultsCount": 1,
-    "results": [
-        {"t": _T2_MS, "o": 153.0, "h": 157.0, "l": 152.0, "c": 156.0, "v": 85_000_000},
-    ],
-}
-
-_RAW_EMPTY_BODY = {"status": "OK", "resultsCount": 0}
 
 
 @pytest.mark.django_db
@@ -85,42 +75,6 @@ def test_fetch_daily_bars_upserts_ohlcbar_rows_idempotent():
     assert bar.volume == 80_000_000
 
 
-@pytest.mark.django_db
-def test_fetch_prev_close_returns_dict():
-    with (
-        patch("apps.market.services.polygon._api_key", return_value="k"),
-        patch("apps.market.services.polygon._get", return_value=_RAW_PREV_BODY),
-        patch(
-            "apps.market.services.polygon.cache.get_or_fetch",
-            side_effect=lambda key, *, ttl_seconds, fetcher: fetcher(),
-        ),
-    ):
-        result = polygon_mod.fetch_prev_close("AAPL")
-
-    assert result is not None
-    assert result["open"] == 153.0
-    assert result["high"] == 157.0
-    assert result["low"] == 152.0
-    assert result["close"] == 156.0
-    assert result["volume"] == 85_000_000
-    assert result["ts"] == datetime.fromtimestamp(_T2_MS / 1000, tz=UTC).isoformat()
-
-
-@pytest.mark.django_db
-def test_fetch_prev_close_returns_none_when_no_results():
-    with (
-        patch("apps.market.services.polygon._api_key", return_value="k"),
-        patch("apps.market.services.polygon._get", return_value=_RAW_EMPTY_BODY),
-        patch(
-            "apps.market.services.polygon.cache.get_or_fetch",
-            side_effect=lambda key, *, ttl_seconds, fetcher: fetcher(),
-        ),
-    ):
-        result = polygon_mod.fetch_prev_close("UNKNOWN")
-
-    assert result is None
-
-
 def test_fetch_daily_bars_mock_mode_returns_canned():
     with patch("apps.core.mocks.is_mock_mode", return_value=True):
         bars = polygon_mod.fetch_daily_bars("ANYTHING")
@@ -132,27 +86,11 @@ def test_fetch_daily_bars_mock_mode_returns_canned():
     assert bars[1]["close"] == 156.0
 
 
-def test_fetch_prev_close_mock_mode_returns_canned():
-    with patch("apps.core.mocks.is_mock_mode", return_value=True):
-        result = polygon_mod.fetch_prev_close("ANYTHING")
-
-    assert result is not None
-    assert result["close"] == 156.0
-    assert "ts" in result
-
-
 def test_fetch_daily_bars_no_credential_returns_empty():
     with patch("apps.market.services.polygon._api_key", return_value=None):
         result = polygon_mod.fetch_daily_bars("AAPL")
 
     assert result == []
-
-
-def test_fetch_prev_close_no_credential_returns_none():
-    with patch("apps.market.services.polygon._api_key", return_value=None):
-        result = polygon_mod.fetch_prev_close("AAPL")
-
-    assert result is None
 
 
 def test_fetch_daily_bars_never_raises_on_network_failure():
@@ -170,23 +108,6 @@ def test_fetch_daily_bars_never_raises_on_network_failure():
         result = polygon_mod.fetch_daily_bars("BOOM")
 
     assert result == []
-
-
-def test_fetch_prev_close_never_raises_on_network_failure():
-    def _boom(path, params, api_key):
-        raise RuntimeError("timeout")
-
-    with (
-        patch("apps.market.services.polygon._api_key", return_value="k"),
-        patch("apps.market.services.polygon._get", side_effect=_boom),
-        patch(
-            "apps.market.services.polygon.cache.get_or_fetch",
-            side_effect=lambda key, *, ttl_seconds, fetcher: fetcher(),
-        ),
-    ):
-        result = polygon_mod.fetch_prev_close("BOOM")
-
-    assert result is None
 
 
 @pytest.mark.django_db
@@ -207,7 +128,7 @@ def test_fetch_daily_bars_handles_missing_results_key():
 # ---------------------------------------------------------------------------
 # 9. RAW-bar invariant — Polygon must request UNADJUSTED bars
 # ---------------------------------------------------------------------------
-# returns.py (_adjusted_end_value / split_factor) corrects splits itself and
+# returns.py (_adjusted_end_value / _split_product) corrects splits itself and
 # documents OHLCBar as holding the "raw observed values". Every other provider
 # (alpaca/twelvedata/tiingo/schwab) stores raw bars; if Polygon stored
 # split-ADJUSTED bars, a split in the window would be corrected twice (once by
@@ -231,26 +152,5 @@ def test_fetch_daily_bars_requests_unadjusted_bars():
         ),
     ):
         polygon_mod.fetch_daily_bars("AAPL", days=120)
-
-    assert captured["params"]["adjusted"] == "false"
-
-
-@pytest.mark.django_db
-def test_fetch_prev_close_requests_unadjusted_bars():
-    captured: dict = {}
-
-    def _capture(path, params, api_key):
-        captured["params"] = params
-        return _RAW_PREV_BODY
-
-    with (
-        patch("apps.market.services.polygon._api_key", return_value="k"),
-        patch("apps.market.services.polygon._get", side_effect=_capture),
-        patch(
-            "apps.market.services.polygon.cache.get_or_fetch",
-            side_effect=lambda key, *, ttl_seconds, fetcher: fetcher(),
-        ),
-    ):
-        polygon_mod.fetch_prev_close("AAPL")
 
     assert captured["params"]["adjusted"] == "false"

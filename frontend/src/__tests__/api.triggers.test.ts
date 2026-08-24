@@ -62,10 +62,12 @@ describe("triggers api", () => {
     expect(call[0]).toContain("/api/triggers/evaluate/");
   });
 
-  it("fetchFirings hits /api/triggers/<id>/firings/", async () => {
-    await fetchFirings(42);
+  it("fetchFirings hits /api/triggers/<id>/firings/ with page & page_size", async () => {
+    await fetchFirings(42, 2, 10);
     const call = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls[0];
     expect(call[0]).toContain("/api/triggers/42/firings/");
+    expect(call[0]).toContain("page=2");
+    expect(call[0]).toContain("page_size=10");
   });
 
   it("fetchRecentFirings hits /api/triggers/firings/recent/", async () => {

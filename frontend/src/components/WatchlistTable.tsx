@@ -4,13 +4,12 @@ import QuoteCell from "./QuoteCell";
 import { Link } from "react-router-dom";
 
 type Props = {
-  symbols: WatchlistSymbol[];
+  tickers: WatchlistSymbol[];
   onRemove?: (sid: number) => void;
 };
 
-export default function WatchlistTable({ symbols, onRemove }: Props) {
-  const tickers = symbols.map((s) => s.ticker);
-  const { data: quotes } = useQuotes(tickers);
+export default function WatchlistTable({ tickers, onRemove }: Props) {
+  const { data: quotes } = useQuotes(tickers.map((s) => s.ticker));
 
   return (
     <table className="w-full text-sm">
@@ -25,7 +24,7 @@ export default function WatchlistTable({ symbols, onRemove }: Props) {
         </tr>
       </thead>
       <tbody>
-        {symbols.map((s) => {
+        {tickers.map((s) => {
           const q = quotes?.[s.ticker];
           return (
             <tr key={s.id} className="border-t border-slate-800">

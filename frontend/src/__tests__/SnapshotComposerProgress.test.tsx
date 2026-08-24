@@ -43,7 +43,7 @@ vi.mock("@/hooks/useProfiles", () => ({
 
 vi.mock("@/hooks/useWatchlists", () => ({
   useWatchlists: () => ({
-    data: [{ id: 10, name: "Tech", symbols: [{ ticker: "AAPL" }] }],
+    data: [{ id: 10, name: "Tech", tickers: [{ ticker: "AAPL" }] }],
   }),
 }));
 

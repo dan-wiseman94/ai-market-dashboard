@@ -27,4 +27,8 @@ def test_recompute_invokes_compute(monkeypatch):
         "compute_and_store_book",
         lambda: BookSnapshot.objects.create(as_of_date=dt.date(2026, 6, 2)),
     )
-    assert APIClient().post("/api/book/recompute/").status_code == 200
+    resp = APIClient().post("/api/book/recompute/")
+    assert resp.status_code == 200
+    # The stub ran (its row exists) and the response serializes that snapshot.
+    assert BookSnapshot.objects.filter(as_of_date=dt.date(2026, 6, 2)).exists()
+    assert resp.json()["as_of_date"] == "2026-06-02"

@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { useRecall } from "@/hooks/useRecall";
-import { SkeletonRows } from "@/components/Skeleton";
+import { Skeleton, SkeletonRows } from "@/components/Skeleton";
 import { EmptyState } from "@/components/EmptyState";
+import { recallStatus } from "@/api/recall";
 import type { RecallHit } from "@/api/recall";
 
 const KIND_OPTIONS = [
@@ -23,10 +25,16 @@ function KindBadge({ kind }: { kind: string }) {
   );
 }
 
-function ModeBadge({ mode }: { mode: "semantic" | "keyword" }) {
+function ModeBadge({
+  mode,
+  testId = "mode-badge",
+}: {
+  mode: "semantic" | "keyword";
+  testId?: string;
+}) {
   return (
     <span
-      data-testid="mode-badge"
+      data-testid={testId}
       className={[
         "font-mono text-[10px] uppercase tracking-wider px-2 py-0.5 rounded border",
         mode === "semantic"
@@ -36,6 +44,38 @@ function ModeBadge({ mode }: { mode: "semantic" | "keyword" }) {
     >
       {mode}
     </span>
+  );
+}
+
+function IndexHealth() {
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ["recall/status"],
+    queryFn: recallStatus,
+  });
+
+  if (isLoading) {
+    return <Skeleton className="h-5 w-64" where="recall-status" />;
+  }
+  // Degrade gracefully: the readout is a nicety — never block search on it.
+  if (isError || !data) return null;
+
+  const { total = 0, ...byKind } = data.counts;
+  return (
+    <div
+      data-testid="recall-status"
+      className="flex flex-wrap items-center gap-x-3 gap-y-1"
+    >
+      <ModeBadge mode={data.mode} testId="recall-status-mode" />
+      <span className="font-mono text-[11px] text-ink-400">
+        {total} indexed
+      </span>
+      {Object.entries(byKind).map(([kind, count]) => (
+        <span key={kind} className="font-mono text-[10px] text-ink-500">
+          <span className="capitalize">{kind}</span>{" "}
+          <span className="text-ink-400">{count}</span>
+        </span>
+      ))}
+    </div>
   );
 }
 
@@ -144,6 +184,9 @@ export default function RecallPage() {
           >
             Search
           </button>
+        </div>
+        <div className="mt-3 min-h-5">
+          <IndexHealth />
         </div>
       </form>
 

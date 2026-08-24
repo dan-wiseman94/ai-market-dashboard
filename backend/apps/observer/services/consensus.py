@@ -67,8 +67,8 @@ def structured_capable_pairs() -> list[StructuredPair]:
     Structured output is Claude-only today, so this selects enabled Claude-family
     ``ProviderConfig`` rows that have an API key and a resolvable model. Caps are
     read from the same row here so the aggregation loop needs no further DB access
-    (one query, not 1+N). v1 yields one pair per config; expanding to several
-    models per provider is a later enhancement.
+    (one query, not 1+N). Yields one pair per enabled config (one model per
+    provider).
     """
     pairs: list[StructuredPair] = []
     qs = ProviderConfig.objects.filter(enabled=True, provider__in=_STRUCTURED_PROVIDERS).order_by(

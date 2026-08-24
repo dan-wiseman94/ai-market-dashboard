@@ -4,13 +4,13 @@ from unittest.mock import patch
 import pytest
 
 from apps.observer.models import ObserverSchedule
-from apps.observer.services.run import run_observer
+from apps.observer.services.run import fire_observer
 from apps.profiles.models import TradingProfile
 from apps.snapshots.models import Snapshot
 
 
 def _fire_plain(schedule, snap):
-    """Fire run_observer on the plain (non-structured/batch/consensus) path with
+    """Fire fire_observer on the plain (non-structured/batch/consensus) path with
     capture/serialize/cost mocked; return the patched run_ai_on_message mock."""
     with ExitStack() as stack:
         for cm in (
@@ -23,7 +23,7 @@ def _fire_plain(schedule, snap):
         ):
             stack.enter_context(cm)
         run_ai = stack.enter_context(patch("apps.observer.services.run.run_ai_on_message"))
-        run_observer(schedule.id)
+        fire_observer(schedule.id)
         return run_ai
 
 

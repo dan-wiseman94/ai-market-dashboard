@@ -8,8 +8,17 @@ allowBuilds:
 # patch / in-range bump, so semver-compatible with its consumers. pnpm v11 reads
 # overrides only from here, not package.json#pnpm. Mitigation form per pnpm audit docs.
 overrides:
-  "undici@<7.28.0": "^7.28.0" # via jsdom@29 (wants ^7.25.0 -> 7.28 in-range)
+  "undici@<7.29.0": "^7.29.0" # via jsdom@29 + @storybook/addon-mcp (in-range)
   "ws@>=8.0.0 <8.21.0": "^8.21.0"
   "vite@>=8.0.0 <=8.0.15": "^8.0.16"
-  "js-yaml@<=4.1.1": "^4.1.2"
+  "js-yaml@>=4.0.0 <4.3.1": "^4.3.1" # via @redocly/openapi-core (in-range)
   "@babel/core@<=7.29.0": "^7.29.1"
+  "@vitest/browser@>=4.0.0 <4.1.10": "^4.1.10" # via @storybook/addon-vitest; vitest family moves with it
+  "brace-expansion@>=2.0.0 <2.1.4": "^2.1.4" # via minimatch consumers (in-range)
+  # The >=3 advisory range has no patched 3.x/4.x release — 5.0.9 is the prescribed floor.
+  "brace-expansion@>=3.0.0 <5.0.9": "^5.0.9"
+  "fast-uri@>=3.0.0 <3.1.5": "^3.1.5" # via ajv (in-range)
+  "react-router@>=6.0.0 <7.18.2": "^7.18.2" # runtime: via react-router-dom@^7 (in-range)
+  "nanoid@<3.3.18": "^3.3.18" # stay on the 3.x line — 4+/5+ are ESM-only
+  "postcss@<8.5.23": "^8.5.23"
+  "valibot@<=1.4.1": "^1.4.2" # via @storybook/mcp (in-range)

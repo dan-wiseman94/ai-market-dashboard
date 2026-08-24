@@ -60,6 +60,7 @@ class SnapshotSection(models.Model):
         ("macro", "Macro indicators"),
         ("filings", "SEC filings"),
         ("treasury", "Treasury rates"),
+        ("vix", "VIX term structure"),
     ]
     SECTION_STATUS_CHOICES: ClassVar[list[tuple[str, str]]] = [
         ("pending", "Pending"),

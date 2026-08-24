@@ -21,7 +21,7 @@ def test_null_byte_in_json_body_returns_400():
 
 @pytest.mark.django_db
 def test_null_byte_in_path_returns_400():
-    r = APIClient().get(f"/api/watchlists/a{NUL}b/symbols/")
+    r = APIClient().get(f"/api/watchlists/a{NUL}b/tickers/")
     assert r.status_code == 400
 
 

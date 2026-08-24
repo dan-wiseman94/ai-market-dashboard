@@ -39,7 +39,7 @@ jobs:
         run: |
           if [ -n "$ANTHROPIC_API_KEY" ]; then echo "enabled=true" >> "$GITHUB_OUTPUT";
           else echo "ANTHROPIC_API_KEY not set — skipping AI review."; echo "enabled=false" >> "$GITHUB_OUTPUT"; fi
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6
         if: steps.gate.outputs.enabled == 'true'
         with:
           fetch-depth: 0

@@ -3,22 +3,10 @@
 from __future__ import annotations
 
 import pytest
-from rest_framework.test import APIClient
 
-from apps.profiles.models import TradingProfile
 from apps.snapshots.models import Snapshot
 from apps.thesis.models import DecisionJournalEntry, Thesis
 from apps.threads.models import Thread
-
-
-@pytest.fixture
-def api():
-    return APIClient()
-
-
-@pytest.fixture
-def profile(db):
-    return TradingProfile.objects.create(name="Test Profile", style="swing trader")
 
 
 @pytest.fixture

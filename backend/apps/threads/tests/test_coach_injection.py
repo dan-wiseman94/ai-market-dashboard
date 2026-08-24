@@ -6,7 +6,7 @@ import pytest
 from rest_framework.test import APIClient
 
 from apps.observer.models import ObserverSchedule
-from apps.observer.services.run import run_observer
+from apps.observer.services.run import fire_observer
 from apps.profiles.models import TradingProfile
 from apps.snapshots.models import Snapshot, SnapshotSection
 from apps.thesis.models import Thesis
@@ -103,7 +103,7 @@ def test_observer_fire_includes_coach_block():
         patch("apps.observer.services.run.capture", return_value=snap),
         patch("apps.observer.services.run.run_ai_on_message"),
     ):
-        run_observer(sched.id)
+        fire_observer(sched.id)
     thread = Thread.objects.get(profile=profile, kind="observer")
     user_msg = thread.messages.filter(role="user").get()
     assert "🧭 What you already know" in user_msg.content["text"]
@@ -141,7 +141,7 @@ def test_structured_observer_fire_feeds_coach_block_to_run_structured():
         patch("apps.observer.services.run.capture", return_value=snap),
         patch("apps.observer.services.run.run_structured", return_value=fake_report) as mock_rs,
     ):
-        run_observer(sched.id)
+        fire_observer(sched.id)
 
     mock_rs.assert_called_once()
     user_arg = mock_rs.call_args.kwargs["user"]

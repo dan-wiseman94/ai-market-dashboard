@@ -12,14 +12,8 @@ import pytest
 from django.utils import timezone
 
 from apps.market.models import OHLCBar
-from apps.profiles.models import TradingProfile
 from apps.thesis.models import Position
 from apps.thesis.portfolio_service import realized_pnl, unrealized_pnl
-
-
-@pytest.fixture
-def profile(db):
-    return TradingProfile.objects.create(name="Test Profile", style="day trader")
 
 
 @pytest.fixture

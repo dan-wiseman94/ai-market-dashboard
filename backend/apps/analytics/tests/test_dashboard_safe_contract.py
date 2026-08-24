@@ -15,7 +15,6 @@ from contextlib import ExitStack
 from unittest.mock import patch
 
 import pytest
-from rest_framework.test import APIClient
 
 # Every section helper in apps.analytics.dashboard, and the shape its default must keep.
 SECTION_HELPERS = [
@@ -28,11 +27,6 @@ SECTION_HELPERS = [
     "_book_section",
     "_desk_section",
 ]
-
-
-@pytest.fixture
-def api():
-    return APIClient()
 
 
 def _assert_full_contract(body: dict) -> None:

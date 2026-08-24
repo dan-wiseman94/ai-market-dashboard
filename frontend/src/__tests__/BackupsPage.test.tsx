@@ -1,11 +1,8 @@
-import { render, screen, within } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { MemoryRouter } from "react-router-dom";
 import { vi, test, expect, beforeEach } from "vitest";
 import BackupsPage from "@/pages/BackupsPage";
-import { ToastProvider } from "@/hooks/useToast";
-import { Toasts } from "@/components/Toasts";
+import { renderWithProviders } from "./testUtils";
 
 beforeEach(() => {
   vi.spyOn(globalThis, "fetch").mockImplementation(async (url, init) => {
@@ -26,19 +23,14 @@ beforeEach(() => {
   });
 });
 
-function wrap(ui: React.ReactNode) {
-  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return <MemoryRouter><QueryClientProvider client={qc}><ToastProvider>{ui}</ToastProvider></QueryClientProvider></MemoryRouter>;
-}
-
 test("renders list with filename and size", async () => {
-  render(wrap(<BackupsPage />));
+  renderWithProviders(<BackupsPage />);
   expect(await screen.findByText(/2026-04-18-023000\.sql\.gz/)).toBeInTheDocument();
 });
 
 test("clicking Back up now POSTs to run endpoint", async () => {
   const spy = vi.spyOn(globalThis, "fetch");
-  render(wrap(<BackupsPage />));
+  renderWithProviders(<BackupsPage />);
   await userEvent.click(await screen.findByRole("button", { name: /back up now/i }));
   const called = spy.mock.calls.some(
     ([u, init]) => String(u).includes("/api/backups/run") && (init as RequestInit | undefined)?.method === "POST",
@@ -46,23 +38,9 @@ test("clicking Back up now POSTs to run endpoint", async () => {
   expect(called).toBe(true);
 });
 
-function wrapWithToasts(ui: React.ReactNode) {
-  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return (
-    <MemoryRouter>
-      <QueryClientProvider client={qc}>
-        <ToastProvider>
-          <Toasts />
-          {ui}
-        </ToastProvider>
-      </QueryClientProvider>
-    </MemoryRouter>
-  );
-}
-
 test("Delete opens a confirmation dialog that Cancel dismisses without deleting", async () => {
   const spy = vi.spyOn(globalThis, "fetch");
-  render(wrap(<BackupsPage />));
+  renderWithProviders(<BackupsPage />);
   await userEvent.click(await screen.findByRole("button", { name: /^delete$/i }));
 
   const dialog = screen.getByRole("dialog", { name: /confirm delete backup/i });
@@ -79,7 +57,7 @@ test("Delete opens a confirmation dialog that Cancel dismisses without deleting"
 
 test("confirming the dialog sends DELETE and toasts success", async () => {
   const spy = vi.spyOn(globalThis, "fetch");
-  render(wrapWithToasts(<BackupsPage />));
+  renderWithProviders(<BackupsPage />);
   await userEvent.click(await screen.findByRole("button", { name: /^delete$/i }));
 
   const dialog = screen.getByRole("dialog", { name: /confirm delete backup/i });
@@ -94,7 +72,7 @@ test("confirming the dialog sends DELETE and toasts success", async () => {
 });
 
 test("clicking the backdrop dismisses the dialog", async () => {
-  render(wrap(<BackupsPage />));
+  renderWithProviders(<BackupsPage />);
   await userEvent.click(await screen.findByRole("button", { name: /^delete$/i }));
   const dialog = screen.getByRole("dialog", { name: /confirm delete backup/i });
   // The backdrop is the dialog element itself; the inner panel stops propagation.

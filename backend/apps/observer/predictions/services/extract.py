@@ -19,6 +19,7 @@ from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 from apps.observer.models import AIPrediction
+from apps.snapshots.primary import last_price
 
 log = logging.getLogger(__name__)
 
@@ -42,20 +43,6 @@ def _invalidation_for(report, ticker: str) -> str:
         if getattr(s, "ticker", "").upper() == ticker and getattr(s, "invalidation", ""):
             return str(s.invalidation)[:300]
     return ""
-
-
-def _current_price(snapshot, ticker: str) -> float | None:
-    """Primary-ticker last from the snapshot's own quotes section (no fetch).
-    Best-effort — any odd shape / missing section yields None."""
-    try:
-        for sec in snapshot.sections.all():
-            if sec.kind == "quotes" and isinstance(sec.payload, dict):
-                row = sec.payload.get(ticker)
-                if isinstance(row, dict) and row.get("last") is not None:
-                    return float(row["last"])
-    except Exception:
-        return None
-    return None
 
 
 def _invalidation_price_from_levels(report, direction: str, current_price: float | None):
@@ -139,7 +126,7 @@ def extract_from_observation(
 
     horizon = int(getattr(report, "predicted_horizon_days", None) or DEFAULT_HORIZON_DAYS)
     predicted_at = getattr(message, "created_at", None) or timezone.now()
-    inv_price = _invalidation_price_from_levels(report, direction, _current_price(snapshot, ticker))
+    inv_price = _invalidation_price_from_levels(report, direction, last_price(snapshot, ticker))
 
     existing = AIPrediction.objects.filter(
         ticker=ticker, horizon_days=horizon, profile=profile, status="open"
