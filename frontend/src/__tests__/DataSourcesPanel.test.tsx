@@ -1,11 +1,9 @@
-import { render, screen, within } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import DataSourcesPanel from "@/components/settings/DataSourcesPanel";
 import { saveDataSourceKey, clearDataSourceKey, testDataSourceKey } from "@/api/dataSources";
-import { ToastProvider } from "@/hooks/useToast";
-import { Toasts } from "@/components/Toasts";
+import { renderWithProviders } from "./testUtils";
 
 const mockUseDataSources = vi.fn();
 vi.mock("@/hooks/useDataSources", () => ({ useDataSources: () => mockUseDataSources() }));
@@ -39,15 +37,7 @@ const SOURCES = [
 ];
 
 function renderPanel() {
-  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(
-    <QueryClientProvider client={qc}>
-      <ToastProvider>
-        <DataSourcesPanel />
-        <Toasts />
-      </ToastProvider>
-    </QueryClientProvider>,
-  );
+  return renderWithProviders(<DataSourcesPanel />);
 }
 
 beforeEach(() => {

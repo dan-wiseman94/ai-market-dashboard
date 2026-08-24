@@ -6,22 +6,10 @@ from __future__ import annotations
 from unittest.mock import patch
 
 import pytest
-from rest_framework.test import APIClient
 
-from apps.profiles.models import TradingProfile
 from apps.snapshots.models import Snapshot, SnapshotSection
 from apps.thesis.models import Thesis
 from apps.threads.models import Thread
-
-
-@pytest.fixture
-def api():
-    return APIClient()
-
-
-@pytest.fixture
-def profile(db):
-    return TradingProfile.objects.create(name="Test Profile", style="swing trader")
 
 
 @pytest.fixture
@@ -63,6 +51,17 @@ def test_ticker_uppercased_on_save(profile):
 def test_ticker_already_upper_stays(profile):
     t = Thesis.objects.create(title="Long SPY", ticker="SPY", direction="bearish", profile=profile)
     assert t.ticker == "SPY"
+
+
+@pytest.mark.django_db
+def test_ticker_stripped_on_save(profile):
+    t = Thesis.objects.create(
+        title="Long NVDA",
+        ticker=" nvda ",
+        direction="bullish",
+        profile=profile,
+    )
+    assert t.ticker == "NVDA"
 
 
 @pytest.mark.django_db

@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { apiGet, apiPost, apiPostForm } from "@/api/client";
 
 export interface UserFile {
   id: number;
@@ -15,10 +16,8 @@ export function useFiles(kind?: string) {
     queryKey: ["files", kind ?? ""],
     queryFn: async (): Promise<UserFile[]> => {
       const params = kind ? `?kind=${encodeURIComponent(kind)}` : "";
-      const resp = await fetch(`/api/files/${params}`);
-      if (!resp.ok) throw new Error("Failed to fetch files");
-      const body = await resp.json();
-      return body.results ?? [];
+      const body = await apiGet<{ results?: UserFile[] } | null>(`/api/files/${params}`);
+      return body?.results ?? [];
     },
   });
 }
@@ -26,25 +25,17 @@ export function useFiles(kind?: string) {
 export function useUploadFile() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (form: FormData) => {
-      const resp = await fetch("/api/files/", { method: "POST", body: form });
-      if (!resp.ok) throw new Error("Upload failed");
-      return resp.json();
-    },
+    mutationFn: (form: FormData) => apiPostForm<UserFile>("/api/files/", form),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["files"] }),
   });
 }
 
 export function useAttachFileToThread(threadId: number) {
   return useMutation({
-    mutationFn: async ({ fileId, prompt }: { fileId: number; prompt: string }) => {
-      const resp = await fetch(`/api/threads/${threadId}/attach-file/`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ file_id: fileId, prompt }),
-      });
-      if (!resp.ok) throw new Error("Attach failed");
-      return resp.json();
-    },
+    mutationFn: ({ fileId, prompt }: { fileId: number; prompt: string }) =>
+      apiPost<{ message_id: number }>(`/api/threads/${threadId}/attach-file/`, {
+        file_id: fileId,
+        prompt,
+      }),
   });
 }

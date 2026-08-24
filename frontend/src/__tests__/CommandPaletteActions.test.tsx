@@ -14,23 +14,16 @@
  *   - useDefaultCommands wires action verbs via a thin smoke-render of AppLayout
  */
 
-import { render, screen, fireEvent } from "@testing-library/react";
+import { screen, fireEvent } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { MemoryRouter } from "react-router-dom";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { CommandPalette, type Command } from "../components/CommandPalette";
 import * as briefingHooks from "@/hooks/useBriefing";
 import * as recallHooks from "@/hooks/useRecall";
-
-function makeQc() {
-  return new QueryClient({ defaultOptions: { queries: { retry: false } } });
-}
+import { renderWithProviders } from "./testUtils";
 
 function renderPalette(commands: Command[], extra: Command[] = [], onClose = vi.fn()) {
-  return render(
-    <MemoryRouter>
-      <CommandPalette open={true} onClose={onClose} commands={commands} extraCommands={extra} />
-    </MemoryRouter>,
+  return renderWithProviders(
+    <CommandPalette open={true} onClose={onClose} commands={commands} extraCommands={extra} />,
   );
 }
 
@@ -122,15 +115,13 @@ describe("CommandPalette — extraCommands (recall search results)", () => {
       keywords: "NVDA",
       run: navSpy,
     };
-    render(
-      <MemoryRouter>
-        <CommandPalette
-          open={true}
-          onClose={onClose}
-          commands={[]}
-          extraCommands={[recallCmd]}
-        />
-      </MemoryRouter>,
+    renderWithProviders(
+      <CommandPalette
+        open={true}
+        onClose={onClose}
+        commands={[]}
+        extraCommands={[recallCmd]}
+      />,
     );
     fireEvent.click(screen.getByText("NVDA bullish into earnings"));
     expect(navSpy).toHaveBeenCalledTimes(1);
@@ -157,15 +148,13 @@ describe("CommandPalette — extraCommands (recall search results)", () => {
 
   it("onQueryChange is called when the input changes", () => {
     const onQueryChange = vi.fn();
-    render(
-      <MemoryRouter>
-        <CommandPalette
-          open={true}
-          onClose={vi.fn()}
-          commands={[]}
-          onQueryChange={onQueryChange}
-        />
-      </MemoryRouter>,
+    renderWithProviders(
+      <CommandPalette
+        open={true}
+        onClose={vi.fn()}
+        commands={[]}
+        onQueryChange={onQueryChange}
+      />,
     );
     fireEvent.change(screen.getByPlaceholderText(/search/i), { target: { value: "earnings" } });
     expect(onQueryChange).toHaveBeenCalledWith("earnings");
@@ -190,15 +179,13 @@ describe("recall search integration — useRecallCommands shape", () => {
       },
     ];
 
-    const { getByText } = render(
-      <MemoryRouter>
-        <CommandPalette
-          open={true}
-          onClose={vi.fn()}
-          commands={[]}
-          extraCommands={recallCommands}
-        />
-      </MemoryRouter>,
+    const { getByText } = renderWithProviders(
+      <CommandPalette
+        open={true}
+        onClose={vi.fn()}
+        commands={[]}
+        extraCommands={recallCommands}
+      />,
     );
 
     expect(getByText("AAPL puts on weak guidance")).toBeInTheDocument();
@@ -221,13 +208,7 @@ describe("recall hook enabled guard", () => {
     // Validate the guard logic — empty string is passed to useRecall which disables it
     expect(effectiveQuery).toBe("");
 
-    render(
-      <QueryClientProvider client={makeQc()}>
-        <MemoryRouter>
-          <CommandPalette open={true} onClose={vi.fn()} commands={[]} />
-        </MemoryRouter>
-      </QueryClientProvider>,
-    );
+    renderWithProviders(<CommandPalette open={true} onClose={vi.fn()} commands={[]} />);
     // The palette itself doesn't call useRecall; the hook is called in AppLayout.
     // We validate the guard logic above is correct.
     spy.mockRestore();

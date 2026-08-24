@@ -5,7 +5,7 @@ import { mockApi, hookWrapper, newQueryClient } from "./testUtils";
 import type { FetchMock } from "./testUtils";
 
 const ALL_ERRORS_RESPONSE = {
-  errors: [
+  results: [
     {
       id: 1,
       level: "error",
@@ -29,7 +29,7 @@ const ALL_ERRORS_RESPONSE = {
 };
 
 const UNRESOLVED_RESPONSE = {
-  errors: [ALL_ERRORS_RESPONSE.errors[0]],
+  results: [ALL_ERRORS_RESPONSE.results[0]],
   count: 1,
 };
 
@@ -57,12 +57,12 @@ describe("useErrors", () => {
     const { result } = renderHook(() => useErrors(), { wrapper: hookWrapper() });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
-    expect(result.current.data?.errors).toHaveLength(2);
-    expect(result.current.data?.errors[0].source).toBe("capture_task");
-    expect(result.current.data?.errors[0].message).toBe(
+    expect(result.current.data?.results).toHaveLength(2);
+    expect(result.current.data?.results[0].source).toBe("capture_task");
+    expect(result.current.data?.results[0].message).toBe(
       "Connection timeout fetching quotes",
     );
-    expect(result.current.data?.errors[0].level).toBe("error");
+    expect(result.current.data?.results[0].level).toBe("error");
     expect(result.current.data?.count).toBe(2);
 
     const getCall = fm.calls.find(
@@ -77,8 +77,8 @@ describe("useErrors", () => {
     });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
-    expect(result.current.data?.errors).toHaveLength(1);
-    expect(result.current.data?.errors[0].source).toBe("capture_task");
+    expect(result.current.data?.results).toHaveLength(1);
+    expect(result.current.data?.results[0].source).toBe("capture_task");
 
     const getCall = fm.calls.find(
       (c) => c.method === "GET" && c.url.includes("/api/errors/"),

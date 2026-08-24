@@ -15,11 +15,11 @@ class WatchlistSymbolSerializer(serializers.ModelSerializer):
 
 
 class WatchlistSerializer(serializers.ModelSerializer):
-    symbols = WatchlistSymbolSerializer(many=True, read_only=True)
+    tickers = WatchlistSymbolSerializer(many=True, read_only=True)
 
     class Meta:
         model = Watchlist
-        fields: ClassVar = ["id", "name", "created_at", "symbols"]
+        fields: ClassVar = ["id", "name", "created_at", "tickers"]
         read_only_fields: ClassVar = ["created_at"]
 
 

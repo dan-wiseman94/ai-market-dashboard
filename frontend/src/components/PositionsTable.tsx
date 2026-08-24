@@ -1,5 +1,6 @@
 import { usePositions } from "@/hooks/usePositions";
 import type { Position } from "@/api/market";
+import { SkeletonRows } from "@/components/Skeleton";
 import { fmt, plClass, signed } from "@/utils/format";
 
 export default function PositionsTable() {
@@ -14,8 +15,8 @@ export default function PositionsTable() {
   }
   if (isLoading) {
     return (
-      <div className="ledger-surface px-5 py-4 text-ink-400 font-mono text-[12px]">
-        Loading the book…
+      <div className="ledger-surface px-5 py-4">
+        <SkeletonRows rows={4} />
       </div>
     );
   }

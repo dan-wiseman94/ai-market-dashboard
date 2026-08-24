@@ -83,9 +83,9 @@ export const evaluateTrigger = (
   body: { condition: Condition; profile?: number } | { trigger_id: number },
 ) => apiPost<EvaluateResult>("/api/triggers/evaluate/", body);
 
-export const fetchFirings = (triggerId: number, page = 1, size = 20) =>
-  apiGet<{ results: Firing[]; count: number; page: number; size: number }>(
-    `/api/triggers/${triggerId}/firings/?page=${page}&size=${size}`,
+export const fetchFirings = (triggerId: number, page = 1, pageSize = 20) =>
+  apiGet<{ count: number; next: string | null; previous: string | null; results: Firing[] }>(
+    `/api/triggers/${triggerId}/firings/?page=${page}&page_size=${pageSize}`,
   );
 
 export const fetchRecentFirings = (limit = 5) =>

@@ -1,51 +1,42 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { describe, expect, it, beforeEach } from "vitest";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { mockFetch, renderWithProviders } from "./testUtils";
 import TriggerEditorPage from "../pages/TriggerEditorPage";
 
 const PROFILES = [{ id: 1, name: "Default", default_includes: [] }];
 
-function mockFetch(responder: (url: string, init?: RequestInit) => unknown) {
-  globalThis.fetch = vi.fn((url: string, init?: RequestInit) =>
-    Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(responder(url, init)) }),
-  ) as never;
+// testUtils' mockFetch takes a url-only responder returning a Response-shaped
+// object; route the JSON payload per-url inside json() (url-based catch-all,
+// method-agnostic — same semantics the page relies on).
+function mockJsonByUrl(responder: (url: string) => unknown) {
+  mockFetch((url) => ({
+    ok: true,
+    status: 200,
+    json: () => Promise.resolve(responder(url)),
+  }));
 }
 
 beforeEach(() => {
-  mockFetch((url) => {
+  mockJsonByUrl((url) => {
     if (url.startsWith("/api/profiles/")) return PROFILES;
     if (url.includes("/evaluate/")) return { matched: true, values: { "price:SPY": 551.2 }, missing: [] };
     return {};
   });
 });
 
-const qc = () => new QueryClient({ defaultOptions: { queries: { retry: false } } });
-
 function renderAt(path: string, routePath: string) {
-  return render(
-    <QueryClientProvider client={qc()}>
-      <MemoryRouter initialEntries={[path]}>
-        <Routes>
-          <Route path={routePath} element={<TriggerEditorPage />} />
-        </Routes>
-      </MemoryRouter>
-    </QueryClientProvider>,
-  );
+  return renderWithProviders(<TriggerEditorPage />, { initialEntries: [path], routePath });
 }
 
 /** Like renderAt but also mounts a /triggers landing route so we can assert navigation. */
 function renderFlow(path: string, routePath: string) {
-  return render(
-    <QueryClientProvider client={qc()}>
-      <MemoryRouter initialEntries={[path]}>
-        <Routes>
-          <Route path={routePath} element={<TriggerEditorPage />} />
-          <Route path="/triggers" element={<div>TRIGGERS LIST</div>} />
-        </Routes>
-      </MemoryRouter>
-    </QueryClientProvider>,
-  );
+  return renderWithProviders(<div />, {
+    initialEntries: [path],
+    routes: [
+      { path: routePath, element: <TriggerEditorPage /> },
+      { path: "/triggers", element: <div>TRIGGERS LIST</div> },
+    ],
+  });
 }
 
 type FetchCall = [string, RequestInit | undefined];
@@ -110,7 +101,7 @@ describe("TriggerEditorPage", () => {
       condition: { all: [{ metric: "price", ticker: "SPY", op: ">", value: 500 }] },
       cooldown_seconds: 1800, enabled: true,
     };
-    mockFetch((url) => {
+    mockJsonByUrl((url) => {
       if (url.startsWith("/api/profiles/")) return PROFILES;
       if (url.includes("/evaluate/")) return { matched: false, values: {}, missing: [] };
       if (url === "/api/triggers/" || url.startsWith("/api/triggers/?")) return [TRIGGER];
@@ -136,7 +127,7 @@ describe("TriggerEditorPage", () => {
       condition: { all: [{ metric: "price", ticker: "SPY", op: ">", value: 500 }] },
       cooldown_seconds: 1800, enabled: true,
     };
-    mockFetch((url) => {
+    mockJsonByUrl((url) => {
       if (url.startsWith("/api/profiles/")) return PROFILES;
       if (url.includes("/evaluate/")) return { matched: false, values: {}, missing: [] };
       if (url.includes("/firings/")) return { results: [] };
@@ -159,7 +150,7 @@ describe("TriggerEditorPage", () => {
       condition: { all: [{ metric: "price", ticker: "SPY", op: ">", value: 500 }] },
       cooldown_seconds: 1800, enabled: true,
     };
-    mockFetch((url) => {
+    mockJsonByUrl((url) => {
       if (url.startsWith("/api/profiles/")) return PROFILES;
       if (url.includes("/evaluate/")) return { matched: false, values: {}, missing: [] };
       if (url.includes("/backtest/")) {

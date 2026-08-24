@@ -42,6 +42,51 @@ def _no_data_source_env_keys(settings):
     settings.DATA_SOURCE_ENV_KEYS = {}
 
 
+@pytest.fixture
+def api():
+    """Anonymous DRF client (the API is auth-less by design — network isolation, not auth)."""
+    from rest_framework.test import APIClient
+
+    return APIClient()
+
+
+@pytest.fixture
+def profile(db):
+    """Generic TradingProfile for tests that need one structurally (FK anchor).
+
+    Tests that assert specific field values define a local `profile` fixture,
+    which shadows this one.
+    """
+    from apps.profiles.models import TradingProfile
+
+    return TradingProfile.objects.create(name="Test Profile", style="swing")
+
+
+@pytest.fixture
+def mk_bar(db):
+    """OHLCBar factory: a flat bar (open=high=low=close) unless high/low are given.
+
+    A naive `ts` is coerced to UTC so call sites can pass bare datetimes.
+    """
+    from datetime import UTC
+
+    from apps.market.models import OHLCBar
+
+    def _mk_bar(ticker, ts, close, *, timeframe="1h", volume=1, high=None, low=None):
+        return OHLCBar.objects.create(
+            ticker=ticker,
+            timeframe=timeframe,
+            ts=ts.replace(tzinfo=UTC) if ts.tzinfo is None else ts,
+            open=close,
+            high=high if high is not None else close,
+            low=low if low is not None else close,
+            close=close,
+            volume=volume,
+        )
+
+    return _mk_bar
+
+
 @pytest.fixture(autouse=True)
 def _reset_channel_layers():
     """Give every test a fresh channel layer.

@@ -19,6 +19,15 @@ async def test_thread_consumer_forwards_text_delta():
     connected, _ = await communicator.connect()
     assert connected
 
+    # First frame announces the replay-buffer geometry (sourced from event_log's
+    # constants — the client heuristic derives from it, not mirrored literals).
+    # Exact equality also proves it carries no seq: it never enters the replay
+    # buffer, so a reconnect with ?since= can never replay or dedupe it.
+    from apps.threads.event_log import MAX_EVENTS, TTL_SECONDS
+
+    cfg = await communicator.receive_json_from(timeout=2)
+    assert cfg == {"type": "replay_config", "buffer": MAX_EVENTS, "ttl_seconds": TTL_SECONDS}
+
     layer = get_channel_layer()
     await layer.group_send(
         f"thread.{t.id}",

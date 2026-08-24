@@ -29,7 +29,7 @@ const WATCHLIST: Watchlist = {
   id: 42,
   name: "Tech Watchlist",
   created_at: "2026-01-01T00:00:00Z",
-  symbols: [
+  tickers: [
     { id: 1, ticker: "AAPL", sort_order: 0 },
     { id: 2, ticker: "MSFT", sort_order: 1 },
   ],
@@ -71,10 +71,10 @@ describe("WatchlistDetail", () => {
     expect(screen.getByText("Invalid watchlist")).toBeInTheDocument();
   });
 
-  it("shows loading state when isLoading is true", () => {
+  it("shows skeleton rows when isLoading is true", () => {
     mockUseWatchlist.mockReturnValue({ data: undefined, isLoading: true } as never);
     renderDetail();
-    expect(screen.getByText("Loading…")).toBeInTheDocument();
+    expect(screen.getAllByTestId("skeleton-row").length).toBeGreaterThan(0);
   });
 
   it("renders watchlist name as h1 when loaded", () => {
@@ -118,7 +118,7 @@ describe("WatchlistDetail", () => {
     expect(screen.getByText("Symbol not found")).toBeInTheDocument();
   });
 
-  it("renders WatchlistTable with symbols", () => {
+  it("renders WatchlistTable with tickers", () => {
     renderDetail();
     // Scope to the table's market links (tickers also appear in the
     // "what changed" section's expander buttons below the table).
@@ -135,7 +135,7 @@ describe("WatchlistDetail", () => {
 
     const removeButtons = screen.getAllByRole("button", { name: /remove/i });
     await user.click(removeButtons[0]);
-    expect(removeMutate).toHaveBeenCalledWith(WATCHLIST.symbols[0].id);
+    expect(removeMutate).toHaveBeenCalledWith(WATCHLIST.tickers[0].id);
   });
 
   it("after add succeeds, ticker input is cleared", async () => {

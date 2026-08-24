@@ -62,16 +62,23 @@ def refresh_schwab_token() -> dict:
             provider_health.mark_auth_error(
                 "schwab", "Schwab refresh token expired or was revoked — reconnect at /settings."
             )
+            # nosemgrep: python.lang.security.audit.logging.logger-credential-leak.python-logger-credential-disclosure -- interpolates an int HTTP status, no credential
             log.warning(
                 "Schwab proactive token refresh rejected (HTTP %s); reconnect needed.", status
             )
             return {"ok": False, "reason": "refresh_rejected"}
         # A transient server-side error (5xx) — leave the credential alone and retry next tick.
+        # nosemgrep: python.lang.security.audit.logging.logger-credential-leak.python-logger-credential-disclosure -- interpolates an int HTTP status, no credential
         log.warning("Schwab token refresh failed (HTTP %s); will retry next tick.", status)
         return {"ok": False, "reason": "refresh_error"}
     except httpx.HTTPError as exc:
         # Network/timeout reaching Schwab's token endpoint — transient, retry next tick.
-        log.warning("Schwab token refresh network error (%s); will retry next tick.", exc)
+        # Exception text may embed the credential-bearing request URL; log the class only.
+        # nosemgrep: python.lang.security.audit.logging.logger-credential-leak.python-logger-credential-disclosure -- interpolates the exception class name only
+        log.warning(
+            "Schwab token refresh network error (%s); will retry next tick.",
+            type(exc).__name__,
+        )
         return {"ok": False, "reason": "refresh_error"}
 
     persist_token(new_token)

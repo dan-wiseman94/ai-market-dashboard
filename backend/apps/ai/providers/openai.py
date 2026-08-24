@@ -7,6 +7,7 @@ is base_url.
 from __future__ import annotations
 
 import json
+import logging
 import time
 from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
@@ -28,6 +29,8 @@ from apps.ai.types import (
     ToolResultEvent,
     UsageEvent,
 )
+
+log = logging.getLogger(__name__)
 
 
 class OpenAIProvider:
@@ -107,6 +110,9 @@ class OpenAIProvider:
             # the loop; only the completion marker remains.
             yield DoneEvent()
         except Exception as exc:
+            # ErrorEvent reaches the consumer, but the Celery task still
+            # "succeeds" — log here or the traceback is lost server-side.
+            log.exception("openai provider stream failed")
             yield ErrorEvent(message=f"{type(exc).__name__}: {exc}")
 
     async def list_models(self, *, timeout: float = 10.0) -> list[str]:

@@ -6,16 +6,15 @@ import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/useToast";
 import { useState } from "react";
 import { RelativeTime } from "@/components/RelativeTime";
+import { pctSigned, plClass400 } from "@/utils/format";
 
 type Props = { ticker: string };
 
 function DeltaBadge({ pct }: { pct: number | null | undefined }) {
   if (pct == null) return <span className="text-ink-500 text-xs">—</span>;
-  const sign = pct >= 0 ? "+" : "";
-  const color = pct >= 0 ? "text-emerald-400" : "text-rose-400";
   return (
-    <span className={`font-mono text-xs ${color}`}>
-      {sign}{pct.toFixed(2)}%
+    <span className={`font-mono text-xs ${plClass400(pct)}`}>
+      {pctSigned(pct)}
     </span>
   );
 }

@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { EmptyState } from "@/components/EmptyState";
+import { SkeletonRows } from "@/components/Skeleton";
 import { useCreateWatchlist, useDeleteWatchlist, useWatchlists } from "@/hooks/useWatchlists";
 
 export default function WatchlistsList() {
@@ -30,13 +32,18 @@ export default function WatchlistsList() {
       </form>
 
       {isLoading ? (
-        <p>Loading…</p>
+        <SkeletonRows rows={4} />
+      ) : (data ?? []).length === 0 ? (
+        <EmptyState
+          title="No watchlists yet"
+          body="Create one above to start tracking a group of tickers."
+        />
       ) : (
         <ul className="space-y-1">
           {(data ?? []).map((w) => (
             <li key={w.id} data-testid={`watchlist-row-${w.name}`} className="flex items-center justify-between p-3 rounded border border-rule">
               <Link to={`/watchlists/${w.id}`} className="hover:underline">
-                {w.name} <span className="text-ink-500 text-sm">({w.symbols.length} symbols)</span>
+                {w.name} <span className="text-ink-500 text-sm">({w.tickers.length} symbols)</span>
               </Link>
               <button
                 onClick={() => del.mutate(w.id)}

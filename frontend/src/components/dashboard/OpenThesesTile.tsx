@@ -1,11 +1,7 @@
 import { Link } from "react-router-dom";
 import { EmptyState } from "@/components/EmptyState";
 import type { DashboardThesis } from "@/hooks/useDashboard";
-
-function pctColor(pct: number | null): string {
-  if (pct == null) return "text-ink-400";
-  return pct >= 0 ? "text-gain-400" : "text-loss-400";
-}
+import { pctSigned, plClass400 } from "@/utils/format";
 
 function DirectionBadge({ direction }: { direction: string }) {
   const classes =
@@ -48,9 +44,8 @@ function ThesisRow({ thesis }: { thesis: DashboardThesis }) {
       </div>
       <div className="text-right shrink-0">
         {pct != null ? (
-          <span className={`font-mono text-[12px] tabular-nums ${pctColor(pct)}`}>
-            {pct >= 0 ? "+" : ""}
-            {pct.toFixed(1)}%
+          <span className={`font-mono text-[12px] tabular-nums ${plClass400(pct)}`}>
+            {pctSigned(pct, 1)}
           </span>
         ) : (
           <span className="font-mono text-[12px] text-ink-600">—</span>

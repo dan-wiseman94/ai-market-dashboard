@@ -1,12 +1,6 @@
 import pytest
-from rest_framework.test import APIClient
 
 from apps.secrets.models import ProviderConfig
-
-
-@pytest.fixture
-def api():
-    return APIClient()
 
 
 @pytest.mark.django_db

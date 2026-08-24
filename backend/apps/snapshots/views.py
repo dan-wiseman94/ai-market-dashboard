@@ -16,6 +16,7 @@ from apps.profiles.models import TradingProfile
 from apps.snapshots.diff import diff_sections
 from apps.snapshots.image_store import read_image_bytes
 from apps.snapshots.models import Snapshot, SnapshotImage
+from apps.snapshots.primary import last_price
 from apps.snapshots.serializers import (
     SnapshotImageSerializer,
     SnapshotListSerializer,
@@ -110,15 +111,6 @@ class SnapshotViewSet(
             .prefetch_related("sections")
             .order_by("captured_at")
         )
-
-        def last_price(s):
-            q = next((x for x in s.sections.all() if x.kind == "quotes"), None)
-            if q is None or not s.primary_ticker or not isinstance(q.payload, dict):
-                return None
-            try:
-                return float(q.payload[s.primary_ticker]["last"])
-            except (KeyError, TypeError, ValueError):
-                return None
 
         rows, prev = [], None
         for s in snaps:

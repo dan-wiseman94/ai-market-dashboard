@@ -14,7 +14,7 @@ vi.mock("@/hooks/useMarketStatus", () => ({ useMarketStatus: () => mockMarketSta
 vi.mock("@/hooks/useProfiles", () => ({ useProfiles: () => ({ data: [{ id: 1, name: "P", default_includes: [] }] }) }));
 vi.mock("@/hooks/useAgentPresets", () => ({ useAgentPresets: () => ({ data: [] }) }));
 vi.mock("@/hooks/useWatchlists", () => ({
-  useWatchlists: () => ({ data: [{ id: 1, name: "W", symbols: [{ ticker: "SPY" }] }] }),
+  useWatchlists: () => ({ data: [{ id: 1, name: "W", tickers: [{ ticker: "SPY" }] }] }),
 }));
 vi.mock("@/hooks/useCreateSnapshot", () => ({ useCreateSnapshot: () => ({ mutateAsync: vi.fn(), isPending: false }) }));
 vi.mock("@/hooks/useCreateConsultThread", () => ({ useCreateConsultThread: () => ({ mutateAsync: vi.fn(), isPending: false }) }));

@@ -11,7 +11,7 @@ def get_or_create_observer_thread(profile: TradingProfile) -> Thread:
 
     Resolve by oldest-match rather than ``get_or_create``: the latter is not atomic
     (there is no unique constraint on profile+kind+schedule-null), so two observer fires
-    racing to create the canonical thread — e.g. a beat-fired ``run_observer`` and another
+    racing to create the canonical thread — e.g. a beat-fired ``fire_observer`` and another
     caller — could leave two rows, after which ``get_or_create``'s implicit ``get`` would
     raise ``MultipleObjectsReturned`` and 500 every later fire / timeline load. ``.first()``
     always returns the same (oldest) row, tolerating a rare duplicate instead of crashing.

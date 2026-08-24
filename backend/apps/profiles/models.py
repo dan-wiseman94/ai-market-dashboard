@@ -18,7 +18,7 @@ class Watchlist(models.Model):
 
 
 class WatchlistSymbol(models.Model):
-    watchlist = models.ForeignKey(Watchlist, related_name="symbols", on_delete=models.CASCADE)
+    watchlist = models.ForeignKey(Watchlist, related_name="tickers", on_delete=models.CASCADE)
     ticker = models.CharField(max_length=16)
     sort_order = models.PositiveIntegerField(default=0)
 
@@ -32,7 +32,9 @@ class WatchlistSymbol(models.Model):
         return f"{self.watchlist} / {self.ticker}"
 
     def save(self, *args, **kwargs) -> None:
-        self.ticker = (self.ticker or "").upper()
+        # Strip before upper: "nvda " would otherwise store "NVDA " past the
+        # (watchlist, ticker) unique constraint and break exact-key joins.
+        self.ticker = (self.ticker or "").strip().upper()
         super().save(*args, **kwargs)
 
 
@@ -71,11 +73,6 @@ class TradingProfile(models.Model):
         help_text="Inject the Decision Coach context (prior theses, diff-vs-last "
         "snapshot, per-ticker track record, recall) plus a base observational "
         "system prompt. Off = the system prompt is just the style.",
-    )
-    skills = models.JSONField(
-        default=list,
-        blank=True,
-        help_text="List of Anthropic Skill ids to attach per run. Empty = none.",
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

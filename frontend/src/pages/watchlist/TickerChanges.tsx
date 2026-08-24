@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { fetchSnapshotDiff, fetchSnapshotTimeline } from "@/api/snapshots";
+import { Skeleton } from "@/components/Skeleton";
 
 /**
  * "What changed since your last look at $TICKER" — an on-demand, per-ticker
@@ -40,7 +41,7 @@ export function TickerChanges({ ticker }: { ticker: string }) {
       {open && (
         <div className="pb-3 text-sm" data-testid={`ticker-changes-${ticker}`}>
           {timelineQ.isLoading ? (
-            <span className="text-ink-500">Loading…</span>
+            <Skeleton where={`ticker-changes-${ticker}`} className="h-5 w-40" />
           ) : !latest ? (
             <span className="text-ink-500">No snapshots of {ticker} yet.</span>
           ) : diffQ.isLoading ? (

@@ -42,7 +42,7 @@ function mockHooks(
 ) {
   const mutateMock = vi.fn();
   vi.spyOn(hooks, "useErrors").mockReturnValue({
-    data: { errors: rows, count: rows.length },
+    data: { results: rows, count: rows.length },
     isLoading,
     isSuccess: !isLoading,
   } as never);
@@ -82,6 +82,17 @@ describe("ErrorsPage", () => {
     expect(screen.getAllByText("error").length).toBeGreaterThan(0);
     expect(screen.getAllByText("warning").length).toBeGreaterThan(0);
     expect(screen.getAllByText("critical").length).toBeGreaterThan(0);
+  });
+
+  it("renders each row's timestamp via RelativeTime (maskable in the visual lane)", () => {
+    mockHooks();
+    renderPage();
+
+    const times = screen.getAllByTestId("relative-time");
+    expect(times).toHaveLength(ERROR_ROWS.length);
+    // date-fns formatDistanceToNow text + the " ago" suffix, e.g. "3 months ago"
+    expect(times[0]).toHaveTextContent(/ago$/);
+    expect(times[0]).toHaveAttribute("dateTime", ERROR_ROWS[0].created_at);
   });
 
   it("shows EmptyState when no errors", () => {

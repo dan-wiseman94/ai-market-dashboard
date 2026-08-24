@@ -1,11 +1,9 @@
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import ConnectionsSettings from "@/pages/settings/ConnectionsSettings";
 import { fetchSchwabAuthorizeUrl, updateSchwabAppConfig } from "@/api/schwab";
-import { ToastProvider } from "@/hooks/useToast";
-import { Toasts } from "@/components/Toasts";
+import { renderWithProviders } from "./testUtils";
 
 const mockUseSchwabStatus = vi.fn();
 const mockUseSchwabAppConfig = vi.fn();
@@ -32,16 +30,8 @@ vi.mock("@/hooks/useDataSources", () => ({
 }));
 
 // useToast() / useQueryClient() throw without their providers; AppLayout supplies both in prod.
-function renderWithProviders() {
-  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(
-    <QueryClientProvider client={qc}>
-      <ToastProvider>
-        <ConnectionsSettings />
-        <Toasts />
-      </ToastProvider>
-    </QueryClientProvider>,
-  );
+function renderPage() {
+  return renderWithProviders(<ConnectionsSettings />);
 }
 
 beforeEach(() => {
@@ -54,7 +44,7 @@ beforeEach(() => {
 describe("ConnectionsSettings", () => {
   it("shows not-connected state with a Connect button", () => {
     mockUseSchwabStatus.mockReturnValue({ data: { connected: false }, isLoading: false });
-    renderWithProviders();
+    renderPage();
     expect(screen.getByText(/not connected/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /connect schwab/i })).toBeInTheDocument();
   });
@@ -64,7 +54,7 @@ describe("ConnectionsSettings", () => {
       data: { connected: true, expires_at: null },
       isLoading: false,
     });
-    renderWithProviders();
+    renderPage();
     expect(screen.getByText(/^connected$/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /reconnect/i })).toBeInTheDocument();
   });
@@ -80,7 +70,7 @@ describe("ConnectionsSettings", () => {
       },
       isLoading: false,
     });
-    renderWithProviders();
+    renderPage();
     expect(screen.getByText(/rejected the stored authorization/i)).toBeInTheDocument();
   });
 
@@ -89,13 +79,13 @@ describe("ConnectionsSettings", () => {
     mockUseSchwabAppConfig.mockReturnValue({
       data: { client_id: "", client_secret_present: false, configured: false },
     });
-    renderWithProviders();
+    renderPage();
     expect(screen.getByRole("button", { name: /connect schwab/i })).toBeDisabled();
   });
 
   it("saves entered credentials via the app-config API", async () => {
     mockUseSchwabStatus.mockReturnValue({ data: { connected: false }, isLoading: false });
-    renderWithProviders();
+    renderPage();
     await userEvent.type(screen.getByLabelText(/app key/i), "APPKEY");
     await userEvent.type(screen.getByLabelText(/secret/i), "SECRET");
     await userEvent.click(screen.getByRole("button", { name: /save credentials/i }));
@@ -115,7 +105,7 @@ describe("ConnectionsSettings", () => {
       url: "https://api.schwabapi.com/v1/oauth/authorize?client_id=x",
     });
     const openSpy = vi.spyOn(window, "open").mockReturnValue(null);
-    renderWithProviders();
+    renderPage();
     await userEvent.click(screen.getByRole("button", { name: /connect schwab/i }));
     expect(openSpy).toHaveBeenCalledWith(
       "https://api.schwabapi.com/v1/oauth/authorize?client_id=x",
@@ -130,7 +120,7 @@ describe("ConnectionsSettings", () => {
     vi.mocked(fetchSchwabAuthorizeUrl).mockRejectedValueOnce(
       new Error("Schwab is not configured. Add your Schwab API credentials in Settings."),
     );
-    renderWithProviders();
+    renderPage();
     await userEvent.click(screen.getByRole("button", { name: /connect schwab/i }));
     expect(await screen.findByText(/schwab is not configured/i)).toBeInTheDocument();
   });

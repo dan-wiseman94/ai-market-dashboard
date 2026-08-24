@@ -20,7 +20,7 @@ export default function SymbolCalendarOverridesCard() {
   const { data: overrides } = useCalendarOverrides();
   const create = useCreateCalendarOverride();
   const del = useDeleteCalendarOverride();
-  const [symbol, setSymbol] = useState("");
+  const [ticker, setTicker] = useState("");
   const [market, setMarket] = useState<MarketKey>("us_equity");
 
   return (
@@ -36,11 +36,11 @@ export default function SymbolCalendarOverridesCard() {
       <ul className="space-y-1 text-sm">
         {(overrides ?? []).map((o) => (
           <li key={o.id} className="flex items-center justify-between border-t border-slate-800 pt-1">
-            <span className="font-mono">{o.symbol}</span>
+            <span className="font-mono">{o.ticker}</span>
             <span className="text-slate-400">{o.market_key}</span>
             <button
               type="button"
-              aria-label={`delete ${o.symbol}`}
+              aria-label={`delete ${o.ticker}`}
               onClick={() => del.mutate(o.id)}
               className="px-2 py-0.5 text-xs rounded bg-red-900 hover:bg-red-800"
             >
@@ -54,17 +54,17 @@ export default function SymbolCalendarOverridesCard() {
         className="flex items-end gap-2 text-sm"
         onSubmit={(e) => {
           e.preventDefault();
-          if (!symbol.trim()) return;
+          if (!ticker.trim()) return;
           create.mutate(
-            { symbol: symbol.trim(), market_key: market },
-            { onSuccess: () => setSymbol("") },
+            { ticker: ticker.trim(), market_key: market },
+            { onSuccess: () => setTicker("") },
           );
         }}
       >
         <input
           placeholder="Symbol (e.g. BTC-USD)"
-          value={symbol}
-          onChange={(e) => setSymbol(e.target.value)}
+          value={ticker}
+          onChange={(e) => setTicker(e.target.value)}
           className="px-2 py-1 rounded bg-slate-900 border border-slate-700"
         />
         <label className="flex flex-col gap-1">

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useErrors, useResolveError } from "@/hooks/useErrors";
 import { SkeletonRows } from "@/components/Skeleton";
 import { EmptyState } from "@/components/EmptyState";
+import { RelativeTime } from "@/components/RelativeTime";
 
 function levelBadge(level: string): string {
   switch (level) {
@@ -14,16 +15,6 @@ function levelBadge(level: string): string {
     default:
       return "font-mono text-[10px] uppercase tracking-loose2 px-1.5 py-0.5 rounded-ledger border border-ink-500 text-ink-500 bg-ink-500/10";
   }
-}
-
-function relativeTime(iso: string): string {
-  const diffMs = Date.now() - new Date(iso).getTime();
-  const mins = Math.floor(diffMs / 60_000);
-  if (mins < 1) return "just now";
-  if (mins < 60) return `${mins}m ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  return `${Math.floor(hrs / 24)}d ago`;
 }
 
 export default function ErrorsPage() {
@@ -39,7 +30,7 @@ export default function ErrorsPage() {
     );
   }
 
-  const errors = data?.errors ?? [];
+  const errors = data?.results ?? [];
 
   return (
     <main className="px-8 py-8 max-w-4xl mx-auto ledger-fade-in space-y-6">
@@ -92,12 +83,9 @@ export default function ErrorsPage() {
               </div>
 
               <div className="flex flex-col items-end gap-2 shrink-0">
-                <time
-                  className="text-xs text-ink-500 font-mono"
-                  dateTime={row.created_at}
-                >
-                  {relativeTime(row.created_at)}
-                </time>
+                <span className="text-xs text-ink-500 font-mono">
+                  <RelativeTime iso={row.created_at} suffix=" ago" />
+                </span>
                 <button
                   type="button"
                   disabled={row.resolved || resolve.isPending}

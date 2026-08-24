@@ -25,6 +25,7 @@ from apps.market.services.positions import fetch_positions
 from apps.market.services.quotes import fetch_quotes
 from apps.market.services.safe_log import safe_err, scrub_secret_params
 from apps.market.services.treasury import fetch_treasury
+from apps.market.services.vix import vix_term_structure
 from apps.market.services.yields import live_yields
 from apps.market.symbols import is_equity_like, normalize_symbol
 from apps.profiles.models import TradingProfile
@@ -141,8 +142,9 @@ def _fetch_ohlc_section(
     ticker = _pick_ticker(ohlc_ticker, watchlist_tickers)
     watchlist_daily = _watchlist_daily_bars(list(watchlist_tickers), ticker)
     if ohlc_timeframe in INTRADAY_TIMEFRAMES:
-        # Always the rolling last-24h window; 1m blends the current session (1m)
-        # with the older portion coarsened to 5m (see apps.market.services.ohlc).
+        # Always the rolling last-24h window; a 1m request keeps only the newest
+        # ~4h at 1m (never before the current session's open), earlier portion
+        # coarsened to 5m (see apps.market.services.ohlc._FINE_WINDOW).
         bars = fetch_ohlc_24h(ticker, timeframe=ohlc_timeframe)
         data: dict = {"ticker": ticker, "timeframe": ohlc_timeframe, "bars": bars, "window": "24h"}
         if ohlc_timeframe == "1m":
@@ -201,6 +203,7 @@ _FETCHERS = {
         },
     },
     "treasury": lambda **_: {"data": fetch_treasury()},
+    "vix": lambda **_: {"data": vix_term_structure()},
 }
 
 
@@ -251,6 +254,14 @@ def capture_for_existing(
     ohlc_bars: int = 60,
 ) -> Snapshot:
     """Fill in sections for an already-created Snapshot. Broadcasts progress over WS."""
+    # Volatility context is not optional: every snapshot carries the vix section,
+    # whatever the caller's includes say. Guarded append — a duplicate kind would
+    # violate uniq_snapshot_section mid-loop. Persist before the pending broadcast
+    # so the WS progress map and serialize_for_ai both see it.
+    requested_kinds = set(snap.includes)
+    if "vix" not in snap.includes:
+        snap.includes = [*snap.includes, "vix"]
+        snap.save(update_fields=["includes"])
     _broadcast(snap.id, {"event": "pending", "snapshot_id": snap.id, "includes": snap.includes})
     ok_count = 0
     _primary: str | None = None
@@ -283,7 +294,11 @@ def capture_for_existing(
             stamp_payload_tokens(section)
             if kind == "quotes" and _primary is None:
                 _primary = primary_ticker_from_quotes(section.payload)
-            ok_count += 1
+            # Only user-requested sections count toward ready/failed — the
+            # auto-appended vix must not rescue a capture whose actual
+            # sections all failed.
+            if kind in requested_kinds:
+                ok_count += 1
             _broadcast(snap.id, {"event": "section_done", "kind": kind})
         except Exception as exc:
             section.status = "failed"

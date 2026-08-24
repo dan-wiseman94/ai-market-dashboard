@@ -1896,7 +1896,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/watchlists/{watchlist_pk}/symbols/": {
+    "/api/watchlists/{watchlist_pk}/tickers/": {
         parameters: {
             query?: never;
             header?: never;
@@ -1905,14 +1905,14 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["watchlists_symbols_create"];
+        post: operations["watchlists_tickers_create"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/watchlists/{watchlist_pk}/symbols/{id}/": {
+    "/api/watchlists/{watchlist_pk}/tickers/{id}/": {
         parameters: {
             query?: never;
             header?: never;
@@ -1922,7 +1922,7 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        delete: operations["watchlists_symbols_destroy"];
+        delete: operations["watchlists_tickers_destroy"];
         options?: never;
         head?: never;
         patch?: never;
@@ -2036,7 +2036,7 @@ export interface components {
         BriefingRunStatusEnum: "assembling" | "ready" | "failed";
         CalendarOverride: {
             readonly id: number;
-            symbol: string;
+            ticker: string;
             market_key: components["schemas"]["MarketKeyEnum"];
             note?: string;
             /** Format: date-time */
@@ -2277,9 +2277,10 @@ export interface components {
          *     * `desk` - Desk
          *     * `cal_drift` - Calibration drift
          *     * `contra` - Consistency conflict
+         *     * `pred_invalid` - Prediction invalidated
          * @enum {string}
          */
-        NotificationKindEnum: "trigger" | "observer_done" | "error" | "cost_limit" | "backup" | "postmortem" | "briefing" | "regime" | "book" | "desk" | "cal_drift" | "contra";
+        NotificationKindEnum: "trigger" | "observer_done" | "error" | "cost_limit" | "backup" | "postmortem" | "briefing" | "regime" | "book" | "desk" | "cal_drift" | "contra" | "pred_invalid";
         ObserverSchedule: {
             readonly id: number;
             name: string;
@@ -2406,7 +2407,7 @@ export interface components {
         };
         PatchedCalendarOverride: {
             readonly id?: number;
-            symbol?: string;
+            ticker?: string;
             market_key?: components["schemas"]["MarketKeyEnum"];
             note?: string;
             /** Format: date-time */
@@ -2614,7 +2615,7 @@ export interface components {
             name?: string;
             /** Format: date-time */
             readonly created_at?: string;
-            readonly symbols?: components["schemas"]["WatchlistSymbol"][];
+            readonly tickers?: components["schemas"]["WatchlistSymbol"][];
         };
         Position: {
             readonly id: number;
@@ -2782,9 +2783,10 @@ export interface components {
          *     * `macro` - Macro indicators
          *     * `filings` - SEC filings
          *     * `treasury` - Treasury rates
+         *     * `vix` - VIX term structure
          * @enum {string}
          */
-        SnapshotSectionKindEnum: "quotes" | "ohlc" | "chain" | "positions" | "breadth" | "news" | "notes" | "image" | "overnight" | "events" | "fundamentals" | "macro" | "filings" | "treasury";
+        SnapshotSectionKindEnum: "quotes" | "ohlc" | "chain" | "positions" | "breadth" | "news" | "notes" | "image" | "overnight" | "events" | "fundamentals" | "macro" | "filings" | "treasury" | "vix";
         /**
          * @description * `pending` - Pending
          *     * `done` - Done
@@ -3003,7 +3005,7 @@ export interface components {
             name: string;
             /** Format: date-time */
             readonly created_at: string;
-            readonly symbols: components["schemas"]["WatchlistSymbol"][];
+            readonly tickers: components["schemas"]["WatchlistSymbol"][];
         };
         WatchlistSymbol: {
             readonly id: number;
@@ -3295,6 +3297,8 @@ export interface operations {
             query?: {
                 /** @description A page number within the paginated result set. */
                 page?: number;
+                /** @description Number of results to return per page. */
+                page_size?: number;
             };
             header?: never;
             path?: never;
@@ -6572,7 +6576,7 @@ export interface operations {
             };
         };
     };
-    watchlists_symbols_create: {
+    watchlists_tickers_create: {
         parameters: {
             query?: never;
             header?: never;
@@ -6597,7 +6601,7 @@ export interface operations {
             };
         };
     };
-    watchlists_symbols_destroy: {
+    watchlists_tickers_destroy: {
         parameters: {
             query?: never;
             header?: never;

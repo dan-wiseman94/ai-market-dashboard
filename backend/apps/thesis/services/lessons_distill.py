@@ -99,30 +99,18 @@ def _cosine(a, b) -> float:
 
 def _attach(lesson, pm) -> None:
     """Link a post-mortem to a lesson cluster: merge tags, bump support, restamp."""
+    from apps.market.services.fundamentals import sector_for_ticker
+
     lesson.evidence.add(pm)
     tags = lesson.tags if isinstance(lesson.tags, dict) else {}
     directions = set(tags.get("directions", []))
     sectors = set(tags.get("sectors", []))
     if pm.thesis.direction:
         directions.add(pm.thesis.direction)
-    sector = _sector_for(pm.thesis.ticker)
+    sector = sector_for_ticker(pm.thesis.ticker)
     if sector:
         sectors.add(sector)
     lesson.tags = {"directions": sorted(directions), "sectors": sorted(sectors)}
     lesson.support_n = lesson.evidence.count()
     lesson.last_seen = timezone.now()
     lesson.save(update_fields=["tags", "support_n", "last_seen", "updated_at"])
-
-
-def _sector_for(ticker: str) -> str:
-    if not ticker:
-        return ""
-    from apps.market.models import CompanyFundamentals
-
-    sector = (
-        CompanyFundamentals.objects.filter(ticker=ticker.upper())
-        .exclude(sector="")
-        .values_list("sector", flat=True)
-        .first()
-    )
-    return sector or ""

@@ -4,10 +4,7 @@ import { deleteBackup, fetchBackups, runBackupNow, type Backup } from "@/api/bac
 export function useBackups() {
   return useQuery<Backup[]>({
     queryKey: ["backups"],
-    queryFn: async () => {
-      const d = await fetchBackups();
-      return Array.isArray(d) ? d : d.results;
-    },
+    queryFn: async () => (await fetchBackups()).results,
   });
 }
 

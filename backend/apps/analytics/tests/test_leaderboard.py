@@ -12,19 +12,12 @@ from decimal import Decimal
 import pytest
 
 from apps.analytics.services.leaderboard import provider_leaderboard
-from apps.market.models import OHLCBar
-from apps.profiles.models import TradingProfile
 from apps.snapshots.models import Snapshot, SnapshotSection
 from apps.threads.models import AIRun, Message, Thread
 
 
 def _aware(dt: datetime) -> datetime:
     return dt.replace(tzinfo=UTC) if dt.tzinfo is None else dt
-
-
-@pytest.fixture
-def profile(db):
-    return TradingProfile.objects.create(name="p", style="s")
 
 
 def _mk_run(
@@ -74,19 +67,6 @@ def _mk_run(
     return run
 
 
-def _mk_bar(ticker: str, ts: datetime, close: float) -> None:
-    OHLCBar.objects.create(
-        ticker=ticker,
-        timeframe="1h",
-        ts=_aware(ts),
-        open=close,
-        high=close,
-        low=close,
-        close=close,
-        volume=1,
-    )
-
-
 def test_leaderboard_groups_by_provider_model(db, profile) -> None:
     now = datetime(2026, 4, 10, 14, 30)
     _mk_run(
@@ -131,7 +111,7 @@ def test_leaderboard_groups_by_provider_model(db, profile) -> None:
     assert openai["runs"] == 1
 
 
-def test_leaderboard_computes_forward_return_pct(db, profile) -> None:
+def test_leaderboard_computes_forward_return_pct(db, profile, mk_bar) -> None:
     # Wed 2026-04-15 20:00 UTC = NYSE close; +1 trading session = Thu 2026-04-16 close.
     # Bars must sit at the actual session closes so the 12h tolerance window finds them.
     now = datetime(2026, 4, 15, 20, 0, tzinfo=UTC)
@@ -144,8 +124,8 @@ def test_leaderboard_computes_forward_return_pct(db, profile) -> None:
         snap_ticker="AAPL",
         profile=profile,
     )
-    _mk_bar("AAPL", now, 100.0)
-    _mk_bar("AAPL", datetime(2026, 4, 16, 20, 0, tzinfo=UTC), 110.0)
+    mk_bar("AAPL", now, 100.0)
+    mk_bar("AAPL", datetime(2026, 4, 16, 20, 0, tzinfo=UTC), 110.0)
 
     rows = provider_leaderboard(
         start=now - timedelta(days=1),
@@ -198,7 +178,9 @@ def test_leaderboard_filters_by_window(db, profile) -> None:
     assert rows == []
 
 
-def test_leaderboard_query_budget_is_bounded(db, profile, django_assert_max_num_queries) -> None:
+def test_leaderboard_query_budget_is_bounded(
+    db, profile, mk_bar, django_assert_max_num_queries
+) -> None:
     """provider_leaderboard must not fan out a per-run price query (the N+1 the batched
     forward-return load fixed). The query count is constant in run count: agg + a single
     runs pass (sections prefetched) + the two batched price-out queries + per-ticker
@@ -215,8 +197,8 @@ def test_leaderboard_query_budget_is_bounded(db, profile, django_assert_max_num_
             profile=profile,
         )
     for tk in ("AAA", "BBB"):
-        _mk_bar(tk, now, 100.0)
-        _mk_bar(tk, datetime(2026, 4, 16, 20, 0, tzinfo=UTC), 110.0)
+        mk_bar(tk, now, 100.0)
+        mk_bar(tk, datetime(2026, 4, 16, 20, 0, tzinfo=UTC), 110.0)
 
     # Measured 7 with these 8 runs; 12 leaves headroom for legitimate changes while a
     # per-run N+1 (~5 queries x 8 runs) would breach it.

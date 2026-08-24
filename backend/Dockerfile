@@ -18,7 +18,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 
-COPY --from=ghcr.io/astral-sh/uv:0.8@sha256:1d31be550ff927957472b2a491dc3de1ea9b5c2d319a9cea5b6a48021e2990a6 /uv /usr/local/bin/uv
+COPY --from=ghcr.io/astral-sh/uv:0.11@sha256:8876e42c633ff18826b6bc2c1ebe8b4b0c4e056a2cab6e6a48e736ccc0bcad64 /uv /usr/local/bin/uv
 
 WORKDIR /app
 
@@ -31,6 +31,9 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 ENV FASTEMBED_CACHE_PATH=/app/.fastembed_cache
 RUN python -c "from fastembed import TextEmbedding; TextEmbedding('BAAI/bge-small-en-v1.5')"
 
+# tools/ holds the vulture whitelist ([tool.vulture].paths in pyproject.toml);
+# without it `uv run vulture` errors before scanning anything.
+COPY tools /app/tools
 COPY backend /app/backend
 
 WORKDIR /app/backend

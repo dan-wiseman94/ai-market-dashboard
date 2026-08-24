@@ -10,6 +10,7 @@ from rest_framework.decorators import action
 from rest_framework.request import Request
 from rest_framework.response import Response
 
+from apps.core.http import error_response
 from apps.market.returns import latest_closes
 from apps.thesis.portfolio_serializers import PositionSerializer
 from apps.thesis.portfolio_service import realized_pnl
@@ -18,7 +19,7 @@ from .models import Position
 
 
 def _error(code: str, message: str, status: int) -> Response:
-    return Response({"code": code, "message": message}, status=status)
+    return error_response(code, message, status=status)
 
 
 class PositionViewSet(viewsets.ModelViewSet):

@@ -18,7 +18,7 @@ const watchlistFixture = {
   id: 1,
   name: "Tech Picks",
   created_at: "2026-05-17T09:00:00Z",
-  symbols: [symbolFixture],
+  tickers: [symbolFixture],
 };
 
 describe("api/watchlists", () => {
@@ -50,12 +50,12 @@ describe("api/watchlists", () => {
   });
 
   describe("fetchWatchlist", () => {
-    it("GETs /api/watchlists/:id/ and returns Watchlist with symbols", async () => {
+    it("GETs /api/watchlists/:id/ and returns Watchlist with tickers", async () => {
       const api = mockApi({ "GET /api/watchlists/1/": watchlistFixture });
       const res = await fetchWatchlist(1);
       expect(res.id).toBe(1);
-      expect(res.symbols).toHaveLength(1);
-      expect(res.symbols[0].ticker).toBe("AAPL");
+      expect(res.tickers).toHaveLength(1);
+      expect(res.tickers[0].ticker).toBe("AAPL");
       expect(api.calls).toHaveLength(1);
       expect(api.calls[0].method).toBe("GET");
       expect(api.calls[0].url).toMatch(/\/api\/watchlists\/1\/$/);
@@ -154,52 +154,52 @@ describe("api/watchlists", () => {
   });
 
   describe("addSymbol", () => {
-    it("POSTs /api/watchlists/:wid/symbols/ with {ticker} body and returns WatchlistSymbol", async () => {
-      const api = mockApi({ "POST /api/watchlists/1/symbols/": symbolFixture });
+    it("POSTs /api/watchlists/:wid/tickers/ with {ticker} body and returns WatchlistSymbol", async () => {
+      const api = mockApi({ "POST /api/watchlists/1/tickers/": symbolFixture });
       const res = await addSymbol(1, "AAPL");
       expect(res.id).toBe(10);
       expect(res.ticker).toBe("AAPL");
       expect(api.calls).toHaveLength(1);
       expect(api.calls[0].method).toBe("POST");
-      expect(api.calls[0].url).toMatch(/\/api\/watchlists\/1\/symbols\/$/);
+      expect(api.calls[0].url).toMatch(/\/api\/watchlists\/1\/tickers\/$/);
       expect(api.calls[0].body).toEqual({ ticker: "AAPL" });
     });
 
     it("throws ApiError with status 400 on invalid ticker", async () => {
-      mockApiError("POST /api/watchlists/1/symbols/", 400, "validation_error", "invalid ticker");
+      mockApiError("POST /api/watchlists/1/tickers/", 400, "validation_error", "invalid ticker");
       const promise = addSymbol(1, "");
       await expect(promise).rejects.toBeInstanceOf(ApiError);
       await expect(promise).rejects.toMatchObject({ status: 400, code: "validation_error" });
     });
 
     it("URL contains watchlist id but not symbol id", async () => {
-      const api = mockApi({ "POST /api/watchlists/5/symbols/": { ...symbolFixture, id: 20, ticker: "MSFT" } });
+      const api = mockApi({ "POST /api/watchlists/5/tickers/": { ...symbolFixture, id: 20, ticker: "MSFT" } });
       await addSymbol(5, "MSFT");
-      expect(api.calls[0].url).toMatch(/\/api\/watchlists\/5\/symbols\/$/);
-      expect(api.calls[0].url).not.toMatch(/\/symbols\/20\//);
+      expect(api.calls[0].url).toMatch(/\/api\/watchlists\/5\/tickers\/$/);
+      expect(api.calls[0].url).not.toMatch(/\/tickers\/20\//);
     });
   });
 
   describe("removeSymbol", () => {
-    it("DELETEs /api/watchlists/:wid/symbols/:sid/ and resolves on 204", async () => {
-      const api = mockApi({ "DELETE /api/watchlists/1/symbols/10/": undefined });
+    it("DELETEs /api/watchlists/:wid/tickers/:sid/ and resolves on 204", async () => {
+      const api = mockApi({ "DELETE /api/watchlists/1/tickers/10/": undefined });
       await expect(removeSymbol(1, 10)).resolves.not.toThrow();
       expect(api.calls).toHaveLength(1);
       expect(api.calls[0].method).toBe("DELETE");
-      expect(api.calls[0].url).toMatch(/\/api\/watchlists\/1\/symbols\/10\/$/);
+      expect(api.calls[0].url).toMatch(/\/api\/watchlists\/1\/tickers\/10\/$/);
     });
 
     it("throws ApiError with status 404 when symbol does not exist", async () => {
-      mockApiError("DELETE /api/watchlists/1/symbols/999/", 404, "not_found", "symbol missing");
+      mockApiError("DELETE /api/watchlists/1/tickers/999/", 404, "not_found", "symbol missing");
       const promise = removeSymbol(1, 999);
       await expect(promise).rejects.toBeInstanceOf(ApiError);
       await expect(promise).rejects.toMatchObject({ status: 404, code: "not_found" });
     });
 
     it("URL has both wid and sid", async () => {
-      const api = mockApi({ "DELETE /api/watchlists/3/symbols/7/": undefined });
+      const api = mockApi({ "DELETE /api/watchlists/3/tickers/7/": undefined });
       await removeSymbol(3, 7);
-      expect(api.calls[0].url).toMatch(/\/api\/watchlists\/3\/symbols\/7\/$/);
+      expect(api.calls[0].url).toMatch(/\/api\/watchlists\/3\/tickers\/7\/$/);
     });
   });
 

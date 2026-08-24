@@ -2,19 +2,22 @@
 
 from __future__ import annotations
 
+import logging
+
 from django.db import IntegrityError, transaction
 from django.http import HttpRequest, JsonResponse
 from django.views.decorators.http import require_GET
 from rest_framework import viewsets
 from rest_framework.exceptions import ValidationError
 
+from apps.core.http import json_error_response
 from apps.market.calendar import MARKETS, calendar_for, market_state
 from apps.market.models import CalendarOverride
 from apps.market.schwab_client import SchwabNotConnectedError
 from apps.market.serializers import CalendarOverrideSerializer
 from apps.market.services.chain import fetch_chain
 from apps.market.services.context import fetch_market_context
-from apps.market.services.edgar import fetch_filings, fetch_insider
+from apps.market.services.edgar import fetch_filings
 from apps.market.services.events import upcoming_events
 from apps.market.services.fred import fetch_macro
 from apps.market.services.news import fetch_news
@@ -23,9 +26,11 @@ from apps.market.services.positions import fetch_positions
 from apps.market.services.quotes import fetch_quotes
 from apps.market.services.treasury import fetch_treasury
 
+logger = logging.getLogger(__name__)
+
 
 def _err(code: str, message: str, status: int) -> JsonResponse:
-    return JsonResponse({"code": code, "message": message}, status=status)
+    return json_error_response(code, message, status=status)
 
 
 def _wrap_schwab(fn):
@@ -34,8 +39,9 @@ def _wrap_schwab(fn):
     def inner(request: HttpRequest, *args, **kwargs):
         try:
             return fn(request, *args, **kwargs)
-        except SchwabNotConnectedError as e:
-            return _err("schwab_not_connected", str(e), 503)
+        except SchwabNotConnectedError:
+            logger.exception("Schwab not connected while handling market request.")
+            return _err("schwab_not_connected", "Schwab is not connected.", 503)
 
     return inner
 
@@ -62,8 +68,9 @@ def ohlc(request: HttpRequest) -> JsonResponse:
         return _err("missing_ticker", "Provide ?ticker=", 400)
     try:
         result = fetch_ohlc(ticker, timeframe=timeframe, bars=bars)
-    except ValueError as e:
-        return _err("invalid_timeframe", str(e), 400)
+    except ValueError:
+        logger.exception("Invalid timeframe provided for ohlc request.")
+        return _err("invalid_timeframe", "Invalid timeframe.", 400)
     return JsonResponse({"ticker": ticker.upper(), "timeframe": timeframe, "bars": result})
 
 
@@ -93,10 +100,10 @@ def news(request: HttpRequest) -> JsonResponse:
     raw = request.GET.get("tickers", "").strip()
     tickers = [t.strip() for t in raw.split(",") if t.strip()]
     try:
-        lookback = int(request.GET.get("lookback", "24"))
+        lookback_hours = int(request.GET.get("lookback_hours", "24"))
     except ValueError:
-        return _err("invalid_lookback", "lookback must be int hours", 400)
-    return JsonResponse({"items": fetch_news(tickers, lookback_hours=lookback)})
+        return _err("invalid_lookback_hours", "lookback_hours must be an integer", 400)
+    return JsonResponse({"items": fetch_news(tickers, lookback_hours=lookback_hours)})
 
 
 @require_GET
@@ -134,16 +141,6 @@ def filings(request: HttpRequest) -> JsonResponse:
 
 
 @require_GET
-def insider(request: HttpRequest) -> JsonResponse:
-    """Recent Form 4 insider filings per ticker from EDGAR. ``?tickers=AAPL,MSFT``."""
-    raw = request.GET.get("tickers", "").strip()
-    tickers = [t.strip() for t in raw.split(",") if t.strip()]
-    if not tickers:
-        return _err("missing_tickers", "Provide ?tickers=AAPL,MSFT", 400)
-    return JsonResponse({t.upper(): fetch_insider(t) for t in tickers})
-
-
-@require_GET
 def treasury(_request: HttpRequest) -> JsonResponse:
     """US Treasury FiscalData: average interest rates + debt to the penny (keyless)."""
     return JsonResponse(fetch_treasury())
@@ -153,11 +150,12 @@ class CalendarOverrideViewSet(viewsets.ModelViewSet):
     queryset = CalendarOverride.objects.all().order_by("symbol")
     serializer_class = CalendarOverrideSerializer
 
-    # CalendarOverride.symbol is unique AND normalized (strip().upper()) in Model.save(),
-    # which runs AFTER the serializer's UniqueValidator (which sees the raw value). So a
-    # case-variant of an existing symbol ("spy" vs stored "SPY") slips past validation and
-    # hits the DB unique constraint -> IntegrityError -> 500. Translate it to a clean 400.
-    # (Wrapped in a savepoint so the failed INSERT rolls back cleanly.)
+    # CalendarOverride.symbol (API field "ticker") is unique AND normalized
+    # (strip().upper()) in Model.save(), which runs AFTER the serializer's UniqueValidator
+    # (which sees the raw value). So a case-variant of an existing ticker ("spy" vs stored
+    # "SPY") slips past validation and hits the DB unique constraint -> IntegrityError ->
+    # 500. Translate it to a clean 400. (Wrapped in a savepoint so the failed INSERT rolls
+    # back cleanly.)
     def perform_create(self, serializer) -> None:
         self._save_or_400(serializer)
 
@@ -171,16 +169,17 @@ class CalendarOverrideViewSet(viewsets.ModelViewSet):
                 serializer.save()
         except IntegrityError as exc:
             raise ValidationError(
-                {"symbol": "A calendar override for this symbol already exists."}
+                {"ticker": "A calendar override for this ticker already exists."}
             ) from exc
 
 
 @require_GET
 def calendar_status(request: HttpRequest) -> JsonResponse:
-    symbols = request.GET.getlist("symbol")
+    raw = request.GET.get("tickers", "").strip()
+    tickers = [t.strip() for t in raw.split(",") if t.strip()]
     markets: set[str] = set(request.GET.getlist("market"))
-    for s in symbols:
-        markets.add(calendar_for(s))
+    for t in tickers:
+        markets.add(calendar_for(t))
     if not markets:
         markets.add("us_equity")
         markets.update(CalendarOverride.objects.values_list("market_key", flat=True).distinct())

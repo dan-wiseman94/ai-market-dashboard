@@ -91,6 +91,8 @@ def _diff_one(kind: str, prev: Any, curr: Any) -> str:
         return _diff_chain(_as_dict(prev), _as_dict(curr))
     if kind == "overnight":
         return _diff_overnight(_as_dict(prev), _as_dict(curr))
+    if kind == "vix":
+        return _diff_vix(_as_dict(prev), _as_dict(curr))
     return ""
 
 
@@ -195,6 +197,34 @@ def _diff_overnight(prev: dict, curr: dict) -> str:
             sign = "+" if change >= 0 else ""
             rows.append(f"- {sym}: {p_last:g} → {c_last:g} ({sign}{change * 100:.2f}%)")
     return "\n".join(rows) if rows else "- (overnight board moves below 0.5%)"
+
+
+def _diff_vix(prev: dict, curr: dict) -> str:
+    """A structure flip is the headline vol signal; contango uses an absolute
+    0.5-point gate (it is already a percentage), spot/front the relative one."""
+    rows: list[str] = []
+    p_struct, c_struct = prev.get("structure"), curr.get("structure")
+    if p_struct and c_struct and p_struct != c_struct:
+        rows.append(f"- structure: {p_struct} → {c_struct}")
+    p_ct, c_ct = prev.get("contango_pct"), curr.get("contango_pct")
+    if isinstance(p_ct, int | float) and isinstance(c_ct, int | float) and abs(c_ct - p_ct) >= 0.5:
+        rows.append(f"- contango: {p_ct:+.2f}% → {c_ct:+.2f}%")
+    for leg in ("spot", "front"):
+        c_leg = _as_dict(curr.get(leg))
+        p_last, c_last = _as_dict(prev.get(leg)).get("last"), c_leg.get("last")
+        if p_last is None or c_last is None:
+            continue
+        try:
+            change = (c_last - p_last) / p_last if p_last else 0.0
+        except (TypeError, ZeroDivisionError):
+            continue
+        if abs(change) < _NOISE_PCT:
+            continue
+        sign = "+" if change >= 0 else ""
+        rows.append(
+            f"- {leg} ({c_leg.get('symbol')}): {p_last:g} → {c_last:g} ({sign}{change * 100:.2f}%)"
+        )
+    return "\n".join(rows)
 
 
 def _diff_chain(prev: dict, curr: dict) -> str:

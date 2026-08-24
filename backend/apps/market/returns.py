@@ -79,17 +79,6 @@ def _split_product(actions: list, *, on_or_before: date | None = None) -> float:
     return factor
 
 
-def split_factor(ticker: str, after: datetime, until: datetime) -> float:
-    """Product of split ratios (``shares_after/shares_before``) for ex-dates in
-    ``(after, until]``. ``1.0`` when there are no splits — the common path, leaving
-    returns unadjusted.
-
-    Multiplying an ``until``-basis close by this factor restores it to the
-    ``after``-basis, so a 3:1 split (ratio 3) doesn't read as a -66% crash.
-    """
-    return _split_product(_corporate_actions(ticker, after, until))
-
-
 def _adjusted_end_value(
     ticker: str, start: datetime, end: datetime, end_close: float | None
 ) -> tuple[float | None, float]:

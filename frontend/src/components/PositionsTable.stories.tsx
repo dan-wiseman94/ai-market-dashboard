@@ -51,7 +51,7 @@ export const Empty: Story = {
   },
 };
 
-/** Request in flight — the handler never resolves, so the loading line stays. */
+/** Request in flight — the handler never resolves, so the skeleton rows stay. */
 export const Loading: Story = {
   parameters: {
     msw: {
@@ -64,7 +64,8 @@ export const Loading: Story = {
     },
   },
   play: async ({ canvas }) => {
-    await expect(await canvas.findByText(/loading the book/i)).toBeVisible();
+    const rows = await canvas.findAllByTestId("skeleton-row");
+    await expect(rows[0]).toBeVisible();
   },
 };
 

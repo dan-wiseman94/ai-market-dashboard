@@ -77,24 +77,33 @@ def test_for_horizon_ignores_expired():
     assert em.for_horizon(p, 30, today=TODAY) == pytest.approx(em.one_sigma_pct(0.25, 30))
 
 
-def test_term_structure_emits_each_horizon():
-    p = _payload(
-        {
-            (TODAY + timedelta(days=7)).isoformat(): 0.20,
-            (TODAY + timedelta(days=30)).isoformat(): 0.25,
-            (TODAY + timedelta(days=90)).isoformat(): 0.30,
-        }
-    )
-    ts = em.term_structure(p, today=TODAY)
+def test_moves_from_term_structure_emits_each_horizon():
+    rows = [
+        {"expiry": (TODAY + timedelta(days=7)).isoformat(), "atm_iv": 0.20},
+        {"expiry": (TODAY + timedelta(days=30)).isoformat(), "atm_iv": 0.25},
+        {"expiry": (TODAY + timedelta(days=90)).isoformat(), "atm_iv": 0.30},
+    ]
+    ts = em.moves_from_term_structure(rows, 100.0, today=TODAY)
     assert [r["horizon_days"] for r in ts] == [7, 30, 90]
     row30 = next(r for r in ts if r["horizon_days"] == 30)
     assert row30["move_pct"] == pytest.approx(round(em.one_sigma_pct(0.25, 30), 4))
     assert row30["move_abs"] == pytest.approx(round(100.0 * em.one_sigma_pct(0.25, 30), 2))
 
 
+def test_moves_from_term_structure_no_spot_yields_none_abs():
+    rows = [{"expiry": (TODAY + timedelta(days=30)).isoformat(), "atm_iv": 0.25}]
+    ts = em.moves_from_term_structure(rows, None, today=TODAY)
+    assert ts
+    assert all(r["move_abs"] is None for r in ts)
+
+
+@pytest.mark.parametrize("rows", [[], None, [{"expiry": "2026-02-01", "atm_iv": None}]])
+def test_moves_from_term_structure_no_iv_is_empty(rows):
+    assert em.moves_from_term_structure(rows, 100.0, today=TODAY) == []
+
+
 @pytest.mark.parametrize(
     "payload", [{}, {"expiries": {}}, {"underlying_last": "100", "expiries": {}}]
 )
-def test_no_chain_is_empty_and_none(payload):
-    assert em.term_structure(payload, today=TODAY) == []
+def test_no_chain_is_none(payload):
     assert em.for_horizon(payload, 30, today=TODAY) is None

@@ -4,13 +4,7 @@ import { SkeletonRows } from "@/components/Skeleton";
 import { EmptyState } from "@/components/EmptyState";
 import { useToast } from "@/hooks/useToast";
 import SettingsSection from "@/components/settings/SettingsSection";
-
-function fmtSize(n: number): string {
-  if (n < 1024) return `${n} B`;
-  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
-  if (n < 1024 * 1024 * 1024) return `${(n / 1024 / 1024).toFixed(1)} MB`;
-  return `${(n / 1024 / 1024 / 1024).toFixed(2)} GB`;
-}
+import { fmtSize } from "@/utils/format";
 
 export default function BackupsPage() {
   const { data = [], isLoading } = useBackups();

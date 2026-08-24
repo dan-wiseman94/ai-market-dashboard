@@ -6,16 +6,10 @@ from decimal import Decimal
 from unittest.mock import patch
 
 import pytest
-from rest_framework.test import APIClient
 
 from apps.observer.models import BriefingRun, EventTrigger, ObserverSchedule, TriggerFiring
 from apps.profiles.models import TradingProfile
 from apps.thesis.models import Thesis
-
-
-@pytest.fixture
-def api():
-    return APIClient()
 
 
 @pytest.mark.django_db

@@ -1,12 +1,6 @@
 from unittest.mock import patch
 
 import pytest
-from rest_framework.test import APIClient
-
-
-@pytest.fixture
-def api():
-    return APIClient()
 
 
 @pytest.mark.django_db
@@ -23,7 +17,7 @@ def test_news_endpoint_returns_items(api):
         },
     ]
     with patch("apps.market.views.fetch_news", return_value=items):
-        resp = api.get("/api/market/news/?tickers=SPY,AAPL&lookback=24")
+        resp = api.get("/api/market/news/?tickers=SPY,AAPL&lookback_hours=24")
     assert resp.status_code == 200
     body = resp.json()
     assert body["items"][0]["headline"] == "Hello"
@@ -40,7 +34,7 @@ def test_news_endpoint_default_lookback_24(api):
 
 
 @pytest.mark.django_db
-def test_news_endpoint_invalid_lookback_returns_400(api):
-    resp = api.get("/api/market/news/?tickers=SPY&lookback=abc")
+def test_news_endpoint_invalid_lookback_hours_returns_400(api):
+    resp = api.get("/api/market/news/?tickers=SPY&lookback_hours=abc")
     assert resp.status_code == 400
-    assert resp.json()["code"] == "invalid_lookback"
+    assert resp.json()["code"] == "invalid_lookback_hours"

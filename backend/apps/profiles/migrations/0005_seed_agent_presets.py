@@ -65,10 +65,15 @@ BUILTINS = [
 
 def seed_presets(apps, schema_editor):
     AgentPreset = apps.get_model("profiles", "AgentPreset")
+    # Also called by apps/profiles/tests/conftest.py with the LIVE registry (re-seeding
+    # after serialized_rollback wipes the builtins) — filter to the model's current
+    # fields so keys later migrations removed don't FieldError there. No-op for the
+    # historical registry, where every key is valid.
+    fields = {f.name for f in AgentPreset._meta.get_fields()}
     for preset in BUILTINS:
         AgentPreset.objects.get_or_create(
             slug=preset["slug"],
-            defaults={k: v for k, v in preset.items() if k != "slug"},
+            defaults={k: v for k, v in preset.items() if k != "slug" and k in fields},
         )
 
 
@@ -78,7 +83,6 @@ def unseed_presets(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("profiles", "0004_agent_preset"),
     ]

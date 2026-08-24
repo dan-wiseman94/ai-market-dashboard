@@ -12,8 +12,10 @@ from rest_framework.decorators import action
 from rest_framework.request import Request
 from rest_framework.response import Response
 
+from apps.core.http import error_response
 from apps.profiles.models import TradingProfile
-from apps.snapshots.models import Snapshot, SnapshotSection
+from apps.snapshots.models import Snapshot
+from apps.snapshots.primary import last_price
 from apps.threads.models import Thread
 
 from .models import DecisionJournalEntry, PostMortem, Thesis
@@ -36,23 +38,13 @@ def _resolve_fk[M: models.Model](model: type[M], pk: object) -> M | None:
 
 
 def _error(code: str, message: str, status: int) -> Response:
-    return Response({"code": code, "message": message}, status=status)
+    return error_response(code, message, status=status)
 
 
 def _default_entry_from_snapshot(snapshot: Snapshot, ticker: str) -> str | None:
     """Best-effort: read the last price for *ticker* from the snapshot's quotes section."""
-    try:
-        section = SnapshotSection.objects.filter(
-            snapshot=snapshot,
-            kind="quotes",
-            status="done",
-        ).first()
-        if section is None or not isinstance(section.payload, dict):
-            return None
-        price = section.payload.get(ticker, {}).get("last")
-        return str(price) if price is not None else None
-    except (TypeError, KeyError, AttributeError):
-        return None
+    price = last_price(snapshot, ticker)
+    return str(price) if price is not None else None
 
 
 class ThesisViewSet(viewsets.ModelViewSet):

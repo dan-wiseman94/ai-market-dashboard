@@ -3,38 +3,33 @@ from unittest.mock import patch
 import pytest
 
 from apps.observer.models import ObserverSchedule
-from apps.observer.services.run import run_observer
-from apps.profiles.models import TradingProfile
+from apps.observer.services.run import fire_observer
 from apps.snapshots.models import Snapshot
 from apps.threads.models import Thread
 
 
-def _profile():
-    return TradingProfile.objects.create(name="P", style="x")
-
-
 @pytest.mark.django_db
-def test_run_observer_skips_when_disabled():
-    s = ObserverSchedule.objects.create(name="x", profile=_profile(), enabled=False)
-    assert run_observer(s.id) is None
+def test_fire_observer_skips_when_disabled(profile):
+    s = ObserverSchedule.objects.create(name="x", profile=profile, enabled=False)
+    assert fire_observer(s.id) is None
     assert Snapshot.objects.count() == 0
 
 
 @pytest.mark.django_db
-def test_run_observer_skips_when_market_closed():
+def test_fire_observer_skips_when_market_closed(profile):
     s = ObserverSchedule.objects.create(
         name="x",
-        profile=_profile(),
+        profile=profile,
         market_hours_only=True,
     )
     with patch("apps.observer.services.run.any_market_open", return_value=False):
-        assert run_observer(s.id) is None
+        assert fire_observer(s.id) is None
     assert Snapshot.objects.count() == 0
 
 
 @pytest.mark.django_db
-def test_run_observer_writes_placeholder_when_cost_capped():
-    p = _profile()
+def test_fire_observer_writes_placeholder_when_cost_capped(profile):
+    p = profile
     s = ObserverSchedule.objects.create(
         name="x",
         profile=p,
@@ -48,7 +43,7 @@ def test_run_observer_writes_placeholder_when_cost_capped():
             "apps.observer.services.run.check_daily_cap", side_effect=CostCapExceededError("cap")
         ),
     ):
-        assert run_observer(s.id) is None
+        assert fire_observer(s.id) is None
     thread = Thread.objects.get(profile=p, kind="observer")
     placeholder = thread.messages.first()
     assert placeholder is not None
@@ -61,8 +56,8 @@ def test_run_observer_writes_placeholder_when_cost_capped():
 
 
 @pytest.mark.django_db
-def test_run_observer_happy_path_creates_snapshot_message_and_notification():
-    p = _profile()
+def test_fire_observer_happy_path_creates_snapshot_message_and_notification(profile):
+    p = profile
     s = ObserverSchedule.objects.create(
         name="hourly",
         profile=p,
@@ -88,7 +83,7 @@ def test_run_observer_happy_path_creates_snapshot_message_and_notification():
         patch("apps.observer.services.run.run_ai_on_message") as run_ai,
         patch("apps.observer.services.run.notify") as notif,
     ):
-        result = run_observer(s.id)
+        result = fire_observer(s.id)
 
     assert result == fake_snap.id
     cap.assert_called_once()
@@ -120,10 +115,10 @@ def test_run_observer_happy_path_creates_snapshot_message_and_notification():
 
 
 @pytest.mark.django_db
-def test_run_observer_batch_submit_failure_writes_failed_message():
+def test_fire_observer_batch_submit_failure_writes_failed_message(profile):
     """A failed batch submit must surface in the observer thread — the timeline
     reads Messages, so a log-only failure is invisible in the UI."""
-    p = _profile()
+    p = profile
     s = ObserverSchedule.objects.create(
         name="overnight",
         profile=p,
@@ -141,7 +136,7 @@ def test_run_observer_batch_submit_failure_writes_failed_message():
             side_effect=ValueError("no claude key"),
         ) as submit,
     ):
-        result = run_observer(s.id)
+        result = fire_observer(s.id)
 
     assert result == fake_snap.id
     # The submit is grounded in the snapshot the fire just captured.
@@ -152,3 +147,40 @@ def test_run_observer_batch_submit_failure_writes_failed_message():
     assert msg.status == "failed"
     assert "batch submit failed" in msg.content["text"]
     assert "no claude key" in msg.error
+
+
+@pytest.mark.django_db
+def test_fire_observer_coverage_hook_failure_is_logged_not_fatal(caplog, profile):
+    """A broken coverage auto-revise hook must not fail the fire, and must leave
+    a warning in the logs — a silent suppress would hide the breakage forever."""
+    p = profile
+    s = ObserverSchedule.objects.create(
+        name="hourly",
+        profile=p,
+        market_hours_only=False,
+        default_watchlist_tickers=["SPY"],
+    )
+    fake_snap = Snapshot.objects.create(profile=p, source="observer", status="ready")
+
+    with (
+        patch("apps.observer.services.run.any_market_open", return_value=True),
+        patch("apps.observer.services.run.check_daily_cap"),
+        patch("apps.observer.services.run.capture", return_value=fake_snap),
+        patch("apps.observer.services.run.serialize_for_ai", return_value="## SNAPSHOT BODY"),
+        patch("apps.observer.services.run.run_ai_on_message"),
+        patch("apps.observer.services.run.notify") as notif,
+        patch(
+            "apps.observer.services.run.maybe_revise_from_snapshot",
+            side_effect=RuntimeError("db down"),
+        ),
+        caplog.at_level("WARNING"),
+    ):
+        result = fire_observer(s.id)
+
+    assert result == fake_snap.id
+    notif.assert_called_once()
+    s.refresh_from_db()
+    assert s.last_fired_at is not None
+    hook_warnings = [r for r in caplog.records if "coverage auto-revise hook failed" in r.message]
+    assert hook_warnings, "expected a warning about the failed coverage hook"
+    assert hook_warnings[0].exc_info is not None

@@ -2,15 +2,9 @@ from unittest.mock import patch
 
 import fakeredis
 import pytest
-from rest_framework.test import APIClient
 
 from apps.observer.models import EventTrigger
 from apps.profiles.models import TradingProfile
-
-
-@pytest.fixture
-def api():
-    return APIClient()
 
 
 @pytest.fixture

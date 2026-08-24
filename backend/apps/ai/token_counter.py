@@ -35,7 +35,11 @@ def estimate_tokens(text: str, *, provider: str, model: str) -> int:
         try:
             return _claude_count_tokens(text, model)
         except Exception as exc:
-            log.warning("Claude count_tokens failed (%s); falling back to tiktoken", exc)
+            # Exception type only — SDK error strings can embed request detail.
+            # nosemgrep: python.lang.security.audit.logging.logger-credential-leak.python-logger-credential-disclosure -- interpolates the exception class name, not a credential
+            log.warning(
+                "Claude count_tokens failed (%s); falling back to tiktoken", type(exc).__name__
+            )
             return len(_ENC.encode(text))
     return len(_ENC.encode(text))
 

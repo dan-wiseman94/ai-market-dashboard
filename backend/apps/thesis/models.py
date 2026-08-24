@@ -92,7 +92,9 @@ class Thesis(models.Model):
         return f"Thesis({self.ticker} {self.direction} {self.status})"
 
     def save(self, *args, **kwargs) -> None:
-        self.ticker = (self.ticker or "").upper()
+        # Strip before upper: a padded ticker breaks exact-key joins against
+        # OHLC/quote lookups keyed on the canonical symbol.
+        self.ticker = (self.ticker or "").strip().upper()
         super().save(*args, **kwargs)
 
 
@@ -234,7 +236,9 @@ class Position(models.Model):
         return f"Position({self.ticker}, {self.direction}, {self.status})"
 
     def save(self, *args, **kwargs):
-        self.ticker = (self.ticker or "").upper()
+        # Strip before upper: a padded ticker breaks exact-key joins against
+        # OHLC/quote lookups keyed on the canonical symbol.
+        self.ticker = (self.ticker or "").strip().upper()
         super().save(*args, **kwargs)
 
 

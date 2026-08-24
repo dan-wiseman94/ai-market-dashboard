@@ -12,13 +12,10 @@ import pytest
 from django.db import connection
 
 from apps.market.services import (
+    _finnhub,
     alpaca,
-    corporate_actions,
-    events,
     fred,
-    fundamentals,
     marketaux,
-    news,
     polygon,
     tiingo,
     tradier,
@@ -28,11 +25,9 @@ from apps.secrets.models import ApiCredential
 
 # (reader callable, provider, expected degraded return). alpaca returns a (key, secret)
 # tuple; the rest return the api_key string — so the degraded value differs.
+# All Finnhub consumers (events/news/fundamentals/corporate_actions) share _finnhub.api_key.
 CASES = [
-    (events._finnhub_api_key, "finnhub", None),
-    (news._finnhub_api_key, "finnhub", None),
-    (fundamentals._finnhub_api_key, "finnhub", None),
-    (corporate_actions._finnhub_api_key, "finnhub", None),
+    (_finnhub.api_key, "finnhub", None),
     (tradier._api_key, "tradier", None),
     (tiingo._api_key, "tiingo", None),
     (polygon._api_key, "polygon", None),

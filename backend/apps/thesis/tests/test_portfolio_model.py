@@ -4,13 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from apps.profiles.models import TradingProfile
 from apps.thesis.models import Position, Thesis
-
-
-@pytest.fixture
-def profile(db):
-    return TradingProfile.objects.create(name="Test Profile", style="swing trader")
 
 
 @pytest.fixture
@@ -47,6 +41,19 @@ def test_ticker_already_upper_stays(profile):
         profile=profile,
     )
     assert pos.ticker == "AAPL"
+
+
+@pytest.mark.django_db
+def test_ticker_stripped_on_save(profile):
+    """save() strips surrounding whitespace before upper-casing."""
+    pos = Position.objects.create(
+        ticker=" nvda ",
+        direction="long",
+        quantity="100.0000",
+        avg_cost="450.0000",
+        profile=profile,
+    )
+    assert pos.ticker == "NVDA"
 
 
 @pytest.mark.django_db

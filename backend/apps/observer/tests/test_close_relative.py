@@ -19,7 +19,7 @@ def test_fires_in_window_then_guards_same_day():
         close_offset_minutes=5,
         default_watchlist_tickers=["SPY"],
     )
-    with patch("apps.observer.tasks.run_observer_task.delay") as delay:
+    with patch("apps.observer.tasks.fire_observer_task.delay") as delay:
         out = fire_due_close_relative()
         assert out["fired"] == 1
         delay.assert_called_once_with(schedule_id=sched.id)
@@ -39,6 +39,6 @@ def test_does_not_fire_outside_window():
         close_offset_minutes=5,
         default_watchlist_tickers=["SPY"],
     )
-    with patch("apps.observer.tasks.run_observer_task.delay") as delay:
+    with patch("apps.observer.tasks.fire_observer_task.delay") as delay:
         assert fire_due_close_relative()["fired"] == 0
         delay.assert_not_called()

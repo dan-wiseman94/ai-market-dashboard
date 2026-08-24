@@ -116,7 +116,7 @@ def test_consensus_fire_persists_consensus_report_message():
         patch("apps.observer.services.consensus.check_daily_cap"),
         patch("apps.observer.services.consensus.check_monthly_cap"),
     ):
-        run_service.run_observer(sched.id)
+        run_service.fire_observer(sched.id)
 
     # The streaming path must NOT run for a consensus fire.
     streaming.assert_not_called()
@@ -167,7 +167,7 @@ def test_consensus_fire_degrades_with_single_provider():
         patch("apps.observer.services.consensus.check_daily_cap"),
         patch("apps.observer.services.consensus.check_monthly_cap"),
     ):
-        run_service.run_observer(sched.id)
+        run_service.fire_observer(sched.id)
 
     thread = get_or_create_observer_thread(p)
     msg = Message.objects.filter(thread=thread, role="assistant").order_by("-id").first()
@@ -215,7 +215,7 @@ def test_consensus_false_uses_structured_path_unchanged():
         # If the consensus path were wrongly taken, this would be hit — assert NOT.
         patch("apps.observer.services.consensus.consensus_report") as consensus_fn,
     ):
-        run_service.run_observer(sched.id)
+        run_service.fire_observer(sched.id)
 
     consensus_fn.assert_not_called()
     thread = get_or_create_observer_thread(p)
@@ -256,7 +256,7 @@ def test_consensus_false_streaming_path_unchanged():
         patch.object(run_service.run_ai_on_message, "delay") as streaming,
         patch("apps.observer.services.consensus.consensus_report") as consensus_fn,
     ):
-        run_service.run_observer(sched.id)
+        run_service.fire_observer(sched.id)
 
     consensus_fn.assert_not_called()
     streaming.assert_called_once()

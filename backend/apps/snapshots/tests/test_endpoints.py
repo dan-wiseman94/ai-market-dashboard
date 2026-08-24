@@ -1,15 +1,9 @@
 from unittest.mock import patch
 
 import pytest
-from rest_framework.test import APIClient
 
 from apps.profiles.models import TradingProfile
 from apps.snapshots.models import Snapshot, SnapshotSection
-
-
-@pytest.fixture
-def api():
-    return APIClient()
 
 
 @pytest.mark.django_db

@@ -132,6 +132,26 @@ describe("ScorecardPage", () => {
     expect(screen.getByText(/No scored theses yet/i)).toBeInTheDocument();
   });
 
+  it("derives horizon picker options from the payload's horizons field", () => {
+    mock({ ...POPULATED, horizons: [5, 30, 60] });
+    mockDrill();
+    mockEval();
+    render(<ScorecardPage />);
+    expect(screen.getByRole("button", { name: "5d" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "60d" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "7d" })).not.toBeInTheDocument();
+  });
+
+  it("falls back to 7/30/90 horizons before the payload lands", () => {
+    mock(undefined, true);
+    mockDrill();
+    mockEval();
+    render(<ScorecardPage />);
+    expect(screen.getByRole("button", { name: "7d" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "30d" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "90d" })).toBeInTheDocument();
+  });
+
   it("renders buckets + provider rows when populated (no eval card without data)", () => {
     mock(POPULATED);
     mockDrill();
