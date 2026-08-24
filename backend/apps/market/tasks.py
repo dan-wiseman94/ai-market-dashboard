@@ -74,11 +74,10 @@ def refresh_schwab_token() -> dict:
         return {"ok": False, "reason": "refresh_error"}
     except httpx.HTTPError as exc:
         # Network/timeout reaching Schwab's token endpoint — transient, retry next tick.
-        # httpx error strings can embed the request URL — scrub before logging.
-        # nosemgrep: python.lang.security.audit.logging.logger-credential-leak.python-logger-credential-disclosure -- value passes through scrub_secret_params first
+        # Do not log exception text here because it may contain sensitive request details.
         log.warning(
             "Schwab token refresh network error (%s); will retry next tick.",
-            scrub_secret_params(str(exc)),
+            type(exc).__name__,
         )
         return {"ok": False, "reason": "refresh_error"}
 
