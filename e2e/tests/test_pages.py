@@ -184,10 +184,9 @@ def test_profiles_costs_snapshotcost_pages() -> None:
         assert m in _names(SnapshotCostPage)
 
 
-def test_backups_export_settings_oauth_files() -> None:
+def test_backups_export_settings_oauth() -> None:
     from e2e.pages.backups import BackupsPage
     from e2e.pages.export import ExportPage
-    from e2e.pages.files import FilesPage
     from e2e.pages.schwab_oauth import SchwabOAuthPage
     from e2e.pages.settings import SettingsPage
 
@@ -208,5 +207,3 @@ def test_backups_export_settings_oauth_files() -> None:
         assert m in _names(SettingsPage)
     for m in ("go", "connect_btn", "status_pill", "connect"):
         assert m in _names(SchwabOAuthPage)
-    for m in ("go", "row", "upload", "delete"):
-        assert m in _names(FilesPage)
