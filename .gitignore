@@ -73,3 +73,7 @@ codeql-dbs/
 # Visual-diff failure artifacts — written next to the baseline on mismatch by
 # e2e/helpers/visual.capture_or_compare; inspect locally, never commit.
 e2e/visual/__screenshots__/*.actual.png
+
+# Perf-lane advisory metrics — written per run by e2e/perf/test_perf_budgets.py;
+# inspect locally, never commit.
+e2e/perf/artifacts/
