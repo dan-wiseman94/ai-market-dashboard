@@ -28,8 +28,9 @@ def test_profile_create_persists(page, frontend_base_url, minimal) -> None:
     reason="GAP: /profiles create form exposes no per-profile capability toggles. "
     "TradingProfile.enable_tools / enable_memory / thinking_budget exist on the model and "
     "drive real AI behavior, but ProfilesPage.tsx renders only name/style/provider — so they "
-    "cannot be set from the UI. Flips to XPASS when the flag controls are added.",
-    strict=False,
+    "cannot be set from the UI. strict: when the flag controls land, the unexpected pass "
+    "fails the run, forcing this marker's removal.",
+    strict=True,
 )
 def test_profile_flags_editable_in_ui(page, frontend_base_url, minimal) -> None:
     p = ProfilesPage(page, frontend_base_url)
@@ -41,8 +42,9 @@ def test_profile_flags_editable_in_ui(page, frontend_base_url, minimal) -> None:
 @pytest.mark.ui
 @pytest.mark.xfail(
     reason="GAP: /profiles has no Activate affordance — there is no way to mark a profile active "
-    "from the list UI. Flips to XPASS when an activate control is added.",
-    strict=False,
+    "from the list UI. strict: when an activate control lands, the unexpected pass fails the "
+    "run, forcing this marker's removal.",
+    strict=True,
 )
 def test_profile_toggle_active(page, frontend_base_url, minimal) -> None:
     p = ProfilesPage(page, frontend_base_url)
