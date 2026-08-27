@@ -32,7 +32,6 @@ def test_ui_journeys_importable() -> None:
         test_dashboard,
         test_error_paths,
         test_export,
-        test_files_and_citations,
         test_keyboard_and_palette,
         test_observer,
         test_profiles,

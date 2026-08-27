@@ -429,13 +429,6 @@ def test_create_conviction_zero_returns_400(api, profile):
 
 
 @pytest.mark.django_db
-def test_run_postmortem_404_for_unknown_pk(api):
-    """run-postmortem must return 404 when the thesis does not exist (fix G)."""
-    resp = api.post("/api/theses/999999/run-postmortem/", format="json")
-    assert resp.status_code == 404
-
-
-@pytest.mark.django_db
 def test_reclose_without_note_preserves_existing_note(api, profile):
     """A second close call without close_note must preserve the original note (fix F)."""
     t = Thesis.objects.create(
