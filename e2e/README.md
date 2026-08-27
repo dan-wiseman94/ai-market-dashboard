@@ -11,7 +11,7 @@ Six-lane comprehensive suite. Full design: `docs/superpowers/specs/2026-04-18-e2
 | WS       | `e2e/ws/`         | Channels WebSocket event assertions         | `web`      | `make e2e-ws`        |
 | Visual   | `e2e/visual/`     | Page-level screenshot diffs                 | `worker`   | `make e2e-visual`    |
 | A11y     | `e2e/a11y/`       | axe-core scans per route + keyboard-only    | `worker`   | `make e2e-a11y`      |
-| Perf     | `e2e/perf/`       | Lighthouse budgets (prod overlay)           | `worker`   | `make e2e-perf`      |
+| Perf     | `e2e/perf/`       | Playwright LCP/CLS/TBT budgets (prod overlay) | `worker` | `make e2e-perf`      |
 
 `make e2e` runs ui/api/ws/visual/a11y together. Perf is separate because it
 needs the prod overlay.
@@ -116,7 +116,7 @@ dynamic regions (timestamps, chart tooltips, notification counts) are masked in
 - Single flaky-looking failure on a never-flaky test: rerun once, then open issue if it recurs.
 - Baseline drift after unrelated change: investigate; don't blindly update baselines.
 - New a11y violation introduced by your branch: fix it in your branch.
-- Lighthouse regression > 10% on a route: block the PR; do not bump the budget without rationale.
+- Perf-budget regression > 10% on a route: block the PR; do not bump the budget without rationale.
 
 ## Adding a new feature
 
@@ -125,7 +125,7 @@ dynamic regions (timestamps, chart tooltips, notification counts) are masked in
 3. If the feature introduces a WS event, add a `e2e/ws/test_<feature>.py` test.
 4. Capture a visual baseline: `make e2e-visual-update`.
 5. Run `make e2e-a11y` to confirm no new violations.
-6. If the route is new + non-trivial, add it to `e2e/perf/budgets.json` + `test_lighthouse.py`.
+6. If the route is new + non-trivial, add it to `e2e/perf/budgets.json` (`test_perf_budgets.py` parametrizes over it).
 
 ## Scenario engine cheat sheet
 
@@ -171,6 +171,6 @@ tests.
 A single job builds the e2e stack (`compose.e2e.yaml`) and runs the lanes in
 sequence — api, schemathesis fuzz, the `/render/chart` chromium test, ui, a11y,
 ws — then tears down (`down -v`). **Visual and perf are off the PR gate** (visual
-needs committed byte-diff baselines, perf needs a Lighthouse runner); run those
-via `make e2e` locally or on merge. On failure, Playwright traces upload as the
+needs committed byte-diff baselines, perf budgets are calibrated for the prod
+overlay, not the CI dev build); run those via `make e2e` locally or on merge. On failure, Playwright traces upload as the
 `ui-traces` artifact (`--tracing=retain-on-failure`, 7-day retention).
