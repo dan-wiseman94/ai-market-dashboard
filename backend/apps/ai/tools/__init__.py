@@ -72,7 +72,10 @@ class Toolset:
 
     def run(self, name: str, tool_input: dict) -> dict:
         """Execute the named tool. Returns {"ok": bool, "result"|"error": ...}."""
-        spec = self.resolve(name)
+        try:
+            spec = self.resolve(name)
+        except Exception as exc:
+            return {"ok": False, "error": f"{type(exc).__name__}: {exc}"}
         if spec is None:
             return {"ok": False, "error": f"Unknown tool: {name}"}
         try:
