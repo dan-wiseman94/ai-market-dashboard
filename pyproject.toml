@@ -167,8 +167,9 @@ root_package = "apps"
 name = "Concrete AI providers are private to apps.ai (use get_provider / router)"
 type = "forbidden"
 # The package re-export `from apps.ai.providers import get_provider`, the `base`
-# Provider protocol, and `claude_structured.run_structured` are the PUBLIC surface.
-# Instantiating a concrete impl elsewhere is the landmine.
+# Provider protocol, and `apps.ai.structured` (provider-neutral one-shot structured
+# output + target resolution) are the PUBLIC surface. Instantiating a concrete
+# impl or importing a per-vendor structured module elsewhere is the landmine.
 source_modules = [
     "apps.threads",
     "apps.observer",
@@ -189,6 +190,8 @@ forbidden_modules = [
     "apps.ai.providers.claude",
     "apps.ai.providers.openai",
     "apps.ai.providers.local",
+    "apps.ai.providers.claude_structured",
+    "apps.ai.providers.openai_structured",
 ]
 # Forbid only DIRECT imports — the public path (apps.ai.providers.get_provider,
 # whose package __init__ pulls in the concrete impls) is legitimate.
