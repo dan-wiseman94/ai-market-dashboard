@@ -21,6 +21,7 @@
   PYTEST="$RUN web uv run pytest -p no:randomly -q --no-header"
   ```
   Test paths are given relative to `/app/backend` (container WORKDIR), e.g. `$PYTEST apps/ai/tests/test_catalog.py`.
+  Lint and type-check commands must bypass the image entrypoint (it runs a relative `manage.py` that breaks under `-w /app`): wherever a step says `$RUN -w /app web uv run <tool> ...`, run `$RUN --entrypoint "" -w /app web uv run <tool> ...` instead.
 - The host has no `lefthook`; commit with `LEFTHOOK=0 git commit ...`. Every commit message ends with `Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>`.
 - Code comments and docstrings are present-tense invariants. No "was", "legacy", "now supports", milestone tags, or origin stories.
 - No `MOCK_EXTERNAL` short-circuit in structured paths; tests patch the SDK client class.
