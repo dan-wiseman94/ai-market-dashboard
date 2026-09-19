@@ -265,3 +265,87 @@ def test_upcoming_events_excludes_macro_when_disabled():
     )
     out = events.upcoming_events([], include_macro=False)
     assert out["macro"] == []
+
+
+@pytest.mark.django_db
+def test_fetch_earnings_uses_tradingview_when_finnhub_unkeyed():
+    rows = [
+        {
+            "symbol": "NVDA",
+            "date": _soon(3),
+            "hour": "amc",
+            "epsEstimate": 1.0,
+            "revenueEstimate": 2.0,
+        }
+    ]
+    with (
+        patch("apps.market.services.events._finnhub_api_key", return_value=None),
+        patch("apps.market.services.tradingview.is_connected", return_value=True),
+        patch("apps.market.services.tradingview.fetch_earnings", return_value=rows) as f,
+        patch(
+            "apps.market.services.events.cache.get_or_fetch",
+            side_effect=lambda key, *, ttl_seconds, fetcher: fetcher(),
+        ) as g,
+    ):
+        out = events.fetch_earnings(["NVDA", "/ES"])
+    f.assert_called_once_with(["NVDA"])  # equity-like only
+    assert g.call_args.args[0].startswith("market:tv-earn:")
+    assert len(out) == 1 and out[0].source == "tradingview" and out[0].ticker == "NVDA"
+
+
+@pytest.mark.django_db
+def test_fetch_macro_prefers_tradingview_over_seed():
+    rows = [
+        {
+            "event": "Consumer Price Index (MoM)",
+            "impact": "high",
+            "country": "US",
+            "time": f"{_soon(5)}T12:30:00+00:00",
+            "estimate": 0.3,
+            "prev": 0.2,
+            "actual": None,
+        }
+    ]
+    with (
+        patch("apps.market.services.events._finnhub_api_key", return_value=None),
+        patch("apps.market.services.tradingview.is_connected", return_value=True),
+        patch("apps.market.services.tradingview.fetch_economic_calendar", return_value=rows),
+        patch(
+            "apps.market.services.events.cache.get_or_fetch",
+            side_effect=lambda key, *, ttl_seconds, fetcher: fetcher(),
+        ) as g,
+    ):
+        out = events.fetch_macro(ahead_days=45)
+    assert {e.source for e in out} == {"tradingview"}
+    assert out[0].kind == "cpi"
+    assert g.call_args.args[0] == "market:tv-macro:45"
+
+
+@pytest.mark.django_db
+def test_fetch_macro_falls_to_seed_when_tradingview_empty():
+    with (
+        patch("apps.market.services.events._finnhub_api_key", return_value=None),
+        patch("apps.market.services.tradingview.is_connected", return_value=True),
+        patch("apps.market.services.tradingview.fetch_economic_calendar", return_value=[]),
+        patch(
+            "apps.market.services.events.cache.get_or_fetch",
+            side_effect=lambda key, *, ttl_seconds, fetcher: fetcher(),
+        ),
+    ):
+        out = events.fetch_macro(ahead_days=45)
+    assert all(e.source == "seed" for e in out)
+
+
+@pytest.mark.parametrize(
+    ("name", "kind"),
+    [
+        ("Fed Interest Rate Decision", "fomc"),
+        ("Consumer Price Index (MoM)", "cpi"),
+        ("Non Farm Payrolls", "nfp"),
+        ("Core PCE Price Index (YoY)", "pce"),
+        ("GDP Growth Rate QoQ Adv", "gdp"),
+        ("Retail Sales", None),
+    ],
+)
+def test_macro_kind_classifies_tradingview_names(name, kind):
+    assert events._macro_kind(name) == kind

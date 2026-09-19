@@ -1,4 +1,5 @@
 from decimal import Decimal
+from unittest.mock import patch
 
 import pytest
 
@@ -51,3 +52,21 @@ def test_investigation_gated_by_autonomous_cap(settings, monkeypatch):
     )
     assert Decimal("1.0") in seen["caps"], "the autonomous ceiling must be checked"
     assert isinstance(out, dict) and out["error"] == "cost_capped"
+
+
+def test_investigation_mode_includes_tradingview_tools_when_available(settings):
+    from apps.ai.tools import Toolset, ToolSpec
+
+    tv = Toolset()
+    tv.register(
+        ToolSpec(
+            name="tv_get_ohlcv",
+            description="d",
+            input_schema={"type": "object"},
+            fn=lambda **k: None,
+        )
+    )
+    req = RunRequest(model="m", system="Base.", messages=[], tools=[])
+    with patch("apps.ai.tools.tradingview.tradingview_toolset", return_value=tv):
+        _apply_investigation_mode(req, provider_name="openai", cfg=_Cfg())
+    assert "tv_get_ohlcv" in {t["function"]["name"] for t in req.tools}
