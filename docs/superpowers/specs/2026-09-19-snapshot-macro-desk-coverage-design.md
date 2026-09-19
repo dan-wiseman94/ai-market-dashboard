@@ -211,14 +211,17 @@ pattern: fetch the Federal Reserve's public RSS feeds — monetary-policy press 
 feeds — with `requests` (the actual edgar/treasury/fred pattern; `httpx` is a
 secrets-app dependency only), a descriptive User-Agent (the EDGAR precedent), and
 `cache.get_or_fetch` under a new `fed` TTL (3600s) in `apps/market/cache.py`.
-Parse titles/dates/links/description snippets with stdlib `xml.etree.ElementTree`. This is
-the backend's first XML parse, and **two** gates fire on it: ruff S314 (`# noqa: S314`) and
-the *blocking* `semgrep ci` registry packs' use-defusedxml/XXE rules — silence the latter
-with the repo's existing convention, an inline `# nosemgrep: <full-rule-id> -- <reason>`
-(precedent at `market/tasks.py:65`), the exact rule id confirmed by running the packs
-against the new file at implementation time. Shared justification: response size capped at
-512 KB before parsing, and modern-stdlib ElementTree does not resolve external entities
-(the rules target XXE).
+Parse titles/dates/links/description snippets with stdlib `xml.etree.ElementTree`, guarded
+by an outright **rejection of DTD/entity declarations** (`<!DOCTYPE` / `<!ENTITY` in the
+raw bytes → refuse to parse) plus the 512 KB size cap — the defusedxml attack classes (XXE
+and billion-laughs) both require those declarations, so this is `forbid_dtd`/
+`forbid_entities` behavior without adding the dependency (the worktree test harness reuses
+baked images and cannot install new packages). This is the backend's first XML parse, and
+**two** gates still fire on it: ruff S314 (`# noqa: S314`) and the *blocking* `semgrep ci`
+registry packs' use-defusedxml rules — silence the latter with the repo's existing
+convention, an inline `# nosemgrep: <full-rule-id> -- <reason>` (precedent at
+`market/tasks.py:65`), the exact rule id confirmed by running the packs against the new
+file at implementation time.
 Return `[]` on any failure — never raises (the `treasury.py` contract). Exact feed URLs are
 verified at implementation time (they are stable, published Fed endpoints, but confirm
 before hardcoding). Renderer: `## Fed communication` — dated items from the last 14 days,
