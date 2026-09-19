@@ -16,12 +16,17 @@ import hashlib
 import json
 import logging
 import re
+import time
+from datetime import datetime
 from secrets import token_urlsafe
 from urllib.parse import urlencode, urlsplit, urlunsplit
 
 import httpx
 import redis
+from cryptography.fernet import InvalidToken
 from django.conf import settings
+from django.db import transaction
+from django.utils import timezone
 
 from apps.market.services.safe_log import scrub_secret_params
 
@@ -236,3 +241,195 @@ def build_authorize_url() -> str:
         "resource": mcp_url(),
     }
     return f"{meta['authorization_endpoint']}?{urlencode(params)}"
+
+
+# --- tokens ---------------------------------------------------------------------------
+
+_SLEEP = time.sleep  # patch point for the lock-wait test
+
+
+def _token_request(meta: dict, flow: dict, data: dict) -> dict:
+    """POST the token endpoint with the flow's client identity + RFC 8707 resource.
+
+    Raises TradingViewTokenRejected on 400/401 (invalid grant — reconnect), else
+    TradingViewOAuthError. Stamps an absolute ``expires_at`` and carries the client ids."""
+    form = {**data, "client_id": flow["client_id"], "resource": mcp_url()}
+    if flow.get("client_secret"):
+        form["client_secret"] = flow["client_secret"]
+    try:
+        resp = httpx.post(meta["token_endpoint"], data=form, timeout=_TIMEOUT)
+    except httpx.HTTPError as exc:
+        raise TradingViewOAuthError("Could not reach TradingView's token endpoint.") from exc
+    if resp.status_code in (400, 401):
+        raise TradingViewTokenRejected(_failure_message("TradingView rejected the grant", resp))
+    if resp.status_code != 200:
+        raise TradingViewOAuthError(_failure_message("TradingView token request failed", resp))
+    body = resp.json()
+    if not isinstance(body, dict) or not body.get("access_token"):
+        raise TradingViewOAuthError("TradingView's token response had no access_token.")
+    body["expires_at"] = int(time.time()) + int(body.get("expires_in") or 3600)
+    body["client_id"] = flow["client_id"]
+    body["client_secret"] = flow.get("client_secret") or ""
+    return body
+
+
+def exchange_code(code: str, flow: dict) -> dict:
+    """Exchange the authorization code (PKCE verifier from the stored flow) for tokens."""
+    from apps.core.mocks import is_mock_mode
+
+    if is_mock_mode():
+        return {
+            "access_token": "mock-tv-access",
+            "refresh_token": "mock-tv-refresh",
+            "token_type": "Bearer",
+            "scope": SCOPE,
+            "expires_at": int(time.time()) + 3600,
+            "client_id": str(flow.get("client_id") or "mock-client"),
+            "client_secret": "",
+            "registered_at": int(time.time()),
+        }
+    token = _token_request(
+        discover(),
+        flow,
+        {
+            "grant_type": "authorization_code",
+            "code": code,
+            "redirect_uri": settings.TRADINGVIEW_CALLBACK_URL,
+            "code_verifier": flow["code_verifier"],
+        },
+    )
+    token["registered_at"] = int(time.time())
+    return token
+
+
+def refresh(token: dict) -> dict:
+    """Refresh-token grant. A response without a refresh_token keeps the previous one."""
+    new = _token_request(
+        discover(), token, {"grant_type": "refresh_token", "refresh_token": token["refresh_token"]}
+    )
+    if not new.get("refresh_token"):
+        new["refresh_token"] = token.get("refresh_token", "")
+    new["registered_at"] = token.get("registered_at")
+    return new
+
+
+def persist_token(token: dict) -> None:
+    """Upsert the TradingView token; self-heals an undecryptable row; clears the marker."""
+    from apps.core import provider_health
+    from apps.secrets.models import ApiCredential
+
+    expires_at = datetime.fromtimestamp(token["expires_at"], tz=timezone.get_current_timezone())
+    try:
+        ApiCredential.objects.update_or_create(
+            provider="tradingview", defaults={"token": token, "expires_at": expires_at}
+        )
+    except InvalidToken:
+        # The existing row is encrypted under a rotated key: update_or_create's lookup
+        # SELECT can't read it. Delete (no decrypt) + create so reconnect self-heals.
+        log.warning("Overwriting undecryptable TradingView credential on reconnect.")
+        with transaction.atomic():
+            ApiCredential.objects.filter(provider="tradingview").delete()
+            ApiCredential.objects.create(provider="tradingview", token=token, expires_at=expires_at)
+    provider_health.clear_auth_error("tradingview")
+
+
+def load_token() -> dict | None:
+    """The stored token dict, or None when not connected / undecryptable."""
+    from apps.secrets.credentials import decrypt_token
+
+    token = decrypt_token("tradingview")
+    return token if token and token.get("access_token") else None
+
+
+def _is_stale(token: dict) -> bool:
+    return int(token.get("expires_at") or 0) - int(time.time()) < _REFRESH_SKEW_SECONDS
+
+
+def _wait_for_other_refresh(stale: dict) -> str | None:
+    """Another process holds the refresh lock: poll the row up to 5s for a newer token."""
+    deadline = time.monotonic() + 5.0
+    while time.monotonic() < deadline:
+        _SLEEP(0.25)
+        fresh = load_token()
+        if fresh is None:
+            return None
+        if int(fresh.get("expires_at") or 0) > int(stale.get("expires_at") or 0):
+            return str(fresh["access_token"])
+    return str(stale.get("access_token") or "") or None
+
+
+def _refresh_under_lock(token: dict, *, force: bool) -> str | None:
+    from apps.core import provider_health
+
+    current = load_token() or token  # another process may have refreshed meanwhile
+    if not force and not _is_stale(current):
+        return str(current["access_token"])
+    try:
+        new = refresh(current)
+    except TradingViewTokenRejected:
+        log.warning("TradingView refused to refresh the stored token; reconnect required.")
+        provider_health.mark_auth_error("tradingview", REJECTED_MESSAGE)
+        return None
+    except TradingViewOAuthError:
+        log.warning("TradingView token refresh failed (transient); using the current token.")
+        return str(current["access_token"])
+    persist_token(new)
+    return str(new["access_token"])
+
+
+def ensure_fresh_token(*, force: bool = False) -> str | None:
+    """The access token to send. Refreshes under a Redis lock when < 60s remain (or on
+    ``force``, after a 401) so web + worker never double-refresh a rotating refresh
+    token. None when not connected or the refresh was rejected (marker recorded)."""
+    from apps.core import provider_health
+
+    token = load_token()
+    if token is None:
+        return None
+    if not force and not _is_stale(token):
+        return str(token["access_token"])
+    if not token.get("refresh_token"):
+        provider_health.mark_auth_error("tradingview", REJECTED_MESSAGE)
+        return None
+
+    r = _redis()
+    try:
+        acquired = bool(r.set(_REFRESH_LOCK_KEY, "1", nx=True, ex=_REFRESH_LOCK_TTL_SECONDS))
+    except Exception:
+        acquired = True  # no lock available: refresh anyway rather than stall every call
+    if not acquired:
+        return _wait_for_other_refresh(token)
+    try:
+        return _refresh_under_lock(token, force=force)
+    finally:
+        try:
+            r.delete(_REFRESH_LOCK_KEY)
+        except Exception:
+            log.debug("Could not release the TradingView refresh lock", exc_info=True)
+
+
+def revoke_and_disconnect() -> None:
+    """Best-effort upstream revocation, then delete the row, clear the marker, and drop
+    the process-local MCP session + cached tool list."""
+    from apps.core import provider_health
+    from apps.core.mocks import is_mock_mode
+    from apps.secrets.models import ApiCredential
+
+    token = load_token()
+    if token and token.get("refresh_token") and not is_mock_mode():
+        try:
+            endpoint = discover().get("revocation_endpoint")
+            if endpoint:
+                httpx.post(
+                    endpoint,
+                    data={"token": token["refresh_token"], "client_id": token.get("client_id", "")},
+                    timeout=_TIMEOUT,
+                )
+        except Exception:
+            log.info("TradingView token revocation skipped (best-effort)", exc_info=True)
+    ApiCredential.objects.filter(provider="tradingview").delete()
+    provider_health.clear_auth_error("tradingview")
+    # lazy: market imports secrets; tradingview_mcp lands in Task 5
+    from apps.market.services import tradingview_mcp  # type: ignore[attr-defined]
+
+    tradingview_mcp.reset_state()
