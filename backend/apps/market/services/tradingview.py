@@ -13,7 +13,8 @@ handled leniently — the live shapes are confirmed against the captured fixture
 from __future__ import annotations
 
 import logging
-from datetime import UTC, datetime
+import re
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from apps.market import cache
@@ -345,3 +346,124 @@ def fetch_news(tickers: list[str], *, limit: int = 15) -> list[dict]:
     except Exception as exc:
         log.warning("tradingview.news_persist_failed: %s", safe_err(exc))
     return deduped
+
+
+# --- calendars -------------------------------------------------------------------------
+
+_BMO = ("bmo", "before", "pre")
+_AMC = ("amc", "after", "post")
+
+
+def _date_str(value: Any) -> str | None:
+    """'YYYY-MM-DD' from a date string, an ISO datetime, or a unix timestamp; else None."""
+    if value is None:
+        return None
+    if isinstance(value, int | float):
+        ts = float(value) / 1000 if value > 1e11 else float(value)
+        return datetime.fromtimestamp(ts, tz=UTC).date().isoformat()
+    text = str(value).strip()
+    if re.fullmatch(r"\d{4}-\d{2}-\d{2}", text):
+        return text
+    try:
+        return datetime.fromisoformat(text.replace("Z", "+00:00")).date().isoformat()
+    except ValueError:
+        return None
+
+
+def _session_hint(value: Any) -> str:
+    text = str(value or "").lower()
+    if any(k in text for k in _BMO):
+        return "bmo"
+    if any(k in text for k in _AMC):
+        return "amc"
+    return ""
+
+
+def _iso_datetime(value: Any) -> str | None:
+    """Timezone-aware ISO string from an ISO string or unix timestamp; else None."""
+    if value is None:
+        return None
+    if isinstance(value, int | float):
+        ts = float(value) / 1000 if value > 1e11 else float(value)
+        return datetime.fromtimestamp(ts, tz=UTC).isoformat()
+    try:
+        dt = datetime.fromisoformat(str(value).strip().replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    return (dt if dt.tzinfo else dt.replace(tzinfo=UTC)).isoformat()
+
+
+def fetch_earnings(tickers: list[str]) -> list[dict]:
+    """Rows in the shape ``events._upsert_earnings`` consumes. [] on any failure."""
+    mapping = {normalize_symbol(t): to_tv_symbol(t) for t in tickers if t}
+    symbols = [s for s in mapping.values() if s]
+    if not symbols:
+        return []
+    try:
+        result = mcp.call_tool("get_earnings_calendar", {"symbols": symbols})
+    except Exception as exc:
+        log.warning("tradingview.earnings_failed: %s", safe_err(exc))
+        return []
+    back = {s: t for t, s in mapping.items() if s}
+    rows: list[dict] = []
+    for raw in _rows(result, "events", "earnings", "data", "results", "items"):
+        try:
+            symbol = str(_first(raw, "symbol", "name") or "")
+            ticker = back.get(symbol) or symbol.split(":")[-1]
+            date = _date_str(
+                _first(raw, "date", "earnings_release_date", "timestamp")
+            ) or _date_str(raw.get("time"))
+            if not ticker or not date:
+                continue
+            rows.append(
+                {
+                    "symbol": ticker,
+                    "date": date,
+                    "hour": _session_hint(_first(raw, "time", "session", "hour", "release_time")),
+                    "epsEstimate": _float(
+                        _first(raw, "eps_estimate", "epsEstimate", "eps_forecast")
+                    ),
+                    "revenueEstimate": _float(
+                        _first(raw, "revenue_estimate", "revenueEstimate", "revenue_forecast")
+                    ),
+                }
+            )
+        except Exception as exc:
+            log.warning("tradingview.earnings_row_failed: %s", safe_err(exc))
+            continue
+    return rows
+
+
+def fetch_economic_calendar(*, ahead_days: int = 45) -> list[dict]:
+    """US macro rows in the shape ``events._upsert_macro`` consumes. [] on any failure."""
+    today = datetime.now(UTC).date()
+    end = today + timedelta(days=ahead_days)
+    try:
+        result = mcp.call_tool(
+            "get_economic_calendar",
+            {"countries": ["US"], "from_date": today.isoformat(), "to_date": end.isoformat()},
+        )
+    except Exception as exc:
+        log.warning("tradingview.macro_failed: %s", safe_err(exc))
+        return []
+    rows: list[dict] = []
+    for raw in _rows(result, "events", "data", "results", "items"):
+        try:
+            when = _iso_datetime(_first(raw, "date", "time", "timestamp", "datetime"))
+            if when is None:
+                continue
+            rows.append(
+                {
+                    "event": str(_first(raw, "title", "event", "name") or ""),
+                    "impact": str(_first(raw, "importance", "impact") or ""),
+                    "country": str(_first(raw, "country", "country_code") or "US"),
+                    "time": when,
+                    "estimate": _float(_first(raw, "forecast", "estimate", "consensus")),
+                    "prev": _float(_first(raw, "previous", "prev", "prior")),
+                    "actual": _float(raw.get("actual")),
+                }
+            )
+        except Exception as exc:
+            log.warning("tradingview.macro_row_failed: %s", safe_err(exc))
+            continue
+    return rows

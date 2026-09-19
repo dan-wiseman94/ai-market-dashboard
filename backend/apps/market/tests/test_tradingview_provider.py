@@ -273,3 +273,136 @@ def test_fetch_news_persistence_failure_still_returns_items():
         items = tv.fetch_news(["AAPL"], limit=5)
     assert len(items) == 1
     assert items[0]["headline"] == "Persist fail"
+
+
+def test_fetch_earnings_rows_for_events_upsert():
+    raw = {
+        "events": [
+            {
+                "symbol": "NASDAQ:NVDA",
+                "date": "2026-11-19",
+                "time": "after market close",
+                "eps_estimate": "0.84",
+                "revenue_estimate": 2.6e10,
+            },
+            {"symbol": "NASDAQ:NVDA", "date": None},
+        ]
+    }
+    with (
+        _tools({"get_earnings_calendar": raw}) as c,
+        patch("apps.market.services.tradingview.to_tv_symbol", return_value="NASDAQ:NVDA"),
+    ):
+        rows = tv.fetch_earnings(["NVDA"])
+    assert c.call_args.args == ("get_earnings_calendar", {"symbols": ["NASDAQ:NVDA"]})
+    assert rows == [
+        {
+            "symbol": "NVDA",
+            "date": "2026-11-19",
+            "hour": "amc",
+            "epsEstimate": 0.84,
+            "revenueEstimate": 2.6e10,
+        }
+    ]
+
+
+def test_fetch_earnings_accepts_epoch_dates_and_bmo():
+    raw = [{"symbol": "NASDAQ:NVDA", "timestamp": 1_760_000_000, "session": "pre-market"}]
+    with (
+        _tools({"get_earnings_calendar": raw}),
+        patch("apps.market.services.tradingview.to_tv_symbol", return_value="NASDAQ:NVDA"),
+    ):
+        rows = tv.fetch_earnings(["NVDA"])
+    assert rows[0]["date"] == "2025-10-09" and rows[0]["hour"] == "bmo"
+
+
+def test_fetch_earnings_skips_row_that_raises_during_normalization():
+    # _date_str/_float/_session_hint are all exception-safe, so drive an exception
+    # through the loop body directly to prove a single bad row can't abort the batch.
+    raw = {
+        "events": [
+            {"symbol": "NASDAQ:NVDA", "date": "2026-11-19", "time": "amc"},
+            {"symbol": "NASDAQ:NVDA", "date": "2026-11-20", "time": "amc"},
+        ]
+    }
+    with (
+        _tools({"get_earnings_calendar": raw}),
+        patch("apps.market.services.tradingview.to_tv_symbol", return_value="NASDAQ:NVDA"),
+        patch(
+            "apps.market.services.tradingview._session_hint",
+            side_effect=[RuntimeError("boom"), "amc"],
+        ),
+    ):
+        rows = tv.fetch_earnings(["NVDA"])
+    assert len(rows) == 1
+    assert rows[0]["date"] == "2026-11-20"
+
+
+def test_fetch_economic_calendar_rows_for_macro_upsert():
+    raw = {
+        "events": [
+            {
+                "title": "Consumer Price Index (MoM)",
+                "country": "US",
+                "importance": "high",
+                "date": "2026-10-14T12:30:00Z",
+                "forecast": "0.3",
+                "previous": 0.2,
+                "actual": None,
+            },
+            {"title": "no time"},
+        ]
+    }
+    with _tools({"get_economic_calendar": raw}) as c:
+        rows = tv.fetch_economic_calendar(ahead_days=10)
+    args = c.call_args.args[1]
+    assert args["countries"] == ["US"] and "from_date" in args and "to_date" in args
+    assert rows == [
+        {
+            "event": "Consumer Price Index (MoM)",
+            "impact": "high",
+            "country": "US",
+            "time": "2026-10-14T12:30:00+00:00",
+            "estimate": 0.3,
+            "prev": 0.2,
+            "actual": None,
+        }
+    ]
+
+
+def test_fetch_economic_calendar_skips_row_that_raises_during_normalization():
+    # _iso_datetime/_float are exception-safe, so drive an exception through the
+    # loop body directly to prove a single bad row can't abort the batch.
+    raw = {
+        "events": [
+            {"title": "Bad", "country": "US", "importance": "high", "date": "2026-10-14T12:30:00Z"},
+            {
+                "title": "Consumer Price Index (MoM)",
+                "country": "US",
+                "importance": "high",
+                "date": "2026-10-15T12:30:00Z",
+                "forecast": "0.3",
+                "previous": 0.2,
+                "actual": None,
+            },
+        ]
+    }
+    with (
+        _tools({"get_economic_calendar": raw}),
+        patch(
+            "apps.market.services.tradingview._iso_datetime",
+            side_effect=[RuntimeError("boom"), "2026-10-15T12:30:00+00:00"],
+        ),
+    ):
+        rows = tv.fetch_economic_calendar(ahead_days=10)
+    assert len(rows) == 1
+    assert rows[0]["event"] == "Consumer Price Index (MoM)"
+
+
+def test_calendar_failures_return_empty():
+    boom = lambda a: (_ for _ in ()).throw(RuntimeError("x"))  # noqa: E731
+    with (
+        _tools({"get_earnings_calendar": boom, "get_economic_calendar": boom}),
+        patch("apps.market.services.tradingview.to_tv_symbol", return_value="NASDAQ:NVDA"),
+    ):
+        assert tv.fetch_earnings(["NVDA"]) == []
+        assert tv.fetch_economic_calendar() == []
