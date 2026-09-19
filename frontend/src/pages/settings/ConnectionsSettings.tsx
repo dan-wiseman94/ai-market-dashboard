@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import { useSchwabStatus, useSchwabAppConfig } from "@/hooks/useSchwabStatus";
@@ -118,8 +118,12 @@ export default function ConnectionsSettings() {
 
   const [searchParams, setSearchParams] = useSearchParams();
   const tradingviewReturn = searchParams.get("tradingview");
+  // Guards against StrictMode's double-invoke (mount → cleanup → mount again within the
+  // same commit, same `tradingviewReturn` closure) firing the toast twice in dev.
+  const handledTradingviewReturnRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!tradingviewReturn) return;
+    if (!tradingviewReturn || handledTradingviewReturnRef.current === tradingviewReturn) return;
+    handledTradingviewReturnRef.current = tradingviewReturn;
     push(
       tradingviewReturn === "connected"
         ? { kind: "success", text: "TradingView connected." }
