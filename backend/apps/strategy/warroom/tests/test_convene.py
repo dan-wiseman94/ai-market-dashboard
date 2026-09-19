@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 import pytest
 from django.test import override_settings
 
@@ -31,7 +33,14 @@ def _patch(monkeypatch):
         what_would_change_my_mind = "x"
 
     monkeypatch.setattr(T, "synthesize", lambda ctx, args, **kw: _V())
-    monkeypatch.setattr(T, "_claude_cfg", lambda: ("k", "claude-opus-4-8", ""))
+
+    from apps.ai.structured import StructuredTarget
+
+    monkeypatch.setattr(
+        T,
+        "_synth_target",
+        lambda: StructuredTarget("openai", "gpt-5.6-sol", "k", "", Decimal("10.00"), None),
+    )
 
 
 @override_settings(CELERY_TASK_ALWAYS_EAGER=True, CELERY_TASK_EAGER_PROPAGATES=True)
@@ -47,7 +56,7 @@ def test_convene_creates_run_and_dispatches_to_done(monkeypatch):
 
 @override_settings(CELERY_TASK_ALWAYS_EAGER=True, CELERY_TASK_EAGER_PROPAGATES=True)
 def test_convene_no_provider_errors(monkeypatch):
-    monkeypatch.setattr(T, "_claude_cfg", lambda: None)
+    monkeypatch.setattr(T, "_synth_target", lambda: None)
     monkeypatch.setattr(
         T, "assign_voices", lambda mode: [(p, "", "") for p in ("bull", "bear", "skeptic")]
     )
@@ -69,3 +78,40 @@ def test_rebuttal_runs_extra_round(monkeypatch):
     )
     CV.convene(free_prompt="q", structure="rebuttal")
     assert any(n == 0 for _p, n in calls) and any(n > 0 for _p, n in calls)
+
+
+@override_settings(CELERY_TASK_ALWAYS_EAGER=True, CELERY_TASK_EAGER_PROPAGATES=True)
+def test_run_debate_errors_when_no_provider_for_synthesis(monkeypatch):
+    """Voices and arguments exist, but no usable provider remains for the verdict:
+    the run ends in error with the synthesis message, and synthesize is never called."""
+    _patch(monkeypatch)
+    monkeypatch.setattr(T, "_synth_target", lambda: None)
+    called = {}
+    monkeypatch.setattr(T, "synthesize", lambda ctx, args, **kw: called.update(kw))
+
+    run = CV.convene(free_prompt="Is the tape risk-on?")
+    run.refresh_from_db()
+
+    assert run.status == "error"
+    assert "no provider available for synthesis" in run.error
+    assert called == {}
+    assert not Message.objects.filter(thread=run.thread, content__kind="warroom_verdict").exists()
+
+
+def test_synth_target_resolves_first_enabled_provider_and_checks_caps(monkeypatch):
+    from apps.secrets.models import ProviderConfig
+
+    cfg = ProviderConfig.objects.create(provider="openai", enabled=True)
+    cfg.api_key = "sk-oai"
+    cfg.save()
+    t = CV._synth_target()
+    assert t is not None
+    assert (t.provider, t.model) == ("openai", "gpt-5.6-sol")
+
+    from apps.ai.cost import CostCapExceededError
+
+    def _over(target):
+        raise CostCapExceededError("over")
+
+    monkeypatch.setattr(CV, "ensure_within_caps", _over)
+    assert CV._synth_target() is None

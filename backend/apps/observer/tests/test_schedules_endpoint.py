@@ -120,18 +120,16 @@ def test_run_now_calls_fire_observer(api, profile):
 
 
 @pytest.mark.django_db
-def test_create_structured_schedule_requires_claude_provider(api):
-    """structured runs through Anthropic messages.parse — a schedule resolving
-    to a non-Claude provider must be rejected at configuration time, not fail
-    every fire with an opaque 401."""
+def test_create_structured_schedule_accepts_any_provider(api):
+    """structured output has provider parity, so an openai-resolving schedule is
+    accepted; only use_batch stays Claude-only."""
     p = TradingProfile.objects.create(name="O", style="x", default_provider="openai")
     resp = api.post(
         "/api/observer/schedules/",
         {"name": "s", "profile": p.id, "cron": "0 * * * *", "structured": True},
         format="json",
     )
-    assert resp.status_code == 400
-    assert "structured" in resp.json()
+    assert resp.status_code == 201, resp.content
 
 
 @pytest.mark.django_db

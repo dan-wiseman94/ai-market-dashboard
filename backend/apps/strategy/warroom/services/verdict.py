@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pydantic import BaseModel, Field
 
-from apps.ai.providers.claude_structured import run_structured
+from apps.ai.structured import run_structured
 from apps.strategy.warroom import constants as C
 
 _SYSTEM = (
@@ -22,11 +22,18 @@ class WarRoomVerdict(BaseModel):
 
 
 def synthesize(
-    subject_context: str, persona_args: list[dict], *, api_key: str, model: str, base_url: str
+    subject_context: str,
+    persona_args: list[dict],
+    *,
+    provider: str,
+    api_key: str,
+    model: str,
+    base_url: str,
 ) -> WarRoomVerdict:
     args = "\n".join(f"- [{a.get('persona')}] {a.get('argument')}" for a in persona_args)
     user = f"SUBJECT:\n{subject_context}\n\nARGUMENTS:\n{args}\n\nDeliver your verdict."
     return run_structured(
+        provider=provider,
         api_key=api_key,
         model=model,
         system=_SYSTEM,

@@ -1,16 +1,11 @@
 """Cross-model consensus signal.
 
-Fans the same structured ObservationReport prompt across every
-structured-capable (provider, model) pair and measures agreement. Agreement is
-a confidence signal a single model can't give; divergence flags "do more
-homework". Degrades honestly to a single-provider result rather than inventing a
+Fans the same structured ObservationReport prompt across every usable enabled
+provider (claude / openai / local — see ``apps.ai.structured``) and measures
+agreement. Agreement is a confidence signal a single model can't give;
+divergence flags "do more homework". With fewer than 2 usable providers the
+result is an explicit single-provider/no-consensus shape — never a fabricated
 consensus.
-
-Reality: ``run_structured`` (Anthropic ``messages.parse``) is Claude-only today,
-so "structured-capable" means enabled Claude-family ``ProviderConfig`` rows with
-a key. With fewer than 2 usable pairs the result is an explicit
-single-provider/no-consensus shape. Expanding to OpenAI/local structured output
-is a follow-up (would need provider-side structured support).
 
 OPT-IN ONLY: this multiplies cost ~Nx, so it is gated behind the schedule's
 ``consensus`` flag and respects each provider's daily/monthly cost cap.
@@ -20,83 +15,22 @@ from __future__ import annotations
 
 import logging
 from collections import Counter
-from decimal import Decimal
-from typing import NamedTuple
 
-from cryptography.fernet import InvalidToken
-
-from apps.ai.catalog import DEFAULT_CLAUDE_MODEL
 from apps.ai.cost import CostCapExceededError, check_daily_cap, check_monthly_cap
-from apps.ai.providers.claude_structured import run_structured
+from apps.ai.structured import StructuredTarget, run_structured, structured_capable_targets
 from apps.observer.schemas import Bias, ConsensusReport, ObservationReport, ProviderTake
-from apps.secrets.models import ProviderConfig
 
 log = logging.getLogger(__name__)
 
-# Providers whose configs can drive run_structured (Anthropic messages.parse).
-_STRUCTURED_PROVIDERS = ("claude", "anthropic")
-
 _DEGRADED_NOTE = "single provider — no consensus available"
 
-
-class StructuredPair(NamedTuple):
-    """A structured-capable (provider, model) target plus its cost caps.
-
-    Named fields rather than a bare 6-tuple so data-flow analysis keeps the
-    secret ``api_key`` field distinct from the freely-loggable ``provider`` /
-    ``model``: unpacking a tuple out of a list loses per-index taint precision,
-    which makes CodeQL smear the api_key's "sensitive" label onto provider/model
-    and falsely flag logging them (py/clear-text-logging-sensitive-data). As a
-    ``NamedTuple`` it still iterates/compares equal to a plain tuple, so
-    positional construction (incl. in tests) is unchanged.
-    """
-
-    provider: str
-    model: str
-    api_key: str
-    base_url: str
-    daily_cap: Decimal
-    monthly_cap: Decimal | None
+# The consensus loop's name for a usable (provider, model, key, base_url, caps) target.
+StructuredPair = StructuredTarget
 
 
-def structured_capable_pairs() -> list[StructuredPair]:
-    """Structured-capable pairs + their cost caps, one per enabled config.
-
-    Tuple shape: ``(provider, model, api_key, base_url, daily_cap, monthly_cap)``.
-
-    Structured output is Claude-only today, so this selects enabled Claude-family
-    ``ProviderConfig`` rows that have an API key and a resolvable model. Caps are
-    read from the same row here so the aggregation loop needs no further DB access
-    (one query, not 1+N). Yields one pair per enabled config (one model per
-    provider).
-    """
-    pairs: list[StructuredPair] = []
-    qs = ProviderConfig.objects.filter(enabled=True, provider__in=_STRUCTURED_PROVIDERS).order_by(
-        "provider"
-    )
-    for cfg in qs:
-        try:
-            key = cfg.api_key
-        except InvalidToken:
-            # Undecryptable key (DJANGO_SECRET_KEY / salt rotated) — treat as no usable
-            # key and skip, so consensus_report keeps its "never raises" contract rather
-            # than crashing the fire with an opaque InvalidToken.
-            log.warning("consensus: %s API key could not be decrypted; skipping", cfg.provider)
-            continue
-        model = cfg.default_model or DEFAULT_CLAUDE_MODEL
-        if not key:
-            continue
-        pairs.append(
-            StructuredPair(
-                provider=cfg.provider,
-                model=model,
-                api_key=key,
-                base_url=cfg.base_url or "",
-                daily_cap=cfg.daily_cost_cap_usd,
-                monthly_cap=cfg.monthly_cost_cap_usd,
-            )
-        )
-    return pairs
+def structured_capable_pairs() -> list[StructuredTarget]:
+    """Every usable enabled provider, one per config (``apps.ai.structured``)."""
+    return structured_capable_targets()
 
 
 def _modal_and_agreement(biases: list[Bias]) -> tuple[Bias | None, float | None, bool]:
@@ -116,7 +50,7 @@ def _modal_and_agreement(biases: list[Bias]) -> tuple[Bias | None, float | None,
 
 
 def consensus_report(*, system: str, user: str) -> ConsensusReport:
-    """Run ObservationReport across structured-capable pairs, aggregate agreement.
+    """Run ObservationReport across every usable provider, aggregate agreement.
 
     Never raises: a pair that errors (provider failure) or is over its cost cap is
     skipped and counted out. With fewer than 2 surviving takes the result is an
@@ -138,6 +72,7 @@ def consensus_report(*, system: str, user: str) -> ConsensusReport:
 
         try:
             report: ObservationReport = run_structured(
+                provider=pair.provider,
                 api_key=pair.api_key,
                 model=pair.model,
                 system=system,

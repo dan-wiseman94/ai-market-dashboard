@@ -266,26 +266,37 @@ def test_consensus_report_never_raises_on_all_errors():
 # --- structured_capable_pairs selection (hits the real DB query) -------------
 
 
-def test_structured_capable_pairs_selects_claude_family_only():
-    """Only enabled Claude-family configs with a key are selected."""
+def test_structured_capable_pairs_selects_every_usable_provider():
+    """Every enabled config with a credential + model is structured-capable:
+    a key for claude/openai, a base_url for local."""
     claude = ProviderConfig.objects.create(provider="claude", default_model="claude-opus-4-8")
     claude.api_key = "sk-ant-1"  # type: ignore[misc]
     claude.save()
-    # OpenAI, enabled, keyed -> NOT structured-capable (Claude-only).
     openai = ProviderConfig.objects.create(provider="openai", default_model="gpt-5")
     openai.api_key = "sk-oai"  # type: ignore[misc]
     openai.save()
-    # Local, enabled -> NOT structured-capable.
-    ProviderConfig.objects.create(provider="local", default_model="llama")
+    ProviderConfig.objects.create(
+        provider="local", default_model="llama", base_url="http://host.docker.internal:11434/v1"
+    )
 
     from apps.observer.services.consensus import structured_capable_pairs
 
     pairs = structured_capable_pairs()
-    providers = {p[0] for p in pairs}
-    assert providers == {"claude"}
-    assert pairs[0][0] == "claude"
-    assert pairs[0][1] == "claude-opus-4-8"
+    assert [(p[0], p[1]) for p in pairs] == [
+        ("claude", "claude-opus-4-8"),
+        ("local", "llama"),
+        ("openai", "gpt-5"),
+    ]
     assert pairs[0][2] == "sk-ant-1"
+    assert pairs[1][2] == ""  # local: no key needed
+    assert pairs[2][2] == "sk-oai"
+
+
+def test_structured_capable_pairs_skips_local_without_base_url():
+    ProviderConfig.objects.create(provider="local", default_model="llama")
+    from apps.observer.services.consensus import structured_capable_pairs
+
+    assert structured_capable_pairs() == []
 
 
 def test_structured_capable_pairs_skips_disabled():

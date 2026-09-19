@@ -185,11 +185,14 @@ def test_run_postmortem_no_provider_records_objective_and_does_not_raise(thesis)
 
 
 @pytest.mark.django_db
-def test_run_postmortem_non_claude_provider_skips_ai(thesis):
-    """Profile points at openai: no AI narrative, but objective still recorded."""
+def test_run_postmortem_openai_provider_runs_ai(thesis, fake_report):
+    """Structured output has provider parity: an openai profile gets its narrative
+    on openai, with the catalog default model when the config names none."""
     thesis.profile.default_provider = "openai"
     thesis.profile.save()
-    ProviderConfig.objects.create(provider="openai", enabled=True)
+    cfg = ProviderConfig.objects.create(provider="openai", enabled=True)
+    cfg.api_key = "sk-oai"
+    cfg.save()
 
     pm = PostMortem.objects.create(
         thesis=thesis,
@@ -197,17 +200,18 @@ def test_run_postmortem_non_claude_provider_skips_ai(thesis):
         due_at=thesis.opened_at + timedelta(days=7),
         status="scheduled",
     )
-    _seed_bars("AAPL", thesis.opened_at, start_close=100.0, end_close=90.0, end=pm.due_at)
+    _seed_bars("AAPL", thesis.opened_at, start_close=100.0, end_close=110.0, end=pm.due_at)
 
-    with patch.object(pm_service, "run_structured") as mock_run:
+    with patch.object(pm_service, "run_structured", return_value=fake_report) as mock_run:
         run_postmortem(pm.id)
 
-    mock_run.assert_not_called()
+    mock_run.assert_called_once()
+    assert mock_run.call_args.kwargs["provider"] == "openai"
+    assert mock_run.call_args.kwargs["model"] == "gpt-5.6-sol"
     pm.refresh_from_db()
     assert pm.status == "done"
-    assert pm.forward_return_pct == pytest.approx(-10.0)
-    assert pm.verdict == "incorrect"  # bullish thesis, price fell
-    assert pm.report == {}
+    assert pm.verdict == "correct"
+    assert pm.report["summary"] == fake_report.summary
 
 
 @pytest.mark.django_db
