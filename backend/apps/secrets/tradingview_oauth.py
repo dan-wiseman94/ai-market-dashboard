@@ -42,7 +42,7 @@ _STATE_TTL_SECONDS = 600  # ample for consent, short enough to bound replay
 _METADATA_KEY = "tradingview:oauth:metadata"
 _METADATA_TTL_SECONDS = 86_400
 _REFRESH_LOCK_KEY = "tradingview:oauth:refresh_lock"
-_REFRESH_LOCK_TTL_SECONDS = 30
+_REFRESH_LOCK_TTL_SECONDS = 120
 _REFRESH_SKEW_SECONDS = 60
 _RESOURCE_METADATA_RE = re.compile(r'resource_metadata="([^"]+)"')
 
@@ -105,17 +105,32 @@ def _resource_metadata_url_from_challenge() -> str | None:
     return match.group(1) if match else None
 
 
+_HTTPS_ENDPOINT_KEYS = (
+    "authorization_endpoint",
+    "token_endpoint",
+    "registration_endpoint",
+    "revocation_endpoint",
+)
+
+
 def discover() -> dict:
     """Authorization-server metadata (RFC 8414) for the MCP server, cached 24h in Redis.
 
-    Raises TradingViewOAuthError when any hop fails or the document lacks the endpoints."""
+    Raises TradingViewOAuthError when any hop fails, the document lacks the required
+    endpoints, or any endpoint present isn't https:// (we send the PKCE verifier and
+    the access/refresh token to these — never over plaintext)."""
     r = _redis()
     try:
         cached: bytes | None = r.get(_METADATA_KEY)  # type: ignore[assignment]
     except Exception:
         cached = None
     if cached:
-        return json.loads(cached)
+        try:
+            return json.loads(cached)
+        except ValueError:
+            # Corrupt cache entry (shouldn't happen — we only ever write our own
+            # json.dumps — but treat it as a miss rather than crash the flow).
+            log.warning("Cached TradingView OAuth metadata was corrupt; rediscovering.")
 
     prm = _get_json(_protected_resource_metadata_url(mcp_url()))
     if prm is None:
@@ -129,6 +144,10 @@ def discover() -> dict:
     required = ("authorization_endpoint", "token_endpoint", "registration_endpoint")
     if meta is None or any(not meta.get(k) for k in required):
         raise TradingViewOAuthError("TradingView's authorization-server metadata is incomplete.")
+    for key in _HTTPS_ENDPOINT_KEYS:
+        value = meta.get(key)
+        if value and not str(value).startswith("https://"):
+            raise TradingViewOAuthError(f"TradingView's {key} is not https://.")
     try:
         r.set(_METADATA_KEY, json.dumps(meta), ex=_METADATA_TTL_SECONDS)
     except Exception:
@@ -171,7 +190,10 @@ def register_client(meta: dict) -> dict:
         raise TradingViewOAuthError(
             _failure_message("TradingView rejected the client registration", resp)
         )
-    body = resp.json()
+    try:
+        body = resp.json()
+    except ValueError as exc:
+        raise TradingViewOAuthError("TradingView's registration response was not JSON.") from exc
     client_id = body.get("client_id") if isinstance(body, dict) else None
     if not client_id:
         raise TradingViewOAuthError("TradingView's registration response had no client_id.")
@@ -302,10 +324,16 @@ def exchange_code(code: str, flow: dict) -> dict:
     return token
 
 
-def refresh(token: dict) -> dict:
-    """Refresh-token grant. A response without a refresh_token keeps the previous one."""
+def refresh(token: dict, *, meta: dict | None = None) -> dict:
+    """Refresh-token grant. A response without a refresh_token keeps the previous one.
+
+    ``meta`` lets a caller that already discovered the authorization-server metadata
+    (e.g. ``ensure_fresh_token``, discovering before it takes the refresh lock) skip a
+    second, redundant ``discover()`` call."""
     new = _token_request(
-        discover(), token, {"grant_type": "refresh_token", "refresh_token": token["refresh_token"]}
+        meta if meta is not None else discover(),
+        token,
+        {"grant_type": "refresh_token", "refresh_token": token["refresh_token"]},
     )
     if not new.get("refresh_token"):
         new["refresh_token"] = token.get("refresh_token", "")
@@ -358,14 +386,18 @@ def _wait_for_other_refresh(stale: dict) -> str | None:
     return str(stale.get("access_token") or "") or None
 
 
-def _refresh_under_lock(token: dict, *, force: bool) -> str | None:
+def _refresh_under_lock(token: dict, *, force: bool, meta: dict) -> str | None:
     from apps.core import provider_health
 
     current = load_token() or token  # another process may have refreshed meanwhile
+    if current.get("access_token") != token.get("access_token"):
+        # Someone else refreshed between us reading `token` and acquiring the lock —
+        # honor their fresher result rather than refreshing again, even under force.
+        return str(current["access_token"])
     if not force and not _is_stale(current):
         return str(current["access_token"])
     try:
-        new = refresh(current)
+        new = refresh(current, meta=meta)
     except TradingViewTokenRejected:
         log.warning("TradingView refused to refresh the stored token; reconnect required.")
         provider_health.mark_auth_error("tradingview", REJECTED_MESSAGE)
@@ -375,6 +407,20 @@ def _refresh_under_lock(token: dict, *, force: bool) -> str | None:
         return str(current["access_token"])
     persist_token(new)
     return str(new["access_token"])
+
+
+def _release_lock(lock_value: str) -> None:
+    """Release the refresh lock only if it still holds ``lock_value`` (GET + compare +
+    DELETE). A small TOCTOU window exists between the GET and DELETE, but the worst
+    case is releasing a lock a moment early — never deleting a DIFFERENT holder's
+    lock, which is the property that matters (a mismatched value is always a no-op)."""
+    try:
+        r = _redis()
+        current: bytes | None = r.get(_REFRESH_LOCK_KEY)  # type: ignore[assignment]
+        if current is not None and current.decode() == lock_value:
+            r.delete(_REFRESH_LOCK_KEY)
+    except Exception:
+        log.debug("Could not release the TradingView refresh lock", exc_info=True)
 
 
 def ensure_fresh_token(*, force: bool = False) -> str | None:
@@ -392,20 +438,27 @@ def ensure_fresh_token(*, force: bool = False) -> str | None:
         provider_health.mark_auth_error("tradingview", REJECTED_MESSAGE)
         return None
 
-    r = _redis()
+    # Discover BEFORE taking the lock: discovery is idempotent and Redis-cached, so
+    # doing it while holding the lock would only stretch how long other processes
+    # wait behind us for no benefit.
     try:
-        acquired = bool(r.set(_REFRESH_LOCK_KEY, "1", nx=True, ex=_REFRESH_LOCK_TTL_SECONDS))
+        meta = discover()
+    except TradingViewOAuthError:
+        log.warning("TradingView OAuth discovery failed (transient); using the current token.")
+        return str(token["access_token"])
+
+    r = _redis()
+    lock_value = token_urlsafe(16)
+    try:
+        acquired = bool(r.set(_REFRESH_LOCK_KEY, lock_value, nx=True, ex=_REFRESH_LOCK_TTL_SECONDS))
     except Exception:
         acquired = True  # no lock available: refresh anyway rather than stall every call
     if not acquired:
         return _wait_for_other_refresh(token)
     try:
-        return _refresh_under_lock(token, force=force)
+        return _refresh_under_lock(token, force=force, meta=meta)
     finally:
-        try:
-            r.delete(_REFRESH_LOCK_KEY)
-        except Exception:
-            log.debug("Could not release the TradingView refresh lock", exc_info=True)
+        _release_lock(lock_value)
 
 
 def revoke_and_disconnect() -> None:
