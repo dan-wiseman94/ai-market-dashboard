@@ -22,7 +22,7 @@ from apps.strategy.desk.services.sweep import run_sweep
 from apps.strategy.models import WarRoomRun
 from apps.strategy.regime.services.compute import compute_and_store
 from apps.strategy.warroom import constants as C
-from apps.strategy.warroom.services.convene import _claude_cfg
+from apps.strategy.warroom.services.convene import _synth_target
 from apps.strategy.warroom.services.debate import run_one_persona
 from apps.strategy.warroom.services.subject import subject_context
 from apps.strategy.warroom.services.verdict import synthesize
@@ -92,14 +92,20 @@ def run_debate(run_id: int) -> None:
         if round_args:
             persona_args = round_args
 
-    cfg = _claude_cfg()
-    if cfg is None or not persona_args:
+    target = _synth_target()
+    if target is None or not persona_args:
         run.status = "error"
-        run.error = "Debate produced no arguments / no Claude key for synthesis."
+        run.error = "Debate produced no arguments / no provider available for synthesis."
         run.save(update_fields=["status", "error"])
         return
-    api_key, model, base_url = cfg
-    v = synthesize(ctx, persona_args, api_key=api_key, model=model, base_url=base_url)
+    v = synthesize(
+        ctx,
+        persona_args,
+        provider=target.provider,
+        api_key=target.api_key,
+        model=target.model,
+        base_url=target.base_url,
+    )
     verdict = {
         "verdict": v.verdict,
         "confidence": v.confidence,

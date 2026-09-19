@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import logging
 
-from apps.ai.catalog import DEFAULT_CLAUDE_MODEL
+from apps.ai.structured import StructuredTarget, ensure_within_caps, resolve_structured_target
 from apps.strategy.models import WarRoomRun
 from apps.strategy.warroom import constants as C
 from apps.strategy.warroom.services.subject import subject_context
@@ -13,18 +13,18 @@ from apps.strategy.warroom.services.subject import subject_context
 log = logging.getLogger(__name__)
 
 
-def _claude_cfg():
-    """Return (api_key, model, base_url) for claude, cap-checked, or None."""
-    from apps.ai.cost import CostCapExceededError, check_daily_cap, check_monthly_cap
-    from apps.secrets.models import ProviderConfig
+def _synth_target() -> StructuredTarget | None:
+    """The provider that synthesizes the verdict: the app's default resolution
+    (calibration choice when enabled, else first enabled config), cap-checked.
+    None when nothing usable exists or the provider is over its cap."""
+    from apps.ai.cost import CostCapExceededError
 
     try:
-        cfg = ProviderConfig.objects.filter(provider="claude").first()
-        if cfg is None or not cfg.api_key:
+        target = resolve_structured_target()
+        if target is None:
             return None
-        check_daily_cap("claude", cap_usd=cfg.daily_cost_cap_usd)
-        check_monthly_cap("claude", cap_usd=cfg.monthly_cost_cap_usd)
-        return cfg.api_key, (cfg.default_model or DEFAULT_CLAUDE_MODEL), (cfg.base_url or "")
+        ensure_within_caps(target)
+        return target
     except CostCapExceededError as exc:
         log.warning("warroom.cap_hit: %s", exc)
         return None
