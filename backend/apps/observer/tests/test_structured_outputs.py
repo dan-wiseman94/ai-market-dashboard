@@ -110,28 +110,32 @@ def test_structured_undecryptable_key_records_failed_message_without_crashing(
     assert "could not be decrypted" in msg.content["text"]
 
 
-def test_structured_non_claude_provider_skips_with_visible_message(
+def test_structured_openai_provider_runs_and_records_its_provider(
     db,
     schedule_structured,
+    fake_report,
 ) -> None:
-    """Structured output runs through Anthropic messages.parse; a schedule that
-    resolves to openai/local must skip with a visible Message instead of sending
-    that vendor's key to api.anthropic.com (opaque 401 every fire)."""
+    """Structured output has provider parity: an openai schedule runs the same
+    ObservationReport call through the facade and the resulting prediction is
+    attributed to openai."""
     from apps.observer.services import run as run_service
     from apps.observer.services.threads import get_or_create_observer_thread
     from apps.threads.models import Message
 
+    cfg = ProviderConfig.objects.create(provider="openai", enabled=True)
+    cfg.api_key = "sk-oai"
+    cfg.save()
     thread = get_or_create_observer_thread(schedule_structured.profile)
-    with patch.object(run_service, "run_structured") as run_structured:
+    with patch.object(run_service, "run_structured", return_value=fake_report) as run_structured:
         run_service._run_structured_and_record(
-            schedule_structured, thread, "payload", "openai", None, snap=None
+            schedule_structured, thread, "payload", "openai", cfg, snap=None
         )
 
-    run_structured.assert_not_called()
-    msg = Message.objects.filter(thread=thread, role="system", status="failed").first()
+    kw = run_structured.call_args.kwargs
+    assert kw["provider"] == "openai"
+    assert kw["model"] == "gpt-5.6-sol"  # catalog default for an openai config with no model
+    assert kw["api_key"] == "sk-oai"
+    msg = Message.objects.filter(thread=thread, role="assistant", status="done").first()
     assert msg is not None
-    assert msg.error == "unsupported_provider"
-    assert "Claude" in msg.content["text"]
-    # Not a capability_warning kind — those are excluded from the observer
-    # timeline, and this skip must stay visible there.
-    assert msg.content.get("kind") is None
+    assert msg.content["kind"] == "structured_observation"
+    assert not Message.objects.filter(thread=thread, error="unsupported_provider").exists()

@@ -88,25 +88,23 @@ class ObserverScheduleSerializer(serializers.ModelSerializer):
         return attrs
 
     def _validate_claude_only_modes(self, attrs) -> None:
-        """structured / use_batch run through Anthropic APIs (messages.parse /
-        Messages Batches); reject at configuration time rather than letting
-        every fire 401 against api.anthropic.com with a non-Claude key."""
+        """``use_batch`` runs through Anthropic Messages Batches; reject it at
+        configuration time rather than letting every fire 401 against
+        api.anthropic.com with a non-Claude key. ``structured`` has provider parity
+        (``apps.ai.structured``) and is not gated."""
         from apps.ai.catalog import CLAUDE_FAMILY_PROVIDERS
 
-        structured = self._resolved(attrs, "structured", default=False)
-        use_batch = self._resolved(attrs, "use_batch", default=False)
-        if not structured and not use_batch:
+        if not self._resolved(attrs, "use_batch", default=False):
             return
         profile = self._resolved(attrs, "profile", default=None)
         provider = self._resolved(attrs, "override_provider", default="") or getattr(
             profile, "default_provider", ""
         )
         if provider not in CLAUDE_FAMILY_PROVIDERS:
-            field = "structured" if structured else "use_batch"
             raise serializers.ValidationError(
                 {
-                    field: (
-                        f"{field} requires a Claude provider; this schedule "
+                    "use_batch": (
+                        "use_batch requires a Claude provider; this schedule "
                         f"resolves to {provider!r}"
                     )
                 }

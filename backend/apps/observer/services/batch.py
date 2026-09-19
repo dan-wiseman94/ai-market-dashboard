@@ -22,7 +22,7 @@ from cryptography.fernet import InvalidToken
 from apps.ai.catalog import CLAUDE_FAMILY_PROVIDERS, DEFAULT_CLAUDE_MODEL
 from apps.ai.cost import BATCH_COST_MULTIPLIER, record_ai_run
 from apps.ai.providers import client_kwargs
-from apps.ai.providers.claude_structured import token_usage_from_anthropic
+from apps.ai.structured import token_usage_from_anthropic
 from apps.ai.types import TokenUsage
 from apps.observer.models import ObserverSchedule
 from apps.observer.services.threads import get_or_create_observer_thread
