@@ -6,8 +6,8 @@ when something earned it, so the house view doesn't churn on noise. Everything
 is best-effort — a revision failure (no key, cap, undecryptable cred, AI error)
 returns ``None`` and never breaks the fire that triggered it.
 
-``run_structured`` has no ``MOCK_EXTERNAL`` short-circuit; tests patch the name
-bound here.
+``run_structured`` (``apps.ai.structured``) has no ``MOCK_EXTERNAL`` short-circuit;
+tests patch the name bound here.
 """
 
 from __future__ import annotations
@@ -18,10 +18,8 @@ from typing import Any
 from cryptography.fernet import InvalidToken
 from django.utils import timezone
 
-from apps.ai.catalog import DEFAULT_CLAUDE_MODEL
-from apps.ai.cost import CostCapExceededError, check_daily_cap, check_monthly_cap
-from apps.ai.providers.claude_structured import run_structured
-from apps.secrets.models import ProviderConfig
+from apps.ai.cost import CostCapExceededError
+from apps.ai.structured import ensure_within_caps, resolve_structured_target, run_structured
 from apps.snapshots.diff import diff_sections
 from apps.snapshots.primary import previous_snapshot_for
 from apps.snapshots.serializer import serialize_for_ai
@@ -41,21 +39,16 @@ def revise_coverage(ticker: str, snapshot, *, profile) -> CoverageRevision | Non
     revision as additive, not load-bearing.
     """
     ticker = ticker.upper()
-    provider_name = profile.default_provider
 
-    cfg = ProviderConfig.objects.filter(provider=provider_name).first()
-    if cfg is None:
-        return None
     try:
-        api_key = cfg.api_key
+        target = resolve_structured_target(profile=profile)
     except InvalidToken:
         # Undecryptable on a key/salt rotation — skip, never crash the caller.
         return None
-    if not api_key:
+    if target is None:
         return None
     try:
-        check_daily_cap(provider_name, cap_usd=cfg.daily_cost_cap_usd)
-        check_monthly_cap(provider_name, cap_usd=cfg.monthly_cost_cap_usd)
+        ensure_within_caps(target)
     except CostCapExceededError as exc:
         log.info("coverage: cap exceeded, skipping %s revision: %s", ticker, exc)
         return None
@@ -63,15 +56,15 @@ def revise_coverage(ticker: str, snapshot, *, profile) -> CoverageRevision | Non
     note, created = CoverageNote.objects.get_or_create(
         ticker=ticker, defaults={"stance": "neutral", "conviction": 1}
     )
-    model_id = cfg.default_model or DEFAULT_CLAUDE_MODEL
     try:
         draft = run_structured(
-            api_key=api_key,
-            model=model_id,
+            provider=target.provider,
+            api_key=target.api_key,
+            model=target.model,
             system=build_system_prompt(profile, now=timezone.now()),
-            user=_build_prompt(note, snapshot, ticker, provider_name, model_id),
+            user=_build_prompt(note, snapshot, ticker, target.provider, target.model),
             output_model=CoverageRevisionDraft,
-            base_url=cfg.base_url or "",
+            base_url=target.base_url,
         )
     except Exception as exc:
         log.warning("coverage: revision AI call failed for %s: %s", ticker, exc)
