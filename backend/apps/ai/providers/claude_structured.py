@@ -12,11 +12,15 @@ from __future__ import annotations
 
 import logging
 import time
+from typing import TYPE_CHECKING
 
 from anthropic import Anthropic
 from pydantic import BaseModel
 
 from apps.ai.providers._config import client_kwargs
+
+if TYPE_CHECKING:
+    from apps.ai.types import TokenUsage
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +58,7 @@ def run_structured[M: BaseModel](
     return parsed
 
 
-def token_usage_from_anthropic(usage: object):
+def token_usage_from_anthropic(usage: object) -> TokenUsage:
     """Map an Anthropic usage object to TokenUsage (total-input convention).
 
     input_tokens, cache_read, and cache_creation are disjoint in the API; sum
