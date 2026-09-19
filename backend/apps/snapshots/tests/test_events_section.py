@@ -21,3 +21,30 @@ def test_render_events_lists_earnings_and_macro():
 
 def test_render_events_empty():
     assert "_(none" in _render_events({"earnings": [], "macro": []})
+
+
+def test_render_events_shows_detail_and_corporate_actions():
+    payload = {
+        "earnings": [{"ticker": "NVDA", "days_until": 3, "when_hint": "amc",
+                      "detail": {"eps_est": 1.25, "eps_actual": 1.3, "rev_est": 46_000_000_000}}],
+        "macro": [{"title": "CPI YoY", "days_until": 5,
+                   "detail": {"estimate": 2.9, "prev": 3.1, "actual": None}}],
+        "corporate_actions": [{"ticker": "AAPL", "kind": "dividend", "ex_date": "2026-09-26",
+                               "ratio": None, "amount": 0.26}],
+    }
+    out = _render_events(payload)
+    assert "est EPS 1.25" in out and "last actual 1.3" in out and "est rev" in out
+    assert "CPI YoY in 5d (est 2.9, prev 3.1)" in out
+    assert "- AAPL dividend $0.26 ex 2026-09-26" in out
+
+
+def test_render_events_empty_with_no_corporate_actions_key():
+    # corporate_actions is a newer key; payloads captured before this change
+    # (or fetcher failures) may omit it entirely — must not raise.
+    assert "_(none" in _render_events({"earnings": [], "macro": []})
+
+
+def test_render_events_all_empty_including_corporate_actions():
+    assert "_(none" in _render_events(
+        {"earnings": [], "macro": [], "corporate_actions": []}
+    )
