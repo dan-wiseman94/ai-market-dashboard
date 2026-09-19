@@ -721,7 +721,7 @@ def test_command_provider_flag_preflights_that_provider(profile):
 
     _record_spend(provider="openai", cost="2.00")
     ProviderConfig.objects.create(provider="openai", daily_cost_cap_usd=Decimal("1.00"))
-    with pytest.raises(CommandError):
+    with pytest.raises(CommandError, match=r"openai daily cap"):
         call_command("aieval", "--model", "gpt-5.6-sol", "--provider", "openai")
 
 
