@@ -162,6 +162,22 @@ def test_fetch_macro_falls_back_to_seed_when_endpoint_empty():
     assert out[0].source == "seed"
 
 
+def test_seed_macro_events_cover_all_kinds_and_classify():
+    # Every seed row must classify to a known macro kind (else it's silently
+    # dropped by _upsert_macro's `kind is None` skip), and each of the five
+    # kinds needs at least one row still in the future.
+    now_s = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S")
+    for row in events.SEED_MACRO_EVENTS:
+        assert events._macro_kind(row["event"]) is not None, row["event"]
+    kinds_seen = {events._macro_kind(row["event"]) for row in events.SEED_MACRO_EVENTS}
+    assert kinds_seen == set(events.MACRO_KINDS)
+    for kind in events.MACRO_KINDS:
+        assert any(
+            events._macro_kind(row["event"]) == kind and row["time"] > now_s
+            for row in events.SEED_MACRO_EVENTS
+        ), f"no future-dated seed row for kind {kind!r}"
+
+
 def test_seed_macro_events_have_headroom_before_lapsing():
     # Tripwire: free Finnhub keys 403 the economic calendar, so this seed IS the
     # macro source — once every entry lapses, snapshots ship macro: [] with only
