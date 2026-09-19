@@ -104,6 +104,39 @@ def test_discover_raises_when_no_authorization_server(fake_redis):
         tvo.discover()
 
 
+@override_settings(TRADINGVIEW_MCP_URL=MCP)
+def test_discover_rejects_a_non_https_endpoint(fake_redis):
+    bad_meta = {**AS_META, "token_endpoint": "http://www.tradingview.com/mcp/oauth/token"}
+    table = {
+        "https://mcp.tradingview.com/.well-known/oauth-protected-resource/mcp": httpx.Response(
+            200, json=PRM
+        ),
+        "https://www.tradingview.com/.well-known/oauth-authorization-server": httpx.Response(
+            200, json=bad_meta
+        ),
+    }
+    with (
+        patch("apps.secrets.tradingview_oauth.httpx.get", side_effect=_get_by_url(table)),
+        pytest.raises(tvo.TradingViewOAuthError, match="https"),
+    ):
+        tvo.discover()
+
+
+@override_settings(TRADINGVIEW_MCP_URL=MCP)
+def test_discover_falls_back_to_discovery_when_cache_is_corrupt(fake_redis):
+    fake_redis.set(tvo._METADATA_KEY, b"not-json{{{")
+    table = {
+        "https://mcp.tradingview.com/.well-known/oauth-protected-resource/mcp": httpx.Response(
+            200, json=PRM
+        ),
+        "https://www.tradingview.com/.well-known/oauth-authorization-server": httpx.Response(
+            200, json=AS_META
+        ),
+    }
+    with patch("apps.secrets.tradingview_oauth.httpx.get", side_effect=_get_by_url(table)):
+        assert tvo.discover()["token_endpoint"] == AS_META["token_endpoint"]
+
+
 @override_settings(TRADINGVIEW_CALLBACK_URL=CALLBACK)
 def test_register_client_posts_public_client_payload():
     resp = httpx.Response(201, json={"client_id": "cid-1"})
@@ -126,6 +159,25 @@ def test_register_client_surfaces_rejection_message():
         pytest.raises(tvo.TradingViewOAuthError, match="loopback not allowed"),
     ):
         tvo.register_client(AS_META)
+
+
+def test_register_client_raises_on_non_json_response():
+    resp = httpx.Response(201, content=b"not json")
+    with (
+        patch("apps.secrets.tradingview_oauth.httpx.post", return_value=resp),
+        pytest.raises(tvo.TradingViewOAuthError, match="not JSON"),
+    ):
+        tvo.register_client(AS_META)
+
+
+def test_failure_message_scrubs_secret_params_and_caps_length():
+    long_detail = "reason apikey=SECRET123 then " + ("x" * 300)
+    resp = httpx.Response(400, json={"error_description": long_detail})
+    msg = tvo._failure_message("TradingView rejected the grant", resp)
+    assert "SECRET123" not in msg
+    assert "apikey=***" in msg
+    detail_part = msg.split(": ", 1)[1]
+    assert len(detail_part) == 200
 
 
 @override_settings(TRADINGVIEW_MCP_URL=MCP, TRADINGVIEW_CALLBACK_URL=CALLBACK)
@@ -282,9 +334,12 @@ def test_ensure_fresh_token_returns_token_when_fresh_without_refresh(fake_redis)
 @pytest.mark.django_db
 def test_ensure_fresh_token_refreshes_when_stale_and_persists(fake_redis):
     tvo.persist_token(_token(expires_at=int(time.time()) + 10))
-    with patch(
-        "apps.secrets.tradingview_oauth.refresh", return_value=_token(access_token="A2")
-    ) as r:
+    with (
+        patch("apps.secrets.tradingview_oauth.discover", return_value=AS_META),
+        patch(
+            "apps.secrets.tradingview_oauth.refresh", return_value=_token(access_token="A2")
+        ) as r,
+    ):
         assert tvo.ensure_fresh_token() == "A2"
     r.assert_called_once()
     assert ApiCredential.objects.get(provider="tradingview").token["access_token"] == "A2"
@@ -294,7 +349,10 @@ def test_ensure_fresh_token_refreshes_when_stale_and_persists(fake_redis):
 @pytest.mark.django_db
 def test_ensure_fresh_token_force_refreshes_a_fresh_token(fake_redis):
     tvo.persist_token(_token())
-    with patch("apps.secrets.tradingview_oauth.refresh", return_value=_token(access_token="A3")):
+    with (
+        patch("apps.secrets.tradingview_oauth.discover", return_value=AS_META),
+        patch("apps.secrets.tradingview_oauth.refresh", return_value=_token(access_token="A3")),
+    ):
         assert tvo.ensure_fresh_token(force=True) == "A3"
 
 
@@ -303,6 +361,7 @@ def test_ensure_fresh_token_rejected_refresh_marks_auth_error(fake_redis):
     tvo.persist_token(_token(expires_at=int(time.time()) + 10))
     with (
         patch("apps.core.provider_health._redis", lambda: fake_redis),
+        patch("apps.secrets.tradingview_oauth.discover", return_value=AS_META),
         patch(
             "apps.secrets.tradingview_oauth.refresh",
             side_effect=tvo.TradingViewTokenRejected("nope"),
@@ -317,10 +376,27 @@ def test_ensure_fresh_token_rejected_refresh_marks_auth_error(fake_redis):
 @pytest.mark.django_db
 def test_ensure_fresh_token_transient_refresh_failure_keeps_current(fake_redis):
     tvo.persist_token(_token(expires_at=int(time.time()) + 10))
-    with patch(
-        "apps.secrets.tradingview_oauth.refresh", side_effect=tvo.TradingViewOAuthError("down")
+    with (
+        patch("apps.secrets.tradingview_oauth.discover", return_value=AS_META),
+        patch(
+            "apps.secrets.tradingview_oauth.refresh", side_effect=tvo.TradingViewOAuthError("down")
+        ),
     ):
         assert tvo.ensure_fresh_token() == "A"
+
+
+@pytest.mark.django_db
+def test_ensure_fresh_token_transient_discovery_failure_keeps_current(fake_redis):
+    tvo.persist_token(_token(expires_at=int(time.time()) + 10))
+    with (
+        patch(
+            "apps.secrets.tradingview_oauth.discover",
+            side_effect=tvo.TradingViewOAuthError("down"),
+        ),
+        patch("apps.secrets.tradingview_oauth.refresh") as r,
+    ):
+        assert tvo.ensure_fresh_token() == "A"
+    r.assert_not_called()
 
 
 @pytest.mark.django_db
@@ -332,11 +408,47 @@ def test_ensure_fresh_token_waits_for_other_process_when_locked(fake_redis):
         tvo.persist_token(_token(access_token="FROM-OTHER", expires_at=int(time.time()) + 3600))
 
     with (
+        patch("apps.secrets.tradingview_oauth.discover", return_value=AS_META),
         patch("apps.secrets.tradingview_oauth._SLEEP", side_effect=_other_process_refreshes),
         patch("apps.secrets.tradingview_oauth.refresh") as r,
     ):
         assert tvo.ensure_fresh_token() == "FROM-OTHER"
     r.assert_not_called()
+
+
+@pytest.mark.django_db
+def test_refresh_under_lock_returns_rotated_token_without_refreshing_even_forced(fake_redis):
+    stale = _token(access_token="OLD", expires_at=int(time.time()) + 10)
+    tvo.persist_token(_token(access_token="ROTATED", expires_at=int(time.time()) + 3600))
+    with patch("apps.secrets.tradingview_oauth.refresh") as r:
+        out = tvo._refresh_under_lock(stale, force=True, meta=AS_META)
+    assert out == "ROTATED"
+    r.assert_not_called()
+
+
+def test_release_lock_is_a_noop_when_the_value_mismatches(fake_redis):
+    fake_redis.set(tvo._REFRESH_LOCK_KEY, "someone-elses-value", ex=120)
+    tvo._release_lock("our-value")
+    assert fake_redis.get(tvo._REFRESH_LOCK_KEY) == b"someone-elses-value"
+
+
+def test_release_lock_deletes_when_the_value_matches(fake_redis):
+    fake_redis.set(tvo._REFRESH_LOCK_KEY, "our-value", ex=120)
+    tvo._release_lock("our-value")
+    assert fake_redis.get(tvo._REFRESH_LOCK_KEY) is None
+
+
+@pytest.mark.django_db
+def test_wait_for_other_refresh_times_out_to_stale_token(fake_redis):
+    stale = _token(access_token="STALE", expires_at=int(time.time()) + 10)
+    tvo.persist_token(stale)
+    times = iter([0.0, 0.1, 5.1])  # 3rd check exceeds the 5.0s deadline
+    with (
+        patch("apps.secrets.tradingview_oauth._SLEEP", return_value=None),
+        patch("apps.secrets.tradingview_oauth.time.monotonic", side_effect=lambda: next(times)),
+    ):
+        out = tvo._wait_for_other_refresh(stale)
+    assert out == "STALE"
 
 
 @pytest.mark.django_db
