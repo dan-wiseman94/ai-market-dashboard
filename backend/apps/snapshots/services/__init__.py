@@ -219,8 +219,14 @@ _FETCHERS = {
     "filings": lambda *, watchlist_tickers, **_: {
         # Equity-like only — futures roots / indices aren't SEC filers, and a
         # bogus key ("NQ") in the payload reads as "no filings" to the AI.
+        # Form 4 rides a SEPARATE call (its own limit=5, max_age_days=45) —
+        # sharing the base call's limit=10 budget would let frequent Form 4s
+        # evict 10-K/10-Q/8-K rows from a busy filer.
         "data": {
-            t: edgar_fetch_filings(t)
+            t: {
+                "filings": edgar_fetch_filings(t),
+                "insider": edgar_fetch_filings(t, forms=("4",), limit=5, max_age_days=45),
+            }
             for t in [s for s in list(watchlist_tickers) if is_equity_like(s)][:6]
         },
     },

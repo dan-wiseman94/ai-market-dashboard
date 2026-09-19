@@ -163,6 +163,8 @@ def _title(kind: str) -> str:
         "overnight": "Overnight board",
         "fundamentals": "Company fundamentals",
         "vix": "VIX term structure",
+        "filings": "SEC filings",
+        "treasury": "Treasury",
     }.get(kind, kind.title())
 
 
@@ -945,6 +947,57 @@ def _render_vix(payload) -> str:
     return "\n".join(lines)
 
 
+def _render_filings(payload) -> str:
+    if not isinstance(payload, dict) or not payload:
+        return "## SEC filings\n_(none)_"
+    lines = ["## SEC filings"]
+    any_rows = False
+    for ticker, entry in payload.items():
+        rows = entry.get("filings") if isinstance(entry, dict) else entry
+        insider = entry.get("insider", []) if isinstance(entry, dict) else []
+        if not rows and not insider:
+            continue
+        any_rows = True
+        lines.append(f"\n### {ticker}")
+        if rows:
+            lines += ["| Form | Filed | Title |", "|---|---|---|"]
+            for f in rows:
+                lines.append(
+                    f"| {f.get('form')} | {f.get('filed')} | [{f.get('title')}]({f.get('url')}) |"
+                )
+        if insider:
+            lines.append(
+                "**Insider activity (Form 4):** "
+                + "; ".join(f"{i.get('filed')} [{i.get('title')}]({i.get('url')})" for i in insider)
+            )
+    return "\n".join(lines) if any_rows else "## SEC filings\n_(none)_"
+
+
+def _render_treasury(payload: dict) -> str:
+    """Average interest rates by security + total public debt.
+
+    payload keys (apps.market.services.treasury.fetch_treasury):
+    {"rates": {"record_date": "YYYY-MM-DD", "rates": {security_desc: float}},
+     "debt": {"record_date": "YYYY-MM-DD", "total_public_debt": float}}.
+    Either sub-dict independently degrades to {} on fetch failure.
+    """
+    if not isinstance(payload, dict):
+        return "## Treasury\n_(unavailable)_"
+    rates = (payload.get("rates") or {}).get("rates") or {}
+    debt = payload.get("debt") or {}
+    total_debt = debt.get("total_public_debt")
+    if not rates and total_debt is None:
+        return "## Treasury\n_(unavailable)_"
+    lines = ["## Treasury"]
+    if rates:
+        lines += ["| Security | Avg rate |", "|---|---:|"]
+        for security, rate in rates.items():
+            lines.append(f"| {security} | {_fmt(rate)}% |")
+    if total_debt is not None:
+        lines.append(f"- Debt to the penny: ${total_debt:,.0f}")
+    return "\n".join(lines)
+
+
 _RENDERERS = {
     "quotes": _render_quotes,
     "ohlc": _render_ohlc,
@@ -960,4 +1013,6 @@ _RENDERERS = {
     "macro": _render_macro,
     "notes": lambda _p: "",
     "vix": _render_vix,
+    "filings": _render_filings,
+    "treasury": _render_treasury,
 }
