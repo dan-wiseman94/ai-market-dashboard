@@ -6,10 +6,10 @@ forward return + price path, assigns a DETERMINISTIC verdict (so the loop closes
 even with no AI key), and BEST-EFFORT generates an AI narrative via structured
 output on the thesis's provider, posting it into the per-thesis review thread.
 
-Mirrors apps.observer.services.run for provider/cap resolution and graceful
-failure. The hard contract here: the AI narrative is best-effort and NEVER
-raises out of the runner — the objective verdict, forward return, and "done"
-status must always persist.
+Resolves its provider through ``apps.ai.structured`` and degrades gracefully.
+The hard contract here: the AI narrative is best-effort and NEVER raises out
+of the runner — the objective verdict, forward return, and "done" status must
+always persist.
 """
 
 from __future__ import annotations

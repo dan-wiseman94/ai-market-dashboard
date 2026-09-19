@@ -136,7 +136,6 @@ def test_cost_cap_exceeded_skips_without_calling_ai(profile, provider_cfg, snaps
 
 def test_openai_profile_runs_revision(profile, snapshot):
     profile.default_provider = "openai"
-    profile.default_model = ""  # names no model → falls to the catalog default
     profile.save()
     cfg = ProviderConfig.objects.create(provider="openai", enabled=True)
     cfg.api_key = "sk-oai"
