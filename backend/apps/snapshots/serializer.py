@@ -281,6 +281,43 @@ def _ohlc_csv(bars: list[dict], ticker: str) -> str:
     return result
 
 
+def _long_horizon_summary(ticker: str | None) -> str:
+    """52-week context off stored daily bars — the persisted OHLCBar archive
+    otherwise never reaches the prompt. Empty string when bars are thin."""
+    if not ticker:
+        return ""
+    try:
+        from apps.market.models import OHLCBar
+        from apps.market.services.intel import return_over_sessions
+
+        closes = [
+            float(b.close)
+            for b in OHLCBar.objects.filter(ticker=ticker.upper(), timeframe="1d").order_by("-ts")[
+                :252
+            ]
+        ]
+    except Exception:
+        # Database not available (e.g., unit tests without django_db mark), or other errors.
+        return ""
+    if len(closes) < 20:
+        return ""
+    last, hi, lo = closes[0], max(closes), min(closes)
+    bits = [
+        f"{len(closes)}-session high {hi:.2f} / low {lo:.2f}",
+        f"{(last - hi) / hi * 100:+.1f}% off high",
+    ]
+    for p in (20, 50, 200):
+        if len(closes) >= p:
+            sma = sum(closes[:p]) / p
+            bits.append(f"{(last - sma) / sma * 100:+.1f}% vs {p}dSMA")
+    rets = [
+        f"{w}d {r:+.1f}%" for w in (5, 20, 60) if (r := return_over_sessions(ticker, w)) is not None
+    ]
+    if rets:
+        bits.append("returns " + ", ".join(rets))
+    return "\n\n**Longer horizon (stored daily bars):** " + " | ".join(bits)
+
+
 def _render_ohlc(payload: dict) -> str:
     bars = payload.get("bars", [])
     if not bars:
@@ -310,6 +347,9 @@ def _render_ohlc(payload: dict) -> str:
             )
     if payload.get("watchlist_daily_omitted"):
         result += "\n\n_(per-ticker watchlist daily history omitted to fit the token budget)_"
+    long_horizon = _long_horizon_summary(ticker if ticker != "?" else None)
+    if long_horizon:
+        result += long_horizon
     return result
 
 
