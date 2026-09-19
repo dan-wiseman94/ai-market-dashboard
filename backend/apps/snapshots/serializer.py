@@ -92,7 +92,14 @@ def serialize_for_ai(
             err = sec.error if sec else "missing"
             rendered[kind] = f"## {_title(kind)}\n_(unavailable: {err})_"
             continue
-        text = _render_section(kind, sec.payload)
+        if kind == "chain":
+            text = _render_chain(
+                sec.payload,
+                ticker=(sec.payload or {}).get("ticker", "?"),
+                captured_at=snapshot.captured_at,
+            )
+        else:
+            text = _render_section(kind, sec.payload)
         if text:
             rendered[kind] = text
 
@@ -526,21 +533,20 @@ def _or_dash(v) -> str:
     return "—" if v is None else str(v)
 
 
-def _render_chain(payload: dict, *, ticker: str = "?") -> str:
-    from apps.market.services.option_analytics import chain_analytics
+def _flatten_contracts(expiries: dict) -> list[dict]:
+    """Flatten {expiry: {"calls": [...], "puts": [...]}} into one list, tagging side+expiry."""
+    flat: list[dict] = []
+    for exp, section in expiries.items():
+        for contract in section.get("calls", []):
+            flat.append({**contract, "side": "call", "expiry": exp})
+        for contract in section.get("puts", []):
+            flat.append({**contract, "side": "put", "expiry": exp})
+    return flat
 
-    underlying = payload.get("underlying_last")
-    header = f"## Option chain — {ticker}"
-    if underlying:
-        header += f" (underlying ${underlying})"
-    expiries = payload.get("expiries") or {}
-    if not expiries:
-        return f"{header}\n_(no expiries)_"
 
-    # Keep the 2 nearest expiries (sorted ascending; payload may include weeklies + monthlies).
-    keep = sorted(expiries.keys())[:2]
-
-    lines = [header]
+def _render_expiry_tables(keep: list[str], expiries: dict) -> list[str]:
+    """Per-expiry call/put strike tables for the nearest `keep` expiries."""
+    lines: list[str] = []
     for exp in keep:
         section = expiries[exp]
         calls_by_strike = {c["strike"]: c for c in section.get("calls", [])}
@@ -560,6 +566,64 @@ def _render_chain(payload: dict, *, ticker: str = "?") -> str:
                 f"{_or_dash(p.get('bid'))} | {_or_dash(p.get('ask'))} | "
                 f"{_or_dash(p.get('delta'))} | {_or_dash(p.get('iv'))} |"
             )
+    return lines
+
+
+def _sf(v) -> float:
+    try:
+        return float(v or 0)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _top_strikes(flat: list[dict], side: str, key: str) -> str:
+    rows = sorted(
+        (c for c in flat if c.get("side") == side and _sf(c.get(key)) > 0),
+        key=lambda c: _sf(c.get(key)),
+        reverse=True,
+    )[:5]
+    return ", ".join(f"{c.get('strike')} ({c.get('expiry')}) {int(_sf(c.get(key))):,}" for c in rows)
+
+
+def _render_top_strikes_lines(flat: list[dict]) -> list[str]:
+    """Top-5-by-volume and top-5-by-OI strikes, calls and puts side by side."""
+    lines: list[str] = []
+    for label, key in (("volume", "volume"), ("OI", "oi")):
+        calls_s, puts_s = _top_strikes(flat, "call", key), _top_strikes(flat, "put", key)
+        if calls_s or puts_s:
+            lines.append(f"\n**Top {label} strikes** — calls: {calls_s or '—'} | puts: {puts_s or '—'}")
+    return lines
+
+
+def _render_unusual_activity_lines(ticker: str, captured_at) -> list[str]:
+    """Unusual-options lookup for this chain; failure-proof — degrades to no block."""
+    if captured_at is None or ticker in ("?", "", None):
+        return []
+    try:
+        from apps.analytics.services.unusual_options import unusual_options
+
+        flagged = unusual_options(ticker=ticker, at=captured_at, top_n=5)
+    except Exception:
+        flagged = []
+    if not flagged:
+        return []
+    return ["\n**Unusual activity:**", *(f"- {_describe_unusual(row)}" for row in flagged)]
+
+
+def _render_chain(payload: dict, *, ticker: str = "?", captured_at=None) -> str:
+    from apps.market.services.option_analytics import chain_analytics
+
+    underlying = payload.get("underlying_last")
+    header = f"## Option chain — {ticker}"
+    if underlying:
+        header += f" (underlying ${underlying})"
+    expiries = payload.get("expiries") or {}
+    if not expiries:
+        return f"{header}\n_(no expiries)_"
+
+    # Keep the 2 nearest expiries (sorted ascending; payload may include weeklies + monthlies).
+    keep = sorted(expiries.keys())[:2]
+    lines = [header, *_render_expiry_tables(keep, expiries)]
 
     # Chain analytics — computed over ALL expiries in the payload (not just the 2 displayed).
     try:
@@ -567,12 +631,7 @@ def _render_chain(payload: dict, *, ticker: str = "?") -> str:
     except (TypeError, ValueError):
         spot = None
 
-    flat: list[dict] = []
-    for exp, section in expiries.items():
-        for contract in section.get("calls", []):
-            flat.append({**contract, "side": "call", "expiry": exp})
-        for contract in section.get("puts", []):
-            flat.append({**contract, "side": "put", "expiry": exp})
+    flat = _flatten_contracts(expiries)
 
     analytics = chain_analytics(flat, spot=spot)
     lines.append("\n### Chain analytics")
@@ -588,7 +647,28 @@ def _render_chain(payload: dict, *, ticker: str = "?") -> str:
         priced = " · ".join(f"±{r['move_pct'] * 100:.1f}% ({r['horizon_days']}d)" for r in em_rows)
         lines.append(f"\n**Options-implied move (1σ):** {priced}")
 
+    lines.extend(_render_top_strikes_lines(flat))
+    lines.extend(_render_unusual_activity_lines(ticker, captured_at))
+
     return "\n".join(lines)
+
+
+def _describe_unusual(row: dict) -> str:
+    """Format one apps.analytics.services.unusual_options flagged-row dict.
+
+    Row keys: side ("call"|"put"), strike, expiry, volume, oi, volume_ratio
+    (volume / max(oi, 1)), iv_z, triggers, score.
+    """
+    side = row.get("side", "?")
+    strike = row.get("strike", "?")
+    expiry = row.get("expiry", "?")
+    vol_ratio = row.get("volume_ratio")
+    ratio_s = f"{vol_ratio:.1f}" if vol_ratio is not None else "—"
+    volume = row.get("volume")
+    oi = row.get("oi")
+    vol_s = f"{volume:,}" if isinstance(volume, int | float) else "—"
+    oi_s = f"{oi:,}" if isinstance(oi, int | float) else "—"
+    return f"{side} {strike} {expiry}: vol/OI {ratio_s} — volume {vol_s} vs OI {oi_s}"
 
 
 def _render_chain_analytics(a: dict) -> str:
@@ -625,6 +705,11 @@ def _render_chain_analytics(a: dict) -> str:
     gex_total_s = f"{total_gex:,.0f}" if total_gex is not None else "—"
     gex_flip_s = _fmt(flip) if flip is not None else "—"
     parts.append(f"- Dealer GEX total: {gex_total_s} | zero-gamma flip strike: {gex_flip_s}")
+
+    by_strike = gex.get("by_strike") or []
+    if by_strike:
+        walls = ", ".join(f"{_fmt(r['strike'])}: {r['gex']:,.0f}" for r in by_strike)
+        parts.append(f"- GEX by strike (top {len(by_strike)}, gamma walls): {walls}")
 
     return "\n".join(parts)
 
@@ -839,7 +924,8 @@ def _render_vix(payload) -> str:
 _RENDERERS = {
     "quotes": _render_quotes,
     "ohlc": _render_ohlc,
-    "chain": lambda p: _render_chain(p, ticker=p.get("ticker", "?")),
+    # "chain" is NOT here: serialize_for_ai special-cases it to pass captured_at
+    # through to _render_chain (for the unusual-activity lookup) — see the loop above.
     "positions": _render_positions,
     "breadth": _render_breadth,
     "news": _render_news,

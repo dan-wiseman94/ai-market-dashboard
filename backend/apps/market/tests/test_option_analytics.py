@@ -393,6 +393,22 @@ class TestGex:
         assert "convention" in result
         assert "heuristic" in result["convention"]
 
+    def test_gex_reports_top_strikes(self):
+        contracts = [
+            {"side": "call", "strike": 100, "gamma": "0.05", "oi": "1000"},
+            {"side": "put", "strike": 95, "gamma": "0.04", "oi": "2000"},
+            {"side": "call", "strike": 105, "gamma": "0.01", "oi": "100"},
+        ]
+        out = _gex(contracts, spot=100.0)
+        strikes = [r["strike"] for r in out["by_strike"]]
+        assert strikes == sorted(strikes)  # ascending for the render
+        assert {r["strike"] for r in out["by_strike"]} == {95.0, 100.0, 105.0}
+        assert out["by_strike"][0]["gex"] < 0  # 95 put wall is negative
+
+    def test_gex_degrade_returns_carry_empty_by_strike(self):
+        assert _gex([], spot=None)["by_strike"] == []
+        assert _gex([], spot=100.0)["by_strike"] == []
+
 
 class TestChainAnalytics:
     def test_returns_all_keys(self):
