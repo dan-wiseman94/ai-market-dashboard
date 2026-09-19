@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import threading
 from unittest.mock import patch
 
 import fakeredis
@@ -187,6 +188,68 @@ def test_429_raises_rate_limited_without_retry():
     ):
         mcp.call_tool("x")
     assert len(server.requests) == 3
+
+
+def test_generic_http_error_raises_mcp_error_without_retry():
+    server = _Server([lambda req: _rpc(req["id"], {}), httpx.Response(202), httpx.Response(500)])
+    with (
+        patch("apps.market.services.tradingview_mcp.httpx.post", side_effect=server),
+        pytest.raises(mcp.TradingViewMCPError, match="500"),
+    ):
+        mcp.call_tool("x")
+    assert len(server.requests) == 3
+
+
+def test_forget_session_blocks_until_initialize_releases_the_lock():
+    """`_forget_session()` and `_send`'s initialize-bootstrap share ``_session_lock``:
+    a call to `_forget_session()` while another thread is inside `_initialize` (holding
+    the lock) must block until that thread releases it, rather than racing it to mutate
+    `_state`. Synchronized entirely via threading.Event + the lock itself — the short
+    `wait()`/`join()` timeouts are assertion polls, not the ordering mechanism (ordering
+    is guaranteed by `_session_lock` being held for the whole duration)."""
+    started = threading.Event()
+    proceed = threading.Event()
+    forgotten = threading.Event()
+
+    def fake_initialize(_token):
+        started.set()
+        assert proceed.wait(timeout=5), "test setup: proceed was never signalled"
+        mcp._state["session_id"] = "s-1"
+        mcp._state["initialized"] = True
+
+    def bootstrap():
+        with mcp._session_lock:
+            if not mcp._state["initialized"]:
+                mcp._initialize("tok")
+
+    def forget():
+        mcp._forget_session()
+        forgotten.set()
+
+    with patch("apps.market.services.tradingview_mcp._initialize", side_effect=fake_initialize):
+        t1 = threading.Thread(target=bootstrap)
+        t1.start()
+        assert started.wait(timeout=5), "initialize never started"
+
+        # By now t1 has entered `with _session_lock:` and is blocked inside
+        # fake_initialize, so the lock is provably held by another thread.
+        acquired = mcp._session_lock.acquire(blocking=False)
+        if acquired:
+            mcp._session_lock.release()
+        assert not acquired
+
+        t2 = threading.Thread(target=forget)
+        t2.start()
+        # t2 cannot possibly finish yet: the lock stays held until `proceed` is set.
+        assert not forgotten.wait(timeout=0.2), "_forget_session ran while the lock was held"
+
+        proceed.set()
+        t1.join(timeout=5)
+        t2.join(timeout=5)
+
+    assert forgotten.is_set()
+    # forget ran only after initialize finished, so it undid the freshly-set state.
+    assert mcp._state == {"initialized": False, "session_id": None}
 
 
 def test_jsonrpc_error_object_raises():

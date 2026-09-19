@@ -39,8 +39,8 @@ TOOLS_CACHE_TTL_SECONDS = 3600
 _TIMEOUT = 20.0
 _MAX_PAGES = 20
 
-_state: dict[str, Any] = {"initialized": False, "session_id": None, "last_id": 0}
-_session_lock = threading.Lock()
+_state: dict[str, Any] = {"initialized": False, "session_id": None}
+_session_lock = threading.RLock()
 _ids = count(1)
 
 
@@ -72,19 +72,14 @@ def _redis() -> redis.Redis:
     return redis.Redis.from_url(settings.REDIS_URL)
 
 
-def _last_id() -> int:
-    return int(_state["last_id"])
-
-
 def _next_id() -> int:
-    rpc_id = next(_ids)
-    _state["last_id"] = rpc_id
-    return rpc_id
+    return next(_ids)
 
 
 def _forget_session() -> None:
-    _state["initialized"] = False
-    _state["session_id"] = None
+    with _session_lock:
+        _state["initialized"] = False
+        _state["session_id"] = None
 
 
 def reset_state() -> None:
