@@ -37,6 +37,12 @@ class Command(BaseCommand):
             "--model", required=True, help="Model id to evaluate, e.g. claude-opus-4-8"
         )
         parser.add_argument(
+            "--provider",
+            default="claude",
+            choices=["claude", "openai", "local"],
+            help="Provider that serves --model (default: claude).",
+        )
+        parser.add_argument(
             "--system-file",
             default=None,
             help="Path to a file holding the system prompt, or '-' to read stdin. "
@@ -67,7 +73,7 @@ class Command(BaseCommand):
         system = self._read_system(options["system_file"])
 
         try:
-            preflight_cost_cap("claude")
+            preflight_cost_cap(options["provider"])
         except CostCapExceededError as exc:
             raise CommandError(str(exc)) from exc
 
@@ -77,6 +83,7 @@ class Command(BaseCommand):
             label=options["label"],
             horizon=options["horizon"],
             limit=options["limit"],
+            provider=options["provider"],
         )
 
         if res["n"] == 0:
@@ -92,7 +99,7 @@ class Command(BaseCommand):
 
         self.stdout.write(
             self.style.SUCCESS(
-                f"variant={res['label']} model={res['model']} "
+                f"variant={res['label']} provider={res['provider']} model={res['model']} "
                 f"n={res['n']} scored={res['scored']} skipped={res['skipped']} "
                 f"hit_rate={res['hit_rate']} brier={res['brier']} "
                 f"avg_confidence={res['avg_confidence']}"
