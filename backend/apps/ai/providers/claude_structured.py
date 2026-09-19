@@ -1,12 +1,11 @@
 """One-shot structured Claude run. Returns a parsed Pydantic model or raises.
 
-Separate from the streaming ClaudeProvider so we don't mix two different
-return contracts. Intended for Observer / trigger analyses where we want a
-typed result in one go, not token streaming to the UI.
+The Anthropic implementation behind ``apps.ai.structured.run_structured`` for
+Claude-family providers. Separate from the streaming ClaudeProvider so the two
+return contracts (typed one-shot vs event stream) stay apart.
 
-Uses anthropic>=0.96's native `messages.parse` which takes an `output_format`
-Pydantic class and returns a `ParsedMessage` whose `.parsed_output` is an
-instance of the same class.
+Uses ``messages.parse``, which takes an ``output_format`` Pydantic class and
+returns a ``ParsedMessage`` whose ``.parsed_output`` is an instance of that class.
 """
 
 from __future__ import annotations
