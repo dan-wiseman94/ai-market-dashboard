@@ -11,6 +11,7 @@ vi.mock("@/hooks/useSchedules", () => ({
   useDeleteSchedule: () => ({ mutate: vi.fn() }),
   useRunSchedule: () => ({ mutate: vi.fn() }),
   useCreateSchedule: () => ({ mutateAsync: mockCreate, isPending: false }),
+  useUpdateScheduleIncludes: () => ({ mutate: vi.fn() }),
 }));
 vi.mock("@/hooks/useProfiles", () => ({
   useProfiles: () => ({ data: [{ id: 1, name: "P1" }] }),
