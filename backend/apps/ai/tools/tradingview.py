@@ -15,15 +15,22 @@ only source of exposable names; new beta tools stay out until added here.
 
 from __future__ import annotations
 
+import json
 import logging
+import re
 from collections.abc import Callable
 from typing import Any
+
+from django.core.exceptions import SynchronousOnlyOperation
 
 from apps.ai.tools import Toolset, ToolSpec
 
 log = logging.getLogger(__name__)
 
 TV_PREFIX = "tv_"
+MAX_RESULT_CHARS = 32_000
+_MAX_DESCRIPTION_CHARS = 1_000
+_CONTROL_CHAR_RE = re.compile(r"[\x00-\x1f\x7f]")
 TRADINGVIEW_TOOL_ALLOWLIST: frozenset[str] = frozenset(
     {
         "list_watchlists",
@@ -59,11 +66,40 @@ _SYMBOL_NOTE = (
 )
 
 
+def _cap_result(result: Any) -> Any:
+    """Cap a tool result at ``MAX_RESULT_CHARS`` of serialized JSON so a wide screener/
+    OHLCV pull can't blow the request's token budget or a downstream log line."""
+    text = json.dumps(result, default=str)
+    if len(text) <= MAX_RESULT_CHARS:
+        return result
+    return {
+        "truncated": True,
+        "chars": len(text),
+        "preview": text[:MAX_RESULT_CHARS],
+        "note": (
+            "TradingView result truncated to 32,000 chars; narrow the request "
+            "(fewer bars/rows, a specific symbol)."
+        ),
+    }
+
+
+def _clean_description(text: str) -> str:
+    """Strip ASCII control characters and cap length — a hostile/malformed upstream
+    description must not blow up the provider's tools= payload."""
+    return _CONTROL_CHAR_RE.sub("", text)[:_MAX_DESCRIPTION_CHARS]
+
+
 def _runner(tool_name: str) -> Callable[..., Any]:
     def run(**kwargs: Any) -> Any:
-        from apps.market.services.tradingview_mcp import call_tool
+        from apps.core.runtime_config import runtime_config
+        from apps.market.services import tradingview, tradingview_mcp
 
-        return call_tool(tool_name, kwargs)
+        if not runtime_config().tradingview_tools_enabled:
+            raise RuntimeError("TradingView tools are disabled in Settings → Connections")
+        if not tradingview.is_connected():
+            raise RuntimeError("TradingView is not connected")
+        result = tradingview_mcp.call_tool(tool_name, kwargs)
+        return _cap_result(result)
 
     run.__name__ = f"{TV_PREFIX}{tool_name}"
     return run
@@ -84,7 +120,7 @@ def _spec_from(tool: dict) -> ToolSpec | None:
     if not isinstance(props, dict):
         props = {}
         schema["properties"] = props
-    description = f"TradingView: {tool.get('description') or name}"
+    description = _clean_description(f"TradingView: {tool.get('description') or name}")
     if "symbol" in props or "symbols" in props:
         description += _SYMBOL_NOTE
     return ToolSpec(
@@ -112,6 +148,10 @@ def tradingview_toolset() -> Toolset:
                 continue
             if spec is not None:
                 toolset.register(spec)
+    except SynchronousOnlyOperation:
+        # Misuse from an async context (calling this off the sync request-assembly
+        # path) must fail loudly, not degrade to an empty toolset.
+        raise
     except Exception:
         log.warning("TradingView tools unavailable for this run", exc_info=True)
         return Toolset()

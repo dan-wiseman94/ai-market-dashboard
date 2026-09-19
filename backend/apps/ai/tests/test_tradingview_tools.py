@@ -149,17 +149,121 @@ def test_resolve_dynamic_only_allowlisted_tv_names() -> None:
 
 def test_tv_spec_runs_call_tool_with_kwargs() -> None:
     spec = bridge.resolve_dynamic("tv_get_ohlcv")
-    with patch("apps.market.services.tradingview_mcp.call_tool", return_value={"bars": []}) as c:
+    with (
+        _enabled(True),
+        patch("apps.market.services.tradingview.is_connected", return_value=True),
+        patch("apps.market.services.tradingview_mcp.call_tool", return_value={"bars": []}) as c,
+    ):
         assert spec.fn(symbol="NASDAQ:AAPL", interval="1D") == {"bars": []}
     c.assert_called_once_with("get_ohlcv", {"symbol": "NASDAQ:AAPL", "interval": "1D"})
 
 
 def test_default_toolset_dispatches_tv_names_without_io() -> None:
     ts = default_toolset()
-    with patch("apps.market.services.tradingview_mcp.call_tool", return_value="ok") as c:
+    with (
+        _enabled(True),
+        patch("apps.market.services.tradingview.is_connected", return_value=True),
+        patch("apps.market.services.tradingview_mcp.call_tool", return_value="ok") as c,
+    ):
         assert ts.run("tv_get_news", {"symbol": "NASDAQ:AAPL"}) == {"ok": True, "result": "ok"}
         assert ts.run("tv_create_alert", {"symbol": "x", "price": 1})["ok"] is False
     c.assert_called_once()
+
+
+def test_runner_raises_when_toggle_disabled_and_call_tool_not_invoked() -> None:
+    spec = bridge.resolve_dynamic("tv_get_news")
+    with (
+        _enabled(False),
+        patch("apps.market.services.tradingview_mcp.call_tool") as c,
+        pytest.raises(RuntimeError, match="disabled"),
+    ):
+        spec.fn(symbol="NASDAQ:AAPL")
+    c.assert_not_called()
+
+
+def test_default_toolset_run_surfaces_disabled_toggle_as_ok_false() -> None:
+    ts = default_toolset()
+    with _enabled(False), patch("apps.market.services.tradingview_mcp.call_tool") as c:
+        result = ts.run("tv_get_news", {"symbol": "NASDAQ:AAPL"})
+    assert result["ok"] is False
+    assert "disabled" in result["error"]
+    c.assert_not_called()
+
+
+def test_runner_raises_when_not_connected_and_call_tool_not_invoked() -> None:
+    spec = bridge.resolve_dynamic("tv_get_news")
+    with (
+        _enabled(True),
+        patch("apps.market.services.tradingview.is_connected", return_value=False),
+        patch("apps.market.services.tradingview_mcp.call_tool") as c,
+        pytest.raises(RuntimeError, match="not connected"),
+    ):
+        spec.fn(symbol="NASDAQ:AAPL")
+    c.assert_not_called()
+
+
+def test_default_toolset_run_surfaces_not_connected_as_ok_false() -> None:
+    ts = default_toolset()
+    with (
+        _enabled(True),
+        patch("apps.market.services.tradingview.is_connected", return_value=False),
+        patch("apps.market.services.tradingview_mcp.call_tool") as c,
+    ):
+        result = ts.run("tv_get_news", {"symbol": "NASDAQ:AAPL"})
+    assert result["ok"] is False
+    assert "not connected" in result["error"]
+    c.assert_not_called()
+
+
+def test_cap_result_truncates_oversized_results_and_passes_small_ones_through() -> None:
+    big = {"bars": ["x" * 200 for _ in range(500)]}
+    capped = bridge._cap_result(big)
+    assert capped["truncated"] is True
+    assert capped["chars"] > bridge.MAX_RESULT_CHARS
+    assert len(capped["preview"]) == bridge.MAX_RESULT_CHARS
+    assert "note" in capped
+
+    small = {"bars": [1, 2, 3]}
+    assert bridge._cap_result(small) == small
+
+
+def test_runner_caps_an_oversized_call_tool_result() -> None:
+    spec = bridge.resolve_dynamic("tv_get_ohlcv")
+    huge = {"bars": ["x" * 200 for _ in range(500)]}
+    with (
+        _enabled(True),
+        patch("apps.market.services.tradingview.is_connected", return_value=True),
+        patch("apps.market.services.tradingview_mcp.call_tool", return_value=huge),
+    ):
+        result = spec.fn(symbol="NASDAQ:AAPL")
+    assert result["truncated"] is True
+
+
+def test_spec_from_caps_and_cleans_control_chars_in_description() -> None:
+    long_desc = ("A" * 4_999) + "\x07"  # 5,000 chars total, a bell control char at the end
+    spec = bridge._spec_from(
+        {
+            "name": "get_news",
+            "description": long_desc,
+            "inputSchema": {"type": "object", "properties": {}},
+        }
+    )
+    assert spec is not None
+    assert "\x07" not in spec.description
+    assert len(spec.description) == 1_000
+
+
+def test_tradingview_toolset_reraises_synchronous_only_operation() -> None:
+    from django.core.exceptions import SynchronousOnlyOperation
+
+    with (
+        patch(
+            "apps.core.runtime_config.runtime_config",
+            side_effect=SynchronousOnlyOperation("blocked"),
+        ),
+        pytest.raises(SynchronousOnlyOperation),
+    ):
+        bridge.tradingview_toolset()
 
 
 @pytest.mark.django_db
