@@ -80,6 +80,24 @@ def test_rebuttal_runs_extra_round(monkeypatch):
     assert any(n == 0 for _p, n in calls) and any(n > 0 for _p, n in calls)
 
 
+@override_settings(CELERY_TASK_ALWAYS_EAGER=True, CELERY_TASK_EAGER_PROPAGATES=True)
+def test_run_debate_errors_when_no_provider_for_synthesis(monkeypatch):
+    """Voices and arguments exist, but no usable provider remains for the verdict:
+    the run ends in error with the synthesis message, and synthesize is never called."""
+    _patch(monkeypatch)
+    monkeypatch.setattr(T, "_synth_target", lambda: None)
+    called = {}
+    monkeypatch.setattr(T, "synthesize", lambda ctx, args, **kw: called.update(kw))
+
+    run = CV.convene(free_prompt="Is the tape risk-on?")
+    run.refresh_from_db()
+
+    assert run.status == "error"
+    assert "no provider available for synthesis" in run.error
+    assert called == {}
+    assert not Message.objects.filter(thread=run.thread, content__kind="warroom_verdict").exists()
+
+
 def test_synth_target_resolves_first_enabled_provider_and_checks_caps(monkeypatch):
     from apps.secrets.models import ProviderConfig
 
