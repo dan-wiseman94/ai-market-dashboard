@@ -278,6 +278,12 @@ def _normalize_news(raw: dict, ticker: str) -> dict | None:
         return None
     if published > 1e11:
         published //= 1000
+    try:
+        published_at = datetime.fromtimestamp(published, tz=UTC).isoformat()
+    except (OverflowError, OSError, ValueError):
+        # Out-of-range epoch (e.g. a bogus huge int the ms heuristic doesn't tame) —
+        # drop the item, same as a malformed bar.
+        return None
     url = str(raw.get("link") or raw.get("url") or "")
     if not url and raw.get("storyPath"):
         url = f"{TV_NEWS_BASE}{raw['storyPath']}"
@@ -289,7 +295,7 @@ def _normalize_news(raw: dict, ticker: str) -> dict | None:
         "url": url[:1024],
         "source": str(_first(raw, "provider", "source") or "")[:64],
         "datetime": published,
-        "published_at": datetime.fromtimestamp(published, tz=UTC).isoformat(),
+        "published_at": published_at,
         "ticker": ticker,
         "related": ticker,
         "tickers": [ticker],
@@ -298,7 +304,11 @@ def _normalize_news(raw: dict, ticker: str) -> dict | None:
 
 
 def fetch_news(tickers: list[str], *, limit: int = 15) -> list[dict]:
-    """Newest-first headlines for up to five tickers, deduped, upserted as NewsItem rows."""
+    """Newest-first headlines for up to five tickers, deduped, upserted as NewsItem rows.
+
+    Never raises: a malformed item is skipped and a persistence failure still returns
+    the normalized headlines (best-effort persistence, never-raise fetch).
+    """
     from apps.market.services.news import _upsert_items
 
     items: list[dict] = []
@@ -313,7 +323,13 @@ def fetch_news(tickers: list[str], *, limit: int = 15) -> list[dict]:
             log.warning("tradingview.news_failed ticker=%s: %s", ticker, safe_err(exc))
             continue
         for raw in _rows(result, "items", "news", "data", "results"):
-            item = _normalize_news(raw, ticker)
+            try:
+                item = _normalize_news(raw, ticker)
+            except Exception as exc:
+                log.warning(
+                    "tradingview.news_normalize_failed ticker=%s: %s", ticker, safe_err(exc)
+                )
+                continue
             if item:
                 items.append(item)
     seen: set[str] = set()
@@ -324,5 +340,8 @@ def fetch_news(tickers: list[str], *, limit: int = 15) -> list[dict]:
         seen.add(item["id"])
         deduped.append(item)
     deduped = deduped[:limit]
-    _upsert_items(PROVIDER, deduped)
+    try:
+        _upsert_items(PROVIDER, deduped)
+    except Exception as exc:
+        log.warning("tradingview.news_persist_failed: %s", safe_err(exc))
     return deduped
