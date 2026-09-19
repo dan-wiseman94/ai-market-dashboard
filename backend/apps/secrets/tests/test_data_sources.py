@@ -6,6 +6,7 @@ import json
 from types import SimpleNamespace
 from unittest.mock import patch
 
+import fakeredis
 import pytest
 
 from apps.secrets.models import ApiCredential
@@ -222,3 +223,37 @@ def test_test_credential_probes_env_key(settings):
         result = mod.test_credential("fred")
     assert result["ok"] is True
     assert seen == {"api_key": "env-k"}
+
+
+# --- TradingView: OAuth-authed catalog entry (MCP server) ------------------------------
+
+
+@pytest.mark.django_db
+def test_list_includes_tradingview_oauth_entry(api):
+    r = api.get("/api/schwab/data-sources/")
+    tv = {d["provider"]: d for d in r.json()["data_sources"]}["tradingview"]
+    assert tv["auth"] == "oauth"
+    assert tv["fields"] == []
+    assert tv["status"]["configured"] is False
+
+
+@pytest.mark.django_db
+def test_list_reports_tradingview_connected_and_auth_error(api):
+    ApiCredential.objects.create(provider="tradingview", token={"access_token": "a"})
+    fake = fakeredis.FakeStrictRedis()
+    with patch("apps.core.provider_health._redis", lambda: fake):
+        from apps.core import provider_health
+
+        provider_health.mark_auth_error("tradingview", "rejected")
+        r = api.get("/api/schwab/data-sources/")
+    tv = {d["provider"]: d for d in r.json()["data_sources"]}["tradingview"]
+    assert tv["status"]["configured"] is True
+    assert tv["status"]["auth_error"] == "rejected"
+    assert "access_token" not in r.content.decode()
+
+
+@pytest.mark.django_db
+def test_put_on_tradingview_is_not_key_managed(api):
+    r = api.put("/api/schwab/data-sources/tradingview/", data={"api_key_write": "x"}, format="json")
+    assert r.status_code == 400
+    assert r.json()["code"] == "not_key_managed"
