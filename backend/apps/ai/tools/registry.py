@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from apps.ai.tools import Toolset, ToolSpec
+from apps.ai.tools.tradingview import resolve_dynamic
 from apps.market.services.chain import fetch_chain as fetch_chain_svc
 from apps.market.services.indicator import compute as compute_ind_svc
 from apps.market.services.news import fetch_news as fetch_news_svc
@@ -236,4 +237,16 @@ def default_toolset() -> Toolset:
             fn=_track_record,
         )
     )
+    ts.add_resolver(resolve_dynamic)
     return ts
+
+
+def request_toolset() -> Toolset:
+    """The toolset whose SCHEMAS go on a RunRequest: the defaults plus TradingView's
+    ``tv_*`` tools when the toggle is on and TradingView is connected.
+
+    Sync path only — this does ORM + Redis/HTTP. Providers keep calling
+    ``default_toolset()`` for execution; its dynamic resolver dispatches ``tv_*`` names."""
+    from apps.ai.tools.tradingview import tradingview_toolset
+
+    return default_toolset().merge(tradingview_toolset())
