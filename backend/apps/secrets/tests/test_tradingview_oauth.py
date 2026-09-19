@@ -339,7 +339,6 @@ def test_ensure_fresh_token_waits_for_other_process_when_locked(fake_redis):
     r.assert_not_called()
 
 
-@pytest.mark.xfail(strict=True, reason="tradingview_mcp lands in Task 5")
 @pytest.mark.django_db
 def test_revoke_and_disconnect_deletes_row_even_if_revocation_fails(fake_redis):
     tvo.persist_token(_token())
