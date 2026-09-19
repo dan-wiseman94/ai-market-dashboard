@@ -139,3 +139,50 @@ def test_structured_openai_provider_runs_and_records_its_provider(
     assert msg is not None
     assert msg.content["kind"] == "structured_observation"
     assert not Message.objects.filter(thread=thread, error="unsupported_provider").exists()
+
+
+def test_structured_local_provider_runs_with_base_url_and_no_key(
+    db, schedule_structured, fake_report
+) -> None:
+    """A local config has no key; a base URL makes it usable for structured mode."""
+    from apps.observer.services import run as run_service
+    from apps.observer.services.threads import get_or_create_observer_thread
+    from apps.threads.models import Message
+
+    cfg = ProviderConfig.objects.create(
+        provider="local",
+        enabled=True,
+        base_url="http://host.docker.internal:11434/v1",
+        default_model="llama3",
+    )
+    thread = get_or_create_observer_thread(schedule_structured.profile)
+    with patch.object(run_service, "run_structured", return_value=fake_report) as run_structured:
+        run_service._run_structured_and_record(
+            schedule_structured, thread, "payload", "local", cfg, snap=None
+        )
+
+    kw = run_structured.call_args.kwargs
+    assert kw["provider"] == "local"
+    assert kw["model"] == "llama3"
+    assert kw["base_url"] == "http://host.docker.internal:11434/v1"
+    assert Message.objects.filter(thread=thread, role="assistant", status="done").exists()
+    assert not Message.objects.filter(thread=thread, error="no_key").exists()
+
+
+def test_structured_local_provider_without_base_url_skips_with_visible_message(
+    db, schedule_structured
+) -> None:
+    from apps.observer.services import run as run_service
+    from apps.observer.services.threads import get_or_create_observer_thread
+    from apps.threads.models import Message
+
+    cfg = ProviderConfig.objects.create(provider="local", enabled=True, default_model="llama3")
+    thread = get_or_create_observer_thread(schedule_structured.profile)
+    with patch.object(run_service, "run_structured") as run_structured:
+        run_service._run_structured_and_record(
+            schedule_structured, thread, "payload", "local", cfg, snap=None
+        )
+
+    run_structured.assert_not_called()
+    msg = Message.objects.get(thread=thread, error="no_key")
+    assert "base URL" in msg.content["text"]
