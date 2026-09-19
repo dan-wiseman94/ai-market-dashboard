@@ -786,9 +786,14 @@ def _render_events(payload) -> str:
         )
         lines.append(f"- {m['title']} in {m['days_until']}d" + (f" ({extra})" if extra else ""))
     for a in actions:
-        what = (
-            f"split {a['ratio']}" if a.get("ratio") is not None else f"dividend ${a['amount']}"
-        )
+        if a.get("kind") == "split" and a.get("ratio") is not None:
+            what = f"split {a['ratio']}"
+        elif a.get("kind") == "dividend" and a.get("amount") is not None:
+            what = f"dividend ${a['amount']}"
+        else:
+            # Unknown kind or the expected value is missing — garbage must not
+            # reach the AI as a fabricated "dividend $None"/"split None" line.
+            continue
         lines.append(f"- {a['ticker']} {what} ex {a['ex_date']}")
     return "\n".join(lines)
 

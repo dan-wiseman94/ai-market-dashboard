@@ -48,3 +48,31 @@ def test_render_events_all_empty_including_corporate_actions():
     assert "_(none" in _render_events(
         {"earnings": [], "macro": [], "corporate_actions": []}
     )
+
+
+def test_render_events_split_branch():
+    payload = {
+        "earnings": [],
+        "macro": [],
+        "corporate_actions": [
+            {"ticker": "NVDA", "kind": "split", "ex_date": "2026-10-01", "ratio": 10.0,
+             "amount": None},
+        ],
+    }
+    out = _render_events(payload)
+    assert "- NVDA split 10.0 ex 2026-10-01" in out
+
+
+def test_render_events_skips_malformed_corporate_action_row():
+    # kind says dividend but amount is missing — must not fabricate "dividend $None".
+    payload = {
+        "earnings": [],
+        "macro": [],
+        "corporate_actions": [
+            {"ticker": "AAPL", "kind": "dividend", "ex_date": "2026-09-26", "ratio": None,
+             "amount": None},
+        ],
+    }
+    out = _render_events(payload)
+    assert "AAPL" not in out
+    assert "None" not in out

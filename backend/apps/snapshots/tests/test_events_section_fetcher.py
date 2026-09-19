@@ -36,6 +36,33 @@ def test_fetch_events_section_includes_future_corporate_action():
 
 
 @pytest.mark.django_db
+def test_fetch_events_section_includes_future_split_action():
+    ex_date = date.today() + timedelta(days=3)
+    CorporateAction.objects.create(
+        source="mock",
+        external_id="SPLIT:NVDA:1",
+        kind="split",
+        ticker="NVDA",
+        ex_date=ex_date,
+        ratio=10,
+    )
+    with patch(
+        "apps.snapshots.services.upcoming_events",
+        return_value={"earnings": [], "macro": []},
+    ):
+        out = _fetch_events_section(watchlist_tickers=["NVDA"])
+    assert out["data"]["corporate_actions"] == [
+        {
+            "ticker": "NVDA",
+            "kind": "split",
+            "ex_date": ex_date.isoformat(),
+            "ratio": 10.0,
+            "amount": None,
+        }
+    ]
+
+
+@pytest.mark.django_db
 def test_fetch_events_section_excludes_out_of_window_and_other_tickers():
     CorporateAction.objects.create(
         source="mock",
