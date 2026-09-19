@@ -73,6 +73,7 @@ def chain_analytics(
             "total":      float|None,
             "flip_strike": float|None,
             "convention": "dealers long calls / short puts (heuristic)",
+            "by_strike": [{"strike": float, "gex": float}, ...],  # top 6 by |GEX|, strike-ascending
         },
     }
     """
@@ -252,14 +253,16 @@ def _gex(contracts: list[dict], *, spot: float | None) -> dict:
     Returns total GEX and the zero-gamma flip strike (where per-strike GEX
     transitions from positive to negative, using linear interpolation between
     the bracketing strikes).  Both are None when spot is unavailable or no
-    contracts have usable gamma.
+    contracts have usable gamma.  `by_strike` carries the top 6 strikes by
+    |GEX| (the biggest dealer gamma walls), sorted strike-ascending for
+    rendering; `[]` in both degrade cases.
 
     See module docstring for the sign-convention heuristic.
     """
     _CONVENTION = "dealers long calls / short puts (heuristic)"
 
     if spot is None:
-        return {"total": None, "flip_strike": None, "convention": _CONVENTION}
+        return {"total": None, "flip_strike": None, "convention": _CONVENTION, "by_strike": []}
 
     # Accumulate per-strike GEX (all expiries combined — reflects total dealer
     # hedging pressure at each strike level).
@@ -282,13 +285,20 @@ def _gex(contracts: list[dict], *, spot: float | None) -> dict:
         has_any = True
 
     if not has_any:
-        return {"total": None, "flip_strike": None, "convention": _CONVENTION}
+        return {"total": None, "flip_strike": None, "convention": _CONVENTION, "by_strike": []}
 
     flip = _find_flip_strike(strike_gex)
+
+    top = sorted(strike_gex.items(), key=lambda kv: abs(kv[1]), reverse=True)[:6]
+    by_strike = [
+        {"strike": k, "gex": round(v, 2)} for k, v in sorted(top, key=lambda kv: kv[0])
+    ]
+
     return {
         "total": round(total, 2),
         "flip_strike": round(flip, 2) if flip is not None else None,
         "convention": _CONVENTION,
+        "by_strike": by_strike,
     }
 
 
