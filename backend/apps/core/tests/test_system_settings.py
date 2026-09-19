@@ -128,3 +128,25 @@ def test_patch_rejects_negative_number():
     )
     assert response.status_code == 400
     assert response.json()["code"] == "invalid_value"
+
+
+@pytest.mark.django_db
+@override_settings(TRADINGVIEW_TOOLS_ENABLED=False)
+def test_tradingview_tools_enabled_inherits_then_overrides():
+    assert runtime_config().tradingview_tools_enabled is False
+    cfg = SystemSettings.load()
+    cfg.tradingview_tools_enabled = True
+    cfg.save()
+    assert runtime_config().tradingview_tools_enabled is True
+
+
+@pytest.mark.django_db
+def test_patch_accepts_tradingview_tools_enabled():
+    response = Client().patch(
+        "/api/settings/",
+        data=json.dumps({"tradingview_tools_enabled": True}),
+        content_type="application/json",
+    )
+    assert response.status_code == 200
+    assert response.json()["tradingview_tools_enabled"] is True
+    assert SystemSettings.load().tradingview_tools_enabled is True
