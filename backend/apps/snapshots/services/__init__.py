@@ -162,6 +162,30 @@ def _fetch_news_section(*, watchlist_tickers: list[str], **_) -> dict:
     return {"data": {"items": fetch_news(list(watchlist_tickers))}}
 
 
+def _fetch_events_section(*, watchlist_tickers: list[str], **_) -> dict:
+    import datetime as _dt
+
+    from apps.market.models import CorporateAction
+
+    data = upcoming_events(list(watchlist_tickers), within_days=14, include_macro=True)
+    today = _dt.date.today()
+    data["corporate_actions"] = [
+        {
+            "ticker": a.ticker,
+            "kind": a.kind,
+            "ex_date": a.ex_date.isoformat(),
+            "ratio": float(a.ratio) if a.ratio is not None else None,
+            "amount": float(a.amount) if a.amount is not None else None,
+        }
+        for a in CorporateAction.objects.filter(
+            ticker__in=[t.upper() for t in watchlist_tickers],
+            ex_date__gte=today,
+            ex_date__lte=today + _dt.timedelta(days=14),
+        ).order_by("ex_date")[:20]
+    ]
+    return {"data": data}
+
+
 _FETCHERS = {
     "breadth": lambda *, watchlist_tickers, **_: {
         "data": fetch_market_context(tickers=list(watchlist_tickers))
@@ -179,9 +203,7 @@ _FETCHERS = {
             ]
         },
     },
-    "events": lambda *, watchlist_tickers, **_: {
-        "data": upcoming_events(list(watchlist_tickers), within_days=14, include_macro=True),
-    },
+    "events": _fetch_events_section,
     "fundamentals": lambda *, watchlist_tickers, **_: {
         "data": {t: fetch_fundamentals(t) for t in (list(watchlist_tickers) or [])[:8]},
     },

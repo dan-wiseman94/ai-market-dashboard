@@ -761,16 +761,35 @@ def build_image_blocks(image_ids: list[int], *, provider_name: str) -> list[dict
 def _render_events(payload) -> str:
     earnings = payload.get("earnings", []) if isinstance(payload, dict) else []
     macro = payload.get("macro", []) if isinstance(payload, dict) else []
-    if not earnings and not macro:
+    actions = payload.get("corporate_actions", []) if isinstance(payload, dict) else []
+    if not earnings and not macro and not actions:
         return "## Upcoming events\n_(none in the next 14 days)_"
     lines = ["## Upcoming events"]
     for e in earnings:
         hint = f", {e['when_hint'].upper()}" if e.get("when_hint") else ""
-        est = (e.get("detail") or {}).get("eps_est")
-        est_s = f", est EPS {est}" if est is not None else ""
+        d = e.get("detail") or {}
+        bits = []
+        if d.get("eps_est") is not None:
+            bits.append(f"est EPS {d['eps_est']}")
+        if d.get("eps_actual") is not None:
+            bits.append(f"last actual {d['eps_actual']}")
+        if d.get("rev_est") is not None:
+            bits.append(f"est rev {d['rev_est']}")
+        est_s = f", {', '.join(bits)}" if bits else ""
         lines.append(f"- {e['ticker']} earnings in {e['days_until']}d{hint}{est_s}")
     for m in macro:
-        lines.append(f"- {m['title']} in {m['days_until']}d")
+        d = m.get("detail") or {}
+        extra = ", ".join(
+            f"{label} {d[k]}"
+            for label, k in (("est", "estimate"), ("prev", "prev"), ("actual", "actual"))
+            if d.get(k) is not None
+        )
+        lines.append(f"- {m['title']} in {m['days_until']}d" + (f" ({extra})" if extra else ""))
+    for a in actions:
+        what = (
+            f"split {a['ratio']}" if a.get("ratio") is not None else f"dividend ${a['amount']}"
+        )
+        lines.append(f"- {a['ticker']} {what} ex {a['ex_date']}")
     return "\n".join(lines)
 
 
