@@ -42,6 +42,16 @@ def test_is_connected_requires_token_and_no_marker():
         assert tv.is_connected() is False
 
 
+@pytest.mark.django_db
+def test_is_connected_false_while_rate_limited():
+    with (
+        patch("apps.market.services.tradingview.load_token", return_value={"access_token": "a"}),
+        patch("apps.core.provider_health.auth_error", return_value=None),
+        patch("apps.market.services.tradingview_mcp.is_rate_limited", return_value=True),
+    ):
+        assert tv.is_connected() is False
+
+
 @pytest.mark.parametrize(
     ("ticker", "expected"),
     [
@@ -193,6 +203,24 @@ def test_fetch_quotes_accepts_scanner_style_rows():
         assert tv.fetch_quotes(["AAPL"])["AAPL"]["last"] == 1.0
 
 
+def test_fetch_quotes_accepts_dict_column_descriptors():
+    raw = {
+        "columns": [
+            {"name": "close"},
+            {"name": "change"},
+            {"name": "volume"},
+            {"name": "high"},
+            {"name": "low"},
+        ],
+        "data": [{"s": "NASDAQ:AAPL", "d": [1, 2, 3, 4, 5]}],
+    }
+    with (
+        _tools({"get_symbol_data_batch": raw}),
+        patch("apps.market.services.tradingview.to_tv_symbol", return_value="NASDAQ:AAPL"),
+    ):
+        assert tv.fetch_quotes(["AAPL"])["AAPL"]["last"] == 1.0
+
+
 def test_fetch_quotes_failure_returns_empty():
     with (
         _tools({"get_symbol_data_batch": lambda a: (_ for _ in ()).throw(RuntimeError("x"))}),
@@ -226,6 +254,31 @@ def test_fetch_news_normalizes_dedups_and_upserts():
     assert it["url"] == "https://www.tradingview.com/news/apple-beats/"
     assert it["ticker"] == "AAPL" and it["tickers"] == ["AAPL"] and it["related"] == "AAPL"
     assert NewsItem.objects.get(provider="tradingview", external_id="77").headline == "Apple beats"
+
+
+@pytest.mark.django_db
+def test_fetch_news_hashes_overlong_external_id():
+    long_id = "x" * 100
+    item = {
+        "id": long_id,
+        "title": "Long id headline",
+        "published": 1_760_000_000,
+        "provider": "Reuters",
+        "link": "https://example.com/a",
+    }
+    with (
+        _tools({"get_news": {"items": [item]}}),
+        patch("apps.market.services.tradingview.to_tv_symbol", return_value="NASDAQ:AAPL"),
+    ):
+        items = tv.fetch_news(["AAPL"], limit=5)
+    assert len(items) == 1
+    hashed = items[0]["id"]
+    assert hashed.startswith("h:") and len(hashed) <= 64
+    assert items[0]["external_id"] == hashed
+    assert (
+        NewsItem.objects.get(provider="tradingview", external_id=hashed).headline
+        == "Long id headline"
+    )
 
 
 @pytest.mark.django_db

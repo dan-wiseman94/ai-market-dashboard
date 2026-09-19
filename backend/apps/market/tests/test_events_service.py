@@ -282,9 +282,14 @@ def test_fetch_earnings_uses_tradingview_when_finnhub_unkeyed():
         patch("apps.market.services.events._finnhub_api_key", return_value=None),
         patch("apps.market.services.tradingview.is_connected", return_value=True),
         patch("apps.market.services.tradingview.fetch_earnings", return_value=rows) as f,
+        patch(
+            "apps.market.services.events.cache.get_or_fetch",
+            side_effect=lambda key, *, ttl_seconds, fetcher: fetcher(),
+        ) as g,
     ):
         out = events.fetch_earnings(["NVDA", "/ES"])
     f.assert_called_once_with(["NVDA"])  # equity-like only
+    assert g.call_args.args[0].startswith("market:tv-earn:")
     assert len(out) == 1 and out[0].source == "tradingview" and out[0].ticker == "NVDA"
 
 
@@ -305,10 +310,15 @@ def test_fetch_macro_prefers_tradingview_over_seed():
         patch("apps.market.services.events._finnhub_api_key", return_value=None),
         patch("apps.market.services.tradingview.is_connected", return_value=True),
         patch("apps.market.services.tradingview.fetch_economic_calendar", return_value=rows),
+        patch(
+            "apps.market.services.events.cache.get_or_fetch",
+            side_effect=lambda key, *, ttl_seconds, fetcher: fetcher(),
+        ) as g,
     ):
         out = events.fetch_macro(ahead_days=45)
     assert {e.source for e in out} == {"tradingview"}
     assert out[0].kind == "cpi"
+    assert g.call_args.args[0] == "market:tv-macro:45"
 
 
 @pytest.mark.django_db
@@ -317,6 +327,10 @@ def test_fetch_macro_falls_to_seed_when_tradingview_empty():
         patch("apps.market.services.events._finnhub_api_key", return_value=None),
         patch("apps.market.services.tradingview.is_connected", return_value=True),
         patch("apps.market.services.tradingview.fetch_economic_calendar", return_value=[]),
+        patch(
+            "apps.market.services.events.cache.get_or_fetch",
+            side_effect=lambda key, *, ttl_seconds, fetcher: fetcher(),
+        ),
     ):
         out = events.fetch_macro(ahead_days=45)
     assert all(e.source == "seed" for e in out)

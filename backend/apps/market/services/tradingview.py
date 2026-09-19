@@ -12,6 +12,7 @@ handled leniently — the live shapes are confirmed against the captured fixture
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import re
 from datetime import UTC, datetime, timedelta
@@ -68,10 +69,15 @@ _MAX_NEWS_TICKERS = 5
 
 
 def is_connected() -> bool:
-    """A usable token exists and no auth-error marker is set (circuit breaker)."""
+    """A usable token exists, no auth-error marker is set, and the 60s rate-limit
+    marker (set on HTTP 429) isn't — both are circuit breakers."""
     from apps.core import provider_health
 
-    return load_token() is not None and provider_health.auth_error(PROVIDER) is None
+    return (
+        load_token() is not None
+        and provider_health.auth_error(PROVIDER) is None
+        and not mcp.is_rate_limited()
+    )
 
 
 # --- lenient result helpers (shared with the calendar normalizers) ----------------------
@@ -151,7 +157,9 @@ def to_tv_symbol(ticker: str) -> str | None:
     if t.startswith("/"):
         return FUTURE_SYMBOLS.get(t)
     try:
-        # "" marks a miss so get_or_fetch caches it (a None value is never cached).
+        # cache.get_or_fetch DOES cache a None result (JSON null reads back as a hit
+        # returning None) — the "" sentinel exists because str(None) or None below
+        # would yield the string "None".
         resolved: Any = cache.get_or_fetch(
             f"tradingview:symbol:{t}",
             ttl_seconds=_SYMBOL_CACHE_TTL,
@@ -230,6 +238,9 @@ def _batch_rows(result: Any) -> dict[str, dict]:
     for row in _rows(result, "data", "symbols", "results", "rows", "items"):
         if "d" in row and isinstance(row.get("d"), list):
             names = columns if isinstance(columns, list) else _QUOTE_COLUMNS
+            # Coerce each column entry to a string name — the scanner can send column
+            # descriptors as {"name": "close", ...} instead of a bare "close" string.
+            names = [str(c.get("name", c)) if isinstance(c, dict) else str(c) for c in names]
             flat = dict(zip(names, row["d"], strict=False))
             out[str(_first(row, "s", "symbol") or "")] = flat
         else:
@@ -247,25 +258,25 @@ def fetch_quotes(tickers: list[str]) -> dict[str, dict]:
         result = mcp.call_tool(
             "get_symbol_data_batch", {"symbols": symbols, "columns": _QUOTE_COLUMNS}
         )
+        by_symbol = _batch_rows(result)
+        out: dict[str, dict] = {}
+        for ticker, symbol in mapping.items():
+            row = by_symbol.get(symbol or "")
+            if row is None:
+                continue
+            out[ticker] = {
+                "last": _float(row.get("close")),
+                "bid": None,
+                "ask": None,
+                "volume": _int(row.get("volume")),
+                "high": _float(row.get("high")),
+                "low": _float(row.get("low")),
+                "pct_change": _float(row.get("change")),
+            }
+        return out
     except Exception as exc:
         log.warning("tradingview.quotes_failed: %s", safe_err(exc))
         return {}
-    by_symbol = _batch_rows(result)
-    out: dict[str, dict] = {}
-    for ticker, symbol in mapping.items():
-        row = by_symbol.get(symbol or "")
-        if row is None:
-            continue
-        out[ticker] = {
-            "last": _float(row.get("close")),
-            "bid": None,
-            "ask": None,
-            "volume": _int(row.get("volume")),
-            "high": _float(row.get("high")),
-            "low": _float(row.get("low")),
-            "pct_change": _float(row.get("change")),
-        }
-    return out
 
 
 # --- news ------------------------------------------------------------------------------
@@ -288,9 +299,14 @@ def _normalize_news(raw: dict, ticker: str) -> dict | None:
     url = str(raw.get("link") or raw.get("url") or "")
     if not url and raw.get("storyPath"):
         url = f"{TV_NEWS_BASE}{raw['storyPath']}"
+    ext_id = str(external_id)
+    if len(ext_id) > 64:
+        # NewsItem.external_id is max_length=64 — hash an overlong upstream id down to
+        # a deterministic, fits-in-the-column value rather than dropping the item.
+        ext_id = "h:" + hashlib.sha256(ext_id.encode()).hexdigest()[:40]
     return {
-        "id": str(external_id),
-        "external_id": str(external_id),
+        "id": ext_id,
+        "external_id": ext_id,
         "headline": headline[:512],
         "summary": str(raw.get("summary") or raw.get("description") or ""),
         "url": url[:1024],
