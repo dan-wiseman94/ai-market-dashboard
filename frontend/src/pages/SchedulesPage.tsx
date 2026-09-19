@@ -1,25 +1,54 @@
 import { useMemo, useState } from "react";
 import {
   useSchedules, useToggleSchedule, useDeleteSchedule,
-  useRunSchedule, useCreateSchedule,
+  useRunSchedule, useCreateSchedule, useUpdateScheduleIncludes,
 } from "@/hooks/useSchedules";
 import { useProfiles } from "@/hooks/useProfiles";
 import { CRON_PRESETS, explainCron } from "@/lib/cronPreview";
 import { SkeletonRows } from "@/components/Skeleton";
 import { EmptyState } from "@/components/EmptyState";
+import SnapshotSectionPicker from "@/components/SnapshotSectionPicker";
 import type { ObserverFireMode, ObserverMode, ObserverSchedule } from "@/api/observer";
 import type { TradingProfile } from "@/api/profiles";
 
+function ScheduleSectionsEditor({
+  schedule, onSave,
+}: {
+  schedule: ObserverSchedule;
+  onSave: (includes: string[]) => void;
+}) {
+  const [includes, setIncludes] = useState<string[]>(schedule.default_includes);
+  return (
+    <div className="mt-2 space-y-2 pt-2 border-t border-rule">
+      {includes.length === 0 && (
+        <div className="text-xs text-ink-500">
+          Empty — inherits the profile&apos;s default sections.
+        </div>
+      )}
+      <SnapshotSectionPicker value={includes} onChange={setIncludes} />
+      <button
+        type="button"
+        onClick={() => onSave(includes)}
+        className="px-2 py-1 text-xs rounded bg-gain-500 hover:bg-gain-400"
+      >
+        Save sections
+      </button>
+    </div>
+  );
+}
+
 function ScheduleRow({
-  schedule, profileName, onToggle, onRun, onDelete,
+  schedule, profileName, onToggle, onRun, onDelete, onSaveSections,
 }: {
   schedule: ObserverSchedule;
   profileName: (id: number) => string;
   onToggle: (id: number, enabled: boolean) => void;
   onRun: (id: number) => void;
   onDelete: (id: number) => void;
+  onSaveSections: (id: number, includes: string[]) => void;
 }) {
   const s = schedule;
+  const [showSections, setShowSections] = useState(false);
   return (
     <li data-testid={`schedule-row-${s.id}`} className="p-4 rounded border border-rule bg-ink-900 space-y-2">
       <div className="flex items-center justify-between">
@@ -45,11 +74,21 @@ function ScheduleRow({
           </label>
           <button type="button" onClick={() => onRun(s.id)}
                   className="px-2 py-1 text-xs rounded bg-gain-500 hover:bg-gain-400">Run now</button>
+          <button type="button" onClick={() => setShowSections((v) => !v)}
+                  className="px-2 py-1 text-xs rounded bg-ink-800 hover:bg-ink-700">
+            {showSections ? "Hide sections" : "Sections"}
+          </button>
           <button type="button" onClick={() => onDelete(s.id)}
                   aria-label={`delete ${s.name}`}
                   className="px-2 py-1 text-xs rounded bg-loss-500 hover:bg-loss-400">Delete</button>
         </div>
       </div>
+      {showSections && (
+        <ScheduleSectionsEditor
+          schedule={s}
+          onSave={(includes) => { onSaveSections(s.id, includes); setShowSections(false); }}
+        />
+      )}
     </li>
   );
 }
@@ -309,6 +348,7 @@ export default function SchedulesPage() {
   const del = useDeleteSchedule();
   const run = useRunSchedule();
   const create = useCreateSchedule();
+  const updateIncludes = useUpdateScheduleIncludes();
 
   const [showForm, setShowForm] = useState(false);
   const [name, setName] = useState("");
@@ -395,6 +435,8 @@ export default function SchedulesPage() {
             onToggle={(id, en) => toggle.mutate({ id, enabled: en })}
             onRun={(id) => run.mutate(id)}
             onDelete={(id) => del.mutate(id)}
+            onSaveSections={(id, includes) =>
+              updateIncludes.mutate({ id, default_includes: includes })}
           />
         ))}
       </ul>

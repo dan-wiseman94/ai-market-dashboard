@@ -121,14 +121,18 @@ describe("ProfilesPage", () => {
   it("renders form blank by default with default_includes prefilled", () => {
     renderWithProviders(<ProfilesPage />);
     expect(screen.getByPlaceholderText("Profile name")).toHaveValue("");
-    const quotesCheckbox = screen.getByRole("checkbox", { name: /quotes/i });
-    const positionsCheckbox = screen.getByRole("checkbox", { name: /positions/i });
-    const breadthCheckbox = screen.getByRole("checkbox", { name: /breadth/i });
-    expect(quotesCheckbox).toBeChecked();
-    expect(positionsCheckbox).toBeChecked();
-    expect(breadthCheckbox).toBeChecked();
-    const ohlcCheckbox = screen.getByRole("checkbox", { name: /ohlc/i });
-    expect(ohlcCheckbox).not.toBeChecked();
+    // Mirrors TradingProfile.DEFAULT_INCLUDES: quotes/positions/breadth/ohlc/chain/news/events/macro.
+    for (const name of [/^quotes$/i, /positions/i, /breadth/i, /^ohlc$/i, /option chain/i, /^news$/i, /upcoming events/i, /^macro$/i]) {
+      expect(screen.getByRole("checkbox", { name })).toBeChecked();
+    }
+    const notesCheckbox = screen.getByRole("checkbox", { name: /^notes$/i });
+    expect(notesCheckbox).not.toBeChecked();
+  });
+
+  it("shows a non-toggleable VIX 'always included' chip", () => {
+    renderWithProviders(<ProfilesPage />);
+    expect(screen.getByText(/VIX term structure.*always included/i)).toBeInTheDocument();
+    expect(screen.queryByRole("checkbox", { name: /vix/i })).not.toBeInTheDocument();
   });
 
   it("typing into name input updates the field", async () => {
@@ -175,15 +179,15 @@ describe("ProfilesPage", () => {
     mockUseCreateProfile.mockReturnValue({ mutate: createMutate, isPending: false } as never);
 
     renderWithProviders(<ProfilesPage />);
-    const ohlcCheckbox = screen.getByRole("checkbox", { name: /ohlc/i });
-    expect(ohlcCheckbox).not.toBeChecked();
-    await user.click(ohlcCheckbox);
-    expect(ohlcCheckbox).toBeChecked();
+    const notesCheckbox = screen.getByRole("checkbox", { name: /^notes$/i });
+    expect(notesCheckbox).not.toBeChecked();
+    await user.click(notesCheckbox);
+    expect(notesCheckbox).toBeChecked();
 
     await user.type(screen.getByPlaceholderText("Profile name"), "X");
     fireEvent.click(screen.getByRole("button", { name: /create/i }));
     const [body] = createMutate.mock.calls[0];
-    expect(body.default_includes).toContain("ohlc");
+    expect(body.default_includes).toContain("notes");
   });
 
   it("toggling a checked section checkbox removes it from default_includes", async () => {
