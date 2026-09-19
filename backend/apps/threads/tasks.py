@@ -74,9 +74,9 @@ def _apply_investigation_mode(req, *, provider_name: str, cfg) -> None:
 
     req.max_tool_iterations = int(getattr(settings, "AI_INVESTIGATION_MAX_ITERATIONS", 8))
     if provider_name == "claude" or getattr(cfg, "supports_tools", False):
-        from apps.ai.tools.registry import default_toolset
+        from apps.ai.tools.registry import request_toolset
 
-        ts = default_toolset()
+        ts = request_toolset()
         req.tools = ts.anthropic_tools() if provider_name == "claude" else ts.openai_tools()
     req.system = f"{req.system}\n\n{_INVESTIGATION_DIRECTIVE}"
 
