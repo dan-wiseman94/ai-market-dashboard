@@ -100,6 +100,14 @@ def test_fetch_fed_communications_mock_mode():
         assert set(item) == {"kind", "title", "url", "published", "summary"}
 
 
+def test_fetch_fed_communications_mock_mode_honors_limit():
+    """Mock mode's canned items are sliced to `limit`, same as the live path."""
+    with patch("apps.core.mocks.is_mock_mode", return_value=True):
+        items = fed_mod.fetch_fed_communications(limit=1)
+
+    assert len(items) == 1
+
+
 def test_fetch_fed_communications_merges_feeds_newest_first():
     """Across all configured feeds, results are sorted newest-first and limited."""
     older = [
