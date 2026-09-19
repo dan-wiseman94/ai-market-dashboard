@@ -122,8 +122,8 @@ def test_no_key_skips_without_calling_ai_or_creating_note(profile, snapshot):
 def test_cost_cap_exceeded_skips_without_calling_ai(profile, provider_cfg, snapshot):
     with (
         patch(
-            "apps.strategy.coverage.services.revise.check_daily_cap",
-            side_effect=CostCapExceededError("daily cap"),
+            "apps.strategy.coverage.services.revise.ensure_within_caps",
+            side_effect=CostCapExceededError("over"),
         ),
         patch(PATCH_TARGET) as run_structured,
     ):
@@ -132,6 +132,19 @@ def test_cost_cap_exceeded_skips_without_calling_ai(profile, provider_cfg, snaps
     run_structured.assert_not_called()
     assert rev is None
     assert not CoverageNote.objects.filter(ticker="SPY").exists()
+
+
+def test_openai_profile_runs_revision(profile, snapshot):
+    profile.default_provider = "openai"
+    profile.default_model = ""  # names no model → falls to the catalog default
+    profile.save()
+    cfg = ProviderConfig.objects.create(provider="openai", enabled=True)
+    cfg.api_key = "sk-oai"
+    cfg.save()
+    with patch(PATCH_TARGET, return_value=_draft(stance="bull", conviction=4)) as rs:
+        revise_coverage("SPY", snapshot, profile=profile)
+    assert rs.call_args.kwargs["provider"] == "openai"
+    assert rs.call_args.kwargs["model"] == "gpt-5.6-sol"
 
 
 def test_ai_failure_is_best_effort_no_revision(profile, provider_cfg, snapshot):
