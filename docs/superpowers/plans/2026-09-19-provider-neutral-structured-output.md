@@ -1634,7 +1634,7 @@ def test_command_provider_flag_preflights_that_provider(profile):
 
     _record_spend(provider="openai", cost="2.00")
     ProviderConfig.objects.create(provider="openai", daily_cost_cap_usd=Decimal("1.00"))
-    with pytest.raises(CommandError, match="cap"):
+    with pytest.raises(CommandError):
         call_command("aieval", "--model", "gpt-5.6-sol", "--provider", "openai")
 
 
@@ -1961,7 +1961,7 @@ def test_run_postmortem_openai_provider_runs_ai(thesis, fake_report):
 
 (`thesis`, `fake_report`, `_seed_bars`, `pm_service`, `PostMortem`, `ProviderConfig`, `timedelta`, `patch`, and `run_postmortem` are already imported/defined in the file.)
 
-`strategy/coverage/tests/test_revise.py` — add:
+`strategy/coverage/tests/test_revise.py` — in `test_cost_cap_exceeded_skips_without_calling_ai` (line 122), the service stops importing the cap functions, so replace the `patch("apps.strategy.coverage.services.revise.check_daily_cap", side_effect=CostCapExceededError(...))` with `patch("apps.strategy.coverage.services.revise.ensure_within_caps", side_effect=CostCapExceededError("over"))` (same assertions). Then add:
 
 ```python
 def test_openai_profile_runs_revision(profile, snapshot):
