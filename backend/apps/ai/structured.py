@@ -7,27 +7,34 @@ to the Anthropic ``messages.parse`` implementation for Claude-family providers
 and to the OpenAI-compatible implementation for ``openai`` and ``local``. Both
 record an ``AIRun`` under the real provider so cost caps see the spend.
 
-Target resolution mirrors ``apps.ai.router``: explicit override, then the
-profile's defaults, then calibration-weighted routing (opt-in), then the first
-enabled ``ProviderConfig``. A target is usable when its config is enabled and
-carries a credential — a key for ``claude``/``openai``, a base URL for ``local``.
+Target resolution follows the same precedence as ``apps.ai.router`` (explicit
+override, then the profile's defaults, then calibration-weighted routing
+(opt-in), then the first enabled ``ProviderConfig``) except that an override or
+profile that names a provider does not fall through to the global tiers when
+that provider is unusable. A target is usable when its config is enabled and
+carries a credential — a key for ``claude``/``openai``, a base URL for
+``local``. A requested model that is a catalog row of a *different* provider is
+ignored (falling back to the config's own default) rather than sent to a
+provider it doesn't belong to.
 """
 
 from __future__ import annotations
 
 import logging
 from decimal import Decimal
-from typing import NamedTuple
+from typing import TYPE_CHECKING, NamedTuple
 
 from cryptography.fernet import InvalidToken
 from django.conf import settings
 from pydantic import BaseModel
 
-from apps.ai.catalog import CLAUDE_FAMILY_PROVIDERS, default_model_for
+from apps.ai.catalog import CLAUDE_FAMILY_PROVIDERS, default_model_for, get_model, list_models
 from apps.ai.providers import claude_structured, openai_structured
 from apps.ai.providers.claude_structured import StructuredParseError, token_usage_from_anthropic
 from apps.ai.providers.openai_structured import token_usage_from_openai
-from apps.profiles.models import TradingProfile
+
+if TYPE_CHECKING:
+    from apps.profiles.models import TradingProfile
 
 log = logging.getLogger(__name__)
 
@@ -97,9 +104,25 @@ class StructuredTarget(NamedTuple):
     monthly_cap: Decimal | None
 
 
+def _foreign_catalog_model(provider: str, model: str) -> bool:
+    """True when ``model`` is a catalog row for some provider other than ``provider``.
+
+    A model id unknown to the catalog entirely (a local model name, or a
+    brand-new vendor id) is not foreign — it is accepted verbatim."""
+    if not model or get_model(provider, model) is not None:
+        return False
+    return any(m.id == model for m in list_models() if m.provider != provider)
+
+
 def _target_from_config(cfg, *, model: str = "") -> StructuredTarget | None:
     """Build a target from ``cfg`` or return None when it is missing, disabled, or
-    lacks a credential/model. Reads the encrypted key, so ``InvalidToken`` can raise."""
+    lacks a credential/model. Reads the encrypted key, so ``InvalidToken`` can raise.
+
+    A ``model`` that names a catalog row of a different provider (e.g. a profile's
+    Claude-family default surviving a switch to ``openai``) is ignored — never sent
+    to a provider it doesn't belong to — and resolution falls back to the config's
+    own default model.
+    """
     if cfg is None or not cfg.enabled:
         return None
     key = cfg.api_key
@@ -109,6 +132,14 @@ def _target_from_config(cfg, *, model: str = "") -> StructuredTarget | None:
             return None
     elif not key:
         return None
+    if model and _foreign_catalog_model(cfg.provider, model):
+        log.warning(
+            "structured: model %r belongs to a different provider's catalog than %s; "
+            "using the provider default instead",
+            model,
+            cfg.provider,
+        )
+        model = ""
     model_id = model or cfg.default_model or default_model_for(cfg.provider)
     if not model_id:
         return None

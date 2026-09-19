@@ -189,7 +189,6 @@ def test_run_postmortem_openai_provider_runs_ai(thesis, fake_report):
     """Structured output has provider parity: an openai profile gets its narrative
     on openai, with the catalog default model when the config names none."""
     thesis.profile.default_provider = "openai"
-    thesis.profile.default_model = ""  # names no model → falls to the catalog default
     thesis.profile.save()
     cfg = ProviderConfig.objects.create(provider="openai", enabled=True)
     cfg.api_key = "sk-oai"
