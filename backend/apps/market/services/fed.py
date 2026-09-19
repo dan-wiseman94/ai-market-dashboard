@@ -48,7 +48,7 @@ _MOCK_ITEMS = [
 def fetch_fed_communications(*, limit: int = 10) -> list[dict]:
     """Newest-first items across all feeds; [] on any failure."""
     if _is_mock():
-        return list(_MOCK_ITEMS)
+        return list(_MOCK_ITEMS)[:limit]
     items: list[dict] = []
     for kind, url in FEEDS.items():
         items.extend(_fetch_feed(kind, url))
