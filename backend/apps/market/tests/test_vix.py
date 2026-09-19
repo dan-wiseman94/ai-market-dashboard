@@ -116,6 +116,7 @@ def test_term_structure_full():
     with _quotes(
         {
             "$VIX": {"last": 15.2, "pct_change": -3.1},
+            "$VVIX": {"last": 90.0, "pct_change": 1.0},
             "/VX": {"last": 16.75, "pct_change": -1.9},
             "/VXU26": {"last": 16.8, "pct_change": -2.0},
             "/VXV26": {"last": 17.9, "pct_change": -1.1},
@@ -124,8 +125,10 @@ def test_term_structure_full():
         payload = vix_term_structure(today=TODAY)
 
     (symbols,) = mock.call_args.args
-    assert symbols == ["$VIX", "/VX", "/VXU26", "/VXV26"]
+    assert symbols == ["$VIX", "$VVIX", "/VX", "/VXU26", "/VXV26"]
     assert payload["spot"] == {"symbol": "$VIX", "last": 15.2, "pct_change": -3.1}
+    assert payload["vvix"] == {"symbol": "$VVIX", "last": 90.0, "pct_change": 1.0}
+    assert payload["vvix_vix_ratio"] == 5.92  # 90.0 / 15.2 rounded to 2 decimals
     assert payload["front"] == {
         "symbol": "/VXU26",
         "expiry": "2026-09-16",
@@ -259,3 +262,39 @@ def test_term_structure_not_connected_propagates():
         pytest.raises(SchwabNotConnectedError),
     ):
         vix_term_structure(today=TODAY)
+
+
+def _q(last, pct=1.0):
+    return {"last": last, "pct_change": pct}
+
+
+def _syms(today):
+    (front_sym, _), (second_sym, _) = front_and_second(today)
+    return front_sym, second_sym
+
+
+def test_vvix_rides_the_batched_quote(monkeypatch):
+    today = dt.date(2026, 9, 18)
+    front_sym, second_sym = _syms(today)
+    seen: dict = {}
+    quotes = {"$VIX": _q(15.0), "$VVIX": _q(90.0), front_sym: _q(16.0), second_sym: _q(17.0)}
+
+    def mock_fetch(syms):
+        seen.setdefault("syms", list(syms))
+        return quotes
+
+    monkeypatch.setattr("apps.market.services.vix.fetch_quotes", mock_fetch)
+    payload = vix_term_structure(today=today)
+    assert "$VVIX" in seen["syms"]                      # one batch, no extra call
+    assert payload["vvix"] == {"symbol": "$VVIX", "last": 90.0, "pct_change": 1.0}
+    assert payload["vvix_vix_ratio"] == 6.0
+
+
+def test_missing_vvix_never_fails_the_section(monkeypatch):
+    today = dt.date(2026, 9, 18)
+    front_sym, second_sym = _syms(today)
+    quotes = {"$VIX": _q(15.0), front_sym: _q(16.0), second_sym: _q(17.0)}
+    monkeypatch.setattr("apps.market.services.vix.fetch_quotes", lambda syms: quotes)
+    payload = vix_term_structure(today=today)
+    assert payload["vvix"] is None and payload["vvix_vix_ratio"] is None
+    assert payload["front"] is not None                 # rest of the section intact

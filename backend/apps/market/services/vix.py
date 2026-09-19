@@ -107,13 +107,14 @@ def vix_term_structure(*, today: dt.date | None = None) -> dict:
     today = today or dt.datetime.now(ZoneInfo("America/New_York")).date()
     front_exp: dt.date | None
     (front_sym, front_exp), (second_sym, second_exp) = front_and_second(today)
-    quotes = fetch_quotes(["$VIX", "/VX", front_sym, second_sym])
+    quotes = fetch_quotes(["$VIX", "$VVIX", "/VX", front_sym, second_sym])
 
     spot_q = _usable(quotes.get("$VIX"))
     front_q, continuous = _usable(quotes.get(front_sym)), False
     if front_q is None and (cont := _usable(quotes.get("/VX"))) is not None:
         front_sym, front_exp, front_q, continuous = "/VX", None, cont, True
     second_q = _usable(quotes.get(second_sym))
+    vvix_q = _usable(quotes.get("$VVIX"))
     if spot_q is None and front_q is None and second_q is None:
         raise RuntimeError("no VIX spot or futures quotes returned")
 
@@ -123,6 +124,12 @@ def vix_term_structure(*, today: dt.date | None = None) -> dict:
             if spot_q is not None
             else None
         ),
+        "vvix": (
+            {"symbol": "$VVIX", "last": vvix_q.get("last"), "pct_change": vvix_q.get("pct_change")}
+            if vvix_q is not None
+            else None
+        ),
+        "vvix_vix_ratio": None,
         "front": None,
         "second": _leg(second_sym, second_q, second_exp) if second_q is not None else None,
         "contango_pct": None,
@@ -154,8 +161,17 @@ def vix_term_structure(*, today: dt.date | None = None) -> dict:
             "contango" if contango > 0 else "backwardation" if contango < 0 else "flat"
         )
 
+    spot_last_v = (payload["spot"] or {}).get("last")
+    vvix_last = (payload["vvix"] or {}).get("last")
+    if isinstance(vvix_last, int | float) and isinstance(spot_last_v, int | float) and spot_last_v:
+        payload["vvix_vix_ratio"] = _round(vvix_last / spot_last_v)
+
     if payload["front"] is None:
-        payload["note"] = "VIX futures unavailable (requires Schwab connection)"
+        payload["note"] = (
+            "VIX futures and VVIX unavailable (requires Schwab connection)"
+            if payload["vvix"] is None
+            else "VIX futures unavailable (requires Schwab connection)"
+        )
     elif payload["second"] is None:
         payload["note"] = "second-month /VX unavailable; contango not computable"
     return payload
