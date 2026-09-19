@@ -16,6 +16,7 @@ export interface SystemSettings {
   aieval_scheduled_model: string;
   aieval_scheduled_horizon: number;
   aieval_scheduled_limit: number;
+  tradingview_tools_enabled: boolean;
 }
 
 export const fetchSystemSettings = () => apiGet<SystemSettings>("/api/settings/");

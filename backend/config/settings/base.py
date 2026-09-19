@@ -263,6 +263,18 @@ CALIBRATION_DRIFT_SENTINEL_ENABLED = env.bool("CALIBRATION_DRIFT_SENTINEL_ENABLE
 # before exposing the MCP endpoint to external agents beyond localhost.
 MCP_AUTH_TOKEN = env.str("MCP_AUTH_TOKEN", default="")
 
+# TradingView's official MCP server. The client only ever talks to this URL (the OAuth
+# metadata URLs derive from it), so no user input reaches a request URL. The callback
+# must be reachable by the browser after consent — in dev that's the Caddy tls-proxy.
+TRADINGVIEW_MCP_URL = env.str("TRADINGVIEW_MCP_URL", default="https://mcp.tradingview.com/mcp")
+TRADINGVIEW_CALLBACK_URL = env.str(
+    "TRADINGVIEW_CALLBACK_URL",
+    default="https://127.0.0.1:8000/api/schwab/data-sources/tradingview/callback/",
+)
+# Expose the read-only tv_* TradingView tools to the in-app AI. Env default behind the
+# SystemSettings.tradingview_tools_enabled UI override; needs a connected TradingView.
+TRADINGVIEW_TOOLS_ENABLED = env.bool("TRADINGVIEW_TOOLS_ENABLED", default=False)
+
 # Calibration-weighted routing (opt-in): when ON, the provider/model
 # FALLBACK (no per-send override, no profile pin) picks the best-MEASURED enabled
 # model from the eval harness instead of the first ProviderConfig by id. Per-send
