@@ -429,7 +429,7 @@ def revoke_and_disconnect() -> None:
             log.info("TradingView token revocation skipped (best-effort)", exc_info=True)
     ApiCredential.objects.filter(provider="tradingview").delete()
     provider_health.clear_auth_error("tradingview")
-    # lazy: market imports secrets; tradingview_mcp lands in Task 5
-    from apps.market.services import tradingview_mcp  # type: ignore[attr-defined]
+    # lazy: market imports secrets
+    from apps.market.services import tradingview_mcp
 
     tradingview_mcp.reset_state()
