@@ -165,6 +165,8 @@ def _title(kind: str) -> str:
         "vix": "VIX term structure",
         "filings": "SEC filings",
         "treasury": "Treasury",
+        "fed": "Fed communication",
+        "flowlite": "Flow proxy (volume-based)",
     }.get(kind, kind.title())
 
 
@@ -624,7 +626,9 @@ def _top_strikes(flat: list[dict], side: str, key: str) -> str:
         key=lambda c: _sf(c.get(key)),
         reverse=True,
     )[:5]
-    return ", ".join(f"{c.get('strike')} ({c.get('expiry')}) {int(_sf(c.get(key))):,}" for c in rows)
+    return ", ".join(
+        f"{c.get('strike')} ({c.get('expiry')}) {int(_sf(c.get(key))):,}" for c in rows
+    )
 
 
 def _render_top_strikes_lines(flat: list[dict]) -> list[str]:
@@ -633,7 +637,9 @@ def _render_top_strikes_lines(flat: list[dict]) -> list[str]:
     for label, key in (("volume", "volume"), ("OI", "oi")):
         calls_s, puts_s = _top_strikes(flat, "call", key), _top_strikes(flat, "put", key)
         if calls_s or puts_s:
-            lines.append(f"\n**Top {label} strikes** — calls: {calls_s or '—'} | puts: {puts_s or '—'}")
+            lines.append(
+                f"\n**Top {label} strikes** — calls: {calls_s or '—'} | puts: {puts_s or '—'}"
+            )
     return lines
 
 
@@ -966,7 +972,9 @@ def _render_vix(payload) -> str:
     if isinstance(vvix, dict) and vvix.get("last") is not None:
         ratio = payload.get("vvix_vix_ratio")
         ratio_s = f" — VVIX/VIX {float(ratio):.2f}" if isinstance(ratio, int | float) else ""
-        lines.append(f"- VVIX: {_fmt(vvix.get('last'))}{_signed_pct(vvix.get('pct_change'))}{ratio_s}")
+        lines.append(
+            f"- VVIX: {_fmt(vvix.get('last'))}{_signed_pct(vvix.get('pct_change'))}{ratio_s}"
+        )
     front = payload.get("front")
     if isinstance(front, dict):
         label = "(continuous)" if front.get("continuous") else f"(exp {front.get('expiry')})"
@@ -1047,6 +1055,61 @@ def _render_treasury(payload: dict) -> str:
     return "\n".join(lines)
 
 
+def _next_fomc_line() -> str:
+    """Days-to-next-FOMC line, sourced from the market events calendar.
+
+    Mirrors the query pattern `upcoming_events` uses for macro kinds (`kind`
+    + `event_time__gte=now`, ordered by `event_time`) — MarketEvent has no
+    plain `date` field.
+    """
+    from django.utils import timezone
+
+    from apps.market.models import MarketEvent
+
+    now = timezone.now()
+    ev = MarketEvent.objects.filter(kind="fomc", event_time__gte=now).order_by("event_time").first()
+    if ev is None:
+        return ""
+    days = (ev.event_time.date() - now.date()).days
+    return f"- Next FOMC decision in {days}d ({ev.event_time.date().isoformat()})"
+
+
+def _render_fed(payload) -> str:
+    items = payload.get("items", []) if isinstance(payload, dict) else []
+    lines = ["## Fed communication"]
+    fomc = _next_fomc_line()
+    if fomc:
+        lines.append(fomc)
+    if not items:
+        lines.append("_(no recent Fed communications)_")
+        return "\n".join(lines)
+    for it in items[:10]:
+        when = (it.get("published") or "")[:10] or "?"
+        lines.append(f"- **{when}** [{it.get('kind')}] [{it.get('title')}]({it.get('url')})")
+    return "\n".join(lines)
+
+
+def _render_flowlite(payload) -> str:
+    lines = ["## Flow proxy (volume-based — not fund-flow data)"]
+    vz = payload.get("volume_z") or [] if isinstance(payload, dict) else []
+    if vz:
+        lines.append(
+            "- Volume z vs 20d avg: " + ", ".join(f"{r['ticker']} {r['z']:+.1f}σ" for r in vz[:8])
+        )
+    pc = payload.get("put_call_delta") if isinstance(payload, dict) else None
+    if isinstance(pc, dict):
+        lines.append(
+            f"- {pc['ticker']} P/C volume ratio {pc['latest']:.2f} "
+            f"(Δ {pc['delta']:+.2f} vs prior chain)"
+        )
+    unusual = payload.get("unusual") or [] if isinstance(payload, dict) else []
+    for row in unusual:
+        lines.append(f"- Unusual: {_describe_unusual(row)}")
+    if len(lines) == 1:
+        lines.append("_(insufficient stored data — needs nightly bar ingest + a prior chain)_")
+    return "\n".join(lines)
+
+
 _RENDERERS = {
     "quotes": _render_quotes,
     "ohlc": _render_ohlc,
@@ -1064,4 +1127,6 @@ _RENDERERS = {
     "vix": _render_vix,
     "filings": _render_filings,
     "treasury": _render_treasury,
+    "fed": _render_fed,
+    "flowlite": _render_flowlite,
 }

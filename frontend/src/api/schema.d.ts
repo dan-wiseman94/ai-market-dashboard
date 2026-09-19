@@ -2784,9 +2784,11 @@ export interface components {
          *     * `filings` - SEC filings
          *     * `treasury` - Treasury rates
          *     * `vix` - VIX term structure
+         *     * `fed` - Fed communication
+         *     * `flowlite` - Flow proxy
          * @enum {string}
          */
-        SnapshotSectionKindEnum: "quotes" | "ohlc" | "chain" | "positions" | "breadth" | "news" | "notes" | "image" | "overnight" | "events" | "fundamentals" | "macro" | "filings" | "treasury" | "vix";
+        SnapshotSectionKindEnum: "quotes" | "ohlc" | "chain" | "positions" | "breadth" | "news" | "notes" | "image" | "overnight" | "events" | "fundamentals" | "macro" | "filings" | "treasury" | "vix" | "fed" | "flowlite";
         /**
          * @description * `pending` - Pending
          *     * `done` - Done
