@@ -23,6 +23,7 @@ from apps.ai.cost import daily_spend_usd
 from apps.ai.providers import get_provider
 from apps.core import provider_health
 from apps.core.http import json_error_response
+from apps.market.services.tradingview_mcp import probe as tv_probe
 from apps.secrets.credentials import env_token_fields
 from apps.secrets.data_source_test import test_credential
 from apps.secrets.data_sources import DATA_SOURCES, get_data_source
@@ -37,6 +38,12 @@ from apps.secrets.schwab_oauth import (
     schwab_app_credentials,
 )
 from apps.secrets.serializers import ProviderConfigSerializer
+from apps.secrets.tradingview_oauth import TradingViewOAuthError
+from apps.secrets.tradingview_oauth import build_authorize_url as tv_build_authorize_url
+from apps.secrets.tradingview_oauth import consume_oauth_state as tv_consume_oauth_state
+from apps.secrets.tradingview_oauth import exchange_code as tv_exchange_code
+from apps.secrets.tradingview_oauth import persist_token as tv_persist_token
+from apps.secrets.tradingview_oauth import revoke_and_disconnect as tv_revoke_and_disconnect
 
 log = logging.getLogger(__name__)
 
@@ -294,10 +301,6 @@ def _oauth_connected(provider: str) -> bool:
     return True
 
 
-def _schwab_connected() -> bool:
-    return _oauth_connected("schwab")
-
-
 def _credential_status(provider: str) -> dict:
     """Which credential fields are present for ``provider`` — never the values.
 
@@ -359,6 +362,9 @@ def data_source_detail(request: HttpRequest, provider: str) -> JsonResponse:
     ds = get_data_source(provider)
     if ds is None:
         return _ds_err("unknown_provider", f"Unknown data source '{provider}'.", 404)
+    if request.method == "DELETE" and provider == "tradingview":
+        tv_revoke_and_disconnect()
+        return JsonResponse({"configured": False, "fields_present": [], "env_fields": []})
     if ds["auth"] in ("none", "oauth"):
         return _ds_err("not_key_managed", f"{ds['label']} isn't configured with a key here.", 400)
 
@@ -396,6 +402,57 @@ def data_source_test(_request: HttpRequest, provider: str) -> JsonResponse:
     ds = get_data_source(provider)
     if ds is None:
         return _ds_err("unknown_provider", f"Unknown data source '{provider}'.", 404)
+    if provider == "tradingview":
+        return JsonResponse(tv_probe())
     if ds["auth"] in ("none", "oauth"):
         return _ds_err("not_key_managed", f"{ds['label']} has no key to test.", 400)
     return JsonResponse(test_credential(provider))
+
+
+@require_GET
+def tradingview_authorize(_request: HttpRequest) -> JsonResponse:
+    """Register a client with TradingView's authorization server and return the consent
+    URL (PKCE + one-time state minted server-side). A rejected registration — e.g. an
+    unacceptable redirect URI — surfaces as a 502 with the server's reason."""
+    try:
+        return JsonResponse({"url": tv_build_authorize_url()})
+    except TradingViewOAuthError as exc:
+        log.warning("TradingView OAuth authorize failed: %s", exc)
+        return _ds_err("tradingview_registration_failed", str(exc), 502)
+
+
+@require_GET
+def tradingview_callback(request: HttpRequest) -> JsonResponse | HttpResponseRedirect:
+    """TradingView redirects here with ?code&state after consent (or ?error on denial)."""
+    from apps.core.mocks import is_mock_mode
+
+    settings_page = f"{settings.FRONTEND_BASE_URL}/settings"
+    if request.GET.get("error"):
+        return HttpResponseRedirect(f"{settings_page}?tradingview=denied")
+    code = request.GET.get("code")
+    if not code:
+        return _ds_err(
+            "missing_code", "TradingView callback did not include a code parameter.", 400
+        )
+    # CSRF / auth-code-injection guard (RFC 6749 §10.12): the callback is a cross-site GET
+    # with no auth cookies. The one-time state nonce also carries the PKCE verifier, so a
+    # missing/replayed nonce cannot complete an exchange. Mock mode carries no real state.
+    if is_mock_mode():
+        flow: dict | None = {
+            "client_id": "mock-client",
+            "client_secret": "",
+            "code_verifier": "mock",
+        }
+    else:
+        flow = tv_consume_oauth_state(request.GET.get("state"))
+    if flow is None:
+        return _ds_err("invalid_state", "Missing or invalid OAuth state.", 400)
+    try:
+        token = tv_exchange_code(code, flow)
+    except Exception:
+        log.warning("TradingView OAuth code exchange failed", exc_info=True)
+        return _ds_err(
+            "oauth_exchange_failed", "Failed to complete TradingView OAuth. Please try again.", 502
+        )
+    tv_persist_token(token)
+    return HttpResponseRedirect(f"{settings_page}?tradingview=connected")
