@@ -373,23 +373,88 @@ def _render_positions(payload: list) -> str:
     return "\n".join(lines)
 
 
-def _render_breadth(payload: dict) -> str:
-    lines = [
-        "## Market breadth",
-        f"- SPX: {_fmt(payload.get('spx_last'))}",
-        f"- QQQ: {_fmt(payload.get('qqq_last'))}",
-        f"- VIX: {_fmt(payload.get('vix_last'))}",
+def _render_factor_returns(factor: dict | None) -> list[str]:
+    """Render factor ETFs and spreads lines (extracted to reduce _render_breadth complexity)."""
+    if not isinstance(factor, dict):
+        return []
+
+    def _w5(row: dict) -> int | float | None:
+        v = row.get(5, row.get("5"))
+        return v if isinstance(v, int | float) else None
+
+    lines = []
+    etf_bits = [
+        f"{etf} {v:+.2f}%"
+        for etf, row in (factor.get("etfs") or {}).items()
+        if (v := _w5(row)) is not None
     ]
-    if payload.get("sectors"):
-        lines.append(
-            "- Sectors: " + ", ".join(f"{k}={_fmt(v)}" for k, v in payload["sectors"].items())
+    if etf_bits:
+        lines.append("- Factor ETFs (5d): " + ", ".join(etf_bits))
+
+    sp_labels = (
+        ("Mom-Val", "momentum_minus_value"),
+        ("Small-Large", "small_minus_large"),
+        ("Growth-Value", "growth_minus_value_proxy"),
+    )
+    sp_bits = [
+        f"{label} {v:+.2f}%"
+        for label, key in sp_labels
+        if (v := _w5((factor.get("spreads") or {}).get(key) or {})) is not None
+    ]
+    if sp_bits:
+        lines.append("- Factor spreads (5d): " + ", ".join(sp_bits))
+    return lines
+
+
+def _render_breadth(payload: dict) -> str:
+    lines = ["## Market breadth"]
+    idx = payload.get("index_complex") or []
+    if idx:
+        bits = ", ".join(
+            f"{r['symbol']} {_fmt(r.get('last'))} ({_fmt(r.get('pct_change'))}%)" for r in idx
         )
+        lines.append(f"- Index complex: {bits}")
+    else:
+        lines.append(f"- SPX: {_fmt(payload.get('spx_last'))}")
+        lines.append(f"- QQQ: {_fmt(payload.get('qqq_last'))}")
+    lines.append(f"- VIX: {_fmt(payload.get('vix_last'))}")
+    dollar = payload.get("dollar")
+    if isinstance(dollar, dict):
+        lines.append(
+            f"- Dollar (UUP): {_fmt(dollar.get('last'))} ({_fmt(dollar.get('pct_change'))}%)"
+        )
+    sectors = payload.get("sectors") or {}
+    if sectors:
+        pct = payload.get("sector_pct") or {}
+        rot = {r["sector"]: r for r in (payload.get("sector_rotation") or [])}
+        lines += ["", "| Sector | Last | 1d% | 5d% | RS vs SPX (5d) |", "|---|---:|---:|---:|---:|"]
+        for etf, last in sectors.items():
+            r = rot.get(etf) or {}
+            lines.append(
+                f"| {etf} | {_fmt(last)} | {_fmt(pct.get(etf))} | "
+                f"{_fmt(r.get('return_pct'))} | {_fmt(r.get('rs'))} |"
+            )
+        lines.append("")
     if payload.get("breadth"):
         lines.append(
-            "- Breadth: " + ", ".join(f"{k}={_fmt(v)}" for k, v in payload["breadth"].items())
+            "- Internals: " + ", ".join(f"{k}={_fmt(v)}" for k, v in payload["breadth"].items())
         )
-    # Relative strength — keys in windows dict are int in Python but may be str after a
-    # JSON round-trip (stored payload); .items() works for both, so no special casing needed.
+    stats = payload.get("breadth_stats")
+    if isinstance(stats, dict):
+        sma_bits = [
+            f">{p}dSMA {d['pct']:.0f}% ({d['above']}/{d['n']})"
+            for p, d in (stats.get("pct_above_sma") or {}).items()
+            if isinstance(d, dict) and d.get("pct") is not None
+        ]
+        if sma_bits:
+            lines.append("- Sector breadth: " + ", ".join(sma_bits))
+        if stats.get("hl_n"):
+            span = stats.get("min_span_sessions") or stats.get("hl_window")
+            lines.append(
+                f"- Fresh highs/lows (≤{span}-session span, {stats['hl_n']} names): "
+                f"{stats.get('highs', 0)} high / {stats.get('lows', 0)} low"
+            )
+    # Relative strength — keys may be int or str after a JSON round-trip.
     rs = payload.get("relative_strength")
     if rs and rs.get("windows"):
         bits = []
@@ -400,16 +465,7 @@ def _render_breadth(payload: dict) -> str:
             lines.append(
                 f"- Relative strength ({rs['ticker']} vs {rs['benchmark']}): " + ", ".join(bits)
             )
-    # Sector rotation — show leader (first) and laggard (last).
-    rotation = payload.get("sector_rotation") or []
-    if rotation:
-        top = rotation[0]
-        bot = rotation[-1]
-        lines.append(
-            f"- Sector rotation ({len(rotation)} sectors): "
-            f"leader {top['sector']} {top['return_pct']:+.2f}%, "
-            f"laggard {bot['sector']} {bot['return_pct']:+.2f}%"
-        )
+    lines.extend(_render_factor_returns(payload.get("factor_returns")))
     return "\n".join(lines)
 
 
