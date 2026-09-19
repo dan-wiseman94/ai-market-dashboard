@@ -88,6 +88,58 @@ def test_toolset_empty_when_list_tools_fails() -> None:
         assert bridge.tradingview_toolset().specs == {}
 
 
+def test_spec_from_normalizes_malformed_schema() -> None:
+    null_props = bridge._spec_from(
+        {
+            "name": "get_ohlcv",
+            "description": "Bars.",
+            "inputSchema": {"type": "object", "properties": None},
+        }
+    )
+    assert null_props is not None
+    assert null_props.input_schema["type"] == "object"
+    assert null_props.input_schema["properties"] == {}
+
+    junk_schema = bridge._spec_from(
+        {"name": "get_screener_columns", "description": "Columns.", "inputSchema": "junk"}
+    )
+    assert junk_schema is not None
+    assert junk_schema.input_schema["type"] == "object"
+    assert junk_schema.input_schema["properties"] == {}
+
+    no_type = bridge._spec_from(
+        {
+            "name": "search_symbols",
+            "description": "Search.",
+            "inputSchema": {"properties": {"symbol": {"type": "string"}}},
+        }
+    )
+    assert no_type is not None
+    assert no_type.input_schema["type"] == "object"
+    assert isinstance(no_type.input_schema["properties"], dict)
+    assert "EXCHANGE:TICKER" in no_type.description
+
+
+@pytest.mark.django_db
+def test_toolset_skips_a_bad_entry_but_keeps_the_rest() -> None:
+    real_spec_from = bridge._spec_from
+
+    def flaky(tool: dict):
+        if tool.get("name") == "get_ohlcv":
+            raise RuntimeError("malformed entry")
+        return real_spec_from(tool)
+
+    with (
+        _enabled(True),
+        patch("apps.market.services.tradingview.is_connected", return_value=True),
+        patch("apps.market.services.tradingview_mcp.list_tools", return_value=LIVE),
+        patch("apps.ai.tools.tradingview._spec_from", side_effect=flaky),
+    ):
+        ts = bridge.tradingview_toolset()
+    assert "tv_get_ohlcv" not in ts.specs
+    assert set(ts.specs) == {"tv_get_screener_columns", "tv_search_symbols"}
+
+
 def test_resolve_dynamic_only_allowlisted_tv_names() -> None:
     assert bridge.resolve_dynamic("get_quote") is None
     assert bridge.resolve_dynamic("tv_create_alert") is None

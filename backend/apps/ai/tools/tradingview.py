@@ -73,12 +73,19 @@ def _spec_from(tool: dict) -> ToolSpec | None:
     name = str(tool.get("name") or "")
     if name not in TRADINGVIEW_TOOL_ALLOWLIST:
         return None
-    schema = dict(tool.get("inputSchema") or {})
-    schema.setdefault("type", "object")
-    schema.setdefault("properties", {})
+    raw_schema = tool.get("inputSchema")
+    schema = dict(raw_schema) if isinstance(raw_schema, dict) else {}
+    # Normalize, don't just setdefault — the live server can send "properties": null (or
+    # any non-dict) or omit "type"; a malformed schema reaching anthropic_tools()/
+    # openai_tools() can make the provider reject the whole tools= payload for the turn.
+    if schema.get("type") != "object":
+        schema["type"] = "object"
+    props = schema.get("properties")
+    if not isinstance(props, dict):
+        props = {}
+        schema["properties"] = props
     description = f"TradingView: {tool.get('description') or name}"
-    props = schema.get("properties") or {}
-    if isinstance(props, dict) and ("symbol" in props or "symbols" in props):
+    if "symbol" in props or "symbols" in props:
         description += _SYMBOL_NOTE
     return ToolSpec(
         name=f"{TV_PREFIX}{name}", description=description, input_schema=schema, fn=_runner(name)
@@ -96,7 +103,13 @@ def tradingview_toolset() -> Toolset:
         if not runtime_config().tradingview_tools_enabled or not tradingview.is_connected():
             return toolset
         for tool in tradingview_mcp.list_tools():
-            spec = _spec_from(tool)
+            # Isolate one bad entry so it can't take down the whole toolset for the turn.
+            try:
+                spec = _spec_from(tool)
+            except Exception as exc:
+                entry_name = tool.get("name") if isinstance(tool, dict) else "<unknown>"
+                log.warning("TradingView tool entry skipped: %s (%s)", entry_name, exc)
+                continue
             if spec is not None:
                 toolset.register(spec)
     except Exception:
