@@ -748,7 +748,7 @@ def build_authorize_url() -> str:
     return f"{meta['authorization_endpoint']}?{urlencode(params)}"
 ```
 
-(The imports `time`, `datetime`, `InvalidToken`, `transaction`, `timezone` are used by Task 4's additions; ruff will flag them as unused until then — that is expected between Task 3 and Task 4, so run ruff only after Task 4 or add the token half in the same commit if you prefer one commit.)
+(Import hygiene: in this task include only the imports this half uses — drop `time`, `datetime`, `InvalidToken`, `transaction`, and `timezone` from the block above so `ruff check` is clean at this commit. Task 4 adds them back with the token half.)
 
 - [ ] **Step 4: Run tests**
 
@@ -1218,11 +1218,6 @@ def _rpc(rpc_id, result=None, error=None, **headers):
     return httpx.Response(200, json=body, headers=headers)
 
 
-def _init_ok(session=None):
-    hdrs = {"Mcp-Session-Id": session} if session else {}
-    return _rpc(mcp._last_id() + 1, {"protocolVersion": "2025-06-18", "capabilities": {}}, **hdrs)
-
-
 class _Server:
     """Scripted httpx.post: answers initialize/initialized/tools calls in order."""
 
@@ -1634,7 +1629,8 @@ def _request(method: str, params: dict | None = None) -> dict:
                 _mark_rejected()
                 raise TradingViewNotConnected("TradingView rejected the access token") from None
             refreshed = True
-            _forget_session()
+            # Keep the session: a 401 is about the token, not the session id. If the
+            # server also dropped the session it answers 404 next, which re-inits.
             token = oauth.ensure_fresh_token(force=True)
             if token is None:
                 raise TradingViewNotConnected("TradingView token refresh failed") from None
@@ -2153,7 +2149,7 @@ def test_fetch_bars_normalizes_sorts_and_persists():
         bars = tv.fetch_bars("AAPL", timeframe="1d", limit=60)
     assert c.call_args_list[-1].args == ("get_ohlcv", {"symbol": "NASDAQ:AAPL", "interval": "1D", "count": 60, "summary": False})
     assert [b["close"] for b in bars] == [1.5, 2.5]
-    assert bars[0]["ts"] == "2026-10-09T08:53:20+00:00"
+    assert bars[0]["ts"] == "2025-10-09T08:53:20+00:00"
     assert OHLCBar.objects.filter(ticker="AAPL", timeframe="1d").count() == 2
 
 
@@ -2575,7 +2571,7 @@ def test_fetch_earnings_accepts_epoch_dates_and_bmo():
     raw = [{"symbol": "NASDAQ:NVDA", "timestamp": 1_760_000_000, "session": "pre-market"}]
     with _tools({"get_earnings_calendar": raw}), patch("apps.market.services.tradingview.to_tv_symbol", return_value="NASDAQ:NVDA"):
         rows = tv.fetch_earnings(["NVDA"])
-    assert rows[0]["date"] == "2026-10-09" and rows[0]["hour"] == "bmo"
+    assert rows[0]["date"] == "2025-10-09" and rows[0]["hour"] == "bmo"
 
 
 def test_fetch_economic_calendar_rows_for_macro_upsert():
@@ -3318,7 +3314,7 @@ def resolve_dynamic(name: str) -> ToolSpec | None:
     )
 ```
 
-- [ ] **Step 4: Registry** — in `backend/apps/ai/tools/registry.py` add the import `from apps.ai.tools.tradingview import resolve_dynamic, tradingview_toolset`, add `ts.add_resolver(resolve_dynamic)` immediately before the final `return ts` of `default_toolset()`, and append:
+- [ ] **Step 4: Registry** — in `backend/apps/ai/tools/registry.py` add the top-level import `from apps.ai.tools.tradingview import resolve_dynamic`, add `ts.add_resolver(resolve_dynamic)` immediately before the final `return ts` of `default_toolset()`, and append (the `tradingview_toolset` import is deliberately inside the function so tests can patch `apps.ai.tools.tradingview.tradingview_toolset`):
 
 ```python
 def request_toolset() -> Toolset:
@@ -3327,6 +3323,8 @@ def request_toolset() -> Toolset:
 
     Sync path only — this does ORM + Redis/HTTP. Providers keep calling
     ``default_toolset()`` for execution; its dynamic resolver dispatches ``tv_*`` names."""
+    from apps.ai.tools.tradingview import tradingview_toolset
+
     return default_toolset().merge(tradingview_toolset())
 ```
 
