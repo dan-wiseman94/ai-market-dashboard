@@ -62,11 +62,17 @@ def alt_bars(ticker: str, timeframe: str, *, limit: int = 60) -> list | None:
     if timeframe == "1d" and _has("tiingo"):
         from apps.market.services import tiingo
 
-        return tiingo.fetch_daily_bars(ticker, days=limit)
+        # These providers treat the count as a CALENDAR-day lookback, not a bar
+        # count (260 days ≈ 178 trading bars) — convert so 260 bars means 260 bars.
+        days = int(limit * 1.45) + 5
+        return tiingo.fetch_daily_bars(ticker, days=days)
     if timeframe == "1d" and _has("polygon"):
         from apps.market.services import polygon
 
-        return polygon.fetch_daily_bars(ticker, days=limit)
+        # These providers treat the count as a CALENDAR-day lookback, not a bar
+        # count (260 days ≈ 178 trading bars) — convert so 260 bars means 260 bars.
+        days = int(limit * 1.45) + 5
+        return polygon.fetch_daily_bars(ticker, days=days)
     return None
 
 

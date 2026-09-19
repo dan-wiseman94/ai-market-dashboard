@@ -102,7 +102,7 @@ def fetch_daily_bars(ticker: str, *, days: int = 120) -> list[dict]:
     path = f"/v2/aggs/ticker/{ticker}/range/1/day/{from_date}/{to_date}"
     # Request RAW (unadjusted) bars: returns.py corrects splits itself and
     # assumes OHLCBar holds raw prices. adjusted="true" would double-correct.
-    params = {"adjusted": "false", "sort": "asc", "limit": 120}
+    params = {"adjusted": "false", "sort": "asc", "limit": 500}
 
     try:
         body = cache.get_or_fetch(

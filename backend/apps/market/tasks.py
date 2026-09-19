@@ -118,7 +118,8 @@ def ingest_daily_bars() -> dict:
     """Fetch + persist daily OHLCBar for a fixed universe (watchlist + sector ETFs +
     $SPX/QQQ + macro proxies). Idempotent via fetch_ohlc's update_or_create. Densifies
     the bar history that relative-strength, sector-rotation, the backtester, the leaderboard,
-    and unusual-options IV-z all read. Never raises -- a per-symbol failure is logged and skipped."""
+    and unusual-options IV-z all read. Never raises -- a per-symbol failure is logged and skipped.
+    Fetches 260 bars (52-week depth) to feed breadth_stats and the OHLC summary."""
     from apps.market.services.context import MACRO, SECTOR_ETFS
     from apps.market.services.ohlc import fetch_ohlc
     from apps.profiles.models import WatchlistSymbol
@@ -130,7 +131,7 @@ def ingest_daily_bars() -> dict:
     ingested = 0
     for sym in universe:
         try:
-            fetch_ohlc(sym, timeframe="1d", bars=60)
+            fetch_ohlc(sym, timeframe="1d", bars=260)
             ingested += 1
         except Exception as exc:
             log.warning("market.ingest_daily_bars %s failed: %s", sym, exc)
