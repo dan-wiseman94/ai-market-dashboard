@@ -10,9 +10,9 @@ from decimal import Decimal
 from cryptography.fernet import InvalidToken
 from django.utils import timezone
 
-from apps.ai.catalog import CLAUDE_FAMILY_PROVIDERS, DEFAULT_CLAUDE_MODEL
+from apps.ai.catalog import default_model_for
 from apps.ai.cost import CostCapExceededError, check_daily_cap, check_monthly_cap
-from apps.ai.providers.claude_structured import run_structured
+from apps.ai.structured import run_structured
 from apps.core.runtime_config import runtime_config
 from apps.market.calendar import any_market_open
 from apps.observer.models import ObserverSchedule
@@ -280,25 +280,8 @@ def _run_structured_and_record(
     *,
     snap=None,
 ) -> None:
-    """Invoke messages.parse with ObservationReport and persist the result."""
-    if provider_name not in CLAUDE_FAMILY_PROVIDERS:
-        # Structured outputs run through Anthropic messages.parse — skip with a
-        # visible Message (mirrors the postmortem/consensus guards) instead of
-        # sending another vendor's key to the Anthropic endpoint and failing
-        # every fire with an opaque 401.
-        Message.objects.create(
-            thread=thread,
-            role="system",
-            content={
-                "text": (
-                    f"Observer {sched.name}: structured mode requires a Claude "
-                    f"provider (schedule resolves to {provider_name!r}); fire skipped."
-                )
-            },
-            status="failed",
-            error="unsupported_provider",
-        )
-        return
+    """Run the structured ObservationReport call on the schedule's provider and
+    persist the result."""
     try:
         has_key = cfg is not None and bool(cfg.api_key)
     except InvalidToken:
@@ -332,9 +315,10 @@ def _run_structured_and_record(
             error="no_key",
         )
         return
-    model_id = sched.override_model or cfg.default_model or DEFAULT_CLAUDE_MODEL
+    model_id = sched.override_model or cfg.default_model or default_model_for(provider_name)
     try:
         report = run_structured(
+            provider=provider_name,
             api_key=cfg.api_key,
             model=model_id,
             system=build_system_prompt(sched.profile, now=timezone.now()),
