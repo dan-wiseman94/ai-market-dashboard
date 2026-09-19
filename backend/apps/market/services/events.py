@@ -87,7 +87,12 @@ def fetch_earnings(tickers: list[str], *, ahead_days: int = 30) -> list[MarketEv
         from apps.market.services import tradingview
 
         if tradingview.is_connected():
-            rows = tradingview.fetch_earnings([t.upper() for t in tickers if is_equity_like(t)])
+            equity_tickers = [t.upper() for t in tickers if is_equity_like(t)]
+            rows = cache.get_or_fetch(
+                f"market:tv-earn:{','.join(equity_tickers)}:{ahead_days}",
+                ttl_seconds=cache.ttl_for_kind("events"),
+                fetcher=lambda: tradingview.fetch_earnings(equity_tickers),
+            )
             return _upsert_earnings(rows, source="tradingview")
         log.info("Finnhub credential not configured; no earnings fetched")
         return []
@@ -224,9 +229,12 @@ def fetch_macro(*, ahead_days: int = 45) -> list[MarketEvent]:
         from apps.market.services import tradingview
 
         if tradingview.is_connected():
-            upserted = _upsert_macro(
-                tradingview.fetch_economic_calendar(ahead_days=ahead_days), source="tradingview"
+            tv_rows = cache.get_or_fetch(
+                f"market:tv-macro:{ahead_days}",
+                ttl_seconds=cache.ttl_for_kind("events"),
+                fetcher=lambda: tradingview.fetch_economic_calendar(ahead_days=ahead_days),
             )
+            upserted = _upsert_macro(tv_rows, source="tradingview")
     if not upserted:
         upserted = _upsert_macro(SEED_MACRO_EVENTS, source="seed")
     now = datetime.now(UTC)
