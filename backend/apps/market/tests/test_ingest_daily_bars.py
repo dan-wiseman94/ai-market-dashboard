@@ -100,6 +100,22 @@ def test_empty_watchlist_still_includes_fixed_universe():
     assert result["ingested"] == len(fixed)
 
 
+@pytest.mark.django_db
+def test_ingest_daily_bars_requests_260():
+    """Task must request 260 bars (52-week depth) for each symbol."""
+    seen = []
+    with patch(
+        "apps.market.services.ohlc.fetch_ohlc",
+        lambda sym, *, timeframe, bars: seen.append((sym, timeframe, bars)) or [],
+    ):
+        ingest_daily_bars()
+    assert seen, "Expected at least one fetch_ohlc call"
+    for sym, timeframe, bar_count in seen:
+        assert bar_count == 260, (
+            f"Expected bars=260 but got bars={bar_count} for {sym}"
+        )
+
+
 def test_beat_registration():
     """Beat schedule must include the ingest-daily-bars entry with the correct task name."""
     from config.celery import app
