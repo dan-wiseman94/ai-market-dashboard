@@ -124,4 +124,9 @@ describe("ConnectionsSettings", () => {
     await userEvent.click(screen.getByRole("button", { name: /connect schwab/i }));
     expect(await screen.findByText(/schwab is not configured/i)).toBeInTheDocument();
   });
+
+  it("toasts and strips the query when returning from TradingView consent", async () => {
+    renderWithProviders(<ConnectionsSettings />, { initialEntries: ["/settings/connections?tradingview=connected"] });
+    expect(await screen.findByText(/tradingview connected/i)).toBeInTheDocument();
+  });
 });

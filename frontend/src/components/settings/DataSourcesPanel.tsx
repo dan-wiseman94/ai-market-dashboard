@@ -5,9 +5,13 @@ import {
   saveDataSourceKey,
   clearDataSourceKey,
   testDataSourceKey,
+  fetchDataSourceAuthorizeUrl,
+  disconnectDataSource,
   type DataSource,
   type TestResult,
 } from "@/api/dataSources";
+import { useSystemSettings } from "@/hooks/useSystemSettings";
+import { updateSystemSettings } from "@/api/settings";
 import { useToast } from "@/hooks/useToast";
 import { SkeletonRows } from "@/components/Skeleton";
 
@@ -22,6 +26,109 @@ function StatusPill({ ds }: { ds: DataSource }) {
     <span className="ledger-pill" data-tone={configured ? "gain" : "loss"}>
       {label}
     </span>
+  );
+}
+
+function TradingViewToolsToggle({ disabled }: { disabled: boolean }) {
+  const { data } = useSystemSettings();
+  const qc = useQueryClient();
+  const { push } = useToast();
+  const [saving, setSaving] = useState(false);
+  const checked = data?.tradingview_tools_enabled ?? false;
+  const onChange = async (next: boolean) => {
+    setSaving(true);
+    try {
+      await updateSystemSettings({ tradingview_tools_enabled: next });
+      await qc.invalidateQueries({ queryKey: ["system-settings"] });
+    } catch (e) {
+      push({ kind: "error", text: (e as Error).message });
+    } finally {
+      setSaving(false);
+    }
+  };
+  return (
+    <label className="flex flex-wrap items-center gap-2">
+      <input
+        type="checkbox"
+        aria-label="Expose TradingView tools to the AI"
+        checked={checked}
+        disabled={disabled || saving}
+        onChange={(e) => void onChange(e.target.checked)}
+      />
+      <span className="text-[13px] text-ink-200">Expose TradingView tools to the AI</span>
+      <span className="text-[11px] text-ink-500">
+        Adds the read-only tv_* tools to every tool-enabled profile run (~3–6k prompt tokens).
+      </span>
+    </label>
+  );
+}
+
+function OAuthControls({ ds, onChanged }: { ds: DataSource; onChanged: () => void }) {
+  const { push } = useToast();
+  const [busy, setBusy] = useState(false);
+  const [testResult, setTestResult] = useState<TestResult | null>(null);
+  const withBusy = async (fn: () => Promise<void>) => {
+    setBusy(true);
+    try {
+      await fn();
+    } catch (e) {
+      push({ kind: "error", text: (e as Error).message });
+    } finally {
+      setBusy(false);
+    }
+  };
+  const connect = () =>
+    withBusy(async () => {
+      const { url } = await fetchDataSourceAuthorizeUrl(ds.provider);
+      // New tab, as with Schwab: a rejected registration or the provider's consent page
+      // must never replace the dashboard. `noopener` severs window.opener.
+      window.open(url, "_blank", "noopener,noreferrer");
+    });
+  const test = () =>
+    withBusy(async () => {
+      const res = await testDataSourceKey(ds.provider);
+      setTestResult(res);
+      push({ kind: res.ok ? "success" : "error", text: `${ds.label}: ${res.message}` });
+    });
+  const disconnect = () =>
+    withBusy(async () => {
+      setTestResult(null);
+      await disconnectDataSource(ds.provider);
+      onChanged();
+      push({ kind: "success", text: `${ds.label} disconnected.` });
+    });
+  return (
+    <div className="mt-4 grid gap-3">
+      {ds.status.auth_error ? (
+        <p
+          role="alert"
+          className="rounded-ledger border border-loss-300 bg-loss-300/10 px-3 py-2 text-[13px] text-loss-300"
+        >
+          {ds.status.auth_error}
+        </p>
+      ) : null}
+      <div className="flex flex-wrap items-center gap-3">
+        <button type="button" onClick={connect} disabled={busy} className="ledger-cta">
+          {ds.status.configured ? "Reconnect" : `Connect ${ds.label}`}
+        </button>
+        {ds.status.configured && (
+          <>
+            <button type="button" onClick={test} disabled={busy} className="text-[12px] text-copper-300 hover:text-copper-200">
+              Test connection
+            </button>
+            <button type="button" onClick={disconnect} disabled={busy} className="text-[12px] text-ink-400 hover:text-ink-200">
+              Disconnect
+            </button>
+          </>
+        )}
+        {testResult && (
+          <span className="ledger-pill" data-tone={testResult.ok ? "gain" : "loss"}>
+            {testResult.message}
+          </span>
+        )}
+      </div>
+      {ds.provider === "tradingview" && <TradingViewToolsToggle disabled={!ds.status.configured} />}
+    </div>
   );
 }
 
@@ -83,6 +190,8 @@ function DataSourceCard({ ds, onChanged }: { ds: DataSource; onChanged: () => vo
         <p className="mt-3 text-[12px] text-ink-400">Ready to use — no key required.</p>
       )}
 
+      {ds.auth === "oauth" && <OAuthControls ds={ds} onChanged={onChanged} />}
+
       {keyed && (
         <div className="mt-4 grid gap-3">
           {ds.fields.map((f) => (
@@ -142,14 +251,14 @@ function DataSourceCard({ ds, onChanged }: { ds: DataSource; onChanged: () => vo
       )}
 
       <div className="mt-3 flex items-center gap-4">
-        {keyed && ds.signup_url && (
+        {(keyed || ds.auth === "oauth") && ds.signup_url && (
           <a
             href={ds.signup_url}
             target="_blank"
             rel="noreferrer"
             className="font-mono text-[11px] text-copper-300 hover:text-copper-200"
           >
-            Get a free key ↗
+            {keyed ? "Get a free key ↗" : "Plans ↗"}
           </a>
         )}
         <a
@@ -165,21 +274,23 @@ function DataSourceCard({ ds, onChanged }: { ds: DataSource; onChanged: () => vo
   );
 }
 
-/** The list of free / key-based market-data providers, embedded on the Connections tab.
- *  Schwab (auth "oauth") is excluded — it has its own OAuth connect card above this. */
+/** The list of free / key-based market-data providers plus TradingView (OAuth), embedded
+ *  on the Connections tab. Schwab is excluded — it has its own OAuth connect card above this. */
 export default function DataSourcesPanel() {
   const { data, isLoading } = useDataSources();
   const qc = useQueryClient();
   const onChanged = () => {
     void qc.invalidateQueries({ queryKey: ["data-sources"] });
   };
-  const sources = (data?.data_sources ?? []).filter((ds) => ds.auth !== "oauth");
+  const sources = (data?.data_sources ?? []).filter((ds) => ds.provider !== "schwab");
 
   return (
     <div className="space-y-4">
       <div className="flex items-baseline gap-3">
-        <h3 className="font-display text-[1.1rem] text-ink-50">Free data sources</h3>
-        <span className="text-[12px] text-ink-400">Optional providers that run alongside Schwab.</span>
+        <h3 className="font-display text-[1.1rem] text-ink-50">More data sources</h3>
+        <span className="text-[12px] text-ink-400">
+          Optional providers that run alongside Schwab. TradingView needs an Essential-or-above plan.
+        </span>
       </div>
       {isLoading ? (
         <SkeletonRows rows={4} />

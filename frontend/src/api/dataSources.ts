@@ -7,6 +7,8 @@ export interface DataSourceStatus {
   fields_present: string[];
   /** Subset of fields_present currently supplied by a host .env var rather than a saved key. */
   env_fields?: string[];
+  /** OAuth sources only: the provider rejected the stored token; reconnect to clear. */
+  auth_error?: string | null;
 }
 
 export interface DataSource {
@@ -38,3 +40,11 @@ export interface TestResult {
 /** Probe the saved credential to check whether the key actually works. */
 export const testDataSourceKey = (provider: string) =>
   apiPost<TestResult>(`/api/schwab/data-sources/${provider}/test/`, {});
+
+/** OAuth sources (TradingView): the consent URL to open in a new tab. */
+export const fetchDataSourceAuthorizeUrl = (provider: string) =>
+  apiGet<{ url: string }>(`/api/schwab/data-sources/${provider}/authorize/`);
+
+/** OAuth sources: revoke upstream (best-effort) and forget the token. */
+export const disconnectDataSource = (provider: string) =>
+  apiDelete(`/api/schwab/data-sources/${provider}/`);
