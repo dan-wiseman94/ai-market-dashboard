@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 import pytest
 from django.test import override_settings
 
@@ -31,7 +33,14 @@ def _patch(monkeypatch):
         what_would_change_my_mind = "x"
 
     monkeypatch.setattr(T, "synthesize", lambda ctx, args, **kw: _V())
-    monkeypatch.setattr(T, "_claude_cfg", lambda: ("k", "claude-opus-4-8", ""))
+
+    from apps.ai.structured import StructuredTarget
+
+    monkeypatch.setattr(
+        T,
+        "_synth_target",
+        lambda: StructuredTarget("openai", "gpt-5.6-sol", "k", "", Decimal("10.00"), None),
+    )
 
 
 @override_settings(CELERY_TASK_ALWAYS_EAGER=True, CELERY_TASK_EAGER_PROPAGATES=True)
@@ -47,7 +56,7 @@ def test_convene_creates_run_and_dispatches_to_done(monkeypatch):
 
 @override_settings(CELERY_TASK_ALWAYS_EAGER=True, CELERY_TASK_EAGER_PROPAGATES=True)
 def test_convene_no_provider_errors(monkeypatch):
-    monkeypatch.setattr(T, "_claude_cfg", lambda: None)
+    monkeypatch.setattr(T, "_synth_target", lambda: None)
     monkeypatch.setattr(
         T, "assign_voices", lambda mode: [(p, "", "") for p in ("bull", "bear", "skeptic")]
     )
@@ -69,3 +78,22 @@ def test_rebuttal_runs_extra_round(monkeypatch):
     )
     CV.convene(free_prompt="q", structure="rebuttal")
     assert any(n == 0 for _p, n in calls) and any(n > 0 for _p, n in calls)
+
+
+def test_synth_target_resolves_first_enabled_provider_and_checks_caps(monkeypatch):
+    from apps.secrets.models import ProviderConfig
+
+    cfg = ProviderConfig.objects.create(provider="openai", enabled=True)
+    cfg.api_key = "sk-oai"
+    cfg.save()
+    t = CV._synth_target()
+    assert t is not None
+    assert (t.provider, t.model) == ("openai", "gpt-5.6-sol")
+
+    from apps.ai.cost import CostCapExceededError
+
+    def _over(target):
+        raise CostCapExceededError("over")
+
+    monkeypatch.setattr(CV, "ensure_within_caps", _over)
+    assert CV._synth_target() is None
