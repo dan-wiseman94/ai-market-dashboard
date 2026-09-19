@@ -235,3 +235,41 @@ def test_fetch_news_failure_per_ticker_is_skipped():
         patch("apps.market.services.tradingview.to_tv_symbol", return_value="NASDAQ:AAPL"),
     ):
         assert tv.fetch_news(["AAPL"]) == []
+
+
+@pytest.mark.django_db
+def test_fetch_news_skips_item_with_unparseable_timestamp():
+    bad = {"id": 1, "title": "Bad ts", "published": 10**20, "provider": "X", "link": "https://x"}
+    good = {
+        "id": 2,
+        "title": "Good",
+        "published": 1_760_000_000,
+        "provider": "Y",
+        "link": "https://y",
+    }
+    with (
+        _tools({"get_news": {"items": [bad, good]}}),
+        patch("apps.market.services.tradingview.to_tv_symbol", return_value="NASDAQ:AAPL"),
+    ):
+        items = tv.fetch_news(["AAPL"], limit=5)
+    assert len(items) == 1
+    assert items[0]["headline"] == "Good"
+
+
+@pytest.mark.django_db
+def test_fetch_news_persistence_failure_still_returns_items():
+    item = {
+        "id": 3,
+        "title": "Persist fail",
+        "published": 1_760_000_000,
+        "provider": "Z",
+        "link": "https://z",
+    }
+    with (
+        _tools({"get_news": {"items": [item]}}),
+        patch("apps.market.services.tradingview.to_tv_symbol", return_value="NASDAQ:AAPL"),
+        patch("apps.market.services.news._upsert_items", side_effect=RuntimeError("db down")),
+    ):
+        items = tv.fetch_news(["AAPL"], limit=5)
+    assert len(items) == 1
+    assert items[0]["headline"] == "Persist fail"
