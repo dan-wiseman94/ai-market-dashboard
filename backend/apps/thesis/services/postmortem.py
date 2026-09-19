@@ -3,13 +3,13 @@
 Closes the decision loop on a Thesis. ``schedule_postmortems`` lays down one
 PostMortem row per configured horizon. ``run_postmortem`` computes the ACTUAL
 forward return + price path, assigns a DETERMINISTIC verdict (so the loop closes
-even with no AI key), and BEST-EFFORT generates an AI narrative via Claude
-structured output, posting it into the per-thesis review thread.
+even with no AI key), and BEST-EFFORT generates an AI narrative via structured
+output on the thesis's provider, posting it into the per-thesis review thread.
 
-Mirrors apps.observer.services.run for provider/cap resolution and graceful
-failure. The hard contract here: the AI narrative is best-effort and NEVER
-raises out of the runner — the objective verdict, forward return, and "done"
-status must always persist.
+Resolves its provider through ``apps.ai.structured`` and degrades gracefully.
+The hard contract here: the AI narrative is best-effort and NEVER raises out
+of the runner — the objective verdict, forward return, and "done" status must
+always persist.
 """
 
 from __future__ import annotations
@@ -21,12 +21,10 @@ from cryptography.fernet import InvalidToken
 from django.conf import settings
 from django.utils import timezone
 
-from apps.ai.catalog import DEFAULT_CLAUDE_MODEL
-from apps.ai.cost import CostCapExceededError, check_daily_cap, check_monthly_cap
-from apps.ai.providers.claude_structured import run_structured
+from apps.ai.cost import CostCapExceededError
+from apps.ai.structured import ensure_within_caps, resolve_structured_target, run_structured
 from apps.market.returns import direction_verdict, price_path_summary
 from apps.observer.services.notifications import notify
-from apps.secrets.models import ProviderConfig
 from apps.threads.models import Message
 
 from ..models import PostMortem, Thesis
@@ -96,58 +94,37 @@ def _attempt_ai_narrative(
 ) -> None:
     """Best-effort: populate pm.report + post a review Message. NEVER raises.
 
-    On non-claude provider / no key / cap exceeded / any provider error we log a
-    warning and leave pm.report = {} — the objective verdict + return are already
+    On no usable provider / cap exceeded / undecryptable key we log a warning
+    and leave pm.report = {} — the objective verdict + return are already
     recorded by the caller, so the loop still closes.
     """
-    provider_name = (
-        thesis.profile.default_provider
-        if thesis.profile
-        else (ProviderConfig.objects.values_list("provider", flat=True).first() or "")
-    )
     try:
-        cfg = ProviderConfig.objects.filter(provider=provider_name).first()
+        target = resolve_structured_target(profile=thesis.profile)
     except InvalidToken:
-        cfg = None  # undecryptable key (key/salt rotation) → handled as "no key" below
-
-    if provider_name != "claude":
         log.warning(
-            "postmortem %s: provider %r is not claude — skipping AI narrative",
-            pm.id,
-            provider_name,
+            "postmortem %s: provider key could not be decrypted — skipping AI narrative", pm.id
         )
         return
-    if cfg is None or not cfg.api_key:
-        log.warning("postmortem %s: no claude key configured — skipping AI narrative", pm.id)
+    if target is None:
+        log.warning("postmortem %s: no usable provider configured — skipping AI narrative", pm.id)
         return
-
-    # Cost caps: cfg is guaranteed non-None here (we returned above otherwise),
-    # so read its configured caps directly. daily defaults to 10.00; monthly is
-    # nullable and a None monthly cap is a no-op in check_monthly_cap.
-    cap_usd = cfg.daily_cost_cap_usd
-    monthly_cap = cfg.monthly_cost_cap_usd
     try:
-        check_daily_cap(provider_name, cap_usd=cap_usd)
-        check_monthly_cap(provider_name, cap_usd=monthly_cap)
+        ensure_within_caps(target)
     except CostCapExceededError as exc:
         log.warning("postmortem %s: cost cap hit, skipping AI narrative — %s", pm.id, exc)
         return
 
-    model_id = (
-        (thesis.profile.default_model if thesis.profile else "")
-        or cfg.default_model
-        or DEFAULT_CLAUDE_MODEL
-    )
     system = thesis.profile.style if thesis.profile else ""
     prompt = _build_prompt(thesis, pm, fwd, path)
 
     report = run_structured(
-        api_key=cfg.api_key,
-        model=model_id,
+        provider=target.provider,
+        api_key=target.api_key,
+        model=target.model,
         system=system or "",
         user=prompt,
         output_model=PostMortemReport,
-        base_url=cfg.base_url or "",
+        base_url=target.base_url,
     )
 
     pm.report = report.model_dump()

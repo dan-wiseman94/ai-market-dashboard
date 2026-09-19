@@ -15,7 +15,7 @@ context) — the coach block summarizes prior outcomes and could leak informatio
 from AFTER the thesis was opened, which would inflate the score. Snapshot
 sections are immutable post-capture, so re-serializing reproduces the original
 input exactly. Keep this boundary: the user turn handed to ``run_structured``
-must contain only the snapshot.
+must contain only the snapshot, whichever provider scores it.
 
 This module is pure + testable. ``run_structured`` is the only side-effecting
 call (the real model → real $). Tests patch it; the management command guards it
@@ -29,7 +29,7 @@ from typing import Any
 
 from cryptography.fernet import InvalidToken
 
-from apps.ai.providers.claude_structured import run_structured
+from apps.ai.structured import run_structured
 from apps.analytics.models import EvalRun
 from apps.analytics.services.calibration import _hit_rate
 from apps.observer.schemas import ObservationReport
@@ -146,8 +146,10 @@ def _outcome_direction(thesis_direction: str, verdict: str) -> str:
     return _OPPOSITE.get(thesis_direction, thesis_direction)
 
 
-def replay_one(example: PostMortem, *, system: str, model: str) -> dict[str, Any]:
-    """Re-serialize the frozen snapshot, run the candidate, extract the call.
+def replay_one(
+    example: PostMortem, *, system: str, model: str, provider: str = "claude"
+) -> dict[str, Any]:
+    """Re-serialize the frozen snapshot, run the candidate on ``provider``, extract the call.
 
     Look-ahead-safe: the user turn is the BARE serialized snapshot — no coach,
     no recall, no post-trade context (see module docstring). Returns
@@ -163,16 +165,17 @@ def replay_one(example: PostMortem, *, system: str, model: str) -> dict[str, Any
         raise ValueError(f"PostMortem {example.id}: thesis has no snapshot to replay")
 
     # ONLY the frozen snapshot — deliberately no coach/recall context.
-    payload_text = serialize_for_ai(snapshot, provider="claude", model=model)
+    payload_text = serialize_for_ai(snapshot, provider=provider, model=model)
 
     try:
-        cfg = ProviderConfig.objects.filter(provider="claude").first()
+        cfg = ProviderConfig.objects.filter(provider=provider).first()
     except InvalidToken:
         cfg = None  # undecryptable key → empty key; run_structured fails cleanly downstream
     api_key = cfg.api_key if cfg else ""
     base_url = (cfg.base_url if cfg else "") or ""
 
     report = run_structured(
+        provider=provider,
         api_key=api_key,
         model=model,
         system=system,
@@ -203,6 +206,7 @@ def evaluate(
     label: str,
     horizon: int | None = None,
     limit: int | None = None,
+    provider: str = "claude",
 ) -> dict[str, Any]:
     """Replay every labeled example through the candidate and aggregate.
 
@@ -233,7 +237,7 @@ def evaluate(
         # Broad except is intentional: evaluate must NEVER raise — a row whose
         # snapshot won't serialize or whose model run errors is counted as skipped.
         try:
-            r = replay_one(ex, system=system, model=model)
+            r = replay_one(ex, system=system, model=model, provider=provider)
         except Exception as exc:
             log.warning("aieval: skipping post-mortem %s — replay failed: %s", ex.id, exc)
             skipped += 1
@@ -275,6 +279,7 @@ def evaluate(
     return {
         "label": label,
         "model": model,
+        "provider": provider,
         "horizon": horizon,
         "n": len(rows),
         "skipped": skipped,
@@ -289,7 +294,7 @@ def evaluate(
 
 
 def preflight_cost_cap(provider: str = "claude") -> None:
-    """Raise CostCapExceededError if the provider's configured caps are already
+    """Raise CostCapExceededError if ``provider``'s configured caps are already
     breached, BEFORE spending on a real eval run.
 
     Mirrors `apps.observer.services.run` cap resolution: no ProviderConfig row ->

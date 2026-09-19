@@ -686,3 +686,58 @@ def test_latest_eval_for_model(db):
     persist_eval_run({"label": "other", "model": "claude-opus-4-8", "n": 9}, source="manual")
     got = latest_eval_for_model("claude-sonnet-4-6")
     assert got.id == newest.id  # newest for THAT model only
+
+
+def test_replay_one_on_openai_resolves_openai_config_and_passes_provider(profile):
+    """The eval harness can score any provider: cfg lookup + serialize_for_ai +
+    run_structured all key off the requested provider."""
+    from apps.secrets.models import ProviderConfig
+
+    cfg = ProviderConfig.objects.create(provider="openai", enabled=True)
+    cfg.api_key = "sk-oai"
+    cfg.save()
+    snap = _snapshot(profile)
+    pm = _postmortem(
+        _thesis(profile, direction="bullish", snapshot=snap), verdict="correct", fwd=5.0
+    )
+    with patch.object(svc, "run_structured", return_value=_report("bullish")) as rs:
+        out = replay_one(pm, system="sys", model="gpt-5.6-sol", provider="openai")
+
+    kw = rs.call_args.kwargs
+    assert kw["provider"] == "openai"
+    assert kw["api_key"] == "sk-oai"
+    assert kw["model"] == "gpt-5.6-sol"
+    assert out["predicted_direction"] == "bullish"
+    assert out["hit"] is True
+
+
+def test_command_provider_flag_preflights_that_provider(profile):
+    """--provider openai checks openai's caps, not claude's."""
+    from decimal import Decimal
+
+    from django.core.management.base import CommandError
+
+    from apps.secrets.models import ProviderConfig
+
+    _record_spend(provider="openai", cost="2.00")
+    ProviderConfig.objects.create(provider="openai", daily_cost_cap_usd=Decimal("1.00"))
+    with pytest.raises(CommandError, match=r"openai daily cap"):
+        call_command("aieval", "--model", "gpt-5.6-sol", "--provider", "openai")
+
+
+def test_evaluate_threads_provider_to_replay(profile):
+    row = {
+        "predicted_direction": None,
+        "confidence": None,
+        "actual_verdict": "correct",
+        "thesis_direction": "bullish",
+        "outcome_direction": "bullish",
+        "hit": None,
+    }
+    with (
+        patch.object(svc, "replay_one", return_value=row) as replay,
+        patch.object(svc, "labeled_examples", return_value=[object()]),
+    ):
+        res = evaluate(system="s", model="gpt-5.6-sol", label="x", provider="openai")
+    assert replay.call_args.kwargs["provider"] == "openai"
+    assert res["provider"] == "openai"

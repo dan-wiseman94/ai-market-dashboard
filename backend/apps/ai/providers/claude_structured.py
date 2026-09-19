@@ -1,23 +1,26 @@
 """One-shot structured Claude run. Returns a parsed Pydantic model or raises.
 
-Separate from the streaming ClaudeProvider so we don't mix two different
-return contracts. Intended for Observer / trigger analyses where we want a
-typed result in one go, not token streaming to the UI.
+The Anthropic implementation behind ``apps.ai.structured.run_structured`` for
+Claude-family providers. Separate from the streaming ClaudeProvider so the two
+return contracts (typed one-shot vs event stream) stay apart.
 
-Uses anthropic>=0.96's native `messages.parse` which takes an `output_format`
-Pydantic class and returns a `ParsedMessage` whose `.parsed_output` is an
-instance of the same class.
+Uses ``messages.parse``, which takes an ``output_format`` Pydantic class and
+returns a ``ParsedMessage`` whose ``.parsed_output`` is an instance of that class.
 """
 
 from __future__ import annotations
 
 import logging
 import time
+from typing import TYPE_CHECKING
 
 from anthropic import Anthropic
 from pydantic import BaseModel
 
 from apps.ai.providers._config import client_kwargs
+
+if TYPE_CHECKING:
+    from apps.ai.types import TokenUsage
 
 logger = logging.getLogger(__name__)
 
@@ -55,7 +58,7 @@ def run_structured[M: BaseModel](
     return parsed
 
 
-def token_usage_from_anthropic(usage: object):
+def token_usage_from_anthropic(usage: object) -> TokenUsage:
     """Map an Anthropic usage object to TokenUsage (total-input convention).
 
     input_tokens, cache_read, and cache_creation are disjoint in the API; sum
