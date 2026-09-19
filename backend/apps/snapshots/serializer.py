@@ -934,6 +934,15 @@ def _render_macro(payload: dict) -> str:
             y = live.get(tenor)
             if y:
                 lines.append(f"| {tenor} | {_fmt(y.get('yield_pct'))} |")
+        # Live curve proxy (30Y − 13W) spread
+        ly = payload.get("live_yields") or {}
+        long_y = (ly.get("30Y") or {}).get("yield_pct")
+        short_y = (ly.get("13W") or {}).get("yield_pct")
+        if isinstance(long_y, int | float) and isinstance(short_y, int | float):
+            lines.append(
+                f"- Live curve proxy (30Y − 13W): {long_y - short_y:+.2f}pp "
+                f"(official 2s10s is the lagged FRED 10Y-2Y spread row above)"
+            )
     return "\n".join(lines)
 
 
