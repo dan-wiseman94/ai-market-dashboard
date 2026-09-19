@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useSearchParams } from "react-router-dom";
 import { useSchwabStatus, useSchwabAppConfig } from "@/hooks/useSchwabStatus";
 import { fetchSchwabAuthorizeUrl, updateSchwabAppConfig } from "@/api/schwab";
 import { RelativeTime } from "@/components/RelativeTime";
@@ -114,6 +115,22 @@ export default function ConnectionsSettings() {
   const qc = useQueryClient();
   const connected = data?.connected ?? false;
   const configured = appCfg?.configured ?? false;
+
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tradingviewReturn = searchParams.get("tradingview");
+  useEffect(() => {
+    if (!tradingviewReturn) return;
+    push(
+      tradingviewReturn === "connected"
+        ? { kind: "success", text: "TradingView connected." }
+        : { kind: "error", text: "TradingView connection was cancelled or denied." },
+    );
+    void qc.invalidateQueries({ queryKey: ["data-sources"] });
+    const next = new URLSearchParams(searchParams);
+    next.delete("tradingview");
+    setSearchParams(next, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run once per return value
+  }, [tradingviewReturn]);
 
   // Derive the client_id input from the server value until the user edits it (avoids the
   // react-hooks/set-state-in-effect lint error from syncing props into state in an effect).
