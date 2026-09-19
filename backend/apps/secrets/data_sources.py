@@ -3,7 +3,7 @@
 Drives ``GET/PUT/DELETE /api/schwab/data-sources/``. Each entry describes how a
 provider authenticates so the frontend can render the right card:
 
-- ``oauth``      — Schwab; connected via the existing OAuth flow (authorize/callback).
+- ``oauth``      — Schwab (its own authorize/callback) and TradingView (``data-sources/tradingview/authorize|callback``).
 - ``key``        — a single API key in ``ApiCredential.token["api_key"]``.
 - ``key_secret`` — key + secret (Alpaca) in ``ApiCredential.token``.
 - ``none``       — keyless (SEC EDGAR, US Treasury); always available, nothing to store.
@@ -25,6 +25,16 @@ DATA_SOURCES: list[dict] = [
         "blurb": "Brokerage market data — quotes, OHLC, option chains, positions — via OAuth.",
         "signup_url": "https://developer.schwab.com",
         "docs_url": "https://developer.schwab.com",
+    },
+    {
+        "provider": "tradingview",
+        "label": "TradingView",
+        "auth": "oauth",
+        "fields": [],
+        "blurb": "TradingView's MCP server — OHLCV, screener, fundamentals, news and calendars. "
+        "Sign in with your TradingView account (Essential plan or above).",
+        "signup_url": "https://www.tradingview.com/pricing/",
+        "docs_url": "https://www.tradingview.com/mcp/docs",
     },
     {
         "provider": "alpaca",

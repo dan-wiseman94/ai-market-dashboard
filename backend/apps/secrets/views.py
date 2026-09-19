@@ -285,13 +285,17 @@ def _ds_err(code: str, message: str, status: int) -> JsonResponse:
     return json_error_response(code, message, status=status)
 
 
-def _schwab_connected() -> bool:
-    """True when a Schwab OAuth credential row exists and decrypts (mirrors schwab_status)."""
+def _oauth_connected(provider: str) -> bool:
+    """True when an OAuth credential row exists for ``provider`` and decrypts."""
     try:
-        ApiCredential.objects.get(provider="schwab")
+        ApiCredential.objects.get(provider=provider)
     except (ApiCredential.DoesNotExist, InvalidToken):
         return False
     return True
+
+
+def _schwab_connected() -> bool:
+    return _oauth_connected("schwab")
 
 
 def _credential_status(provider: str) -> dict:
@@ -322,9 +326,10 @@ def _data_source_payload(ds: dict, present: set[str]) -> dict:
         entry["status"] = {"configured": False, "fields_present": [], "env_fields": []}
     elif ds["auth"] == "oauth":
         entry["status"] = {
-            "configured": _schwab_connected(),
+            "configured": _oauth_connected(ds["provider"]),
             "fields_present": [],
             "env_fields": [],
+            "auth_error": provider_health.auth_error(ds["provider"]),
         }
     else:
         entry["status"] = _credential_status(ds["provider"])

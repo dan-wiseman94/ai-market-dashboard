@@ -24,6 +24,7 @@ class ApiCredential(models.Model):
         ("polygon", "Polygon.io"),
         ("tradier", "Tradier"),
         ("fred", "FRED (St. Louis Fed)"),
+        ("tradingview", "TradingView"),
     ]
 
     provider = models.CharField(max_length=32, choices=PROVIDER_CHOICES, unique=True)
