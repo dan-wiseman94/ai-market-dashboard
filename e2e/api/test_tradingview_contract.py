@@ -19,28 +19,39 @@ def test_tradingview_connect_test_toggle_disconnect(api_client, minimal) -> None
     assert "code=MOCK_OAUTH" in url
 
     r = api_client.get(f"{BASE}/callback/", params={"code": "MOCK_OAUTH", "state": "mock"})
-    assert r.status_code == 302  # httpx does not follow redirects by default
-    assert "tradingview=connected" in r.headers["location"]
-
-    r = api_client.get("/api/schwab/data-sources/")
-    assert r.status_code == 200
-    tv = {d["provider"]: d for d in r.json()["data_sources"]}["tradingview"]
-    assert tv["auth"] == "oauth" and tv["status"]["configured"] is True
-
-    r = api_client.post(f"{BASE}/test/")
-    assert r.status_code == 200
-    assert r.json()["ok"] is True and "tools available" in r.json()["message"]
-
-    r = api_client.patch("/api/settings/", json={"tradingview_tools_enabled": True})
-    assert r.status_code == 200 and r.json()["tradingview_tools_enabled"] is True
+    # The callback is the first step that mutates server state (persists a credential row in
+    # the shared e2e database) — everything from here must clean up even on a mid-flow failure.
     try:
+        assert r.status_code == 302  # httpx does not follow redirects by default
+        assert "tradingview=connected" in r.headers["location"]
+
+        r = api_client.get("/api/schwab/data-sources/")
+        assert r.status_code == 200
+        tv = {d["provider"]: d for d in r.json()["data_sources"]}["tradingview"]
+        assert tv["auth"] == "oauth"
+        assert tv["status"]["configured"] is True
+
+        r = api_client.post(f"{BASE}/test/")
+        assert r.status_code == 200
+        assert r.json()["ok"] is True
+        assert "tools available" in r.json()["message"]
+
+        r = api_client.patch("/api/settings/", json={"tradingview_tools_enabled": True})
+        assert r.status_code == 200
+        assert r.json()["tradingview_tools_enabled"] is True
+
         r = api_client.delete(f"{BASE}/")
-        assert r.status_code == 200 and r.json()["configured"] is False
+        assert r.status_code == 200
+        assert r.json()["configured"] is False
         r = api_client.get("/api/schwab/data-sources/")
         assert {d["provider"]: d for d in r.json()["data_sources"]}["tradingview"]["status"][
             "configured"
         ] is False
     finally:
+        # Best-effort safety net: the in-flow DELETE above is the contract under test, but if
+        # any assertion before it failed, the credential row (and possibly the settings toggle)
+        # would otherwise leak into the shared e2e database. A second DELETE is a no-op.
+        api_client.delete(f"{BASE}/")
         api_client.patch("/api/settings/", json={"tradingview_tools_enabled": None})
 
 
