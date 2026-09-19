@@ -30,6 +30,7 @@ _TTL: dict[str, int] = {
     "filings": 3600,
     "treasury": 21600,
     "corporate_actions": 86400,
+    "fed": 3600,
 }
 
 
