@@ -30,7 +30,7 @@ def _earnings_event_time(d: str, hour: str) -> datetime:
     return base.replace(hour=20, minute=0)  # unknown -> end of US session
 
 
-def _upsert_earnings(rows: list[dict]) -> list[MarketEvent]:
+def _upsert_earnings(rows: list[dict], *, source: str = "finnhub") -> list[MarketEvent]:
     out: list[MarketEvent] = []
     for r in rows:
         symbol = (r.get("symbol") or "").upper()
@@ -40,7 +40,7 @@ def _upsert_earnings(rows: list[dict]) -> list[MarketEvent]:
         hour = (r.get("hour") or "").lower()
         labelled = hour in ("bmo", "amc")
         obj, _ = MarketEvent.objects.update_or_create(
-            source="finnhub",
+            source=source,
             external_id=f"EARN:{symbol}:{d}",
             defaults={
                 "kind": "earnings",
@@ -84,6 +84,11 @@ def fetch_earnings(tickers: list[str], *, ahead_days: int = 30) -> list[MarketEv
 
     api_key = _finnhub_api_key()
     if not api_key:
+        from apps.market.services import tradingview
+
+        if tradingview.is_connected():
+            rows = tradingview.fetch_earnings([t.upper() for t in tickers if is_equity_like(t)])
+            return _upsert_earnings(rows, source="tradingview")
         log.info("Finnhub credential not configured; no earnings fetched")
         return []
 
@@ -189,7 +194,7 @@ def _upsert_macro(rows: list[dict], *, source: str) -> list[MarketEvent]:
 
 
 def fetch_macro(*, ahead_days: int = 45) -> list[MarketEvent]:
-    """Fetch + upsert curated US high-impact macro. Falls back to SEED_MACRO_EVENTS if empty."""
+    """Fetch + upsert curated US high-impact macro: Finnhub → TradingView (when connected) → SEED_MACRO_EVENTS."""
     from apps.core.mocks import is_mock_mode, run_service_scenario
 
     if is_mock_mode():
@@ -215,6 +220,13 @@ def fetch_macro(*, ahead_days: int = 45) -> list[MarketEvent]:
             log.warning("market.events.macro_fetch_failed: %s", safe_err(exc))
 
     upserted = _upsert_macro(rows, source="finnhub")
+    if not upserted:
+        from apps.market.services import tradingview
+
+        if tradingview.is_connected():
+            upserted = _upsert_macro(
+                tradingview.fetch_economic_calendar(ahead_days=ahead_days), source="tradingview"
+            )
     if not upserted:
         upserted = _upsert_macro(SEED_MACRO_EVENTS, source="seed")
     now = datetime.now(UTC)
