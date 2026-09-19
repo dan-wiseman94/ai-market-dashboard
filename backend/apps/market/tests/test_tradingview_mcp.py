@@ -170,6 +170,59 @@ def test_second_401_marks_auth_error_and_raises_not_connected():
         assert provider_health.auth_error("tradingview") is not None
 
 
+def test_second_401_with_session_retries_once_more_then_succeeds():
+    """A session id was in use when the 2nd 401 lands: forget the session and allow
+    exactly one more attempt (re-init) on the SAME token before giving up."""
+    server = _Server(
+        [
+            lambda req: _rpc(req["id"], {}, **{"Mcp-Session-Id": "s-1"}),
+            httpx.Response(202),
+            httpx.Response(401),
+            httpx.Response(401),
+            lambda req: _rpc(req["id"], {}, **{"Mcp-Session-Id": "s-2"}),
+            httpx.Response(202),
+            _answer({"content": [{"type": "text", "text": "ok"}]}),
+        ]
+    )
+    with patch("apps.market.services.tradingview_mcp.httpx.post", side_effect=server):
+        assert mcp.call_tool("x") == "ok"
+    assert [r["method"] for r in server.requests] == [
+        "initialize",
+        "notifications/initialized",
+        "tools/call",
+        "tools/call",
+        "initialize",
+        "notifications/initialized",
+        "tools/call",
+    ]
+    assert server.headers[-1]["Mcp-Session-Id"] == "s-2"
+
+
+def test_third_401_after_session_retry_marks_auth_error_and_raises():
+    fake = fakeredis.FakeStrictRedis()
+    server = _Server(
+        [
+            lambda req: _rpc(req["id"], {}, **{"Mcp-Session-Id": "s-1"}),
+            httpx.Response(202),
+            httpx.Response(401),
+            httpx.Response(401),
+            lambda req: _rpc(req["id"], {}),
+            httpx.Response(202),
+            httpx.Response(401),
+        ]
+    )
+    with (
+        patch("apps.market.services.tradingview_mcp.httpx.post", side_effect=server),
+        patch("apps.core.provider_health._redis", lambda: fake),
+    ):
+        with pytest.raises(mcp.TradingViewNotConnected):
+            mcp.call_tool("x")
+        from apps.core import provider_health
+
+        assert provider_health.auth_error("tradingview") is not None
+    assert len(server.requests) == 7
+
+
 def test_not_connected_raises_without_http():
     with (
         patch("apps.market.services.tradingview_mcp.oauth.ensure_fresh_token", return_value=None),
@@ -188,6 +241,18 @@ def test_429_raises_rate_limited_without_retry():
     ):
         mcp.call_tool("x")
     assert len(server.requests) == 3
+
+
+def test_429_sets_rate_limit_marker_and_reset_state_clears_it():
+    server = _Server([lambda req: _rpc(req["id"], {}), httpx.Response(202), httpx.Response(429)])
+    with (
+        patch("apps.market.services.tradingview_mcp.httpx.post", side_effect=server),
+        pytest.raises(mcp.TradingViewRateLimited),
+    ):
+        mcp.call_tool("x")
+    assert mcp.is_rate_limited() is True
+    mcp.reset_state()
+    assert mcp.is_rate_limited() is False
 
 
 def test_generic_http_error_raises_mcp_error_without_retry():
