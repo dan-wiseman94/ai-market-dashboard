@@ -15,6 +15,7 @@ from apps.ai.cost import CostCapExceededError, check_daily_cap, check_monthly_ca
 from apps.ai.structured import run_structured
 from apps.core.runtime_config import runtime_config
 from apps.market.calendar import any_market_open
+from apps.market.services.safe_log import scrub_secret_params
 from apps.observer.models import ObserverSchedule
 from apps.observer.schemas import ObservationReport
 from apps.observer.services.notifications import notify
@@ -283,7 +284,9 @@ def _run_structured_and_record(
     """Run the structured ObservationReport call on the schedule's provider and
     persist the result."""
     try:
-        has_key = cfg is not None and bool(cfg.api_key)
+        usable = cfg is not None and (
+            bool(cfg.api_key) or (provider_name == "local" and bool(cfg.base_url))
+        )
     except InvalidToken:
         # The stored key can't be decrypted (DJANGO_SECRET_KEY / salt rotated since it
         # was saved). cfg was fetched with .defer("_api_key"), so decryption happens
@@ -304,13 +307,14 @@ def _run_structured_and_record(
             error="undecryptable_key",
         )
         return
-    # `cfg is None` is redundant with has_key at runtime but narrows the type
+    # `cfg is None` is redundant with usable at runtime but narrows the type
     # for the attribute reads below (mypy zero-baseline gate).
-    if cfg is None or not has_key:
+    if cfg is None or not usable:
+        missing = "base URL" if provider_name == "local" else "key"
         Message.objects.create(
             thread=thread,
             role="system",
-            content={"text": f"Observer {sched.name}: no {provider_name} key configured"},
+            content={"text": f"Observer {sched.name}: no {provider_name} {missing} configured"},
             status="failed",
             error="no_key",
         )
@@ -327,12 +331,13 @@ def _run_structured_and_record(
             base_url=cfg.base_url or "",
         )
     except Exception as exc:
+        scrubbed = scrub_secret_params(str(exc))
         Message.objects.create(
             thread=thread,
             role="assistant",
-            content={"text": f"Structured run failed: {exc}"},
+            content={"text": f"Structured run failed: {scrubbed}"},
             status="failed",
-            error=str(exc),
+            error=scrubbed,
         )
         return
     msg = Message.objects.create(
