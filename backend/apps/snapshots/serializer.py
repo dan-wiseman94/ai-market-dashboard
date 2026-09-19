@@ -746,6 +746,11 @@ def _render_vix(payload) -> str:
             f"- Spot {spot.get('symbol', '$VIX')}: "
             f"{_fmt(spot.get('last'))}{_signed_pct(spot.get('pct_change'))}"
         )
+    vvix = payload.get("vvix")
+    if isinstance(vvix, dict) and vvix.get("last") is not None:
+        ratio = payload.get("vvix_vix_ratio")
+        ratio_s = f" — VVIX/VIX {float(ratio):.2f}" if isinstance(ratio, int | float) else ""
+        lines.append(f"- VVIX: {_fmt(vvix.get('last'))}{_signed_pct(vvix.get('pct_change'))}{ratio_s}")
     front = payload.get("front")
     if isinstance(front, dict):
         label = "(continuous)" if front.get("continuous") else f"(exp {front.get('expiry')})"
