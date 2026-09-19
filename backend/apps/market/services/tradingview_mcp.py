@@ -36,6 +36,8 @@ PROTOCOL_VERSION = "2025-06-18"
 CLIENT_INFO = {"name": "ledger", "version": "1.0.0"}
 TOOLS_CACHE_KEY = "tradingview:mcp:tools"
 TOOLS_CACHE_TTL_SECONDS = 3600
+RATE_LIMIT_KEY = "tradingview:mcp:rate_limited"
+RATE_LIMIT_TTL_SECONDS = 60
 _TIMEOUT = 20.0
 _MAX_PAGES = 20
 
@@ -83,12 +85,30 @@ def _forget_session() -> None:
 
 
 def reset_state() -> None:
-    """Forget the process-local session and the cached tool list (disconnect / tests)."""
+    """Forget the process-local session, the cached tool list, and the rate-limit
+    marker (disconnect / tests)."""
     _forget_session()
     try:
-        _redis().delete(TOOLS_CACHE_KEY)
+        _redis().delete(TOOLS_CACHE_KEY, RATE_LIMIT_KEY)
     except Exception:
         log.debug("Could not clear the TradingView tools cache", exc_info=True)
+
+
+def mark_rate_limited() -> None:
+    """Best-effort: record that the ~100 calls/min budget was spent (60s marker)."""
+    try:
+        _redis().set(RATE_LIMIT_KEY, "1", ex=RATE_LIMIT_TTL_SECONDS)
+    except Exception:
+        log.debug("Could not record the TradingView rate-limit marker", exc_info=True)
+
+
+def is_rate_limited() -> bool:
+    """Best-effort: True while the 60s rate-limit marker is set. False on any Redis
+    error — a lookup failure must never block a call that might otherwise succeed."""
+    try:
+        return bool(_redis().exists(RATE_LIMIT_KEY))
+    except Exception:
+        return False
 
 
 # --- wire -------------------------------------------------------------------------------
@@ -121,6 +141,7 @@ def _raise_for_status(resp: httpx.Response) -> None:
     if resp.status_code == 404:
         raise _SessionExpired
     if resp.status_code == 429:
+        mark_rate_limited()
         raise TradingViewRateLimited("TradingView MCP rate limit reached (HTTP 429)")
     if resp.status_code >= 400:
         raise TradingViewMCPError(f"TradingView MCP returned HTTP {resp.status_code}")
@@ -165,6 +186,10 @@ def _parse_response(resp: httpx.Response, rpc_id: int) -> dict:
 
 
 def _initialize(token: str) -> None:
+    # Clear any stale session id FIRST — the initialize POST itself must never carry a
+    # leftover Mcp-Session-Id from a session we're replacing, and if the server's
+    # response omits the header (some don't reissue one) we must not keep the old value.
+    _state["session_id"] = None
     rpc_id = _next_id()
     resp = _post(
         {
@@ -205,16 +230,27 @@ def _send(method: str, params: dict, token: str) -> dict:
 
 
 def _request(method: str, params: dict | None = None) -> dict:
-    """One JSON-RPC request with session bootstrap, 404 re-init and 401 refresh-retry."""
+    """One JSON-RPC request with session bootstrap, 404 re-init and 401 refresh-retry.
+
+    401 handling is bounded to at most 3 attempts: the 1st 401 forces one token
+    refresh-retry; if a session id was in use, the 2nd 401 forgets the session and
+    allows exactly one more attempt (re-initializing) on the SAME token, since a
+    second 401 right after a refresh can mean the session itself is what's stale, not
+    the token; a 3rd 401 (or a 2nd with no session id ever in use) marks the auth
+    error and gives up."""
     token = oauth.ensure_fresh_token()
     if token is None:
         raise TradingViewNotConnected("TradingView is not connected")
-    refreshed = reinitialized = False
+    refreshed = reinitialized = session_retried = False
     while True:
         try:
             return _send(method, params or {}, token)
         except _Unauthorized:
             if refreshed:
+                if _state["session_id"] and not session_retried:
+                    session_retried = True
+                    _forget_session()
+                    continue
                 _mark_rejected()
                 raise TradingViewNotConnected("TradingView rejected the access token") from None
             refreshed = True
