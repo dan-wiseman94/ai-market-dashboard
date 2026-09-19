@@ -9,7 +9,7 @@ from hypothesis import strategies as st
 from apps.snapshots.token_budget import prune_to_budget
 
 # Keys the pruner knows how to drop (apps.snapshots.token_budget._PRUNE_ORDER).
-_PRUNABLE = ["chain", "news", "ohlc", "breadth", "quotes", "positions"]
+_PRUNABLE = ["chain", "news", "ohlc", "fed", "flowlite", "breadth", "quotes", "positions"]
 _sections = st.dictionaries(
     keys=st.sampled_from(_PRUNABLE), values=st.text(max_size=300), max_size=6
 )

@@ -12,6 +12,7 @@ from apps.market.services.chain import fetch_chain
 from apps.market.services.context import fetch_market_context
 from apps.market.services.edgar import fetch_filings as edgar_fetch_filings
 from apps.market.services.events import upcoming_events
+from apps.market.services.fed import fetch_fed_communications
 from apps.market.services.fred import fetch_macro as fred_fetch_macro
 from apps.market.services.fundamentals import fetch_fundamentals
 from apps.market.services.news import fetch_news
@@ -36,6 +37,7 @@ from apps.snapshots.primary import (
 from apps.snapshots.primary import (
     primary_ticker_from_quotes,
 )
+from apps.snapshots.services.flowlite import build_flowlite_payload
 from apps.snapshots.services.render import render_chart_png
 from apps.snapshots.token_budget import estimate_tokens
 
@@ -232,6 +234,13 @@ _FETCHERS = {
     },
     "treasury": lambda **_: {"data": fetch_treasury()},
     "vix": lambda **_: {"data": vix_term_structure()},
+    "fed": lambda **_: {"data": {"items": fetch_fed_communications()}},
+    "flowlite": lambda *, watchlist_tickers, ohlc_ticker=None, **_: {
+        "data": build_flowlite_payload(
+            watchlist_tickers=list(watchlist_tickers),
+            primary=_pick_ticker(ohlc_ticker, list(watchlist_tickers)),
+        )
+    },
 }
 
 
