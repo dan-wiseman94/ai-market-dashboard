@@ -321,3 +321,19 @@ def _find_flip_strike(strike_gex: dict[float, float]) -> float | None:
             return k0 + t * (k1 - k0)
 
     return None
+
+
+def flatten_expiries(expiries: dict) -> list[dict]:
+    """Flatten a chain payload's {expiry: {calls: [...], puts: [...]}} into the
+    per-contract list chain_analytics consumes."""
+    flat: list[dict] = []
+    for exp, section in (expiries or {}).items():
+        for c in section.get("calls", []):
+            flat.append({**c, "side": "call", "expiry": exp})
+        for p in section.get("puts", []):
+            flat.append({**p, "side": "put", "expiry": exp})
+    return flat
+
+
+def put_call_from_expiries(expiries: dict) -> dict:
+    return _put_call(flatten_expiries(expiries))
