@@ -212,13 +212,15 @@ class ProviderConfigViewSet(viewsets.ModelViewSet):
         if dirty:
             cfg.save()
 
-        if not cfg.base_url:
-            return Response({"ok": False, "error": "Base URL is required."}, status=400)
-
         if cfg.provider not in ("local", "openai"):
             return Response(
                 {"ok": False, "error": "Model discovery isn't supported for this provider."}
             )
+
+        # Only `local` has no endpoint of its own. OpenAI without a base_url probes the
+        # vendor's own API, which is how a plain key lists the models it can reach.
+        if cfg.provider == "local" and not cfg.base_url:
+            return Response({"ok": False, "error": "Base URL is required."}, status=400)
 
         try:
             # Client construction parses base_url and raises on malformed input

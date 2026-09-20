@@ -37,9 +37,9 @@ describe("ModelFacts", () => {
     expect(screen.getByText(/not in catalog/i)).toBeInTheDocument();
   });
 
-  it("describes local models as free", () => {
+  it("names a local model as machine-run rather than priced", () => {
     mockUseAiModels.mockReturnValue({ data: DATA });
     render(<ModelFacts provider="local" modelId="llama3" />);
-    expect(screen.getByText(/no API cost/i)).toBeInTheDocument();
+    expect(screen.getByText(/runs on your machine/i)).toBeInTheDocument();
   });
 });
