@@ -1,17 +1,14 @@
 /**
- * Single home for the hardcoded provider/model initial picks.
- *
- * The backend catalog (apps/ai/catalog.py, served via /api/schwab/models/) is
- * the source of truth for what actually exists; these literals only seed UI
- * state before the user picks. When a default model id churns, update it here
- * (and the backend's own defaults) instead of grepping component literals.
+ * Seed values for provider/model pickers before `/api/schwab/models/`
+ * (`useCatalog().defaults`) has loaded. The backend catalog is the source of
+ * truth; when a default id churns there, update it here too.
  */
 
 export type ProviderModelPick = { provider: string; model: string };
 
 export const DEFAULT_MODEL_BY_PROVIDER: Record<"claude" | "openai" | "local", string> = {
-  claude: "claude-sonnet-4-6",
-  openai: "gpt-5",
+  claude: "claude-opus-5",
+  openai: "gpt-5.6-sol",
   local: "",
 };
 
