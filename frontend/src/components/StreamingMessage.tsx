@@ -4,6 +4,7 @@ import remarkGfm from "remark-gfm";
 import { usd } from "@/utils/format";
 import ObservationReportCard from "@/components/ObservationReportCard";
 import type { ObservationReport } from "@/api/observation";
+import { providerLabel } from "@/api/ai";
 import ConsensusReportCard from "@/components/ConsensusReportCard";
 import PostMortemReportBody from "@/components/PostMortemReportBody";
 import WarRoomVerdictBody from "@/components/WarRoomVerdictBody";
@@ -232,9 +233,8 @@ function Message({
     return <UserMessage text={text} snapshotId={snapshotId} />;
   }
 
-  const label = provider
-    ? provider.charAt(0).toUpperCase() + provider.slice(1)
-    : "Assistant";
+  // providerLabel, not hand-capitalisation: every other surface reads "OpenAI".
+  const label = provider ? providerLabel(provider) : "Assistant";
 
   const innerClass = bare ? "px-0 py-0" : "ledger-surface px-6 py-5";
 

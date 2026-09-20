@@ -641,9 +641,21 @@ def test_scheduled_skips_when_disabled(profile, settings):
     assert EvalRun.objects.count() == 0
 
 
+def _usable_claude_config():
+    """A scheduled eval resolves its model through the provider's own config, so the
+    task needs a usable one before it will spend anything."""
+    from apps.secrets.models import ProviderConfig
+
+    cfg = ProviderConfig.objects.create(provider="claude", enabled=True)
+    cfg.api_key = "sk-test"
+    cfg.save()
+    return cfg
+
+
 def test_scheduled_runs_and_persists_when_enabled(profile, settings):
     settings.AIEVAL_SCHEDULED_ENABLED = True
     settings.AIEVAL_SCHEDULED_MODEL = "claude-sonnet-4-6"
+    _usable_claude_config()
     settings.AIEVAL_SCHEDULED_LIMIT = None
     settings.AIEVAL_SCHEDULED_HORIZON = None
     _postmortem(
@@ -668,7 +680,9 @@ def test_scheduled_skips_on_cost_cap(profile, settings):
     from apps.secrets.models import ProviderConfig
 
     settings.AIEVAL_SCHEDULED_ENABLED = True
-    ProviderConfig.objects.create(provider="claude", daily_cost_cap_usd=Decimal("1.00"))
+    cfg = ProviderConfig.objects.create(provider="claude", daily_cost_cap_usd=Decimal("1.00"))
+    cfg.api_key = "sk-test"
+    cfg.save()
     _record_spend("claude", "2.00")
     _postmortem(_thesis(profile, snapshot=_snapshot(profile)), verdict="correct", fwd=5.0)
     assert run_scheduled() == {"skipped": "cost_cap"}
@@ -676,7 +690,15 @@ def test_scheduled_skips_on_cost_cap(profile, settings):
 
 def test_scheduled_skips_when_no_data(settings, db):
     settings.AIEVAL_SCHEDULED_ENABLED = True
+    _usable_claude_config()
     assert run_scheduled() == {"skipped": "no_data"}
+
+
+def test_scheduled_skips_when_the_provider_has_no_usable_config(settings, db):
+    """Without a credential there is no model to resolve; say so rather than run an
+    eval that would report 'no data' on a configuration problem."""
+    settings.AIEVAL_SCHEDULED_ENABLED = True
+    assert run_scheduled() == {"skipped": "no_provider"}
 
 
 def test_latest_eval_for_model(db):

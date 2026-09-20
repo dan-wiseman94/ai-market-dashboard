@@ -51,8 +51,8 @@ export default function SchedulesPage() {
     }
   }
 
-  const saveAi = (id: number, value: AiFieldsValue) =>
-    update.mutate({ id, body: value }, { onError });
+  const saveAi = (id: number, value: AiFieldsValue, onSuccess: () => void) =>
+    update.mutate({ id, body: value }, { onSuccess, onError });
 
   if (isLoading) {
     return (

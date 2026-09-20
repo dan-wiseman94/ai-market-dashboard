@@ -64,6 +64,11 @@ export default function EvalRunForm({ onQueued }: { onQueued: () => void }) {
               inputMode="numeric"
               value={limit}
               onChange={(e) => setLimit(Number(e.target.value.replace(/\D/g, "")) || 0)}
+              // The API accepts 1–100; clamp here so the warning line never promises
+              // "up to 0 billed calls" and the submit can't 400 on a bound.
+              onBlur={(e) =>
+                setLimit(Math.min(100, Math.max(1, Number(e.target.value.replace(/\D/g, "")))))
+              }
               className="ledger-input w-full py-2 tabular-nums"
             />
           )}

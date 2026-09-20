@@ -113,8 +113,14 @@ describe("SchedulesPage — AI target and mode", () => {
     fireEvent.click(screen.getByRole("button", { name: /new schedule/i }));
     expect(screen.getByLabelText(/^Messages Batch/)).toBeEnabled();
 
+    // Tick it while the target is still Claude: leaving it checked-but-disabled would
+    // send `use_batch: true` with an OpenAI override, which the API rejects.
+    fireEvent.click(screen.getByLabelText(/^Messages Batch/));
+    expect(screen.getByLabelText(/^Messages Batch/)).toBeChecked();
+
     await user.selectOptions(screen.getByLabelText("Override provider"), "openai");
     expect(screen.getByLabelText(/^Messages Batch/)).toBeDisabled();
+    expect(screen.getByLabelText(/^Messages Batch/)).not.toBeChecked();
     expect(screen.getByText(/Claude only — Messages Batches/)).toBeInTheDocument();
 
     expect(screen.getByLabelText(/^Cross-model consensus/)).toBeDisabled();

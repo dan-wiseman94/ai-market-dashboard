@@ -182,11 +182,11 @@ def fire_observer(schedule_id: int) -> int | None:
                 status="done",
             )
         else:
-            override: dict = {}
-            if sched.override_provider:
-                override["provider"] = sched.override_provider
-            if sched.override_model:
-                override["model"] = sched.override_model
+            # The already-resolved pair, not the raw columns: the router honours an
+            # override only when BOTH are present, so a provider set without a model
+            # would otherwise silently run on the profile's provider — and on a model
+            # that disagrees with the one that sized the payload and the prompt hash.
+            override = {"provider": provider_name, "model": model_name}
             run_ai_on_message.delay(
                 thread_id=thread.id,
                 user_message_id=msg.id,
@@ -279,7 +279,9 @@ def _cached_observer_response(
     return (asst.content or {}).get("text", "") or None
 
 
-def _extract_prediction(report, *, snap, message, provider: str, model: str, profile) -> None:
+def _extract_prediction(
+    report, *, snap, message, provider: str, model: str, profile, flag_contradictions: bool = True
+) -> None:
     """Best-effort: promote the structured call into an AIPrediction.
 
     Isolated + suppressed — a failure here (or the model carrying no directional
@@ -289,7 +291,13 @@ def _extract_prediction(report, *, snap, message, provider: str, model: str, pro
         from apps.observer.predictions.services.extract import extract_from_observation
 
         extract_from_observation(
-            report, snapshot=snap, message=message, provider=provider, model=model, profile=profile
+            report,
+            snapshot=snap,
+            message=message,
+            provider=provider,
+            model=model,
+            profile=profile,
+            flag_contradictions=flag_contradictions,
         )
     except Exception as exc:
         log.warning(
@@ -416,6 +424,9 @@ def _run_consensus_and_record(
     )
     for take in report.takes:
         if take.report is not None:
+            # No contradiction sentinel here: the takes are one another's "conflicting
+            # open call", and cross-provider disagreement is already the report's own
+            # `divergent` signal. The sentinel is for the AI contradicting itself over time.
             _extract_prediction(
                 take.report,
                 snap=snap,
@@ -423,4 +434,5 @@ def _run_consensus_and_record(
                 provider=take.provider,
                 model=take.model,
                 profile=sched.profile,
+                flag_contradictions=False,
             )

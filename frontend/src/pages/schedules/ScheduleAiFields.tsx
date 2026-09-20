@@ -3,6 +3,7 @@ import AiTargetPicker from "@/components/ai/AiTargetPicker";
 import type { ObserverMode } from "@/api/observer";
 import type { TradingProfile } from "@/api/profiles";
 import { useCatalog } from "@/hooks/useCatalog";
+import { useProviderConfigs } from "@/hooks/useProviderConfigs";
 
 /** The seven fields that decide how a fire talks to a provider. */
 export type AiFieldsValue = {
@@ -39,16 +40,26 @@ export function aiFieldsFrom(s: Partial<AiFieldsValue>): AiFieldsValue {
   };
 }
 
-/** The provider/model a fire actually runs on, and where that came from. */
+/** The provider/model a fire actually runs on, and where that came from.
+ *
+ * Mirrors the backend's own resolution (`run.py::_observer_model`): the schedule's
+ * override, then the profile's model when the fire runs on the profile's own provider,
+ * then the provider config's default, then the catalog default. Showing a different id
+ * here than the one the fire uses would make the line worse than no line.
+ */
 export function effectiveTarget(
   v: Pick<AiFieldsValue, "override_provider" | "override_model">,
   profile: TradingProfile | undefined,
   defaultFor: (p: string) => string,
+  configModel = "",
 ): { provider: string; model: string; qualifier: string } {
   const provider = v.override_provider || profile?.default_provider || "claude";
-  const model = v.override_provider
-    ? v.override_model || defaultFor(provider)
-    : profile?.default_model || defaultFor(provider);
+  const sameAsProfile = !v.override_provider || v.override_provider === profile?.default_provider;
+  const model =
+    v.override_model ||
+    (sameAsProfile ? profile?.default_model : "") ||
+    configModel ||
+    defaultFor(provider);
   return { provider, model, qualifier: v.override_provider ? "override" : "from profile" };
 }
 
@@ -89,7 +100,10 @@ export default function ScheduleAiFields({
   idPrefix: string;
 }) {
   const { defaultFor } = useCatalog();
-  const eff = effectiveTarget(value, profile, defaultFor);
+  const { data: configs } = useProviderConfigs();
+  const resolvedProvider = value.override_provider || profile?.default_provider || "claude";
+  const configModel = configs?.find((c) => c.provider === resolvedProvider)?.default_model ?? "";
+  const eff = effectiveTarget(value, profile, defaultFor, configModel);
   const isClaude = eff.provider === "claude";
   const set = (patch: Partial<AiFieldsValue>) => onChange({ ...value, ...patch });
 
