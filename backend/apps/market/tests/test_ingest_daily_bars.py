@@ -12,14 +12,18 @@ from unittest.mock import patch
 
 import pytest
 
-from apps.market.services.context import MACRO, SECTOR_ETFS
+from apps.market.services.context import FACTOR_ETFS, MACRO, SECTOR_ETFS
 from apps.market.tasks import ingest_daily_bars
 from apps.profiles.models import Watchlist, WatchlistSymbol
 
 
 def _expected_universe(extra_tickers: list[str]) -> set[str]:
     """Compute the expected universe set for a given watchlist."""
-    return {s.upper() for s in [*extra_tickers, "$SPX", "QQQ", *SECTOR_ETFS, *MACRO.values()] if s}
+    return {
+        s.upper()
+        for s in [*extra_tickers, "$SPX", "QQQ", *SECTOR_ETFS, *FACTOR_ETFS, *MACRO.values()]
+        if s
+    }
 
 
 @pytest.mark.django_db
@@ -112,6 +116,21 @@ def test_ingest_daily_bars_requests_260():
     assert seen, "Expected at least one fetch_ohlc call"
     for sym, _timeframe, bar_count in seen:
         assert bar_count == 260, f"Expected bars=260 but got bars={bar_count} for {sym}"
+
+
+@pytest.mark.django_db
+def test_universe_includes_every_factor_etf():
+    """FACTOR_ETFS (MTUM/VLUE/QUAL/USMV/IWM/SPY) must be ingested — factor_returns()
+    reads OHLCBar for these symbols and silently returns None on every real fetch
+    when they're missing from the ingest universe."""
+    with patch("apps.market.services.ohlc.fetch_ohlc", return_value=[]) as mock_fetch:
+        ingest_daily_bars()
+
+    called_tickers = {c.args[0] for c in mock_fetch.call_args_list}
+    assert set(FACTOR_ETFS) <= called_tickers, (
+        f"Expected FACTOR_ETFS {set(FACTOR_ETFS)} to be a subset of ingested tickers, "
+        f"missing {set(FACTOR_ETFS) - called_tickers}"
+    )
 
 
 def test_beat_registration():

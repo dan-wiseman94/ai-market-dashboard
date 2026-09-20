@@ -116,17 +116,22 @@ def refresh_corporate_actions() -> dict:
 @shared_task(name="market.ingest_daily_bars")
 def ingest_daily_bars() -> dict:
     """Fetch + persist daily OHLCBar for a fixed universe (watchlist + sector ETFs +
-    $SPX/QQQ + macro proxies). Idempotent via fetch_ohlc's update_or_create. Densifies
-    the bar history that relative-strength, sector-rotation, the backtester, the leaderboard,
-    and unusual-options IV-z all read. Never raises -- a per-symbol failure is logged and skipped.
-    Fetches 260 bars (52-week depth) to feed breadth_stats and the OHLC summary."""
-    from apps.market.services.context import MACRO, SECTOR_ETFS
+    factor ETFs + $SPX/QQQ + macro proxies). Idempotent via fetch_ohlc's update_or_create.
+    Densifies the bar history that relative-strength, sector-rotation, factor_returns,
+    the backtester, the leaderboard, and unusual-options IV-z all read. Never raises --
+    a per-symbol failure is logged and skipped. Fetches 260 bars (52-week depth) to feed
+    breadth_stats and the OHLC summary."""
+    from apps.market.services.context import FACTOR_ETFS, MACRO, SECTOR_ETFS
     from apps.market.services.ohlc import fetch_ohlc
     from apps.profiles.models import WatchlistSymbol
 
     watchlist = list(WatchlistSymbol.objects.values_list("ticker", flat=True).distinct())
     universe = sorted(
-        {s.upper() for s in [*watchlist, "$SPX", "QQQ", *SECTOR_ETFS, *MACRO.values()] if s}
+        {
+            s.upper()
+            for s in [*watchlist, "$SPX", "QQQ", *SECTOR_ETFS, *FACTOR_ETFS, *MACRO.values()]
+            if s
+        }
     )
     ingested = 0
     for sym in universe:
