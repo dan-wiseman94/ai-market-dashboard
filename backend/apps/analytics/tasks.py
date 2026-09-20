@@ -77,12 +77,19 @@ def run_scheduled() -> dict:
     # SystemSettings (UI) values override the base.py / env defaults; the resolver's
     # fallbacks keep this a BOUNDED run (25 rows / 30d horizon), never an unbounded —
     # and costly — replay.
+    from apps.ai.catalog import default_model_for, is_foreign_model
+
+    provider = rc.aieval_scheduled_provider or "claude"
     model = rc.aieval_scheduled_model
+    if not model or is_foreign_model(provider, model):
+        # The provider changed but the model did not: never send another vendor's id —
+        # it fails every call and the run reports "no data" instead of an error.
+        model = default_model_for(provider)
     horizon = rc.aieval_scheduled_horizon
     limit = rc.aieval_scheduled_limit
 
     try:
-        preflight_cost_cap("claude")
+        preflight_cost_cap(provider)
     except CostCapExceededError as exc:
         log.warning("analytics.aieval_run_scheduled skipped — cost cap: %s", exc)
         return {"skipped": "cost_cap"}
@@ -93,7 +100,7 @@ def run_scheduled() -> dict:
         label="scheduled",
         horizon=horizon,
         limit=limit,
-        provider="claude",
+        provider=provider,
     )
     if not res["n"]:
         return {"skipped": "no_data"}

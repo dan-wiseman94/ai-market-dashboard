@@ -26,7 +26,8 @@ _SPEC: list[tuple[str, str, object]] = [
     ("observer_response_cache_enabled", "OBSERVER_RESPONSE_CACHE_ENABLED", False),
     ("observer_response_cache_ttl_seconds", "OBSERVER_RESPONSE_CACHE_TTL_SECONDS", 1800),
     ("aieval_scheduled_enabled", "AIEVAL_SCHEDULED_ENABLED", False),
-    ("aieval_scheduled_model", "AIEVAL_SCHEDULED_MODEL", "claude-sonnet-4-6"),
+    ("aieval_scheduled_model", "AIEVAL_SCHEDULED_MODEL", "claude-opus-5"),
+    ("aieval_scheduled_provider", "AIEVAL_SCHEDULED_PROVIDER", "claude"),
     ("aieval_scheduled_horizon", "AIEVAL_SCHEDULED_HORIZON", 30),
     ("aieval_scheduled_limit", "AIEVAL_SCHEDULED_LIMIT", 25),
     ("tradingview_tools_enabled", "TRADINGVIEW_TOOLS_ENABLED", False),
@@ -55,6 +56,7 @@ class RuntimeConfig:
     aieval_scheduled_model: str
     aieval_scheduled_horizon: int
     aieval_scheduled_limit: int
+    aieval_scheduled_provider: str
     tradingview_tools_enabled: bool
 
 
