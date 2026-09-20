@@ -120,3 +120,25 @@ def test_ai_models_endpoint_provider_filter_keeps_full_defaults(api):
     r = api.get("/api/schwab/models/?provider=openai")
     assert {m["provider"] for m in r.json()["models"]} == {"openai"}
     assert r.json()["defaults"]["claude"] == "claude-opus-5"
+
+
+@pytest.mark.django_db
+def test_provider_config_rejects_foreign_default_model(api):
+    ProviderConfig.objects.create(provider="openai")
+    r = api.patch(
+        "/api/schwab/providers/openai/", {"default_model": "claude-sonnet-5"}, format="json"
+    )
+    assert r.status_code == 400
+    assert "claude catalog model" in r.json()["default_model"][0]
+
+
+@pytest.mark.django_db
+def test_provider_config_accepts_own_and_unknown_models(api):
+    ProviderConfig.objects.create(provider="local")
+    r = api.patch("/api/schwab/providers/local/", {"default_model": "llama3"}, format="json")
+    assert r.status_code == 200
+    ProviderConfig.objects.create(provider="claude")
+    r = api.patch(
+        "/api/schwab/providers/claude/", {"default_model": "claude-fable-5-1"}, format="json"
+    )
+    assert r.status_code == 200

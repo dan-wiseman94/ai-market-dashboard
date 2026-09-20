@@ -173,3 +173,42 @@ def test_patch_use_batch_on_non_claude_schedule_rejected(api):
     resp = api.patch(f"/api/observer/schedules/{sid}/", {"use_batch": True}, format="json")
     assert resp.status_code == 400
     assert "use_batch" in resp.json()
+
+
+@pytest.mark.django_db
+def test_schedule_rejects_override_model_from_another_vendor(api, profile):
+    r = api.post(
+        "/api/observer/schedules/",
+        {
+            "name": "S",
+            "profile": profile.id,
+            "cron": "*/15 * * * *",
+            "override_provider": "openai",
+            "override_model": "claude-opus-5",
+        },
+        format="json",
+    )
+    assert r.status_code == 400
+    assert "override_model" in r.json()
+
+
+@pytest.mark.django_db
+def test_schedule_override_model_checked_against_profile_provider(api, profile):
+    # profile.default_provider is "claude"; no override_provider → guard uses the profile's.
+    r = api.post(
+        "/api/observer/schedules/",
+        {"name": "S", "profile": profile.id, "cron": "*/15 * * * *", "override_model": "gpt-5"},
+        format="json",
+    )
+    assert r.status_code == 400
+    ok = api.post(
+        "/api/observer/schedules/",
+        {
+            "name": "T",
+            "profile": profile.id,
+            "cron": "*/15 * * * *",
+            "override_model": "claude-sonnet-5",
+        },
+        format="json",
+    )
+    assert ok.status_code == 201
