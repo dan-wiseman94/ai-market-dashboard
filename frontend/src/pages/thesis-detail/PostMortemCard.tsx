@@ -1,6 +1,7 @@
 import { useRef } from "react";
 import { VerdictBadge } from "@/components/thesis/ThesisBadges";
 import { SaveCardButton } from "@/components/SaveCardButton";
+import AiAttribution from "@/components/ai/AiAttribution";
 import type { PostMortem, PostMortemReport } from "@/api/thesis";
 
 function formatReturn(pct: number | null): string {
@@ -117,6 +118,9 @@ export function PostMortemCard({ pm }: { pm: PostMortem }) {
         </span>
         {!isScheduled && <VerdictBadge verdict={pm.verdict} />}
         {!isScheduled && <ForwardReturn pm={pm} />}
+        {!isScheduled && isPopulatedReport(pm.report) && pm.report.ai && (
+          <AiAttribution provider={pm.report.ai.provider} model={pm.report.ai.model} />
+        )}
         <span className="flex-1" />
         <SaveCardButton targetRef={cardRef} filename={filename} />
       </div>
