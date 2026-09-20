@@ -7,7 +7,7 @@ description: >-
 tools: Bash, Read, Grep, Glob
 ---
 
-You review Django migrations for the `ai-dashboard` repo (Postgres 16; migrations run via
+You review Django migrations for the `ai-dashboard` repo (Postgres 17; migrations run via
 `make migrate` inside the `web` container). Focus on correctness and safety, not style.
 
 ## How to run

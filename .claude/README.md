@@ -4,21 +4,19 @@ Committed, team-shared Claude Code setup for this repo. Personal, machine-local 
 `.claude/settings.local.json` (gitignored).
 
 ## settings.json
-- **permissions.deny** — blocks Claude's Read/Edit tools (and recognized file commands) from
-  touching local secrets: `.env`, `.env.local`, `*.key`, `*.pem`, repo-root `data/`, `secret.salt`.
-  `.env.example` stays readable.
+- **permissions.deny** — blocks Read/Edit (and recognized file commands) from touching local
+  secrets: env files, `*.key`, `*.pem`, repo-root `data/`, `secret.salt`. The example env file
+  stays readable.
 - **permissions.allow** — pre-approves the safe daily commands (make targets, read-only
-  `docker compose`, in-container pytest/pnpm) so there are fewer permission prompts.
+  `docker compose`, in-container pytest/pnpm) to cut permission prompts.
 - **hooks**
   - `PreToolUse(Bash)` → `hooks/guard-secrets.sh`: blocks shell commands that read secret files
-    (defense-in-depth beyond the deny rules, which don't cover e.g. `python -c "open('.env')"`).
+    (the deny rules don't cover e.g. `python -c "open(...)"`).
   - `PostToolUse(Edit|Write|MultiEdit)` → `hooks/ruff-format-edited.sh`: formats the edited `.py`
-    file inside the `web` container (the host has no deps — see CLAUDE.md). No-op if the stack
-    is down.
+    file inside the `web` container (the host has no deps). No-op if the stack is down.
 
 ## agents/  (auto-dispatched subagents)
-- `conventions-reviewer` — reviews a diff against this repo's documented silent-failure landmines
-  (Celery registration, section `done` vs `ready`, URL ordering, direct provider instantiation, …).
+- `conventions-reviewer` — reviews a diff against this repo's silent-failure landmines.
 - `migration-reviewer` — reviews Django migrations for reversibility / data safety.
 
 ## skills/  (invoke with `/<name>`, or let Claude pick)

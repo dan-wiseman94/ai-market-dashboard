@@ -8,12 +8,12 @@ description: >-
 
 # Add a Django app
 
-This repo uses a fixed, order-sensitive recipe for new apps (CLAUDE.md → "Adding a Django app").
-Follow it exactly — the URL include ordering is a documented footgun.
+Order-sensitive recipe (CLAUDE.md → "Adding a Django app"). Follow it exactly — the URL include
+ordering is a documented footgun.
 
 ## Steps
 
-1. **Scaffold the files.** Run the bundled script with a lowercase snake_case app name:
+1. **Scaffold.** Run the bundled script with a lowercase snake_case app name:
    ```bash
    bash "$CLAUDE_PROJECT_DIR/.claude/skills/new-django-app/scaffold.sh" <name>
    ```
@@ -21,16 +21,14 @@ Follow it exactly — the URL include ordering is a documented footgun.
    `name = "apps.<name>"` + `label`), `models.py`, `views.py`, `urls.py`, and `migrations/` +
    `tests/` packages. It refuses to overwrite an existing app.
 
-2. **Register the app.** Add `"apps.<name>"` to `INSTALLED_APPS` in
-   `backend/config/settings/base.py`.
+2. **Register.** Add `"apps.<name>"` to `INSTALLED_APPS` in `backend/config/settings/base.py`.
 
 3. **Wire the URLs — ORDER MATTERS.** In `backend/config/urls.py` add:
    ```python
    path("api/<name>/", include("apps.<name>.urls")),
    ```
    Place it among the SPECIFIC `/api/<name>/` includes, **before** any generic `/api/` include.
-   Putting it after a generic include silently routes requests to the wrong app (documented
-   regression).
+   Putting it after a generic include silently routes requests to the wrong app.
 
 4. **WebSocket consumers (only if needed).** Add `consumers.py` and register the route in
    `backend/config/routing.py`. Join the group in `connect()`, leave it in `disconnect()`.
