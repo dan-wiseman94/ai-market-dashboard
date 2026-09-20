@@ -1,6 +1,8 @@
 import { DEFAULT_PICK } from "@/lib/modelDefaults";
+import { SECTION_KINDS } from "@/lib/snapshotSections";
 
-export const SECTION_OPTIONS = ["quotes", "ohlc", "positions", "breadth", "notes"] as const;
+/** Every user-toggleable section kind (`vix` is always-on, excluded — see snapshotSections.ts). */
+export const SECTION_OPTIONS = SECTION_KINDS;
 
 export type Draft = {
   name: string;
@@ -10,8 +12,12 @@ export type Draft = {
   default_model: string;
 };
 
+// Mirrors TradingProfile.DEFAULT_INCLUDES (backend/apps/profiles/models.py) — the
+// backend only seeds an EMPTY default_includes, so a UI-created profile that
+// disagrees with this list silently ships without the rich defaults.
 export const BLANK_DRAFT: Draft = {
-  name: "", style: "", default_includes: ["quotes", "positions", "breadth"],
+  name: "", style: "",
+  default_includes: ["quotes", "positions", "breadth", "ohlc", "chain", "news", "events", "macro"],
   default_provider: DEFAULT_PICK.provider, default_model: DEFAULT_PICK.model,
 };
 

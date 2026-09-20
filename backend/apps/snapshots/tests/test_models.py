@@ -50,3 +50,18 @@ def test_snapshot_primary_ticker_defaults_null():
     p = TradingProfile.objects.create(name="P", default_includes=["quotes"])
     snap = Snapshot.objects.create(profile=p, includes=["quotes"], status="pending")
     assert snap.primary_ticker is None
+
+
+@pytest.mark.django_db
+def test_fed_and_flowlite_are_valid_section_kind_choices():
+    kind_map = dict(SnapshotSection.KIND_CHOICES)
+    assert "fed" in kind_map
+    assert "flowlite" in kind_map
+    assert len("fed") <= 16
+    assert len("flowlite") <= 16
+
+    p = TradingProfile.objects.create(name="P", style="x")
+    s = Snapshot.objects.create(profile=p, includes=["fed", "flowlite"], source="manual")
+    SnapshotSection.objects.create(snapshot=s, kind="fed", payload={}, status="done")
+    SnapshotSection.objects.create(snapshot=s, kind="flowlite", payload={}, status="done")
+    assert s.sections.count() == 2

@@ -50,3 +50,58 @@ def test_macro_fetcher_combines_fred_series_and_live_yields():
         out = snapshot_services._FETCHERS["macro"]()
     assert out["data"]["series"] == {"DGS10": _DGS10}
     assert out["data"]["live_yields"]["10Y"]["yield_pct"] == 4.71
+
+
+def test_macro_renders_live_curve_proxy_spread_when_both_tenors_present():
+    """Live curve proxy (30Y − 13W) renders only when both tenors have numeric yield_pct."""
+    out = _render_macro(
+        {
+            "series": {},
+            "live_yields": {
+                "13W": {"ticker": "$IRX", "yield_pct": 4.1},
+                "30Y": {"ticker": "$TYX", "yield_pct": 4.9},
+            },
+        }
+    )
+    assert "Live curve proxy (30Y − 13W): +0.80pp" in out
+    assert "official 2s10s is the lagged FRED 10Y-2Y spread row above" in out
+
+
+def test_macro_omits_live_curve_proxy_when_30y_missing():
+    """Live curve proxy line absent when 30Y tenor is missing."""
+    out = _render_macro(
+        {
+            "series": {},
+            "live_yields": {
+                "13W": {"ticker": "$IRX", "yield_pct": 4.1},
+            },
+        }
+    )
+    assert "Live curve proxy" not in out
+
+
+def test_macro_omits_live_curve_proxy_when_13w_missing():
+    """Live curve proxy line absent when 13W tenor is missing."""
+    out = _render_macro(
+        {
+            "series": {},
+            "live_yields": {
+                "30Y": {"ticker": "$TYX", "yield_pct": 4.9},
+            },
+        }
+    )
+    assert "Live curve proxy" not in out
+
+
+def test_macro_omits_live_curve_proxy_when_yield_pct_not_numeric():
+    """Live curve proxy line absent when yield_pct is not a number."""
+    out = _render_macro(
+        {
+            "series": {},
+            "live_yields": {
+                "13W": {"ticker": "$IRX", "yield_pct": "N/A"},
+                "30Y": {"ticker": "$TYX", "yield_pct": 4.9},
+            },
+        }
+    )
+    assert "Live curve proxy" not in out

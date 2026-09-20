@@ -15,6 +15,8 @@ from apps.market.services.option_analytics import (
     _put_call,
     _term_structure,
     chain_analytics,
+    flatten_expiries,
+    put_call_from_expiries,
 )
 
 # ---------------------------------------------------------------------------
@@ -393,6 +395,22 @@ class TestGex:
         assert "convention" in result
         assert "heuristic" in result["convention"]
 
+    def test_gex_reports_top_strikes(self):
+        contracts = [
+            {"side": "call", "strike": 100, "gamma": "0.05", "oi": "1000"},
+            {"side": "put", "strike": 95, "gamma": "0.04", "oi": "2000"},
+            {"side": "call", "strike": 105, "gamma": "0.01", "oi": "100"},
+        ]
+        out = _gex(contracts, spot=100.0)
+        strikes = [r["strike"] for r in out["by_strike"]]
+        assert strikes == sorted(strikes)  # ascending for the render
+        assert {r["strike"] for r in out["by_strike"]} == {95.0, 100.0, 105.0}
+        assert out["by_strike"][0]["gex"] < 0  # 95 put wall is negative
+
+    def test_gex_degrade_returns_carry_empty_by_strike(self):
+        assert _gex([], spot=None)["by_strike"] == []
+        assert _gex([], spot=100.0)["by_strike"] == []
+
 
 class TestChainAnalytics:
     def test_returns_all_keys(self):
@@ -467,3 +485,52 @@ class TestChainAnalytics:
         # max_pain: strikes exist but OI is 0 (None treated as 0), so payout is 0 at every strike
         # → any strike could be returned; just confirm it doesn't raise and is a number
         assert result["max_pain"] is not None
+
+
+# ---------------------------------------------------------------------------
+# flatten_expiries / put_call_from_expiries — the chain-payload-shaped
+# entry points consumed by apps.snapshots.services.flowlite.
+# ---------------------------------------------------------------------------
+
+
+class TestFlattenExpiries:
+    def test_flattens_calls_and_puts_with_side_and_expiry_stamped(self):
+        expiries = {
+            "2026-10-16": {"calls": [{"strike": 100}], "puts": [{"strike": 95}]},
+        }
+        flat = flatten_expiries(expiries)
+        assert len(flat) == 2
+        call_row = next(r for r in flat if r["side"] == "call")
+        put_row = next(r for r in flat if r["side"] == "put")
+        assert call_row == {"strike": 100, "side": "call", "expiry": "2026-10-16"}
+        assert put_row == {"strike": 95, "side": "put", "expiry": "2026-10-16"}
+
+    def test_multiple_expiries_all_flattened(self):
+        expiries = {
+            "2026-10-16": {"calls": [{"strike": 100}], "puts": []},
+            "2026-11-20": {"calls": [], "puts": [{"strike": 90}]},
+        }
+        flat = flatten_expiries(expiries)
+        assert len(flat) == 2
+        assert {r["expiry"] for r in flat} == {"2026-10-16", "2026-11-20"}
+
+    def test_empty_input_returns_empty_list(self):
+        assert flatten_expiries({}) == []
+        assert flatten_expiries(None) == []
+
+
+class TestPutCallFromExpiries:
+    def test_returns_put_call_dict_for_flattened_contracts(self):
+        expiries = {
+            "2026-01-01": {
+                "calls": [{"strike": "100.00", "volume": 300, "oi": 800}],
+                "puts": [{"strike": "100.00", "volume": 150, "oi": 500}],
+            },
+        }
+        result = put_call_from_expiries(expiries)
+        assert result == _put_call(flatten_expiries(expiries))
+        assert result["volume_ratio"] == pytest.approx(150 / 300)
+        assert result["oi_ratio"] == pytest.approx(500 / 800)
+
+    def test_empty_input_degrades_to_none_ratios(self):
+        assert put_call_from_expiries({}) == {"volume_ratio": None, "oi_ratio": None}
