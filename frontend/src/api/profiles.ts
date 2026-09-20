@@ -8,6 +8,13 @@ export type TradingProfile = {
   default_provider: string;
   default_model: string;
   active: boolean;
+  // Per-profile AI platform features. Tool use on OpenAI/Local also depends on that
+  // provider's own supports_tools; thinking and memory are Claude-only.
+  enable_tools: boolean;
+  enable_thinking: boolean;
+  thinking_budget: number;
+  enable_memory: boolean;
+  enable_coach: boolean;
 };
 
 export const fetchProfiles = () => apiGet<TradingProfile[]>("/api/profiles/");

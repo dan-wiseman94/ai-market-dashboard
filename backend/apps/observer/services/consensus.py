@@ -92,6 +92,7 @@ def consensus_report(*, system: str, user: str) -> ConsensusReport:
                 model=pair.model,
                 bias=report.bias,
                 signal_bias={s.ticker: s.bias for s in report.signals},
+                report=report,
             )
         )
 

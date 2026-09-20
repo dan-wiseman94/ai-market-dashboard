@@ -1,17 +1,33 @@
 import { ApiError, apiGet, apiPatch, apiPost } from "./client";
 
+export type ProviderId = "claude" | "openai" | "local";
+export const PROVIDER_IDS: readonly ProviderId[] = ["claude", "openai", "local"];
+export const PROVIDER_LABEL: Record<ProviderId, string> = { claude: "Claude", openai: "OpenAI", local: "Local" };
+
+/** Display name for a provider id; unknown ids render verbatim. */
+export const providerLabel = (p: string): string => PROVIDER_LABEL[p as ProviderId] ?? p;
+
 export type AiModel = {
   id: string; name: string; provider: string;
   input_per_mtok: number; output_per_mtok: number; cached_per_mtok: number;
   context_window: number; supports_vision: boolean;
+  /** Snapshot payload budget the serializer targets for this model. */
+  max_payload_tokens?: number;
+};
+
+/** `/api/schwab/models/`: the catalog plus the backend's per-provider fallback model. */
+export type AiModelsResponse = {
+  models: AiModel[];
+  defaults?: Partial<Record<ProviderId, string>>;
 };
 
 export type ProviderConfig = {
-  provider: "claude" | "openai" | "local";
+  provider: ProviderId;
   base_url: string;
   default_model: string;
   enabled: boolean;
   supports_vision: boolean;
+  supports_tools?: boolean;
   daily_cost_cap_usd: string;
   monthly_cost_cap_usd: string | null;
   api_key_present: boolean;
@@ -21,7 +37,7 @@ export type ProviderConfig = {
 
 export const fetchAiModels = (provider?: string) => {
   const query = provider ? `?provider=${encodeURIComponent(provider)}` : "";
-  return apiGet<{ models: AiModel[] }>(`/api/schwab/models/${query}`);
+  return apiGet<AiModelsResponse>(`/api/schwab/models/${query}`);
 };
 
 export const fetchProviderConfigs = () =>

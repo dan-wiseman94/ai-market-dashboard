@@ -39,7 +39,76 @@ beforeEach(() => {
   mockUseAiModels.mockReturnValue({ data: { models: [
     { id: "claude-sonnet-4-6", name: "Claude Sonnet 4.6", provider: "claude",
       input_per_mtok: 3, output_per_mtok: 15, cached_per_mtok: 0.3, context_window: 200000, supports_vision: true },
-  ] } });
+    { id: "claude-opus-5", name: "Claude Opus 5", provider: "claude",
+      input_per_mtok: 5, output_per_mtok: 25, cached_per_mtok: 0.5, context_window: 1000000, supports_vision: true,
+      max_payload_tokens: 150000 },
+    { id: "gpt-5.6-sol", name: "GPT-5.6 Sol", provider: "openai",
+      input_per_mtok: 4, output_per_mtok: 20, cached_per_mtok: 0.4, context_window: 1050000, supports_vision: true,
+      max_payload_tokens: 300000 },
+  ], defaults: { claude: "claude-opus-5", openai: "gpt-5.6-sol", local: "" } } });
+});
+
+describe("ProviderCard — catalog default, capabilities and discovery", () => {
+  it("falls back to the catalog's own default when no model is stored", () => {
+    mockUseProviderConfigs.mockReturnValue({ data: [cfg({ default_model: "" })] });
+    render(<ProviderCard provider="claude" />);
+    expect(screen.getByRole("combobox", { name: "Default model" })).toHaveValue("claude-opus-5");
+    expect(screen.getByText(/doesn't name a model/i)).toBeInTheDocument();
+  });
+
+  it("shows the selected model's prices and payload budget", () => {
+    mockUseProviderConfigs.mockReturnValue({ data: [cfg({ default_model: "claude-opus-5" })] });
+    render(<ProviderCard provider="claude" />);
+    const facts = screen.getByTestId("model-facts").textContent ?? "";
+    expect(facts).toContain("$5.00 in");
+    expect(facts).toContain("150k payload");
+  });
+
+  it("offers tool-use and vision toggles off Claude and saves only the touched one", async () => {
+    mockUseProviderConfigs.mockReturnValue({
+      data: [cfg({ provider: "openai", default_model: "gpt-5.6-sol", supports_tools: true, supports_vision: true })],
+    });
+    render(<ProviderCard provider="openai" />);
+    await userEvent.click(screen.getByRole("switch", { name: "Tool use" }));
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+    const [arg] = mockMutate.mock.calls[0];
+    expect(arg.body.supports_tools).toBe(false);
+    expect("supports_vision" in arg.body).toBe(false);
+  });
+
+  it("states Claude's fixed capabilities instead of offering toggles", () => {
+    render(<ProviderCard provider="claude" />);
+    expect(screen.queryByRole("switch", { name: "Tool use" })).not.toBeInTheDocument();
+    expect(screen.getByText(/structured output · thinking/i)).toBeInTheDocument();
+  });
+
+  it("offers an optional base URL and a connection test for OpenAI", async () => {
+    mockUseProviderConfigs.mockReturnValue({
+      data: [cfg({ provider: "openai", default_model: "gpt-5.6-sol", api_key_present: true })],
+    });
+    render(<ProviderCard provider="openai" />);
+    const field = screen.getByLabelText("Base URL (optional)");
+    expect(screen.getByRole("button", { name: /test connection/i })).toBeEnabled();
+    await userEvent.type(field, "https://proxy.example/v1");
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+    const [arg] = mockMutate.mock.calls[0];
+    expect(arg.body.base_url).toBe("https://proxy.example/v1");
+  });
+
+  it("offers no base URL or probe for Claude, which publishes no model list", () => {
+    render(<ProviderCard provider="claude" />);
+    expect(screen.queryByLabelText(/base url/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /test connection/i })).not.toBeInTheDocument();
+  });
+
+  it("reports when the model list was last synced", () => {
+    mockUseProviderConfigs.mockReturnValue({
+      data: [cfg({ provider: "local", default_model: "llama3", base_url: "http://x:11434/v1",
+                   discovered_models: ["llama3", "qwen"], models_synced_at: new Date().toISOString() })],
+    });
+    render(<ProviderCard provider="local" />);
+    expect(screen.getByText(/Models synced .* · 2 discovered/)).toBeInTheDocument();
+  });
 });
 
 describe("ProviderCard", () => {

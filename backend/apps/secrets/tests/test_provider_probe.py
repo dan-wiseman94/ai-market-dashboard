@@ -93,3 +93,27 @@ def test_probe_malformed_base_url_is_clean_error_not_500(api):
     body = r.json()
     assert body["ok"] is False
     assert "valid URL" in body["error"]
+
+
+@pytest.mark.django_db
+def test_probe_openai_without_base_url_hits_the_vendor_endpoint(api):
+    """Only `local` has no endpoint of its own: a plain OpenAI key must be able to
+    list the models it can reach without inventing a base URL."""
+    cfg = ProviderConfig.objects.create(provider="openai", base_url="")
+    cfg.api_key = "sk-test"
+    cfg.save()
+    fake = SimpleNamespace(list_models=AsyncMock(return_value=["gpt-5.6-sol"]))
+    with patch("apps.secrets.views.get_provider", return_value=fake) as get_provider:
+        r = api.post("/api/schwab/providers/openai/probe/", {}, format="json")
+    assert r.status_code == 200
+    assert r.json()["models"] == ["gpt-5.6-sol"]
+    assert get_provider.call_args.kwargs["base_url"] == ""
+    assert ProviderConfig.objects.get(provider="openai").discovered_models == ["gpt-5.6-sol"]
+
+
+@pytest.mark.django_db
+def test_probe_claude_is_still_unsupported(api):
+    ProviderConfig.objects.create(provider="claude")
+    r = api.post("/api/schwab/providers/claude/probe/", {}, format="json")
+    assert r.json()["ok"] is False
+    assert "isn't supported" in r.json()["error"]

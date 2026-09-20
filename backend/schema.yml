@@ -7,6 +7,8 @@ paths:
   /api/aieval/runs/:
     get:
       operationId: aieval_runs_list
+      description: 'GET: the 50 newest runs. POST: queue one bounded, billed eval
+        run on a provider.'
       tags:
       - aieval
       security:
@@ -20,6 +22,22 @@ paths:
                 items:
                   $ref: '#/components/schemas/EvalRun'
           description: ''
+    post:
+      operationId: aieval_runs_create
+      description: 'GET: the 50 newest runs. POST: queue one bounded, billed eval
+        run on a provider.'
+      tags:
+      - aieval
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EvalRunRequest'
+      security:
+      - {}
+      responses:
+        '202':
+          description: No response body
   /api/aieval/runs/latest/:
     get:
       operationId: aieval_runs_latest_retrieve
@@ -3799,6 +3817,9 @@ components:
         label:
           type: string
           readOnly: true
+        provider:
+          type: string
+          readOnly: true
         model:
           type: string
           readOnly: true
@@ -3852,9 +3873,43 @@ components:
       - label
       - model
       - n
+      - provider
       - scored
       - skipped
       - source
+    EvalRunRequest:
+      type: object
+      description: Body of ``POST /api/aieval/runs/`` — one manual, bounded, billed
+        eval run.
+      properties:
+        provider:
+          allOf:
+          - $ref: '#/components/schemas/EvalRunRequestProviderEnum'
+          default: claude
+        model:
+          type: string
+          default: ''
+        horizon:
+          type: integer
+        limit:
+          type: integer
+          maximum: 100
+          minimum: 1
+          default: 25
+        label:
+          type: string
+          default: manual
+          maxLength: 64
+    EvalRunRequestProviderEnum:
+      enum:
+      - claude
+      - openai
+      - local
+      type: string
+      description: |-
+        * `claude` - claude
+        * `openai` - openai
+        * `local` - local
     EventTrigger:
       type: object
       properties:
@@ -4168,6 +4223,7 @@ components:
       - cal_drift
       - contra
       - pred_invalid
+      - eval_done
       type: string
       description: |-
         * `trigger` - Trigger
@@ -4183,6 +4239,7 @@ components:
         * `cal_drift` - Calibration drift
         * `contra` - Consistency conflict
         * `pred_invalid` - Prediction invalidated
+        * `eval_done` - Eval run finished
     ObserverSchedule:
       type: object
       properties:
@@ -4653,7 +4710,7 @@ components:
       type: object
       properties:
         provider:
-          $ref: '#/components/schemas/ProviderEnum'
+          $ref: '#/components/schemas/ProviderConfigProviderEnum'
         base_url:
           type: string
           maxLength: 255
@@ -5066,7 +5123,7 @@ components:
       type: object
       properties:
         provider:
-          $ref: '#/components/schemas/ProviderEnum'
+          $ref: '#/components/schemas/ProviderConfigProviderEnum'
         base_url:
           type: string
           maxLength: 255
@@ -5106,7 +5163,7 @@ components:
       - discovered_models
       - models_synced_at
       - provider
-    ProviderEnum:
+    ProviderConfigProviderEnum:
       enum:
       - claude
       - openai
@@ -5757,6 +5814,9 @@ components:
           items:
             type: object
             additionalProperties: {}
+          description: |-
+            Each argument with the model that made it; null for a message with no run
+            (the verdict, whose one-shot AIRun carries no Message).
           readOnly: true
       required:
       - confidence

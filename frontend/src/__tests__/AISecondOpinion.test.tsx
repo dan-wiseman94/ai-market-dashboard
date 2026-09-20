@@ -43,4 +43,25 @@ describe("AISecondOpinion", () => {
     render(<AISecondOpinion ticker="NVDA" against="bullish" />);
     expect(screen.getByText(/diverges from your thesis/)).toBeInTheDocument();
   });
+
+  it("names the provider behind the call when the payload carries one", () => {
+    mockView({
+      ticker: "NVDA",
+      has_view: true,
+      direction: "bullish",
+      confidence: 0.7,
+      horizon_days: 7,
+      agreement: "agree",
+      provider: "openai",
+      model: "gpt-5.6-sol",
+    });
+    render(<AISecondOpinion ticker="NVDA" against="bullish" />);
+    expect(screen.getByTestId("ai-attribution").textContent).toBe("OpenAI · gpt-5.6-sol");
+  });
+
+  it("stays silent about provenance when the payload has none", () => {
+    mockView({ ticker: "NVDA", has_view: true, direction: "bullish", confidence: 0.7 });
+    render(<AISecondOpinion ticker="NVDA" against="bullish" />);
+    expect(screen.queryByTestId("ai-attribution")).not.toBeInTheDocument();
+  });
 });
