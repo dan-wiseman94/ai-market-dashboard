@@ -25,6 +25,15 @@ export function useToggleSchedule() {
   });
 }
 
+export function useUpdateSchedule() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: number; body: Partial<CreateScheduleBody> }) =>
+      patchSchedule(id, body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["schedules"] }),
+  });
+}
+
 export function useUpdateScheduleIncludes() {
   const qc = useQueryClient();
   return useMutation({
