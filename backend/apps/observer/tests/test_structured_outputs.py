@@ -73,6 +73,8 @@ def test_structured_observer_run_persists_parsed_json(
     msg = Message.objects.filter(thread=thread, role="assistant").order_by("-id").first()
     assert msg is not None
     assert msg.content["kind"] == "structured_observation"
+    assert msg.content["provider"] == "claude"
+    assert msg.content["model"]  # the resolved id, never blank for a catalog provider
     assert msg.content["report"]["headline"] == fake_report.headline
     assert msg.content["report"]["bias"] == "neutral"
 
@@ -138,6 +140,10 @@ def test_structured_openai_provider_runs_and_records_its_provider(
     msg = Message.objects.filter(thread=thread, role="assistant", status="done").first()
     assert msg is not None
     assert msg.content["kind"] == "structured_observation"
+    # The fire stamps its own provider/model: the one-shot AIRun carries no Message,
+    # so the timeline has no other way to attribute the card.
+    assert msg.content["provider"] == "openai"
+    assert msg.content["model"] == "gpt-5.6-sol"
     assert not Message.objects.filter(thread=thread, error="unsupported_provider").exists()
 
 

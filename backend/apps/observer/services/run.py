@@ -10,7 +10,7 @@ from decimal import Decimal
 from cryptography.fernet import InvalidToken
 from django.utils import timezone
 
-from apps.ai.catalog import default_model_for
+from apps.ai.catalog import default_model_for, is_foreign_model
 from apps.ai.cost import CostCapExceededError, check_daily_cap, check_monthly_cap
 from apps.ai.structured import run_structured
 from apps.core.runtime_config import runtime_config
@@ -29,6 +29,28 @@ from apps.threads.models import Message
 from apps.threads.tasks import run_ai_on_message
 
 log = logging.getLogger(__name__)
+
+
+def _observer_model(sched: ObserverSchedule, cfg: ProviderConfig | None, provider_name: str) -> str:
+    """The model this fire runs on.
+
+    Candidates in order: the schedule's override, the profile's model when the fire
+    runs on the profile's own provider, the ProviderConfig default, the catalog
+    default. A catalog id owned by another provider is skipped, never sent — and the
+    same id feeds the prompt hash, the structured call and the ledger stamp.
+    """
+    same_provider = (
+        not sched.override_provider or sched.override_provider == sched.profile.default_provider
+    )
+    candidates = [
+        sched.override_model,
+        sched.profile.default_model if same_provider else "",
+        cfg.default_model if cfg is not None else "",
+    ]
+    for candidate in candidates:
+        if candidate and not is_foreign_model(provider_name, candidate):
+            return candidate
+    return default_model_for(provider_name)
 
 
 def _stamp_fired(sched: ObserverSchedule) -> None:
@@ -50,7 +72,6 @@ def fire_observer(schedule_id: int) -> int | None:
 
     thread = get_or_create_observer_thread(sched.profile)
     provider_name = sched.override_provider or sched.profile.default_provider
-    model_name = sched.override_model or sched.profile.default_model
 
     # Resolve caps — Infinity daily / None monthly when no ProviderConfig row exists.
     # defer the encrypted key: the cap fields are read here without decrypting, so a
@@ -70,6 +91,8 @@ def fire_observer(schedule_id: int) -> int | None:
     else:
         cap_usd = cfg.daily_cost_cap_usd
         monthly_cap = cfg.monthly_cost_cap_usd
+
+    model_name = _observer_model(sched, cfg, provider_name)
 
     try:
         check_daily_cap(provider_name, cap_usd=cap_usd)
@@ -134,7 +157,9 @@ def fire_observer(schedule_id: int) -> int | None:
         # it takes precedence over the plain structured path. Opt-in, ~Nx cost.
         _run_consensus_and_record(sched, thread, user_text)
     elif sched.structured:
-        _run_structured_and_record(sched, thread, user_text, provider_name, cfg, snap=snap)
+        _run_structured_and_record(
+            sched, thread, user_text, provider_name, cfg, model_id=model_name, snap=snap
+        )
     else:
         rc = runtime_config()  # one row fetch; reused for the gate and the TTL below
         cached = (
@@ -279,6 +304,7 @@ def _run_structured_and_record(
     provider_name: str,
     cfg: ProviderConfig | None,
     *,
+    model_id: str = "",
     snap=None,
 ) -> None:
     """Run the structured ObservationReport call on the schedule's provider and
@@ -319,7 +345,7 @@ def _run_structured_and_record(
             error="no_key",
         )
         return
-    model_id = sched.override_model or cfg.default_model or default_model_for(provider_name)
+    model_id = model_id or _observer_model(sched, cfg, provider_name)
     try:
         report = run_structured(
             provider=provider_name,
@@ -343,7 +369,12 @@ def _run_structured_and_record(
     msg = Message.objects.create(
         thread=thread,
         role="assistant",
-        content={"kind": "structured_observation", "report": report.model_dump()},
+        content={
+            "kind": "structured_observation",
+            "report": report.model_dump(),
+            "provider": provider_name,
+            "model": model_id,
+        },
         status="done",
     )
     _extract_prediction(
