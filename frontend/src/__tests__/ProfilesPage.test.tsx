@@ -22,7 +22,7 @@ vi.mock("@/hooks/useAgentPresets", () => ({
 
 const AI_MODELS = {
   models: [
-    { id: "claude-sonnet-4-6", name: "Claude Sonnet 4.6", provider: "claude",
+    { id: "claude-opus-5", name: "Claude Opus 5", provider: "claude",
       input_per_mtok: 3, output_per_mtok: 15, cached_per_mtok: 0.3, context_window: 200000, supports_vision: true },
     { id: "claude-opus-4-8", name: "Claude Opus 4.8", provider: "claude",
       input_per_mtok: 15, output_per_mtok: 75, cached_per_mtok: 1.5, context_window: 200000, supports_vision: true },
@@ -61,7 +61,7 @@ const PROFILE_A: TradingProfile = {
   style: "Hold 2-5 days",
   default_includes: ["quotes", "ohlc"],
   default_provider: "claude",
-  default_model: "claude-sonnet-4-6",
+  default_model: "claude-opus-5",
   active: true,
 };
 
@@ -276,10 +276,10 @@ describe("ProfilesPage", () => {
 
     renderWithProviders(<ProfilesPage />);
 
-    expect(screen.getByRole("option", { name: "Claude Sonnet 4.6" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Claude Opus 5" })).toBeInTheDocument();
     expect(screen.getByRole("option", { name: "Claude Opus 4.8" })).toBeInTheDocument();
 
-    const modelSelect = screen.getByDisplayValue("Claude Sonnet 4.6");
+    const modelSelect = screen.getByDisplayValue("Claude Opus 5");
     await user.selectOptions(modelSelect, "claude-opus-4-8");
     await user.type(screen.getByPlaceholderText("Profile name"), "Deep Diver");
     fireEvent.click(screen.getByRole("button", { name: /create/i }));
