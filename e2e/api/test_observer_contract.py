@@ -21,8 +21,18 @@ def test_observer_thread_view(api_client, observer) -> None:
 
     pid = TradingProfile.objects.get(name="E2E Default").id
     r = api_client.get(f"/api/observer/threads/{pid}/")
-    # 200 with a body, or 404 if the profile has no observer thread yet — both fine.
-    assert r.status_code in (200, 404)
+    # The view get_or_create()s the thread for an existing profile, so 200 is the
+    # only reachable outcome — accepting 404 here would hide the thread going missing.
+    assert r.status_code == 200
+    body = r.json()
+    assert body["profile_id"] == pid
+    assert body["kind"] == "observer"
+    assert isinstance(body["messages"], list)
+
+
+@pytest.mark.integration
+def test_observer_thread_view_404s_for_an_unknown_profile(api_client) -> None:
+    assert api_client.get("/api/observer/threads/99999999/").status_code == 404
 
 
 @pytest.mark.integration
@@ -30,5 +40,7 @@ def test_market_status_endpoint(api_client) -> None:
     r = api_client.get("/api/observer/market-status/")
     assert r.status_code == 200
     body = r.json()
-    # Body shape: any well-formed json with at least a boolean field somewhere
-    assert isinstance(body, dict)
+    assert isinstance(body["is_open"], bool)
+    # Both are ISO timestamps, or null when the calendar has no next session.
+    for key in ("next_open", "next_close"):
+        assert body[key] is None or isinstance(body[key], str)
