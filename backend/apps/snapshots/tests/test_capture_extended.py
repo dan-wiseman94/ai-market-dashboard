@@ -112,7 +112,37 @@ def test_capture_filings_skips_non_equity_watchlist_symbols():
             watchlist_tickers=["NQ", "QQQ"],
         )
 
-    fake.assert_called_once_with("QQQ")
+    assert fake.call_count == 2
+    fake.assert_any_call("QQQ")
+    fake.assert_any_call("QQQ", forms=("4",), limit=5, max_age_days=45)
     sec = snap.sections.get(kind="filings")
     assert sec.status == "done"
     assert list(sec.payload.keys()) == ["QQQ"]
+    assert sec.payload["QQQ"] == {"filings": [], "insider": []}
+
+
+@pytest.mark.django_db
+def test_capture_filings_fetches_base_and_form4_separately_per_ticker():
+    """Form 4 insider filings ride a SEPARATE edgar_fetch_filings call per
+    ticker (own limit=5, max_age_days=45) so a busy Form 4 filer can't evict
+    10-K/10-Q/8-K rows from the base call's shared limit=10 budget."""
+    profile = TradingProfile.objects.create(name="P", style="x")
+
+    with patch("apps.snapshots.services.edgar_fetch_filings", return_value=[]) as fake:
+        snap = capture(
+            profile=profile,
+            objective="",
+            includes=["filings"],
+            watchlist_tickers=["AAPL", "MSFT"],
+        )
+
+    assert fake.call_count == 4
+    for ticker in ("AAPL", "MSFT"):
+        # Base call: no forms/limit/max_age_days override — the default
+        # (10-K/10-Q/8-K, limit=10, max_age_days=548) budget stays untouched.
+        fake.assert_any_call(ticker)
+        fake.assert_any_call(ticker, forms=("4",), limit=5, max_age_days=45)
+    sec = snap.sections.get(kind="filings")
+    assert set(sec.payload.keys()) == {"AAPL", "MSFT"}
+    for entry in sec.payload.values():
+        assert entry == {"filings": [], "insider": []}

@@ -45,6 +45,9 @@ class SystemSettings(models.Model):
     aieval_scheduled_horizon = models.IntegerField(null=True, blank=True)
     aieval_scheduled_limit = models.IntegerField(null=True, blank=True)
 
+    # TradingView MCP tools for the in-app AI — apps.ai.tools.tradingview.
+    tradingview_tools_enabled = models.BooleanField(null=True, blank=True)
+
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:

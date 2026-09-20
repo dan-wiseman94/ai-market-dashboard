@@ -39,6 +39,7 @@ These are `env.bool` switches but not product features. They stay as-is.
 | `CALIBRATION_DRIFT_SENTINEL_ENABLED` | keep opt-in — reads only, no AI $ | Daily sentinel that notifies once per episode when a model's `calibration_error` drifts (over/under-confident). |
 | `ANOMALY_SWEEP_ENABLED` | **keep opt-in (permanent)** — autonomy that spends $ | Arm the beat-scheduled Desk sweep; auto-originate `DeskEntry` investigations. |
 | `RETURNS_ADJUST_DIVIDENDS` | **decide-and-delete candidate** — a methodology choice, not a perpetual toggle | Dividend-adjust forward-return math (price-return → total-return) across all calibration. |
+| `TRADINGVIEW_TOOLS_ENABLED` | keep opt-in — adds prompt tokens; needs a connected TradingView | Expose the read-only `tv_*` TradingView MCP tools to the in-app AI. Also a UI toggle on the TradingView connection card (`SystemSettings.tradingview_tools_enabled` overrides the env value). |
 
 ### Notes on the dispositions
 

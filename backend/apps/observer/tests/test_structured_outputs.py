@@ -110,28 +110,79 @@ def test_structured_undecryptable_key_records_failed_message_without_crashing(
     assert "could not be decrypted" in msg.content["text"]
 
 
-def test_structured_non_claude_provider_skips_with_visible_message(
+def test_structured_openai_provider_runs_and_records_its_provider(
     db,
     schedule_structured,
+    fake_report,
 ) -> None:
-    """Structured output runs through Anthropic messages.parse; a schedule that
-    resolves to openai/local must skip with a visible Message instead of sending
-    that vendor's key to api.anthropic.com (opaque 401 every fire)."""
+    """Structured output has provider parity: an openai schedule runs the same
+    ObservationReport call through the facade and the resulting prediction is
+    attributed to openai."""
     from apps.observer.services import run as run_service
     from apps.observer.services.threads import get_or_create_observer_thread
     from apps.threads.models import Message
 
+    cfg = ProviderConfig.objects.create(provider="openai", enabled=True)
+    cfg.api_key = "sk-oai"
+    cfg.save()
+    thread = get_or_create_observer_thread(schedule_structured.profile)
+    with patch.object(run_service, "run_structured", return_value=fake_report) as run_structured:
+        run_service._run_structured_and_record(
+            schedule_structured, thread, "payload", "openai", cfg, snap=None
+        )
+
+    kw = run_structured.call_args.kwargs
+    assert kw["provider"] == "openai"
+    assert kw["model"] == "gpt-5.6-sol"  # catalog default for an openai config with no model
+    assert kw["api_key"] == "sk-oai"
+    msg = Message.objects.filter(thread=thread, role="assistant", status="done").first()
+    assert msg is not None
+    assert msg.content["kind"] == "structured_observation"
+    assert not Message.objects.filter(thread=thread, error="unsupported_provider").exists()
+
+
+def test_structured_local_provider_runs_with_base_url_and_no_key(
+    db, schedule_structured, fake_report
+) -> None:
+    """A local config has no key; a base URL makes it usable for structured mode."""
+    from apps.observer.services import run as run_service
+    from apps.observer.services.threads import get_or_create_observer_thread
+    from apps.threads.models import Message
+
+    cfg = ProviderConfig.objects.create(
+        provider="local",
+        enabled=True,
+        base_url="http://host.docker.internal:11434/v1",
+        default_model="llama3",
+    )
+    thread = get_or_create_observer_thread(schedule_structured.profile)
+    with patch.object(run_service, "run_structured", return_value=fake_report) as run_structured:
+        run_service._run_structured_and_record(
+            schedule_structured, thread, "payload", "local", cfg, snap=None
+        )
+
+    kw = run_structured.call_args.kwargs
+    assert kw["provider"] == "local"
+    assert kw["model"] == "llama3"
+    assert kw["base_url"] == "http://host.docker.internal:11434/v1"
+    assert Message.objects.filter(thread=thread, role="assistant", status="done").exists()
+    assert not Message.objects.filter(thread=thread, error="no_key").exists()
+
+
+def test_structured_local_provider_without_base_url_skips_with_visible_message(
+    db, schedule_structured
+) -> None:
+    from apps.observer.services import run as run_service
+    from apps.observer.services.threads import get_or_create_observer_thread
+    from apps.threads.models import Message
+
+    cfg = ProviderConfig.objects.create(provider="local", enabled=True, default_model="llama3")
     thread = get_or_create_observer_thread(schedule_structured.profile)
     with patch.object(run_service, "run_structured") as run_structured:
         run_service._run_structured_and_record(
-            schedule_structured, thread, "payload", "openai", None, snap=None
+            schedule_structured, thread, "payload", "local", cfg, snap=None
         )
 
     run_structured.assert_not_called()
-    msg = Message.objects.filter(thread=thread, role="system", status="failed").first()
-    assert msg is not None
-    assert msg.error == "unsupported_provider"
-    assert "Claude" in msg.content["text"]
-    # Not a capability_warning kind — those are excluded from the observer
-    # timeline, and this skip must stay visible there.
-    assert msg.content.get("kind") is None
+    msg = Message.objects.get(thread=thread, error="no_key")
+    assert "base URL" in msg.content["text"]

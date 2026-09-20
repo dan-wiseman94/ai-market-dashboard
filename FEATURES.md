@@ -51,26 +51,35 @@ around a complete, closing feedback loop:
 ### 📸 Market capture & snapshots
 
 - **Point-in-time snapshots** of the whole picture, from opt-in sections: live
-  **quotes**, **OHLC history** (a 24-hour intraday window plus daily history for
-  the whole watchlist), **option chains**, **positions**, **market breadth &
-  sector rotation** (all 11 SPDR sectors, NYSE internals, relative strength vs.
-  $SPX), **news**, **company fundamentals**, **macro indicators** (FRED series +
-  live yield-curve quotes), **SEC filings**, **Treasury rates**, **rendered chart
-  images** (real PNGs from a headless browser), and a **forward earnings/macro
-  calendar**.
+  **quotes**, **OHLC history** (a 24-hour intraday window, daily history for
+  the whole watchlist, and a longer-horizon summary off 52 weeks of stored
+  daily bars — 252-session high/low, SMA distance, 5/20/60-day returns),
+  **option chains**, **positions**, **market breadth & sector rotation**
+  (a sector table, the dollar, NYSE internals, cross-asset factor returns,
+  relative strength vs. $SPX), **news**, **company fundamentals**,
+  **macro indicators** (FRED series — including HY/IG credit spreads — +
+  live yield-curve quotes), **SEC filings** (Form 4 insider activity
+  included), **Treasury rates**, **rendered chart images** (real PNGs from
+  a headless browser), a **forward earnings/macro calendar**,
+  **Fed communications** (`fed` — press releases, speeches, testimony,
+  keyless), and a volume-based **flow proxy** (`flowlite` — always labeled
+  a proxy, not real fund-flow data).
 - **The vol complex, always on.** Every capture ships $VIX spot plus the front
-  two /VX futures with basis and a contango/backwardation read — the AI always
-  knows the volatility regime, even when you didn't ask. Degrades honestly to
-  spot-only without a brokerage connection, with an explicit note.
+  two /VX futures with basis and a contango/backwardation read — plus **VVIX**
+  and the VVIX/VIX ratio — so the AI always knows the volatility regime, even
+  when you didn't ask. Degrades honestly to spot-only without a brokerage
+  connection, with an explicit note.
 - **Options positioning, decoded.** The chain section doesn't stop at a strike
   table: it computes put/call volume & open-interest ratios, max pain, 25-delta
   IV skew, the ATM-IV term structure, and a dealer gamma-exposure estimate
-  (total GEX + the zero-gamma flip strike) over every fetched expiry.
+  (total GEX, the **by-strike gamma walls**, and the zero-gamma flip strike)
+  over every fetched expiry — plus top volume/OI strikes per side and an
+  **unusual-activity** block.
 - **Free data sources, no brokerage required.** Add a free-tier key (Alpaca,
   Tiingo, Twelve Data, Polygon, Tradier, FRED, Marketaux) under Settings →
   Connections and the quotes / OHLC / option-chain / news pipeline falls back to it when
-  Schwab isn't connected — plus keyless **SEC EDGAR** filings and **US Treasury**
-  rates. The whole dashboard runs without a Schwab login.
+  Schwab isn't connected — plus keyless **SEC EDGAR** filings, **US Treasury**
+  rates, and **Federal Reserve** RSS feeds. The whole dashboard runs without a Schwab login.
 - **Nothing is silently dropped.** If a section fails, it's flagged in the payload
   so the AI knows exactly what it couldn't see — partial captures are honest, not misleading.
 - **Overnight / pre-market mode** adds index, vol & rates **futures**, overseas

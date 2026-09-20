@@ -93,6 +93,7 @@ def run_scheduled() -> dict:
         label="scheduled",
         horizon=horizon,
         limit=limit,
+        provider="claude",
     )
     if not res["n"]:
         return {"skipped": "no_data"}

@@ -91,7 +91,7 @@ def tools_thread(db):
 def test_build_request_openai_tools_when_supported(tools_thread):
     thread, msg = tools_thread
     fake_tools = [{"type": "function", "function": {"name": "get_quote"}}]
-    with patch("apps.ai.tools.registry.default_toolset") as ts:
+    with patch("apps.ai.tools.registry.request_toolset") as ts:
         ts.return_value.openai_tools.return_value = fake_tools
         req = _build_request(thread, msg, provider_name="openai", supports_tools=True)
     assert req.tools == fake_tools
@@ -108,7 +108,7 @@ def test_build_request_openai_no_tools_when_unsupported(tools_thread):
 def test_build_request_claude_uses_anthropic_tools(tools_thread):
     thread, msg = tools_thread
     fake_tools = [{"name": "get_quote", "description": "", "input_schema": {}}]
-    with patch("apps.ai.tools.registry.default_toolset") as ts:
+    with patch("apps.ai.tools.registry.request_toolset") as ts:
         ts.return_value.anthropic_tools.return_value = fake_tools
         req = _build_request(thread, msg, provider_name="claude", supports_tools=False)
     assert req.tools == fake_tools

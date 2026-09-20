@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import ConnectionsSettings from "@/pages/settings/ConnectionsSettings";
 import { fetchSchwabAuthorizeUrl, updateSchwabAppConfig } from "@/api/schwab";
-import { renderWithProviders } from "./testUtils";
+import { renderWithProviders, LocationProbe } from "./testUtils";
 
 const mockUseSchwabStatus = vi.fn();
 const mockUseSchwabAppConfig = vi.fn();
@@ -123,5 +123,26 @@ describe("ConnectionsSettings", () => {
     renderPage();
     await userEvent.click(screen.getByRole("button", { name: /connect schwab/i }));
     expect(await screen.findByText(/schwab is not configured/i)).toBeInTheDocument();
+  });
+
+  it("toasts and strips the query when returning from TradingView consent", async () => {
+    mockUseSchwabStatus.mockReturnValue({
+      data: { connected: false, expires_at: null, auth_error: null },
+      isLoading: false,
+    });
+    let location = "";
+    renderWithProviders(
+      <>
+        <ConnectionsSettings />
+        <LocationProbe
+          onChange={(loc) => {
+            location = loc;
+          }}
+        />
+      </>,
+      { initialEntries: ["/settings/connections?tradingview=connected"] },
+    );
+    expect(await screen.findByText(/tradingview connected/i)).toBeInTheDocument();
+    expect(location).not.toContain("tradingview=");
   });
 });

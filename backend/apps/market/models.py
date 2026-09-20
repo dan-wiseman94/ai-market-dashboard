@@ -109,7 +109,7 @@ class MarketEvent(models.Model):
         ("pce", "pce"),
         ("gdp", "gdp"),
     ]
-    source = models.CharField(max_length=16)  # "finnhub" | "seed"
+    source = models.CharField(max_length=16)  # "finnhub" | "tradingview" | "seed"
     external_id = models.CharField(max_length=80, db_index=True)
     kind = models.CharField(max_length=16, choices=KINDS)
     ticker = models.CharField(max_length=16, blank=True, default="", db_index=True)

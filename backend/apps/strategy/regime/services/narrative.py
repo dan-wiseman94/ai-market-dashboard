@@ -1,6 +1,7 @@
-"""Best-effort one-paragraph regime narrative (Claude). NEVER raises; returns ""
-on non-claude / no key / cap hit / any provider error — the deterministic axes +
-composite are already persisted by the caller."""
+"""Best-effort one-paragraph regime narrative (structured output on the default
+provider). NEVER raises; returns "" on no usable provider / cap hit / any
+provider error — the deterministic axes + composite are already persisted by
+the caller."""
 
 from __future__ import annotations
 
@@ -8,9 +9,8 @@ import logging
 
 from pydantic import BaseModel, Field
 
-from apps.ai.catalog import DEFAULT_CLAUDE_MODEL
-from apps.ai.cost import CostCapExceededError, check_daily_cap, check_monthly_cap
-from apps.ai.providers.claude_structured import run_structured
+from apps.ai.cost import CostCapExceededError
+from apps.ai.structured import ensure_within_caps, resolve_structured_target, run_structured
 
 log = logging.getLogger(__name__)
 
@@ -30,21 +30,19 @@ def _build_prompt(composite: str, axes: dict, drivers: list[str]) -> str:
 
 
 def regime_narrative(composite: str, axes: dict, drivers: list[str]) -> str:
-    from apps.secrets.models import ProviderConfig
-
     try:
-        cfg = ProviderConfig.objects.filter(provider="claude").first()
-        if cfg is None or not cfg.api_key:
+        target = resolve_structured_target()
+        if target is None:
             return ""
-        check_daily_cap("claude", cap_usd=cfg.daily_cost_cap_usd)
-        check_monthly_cap("claude", cap_usd=cfg.monthly_cost_cap_usd)
+        ensure_within_caps(target)
         report = run_structured(
-            api_key=cfg.api_key,
-            model=cfg.default_model or DEFAULT_CLAUDE_MODEL,
+            provider=target.provider,
+            api_key=target.api_key,
+            model=target.model,
             system="",
             user=_build_prompt(composite, axes, drivers),
             output_model=RegimeNarrative,
-            base_url=cfg.base_url or "",
+            base_url=target.base_url,
         )
         return (getattr(report, "summary", "") or "").strip()
     except CostCapExceededError as exc:

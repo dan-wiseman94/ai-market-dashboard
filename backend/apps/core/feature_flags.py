@@ -91,6 +91,12 @@ FEATURE_FLAGS: list[FeatureFlag] = [
         "feature",
         "Dividend-adjust forward-return math in apps.market.returns — a semantic change to all calibration.",
     ),
+    FeatureFlag(
+        "TRADINGVIEW_TOOLS_ENABLED",
+        False,
+        "feature",
+        "Expose the read-only tv_* TradingView MCP tools to the in-app AI (needs a connected TradingView).",
+    ),
 ]
 
 

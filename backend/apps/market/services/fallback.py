@@ -5,7 +5,11 @@ The Schwab-backed services (quotes, ohlc, chain) call into here when
 (which also covers ``SchwabAuthError`` — a rejected token). We pick the first
 *configured* free provider — one with a credential (``ApiCredential`` row or an
 .env-provided key) — in a fixed precedence and return the same normalized shape
-as the Schwab path.
+as the Schwab path. TradingView (the official MCP server) is consulted first for
+quotes/bars/news: it's a paid, exchange-routed feed with a per-user budget, so it
+outranks every free provider whenever it's configured — "configured" for
+TradingView means connected (a usable token) *and* not auth-errored (no
+provider_health circuit-breaker marker set), not merely having a credential row.
 
 Each ``alt_*`` returns ``None`` when **no** provider is configured (so the caller
 re-raises and the UI still says "connect Schwab"), and a real value — possibly
@@ -29,8 +33,21 @@ def _has(provider: str) -> bool:
     return decrypt_token(provider) is not None
 
 
+def _tradingview() -> bool:
+    """TradingView (official MCP server) is connected and not auth-errored. It is a paid,
+    exchange-routed feed with a per-user budget, so it outranks every free provider."""
+    from apps.market.services import tradingview
+
+    return tradingview.is_connected()
+
+
 def alt_quotes(tickers: list[str]) -> dict | None:
-    """Quotes from the first configured provider (Alpaca -> Twelve Data), else None."""
+    """Quotes from the first configured provider (TradingView -> Alpaca -> Twelve Data), else
+    None."""
+    if _tradingview():
+        from apps.market.services import tradingview
+
+        return tradingview.fetch_quotes(tickers)
     if _has("alpaca"):
         from apps.market.services import alpaca
 
@@ -45,11 +62,15 @@ def alt_quotes(tickers: list[str]) -> dict | None:
 def alt_bars(ticker: str, timeframe: str, *, limit: int = 60) -> list | None:
     """Bars from the first configured provider, else None.
 
-    Precedence: Alpaca (any timeframe) -> Twelve Data (any timeframe) ->
-    Tiingo (daily only) -> Polygon (daily only). Intraday timeframes resolve only
-    when Alpaca or Twelve Data is configured; daily-only providers return None
-    for intraday requests.
+    Precedence: TradingView (any timeframe) -> Alpaca (any timeframe) -> Twelve Data
+    (any timeframe) -> Tiingo (daily only) -> Polygon (daily only). Intraday timeframes
+    resolve only when TradingView, Alpaca, or Twelve Data is configured; daily-only
+    providers return None for intraday requests.
     """
+    if _tradingview():
+        from apps.market.services import tradingview
+
+        return tradingview.fetch_bars(ticker, timeframe=timeframe, limit=limit)
     if _has("alpaca"):
         from apps.market.services import alpaca
 
@@ -62,11 +83,17 @@ def alt_bars(ticker: str, timeframe: str, *, limit: int = 60) -> list | None:
     if timeframe == "1d" and _has("tiingo"):
         from apps.market.services import tiingo
 
-        return tiingo.fetch_daily_bars(ticker, days=limit)
+        # These providers treat the count as a CALENDAR-day lookback, not a bar
+        # count (260 days ≈ 178 trading bars) — convert so 260 bars means 260 bars.
+        days = int(limit * 1.45) + 5
+        return tiingo.fetch_daily_bars(ticker, days=days)
     if timeframe == "1d" and _has("polygon"):
         from apps.market.services import polygon
 
-        return polygon.fetch_daily_bars(ticker, days=limit)
+        # These providers treat the count as a CALENDAR-day lookback, not a bar
+        # count (260 days ≈ 178 trading bars) — convert so 260 bars means 260 bars.
+        days = int(limit * 1.45) + 5
+        return polygon.fetch_daily_bars(ticker, days=days)
     return None
 
 
@@ -80,7 +107,12 @@ def alt_chain(ticker: str) -> dict | None:
 
 
 def alt_news(tickers: list[str], *, limit: int = 15) -> list | None:
-    """News from the first configured provider (Marketaux -> Tiingo), else None."""
+    """News from the first configured provider (TradingView -> Marketaux -> Tiingo), else
+    None."""
+    if _tradingview():
+        from apps.market.services import tradingview
+
+        return tradingview.fetch_news(tickers, limit=limit)
     if _has("marketaux"):
         from apps.market.services import marketaux
 

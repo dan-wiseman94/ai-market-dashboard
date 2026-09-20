@@ -55,4 +55,35 @@ describe("SchedulesPage", () => {
     expect(body.cron).toBe("*/15 * * * *");
     expect(body.profile).toBe(1);
   });
+
+  it("opening the sections editor with empty default_includes shows the inherit hint", async () => {
+    mockApi({
+      "GET /api/observer/schedules/": SCHEDULES,
+      "GET /api/profiles/": PROFILES,
+    });
+    renderWithProviders(<SchedulesPage />);
+    await waitFor(() => expect(screen.getByText("Hourly")).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: /^sections$/i }));
+    expect(screen.getByText(/inherits the profile's default sections/i)).toBeInTheDocument();
+  });
+
+  it("saving the sections editor PATCHes default_includes on the schedule", async () => {
+    const mock = mockApi({
+      "GET /api/observer/schedules/": SCHEDULES,
+      "GET /api/profiles/": PROFILES,
+      "PATCH /api/observer/schedules/1/": {},
+    });
+    renderWithProviders(<SchedulesPage />);
+    await waitFor(() => expect(screen.getByText("Hourly")).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: /^sections$/i }));
+    fireEvent.click(screen.getByLabelText("Quotes"));
+    fireEvent.click(screen.getByLabelText("News"));
+    fireEvent.click(screen.getByRole("button", { name: /save sections/i }));
+
+    await waitFor(() => expect(mock.calls.some((c) => c.method === "PATCH")).toBe(true));
+    const call = mock.calls.find((c) => c.method === "PATCH")!;
+    expect(call.url).toContain("/api/observer/schedules/1/");
+    const body = call.body as Record<string, unknown>;
+    expect(body.default_includes).toEqual(["quotes", "news"]);
+  });
 });
