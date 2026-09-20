@@ -24,31 +24,31 @@ def test_profile_create_persists(page, frontend_base_url, minimal) -> None:
 
 @pytest.mark.integration
 @pytest.mark.ui
-@pytest.mark.xfail(
-    reason="GAP: /profiles create form exposes no per-profile capability toggles. "
-    "TradingProfile.enable_tools / enable_memory / thinking_budget exist on the model and "
-    "drive real AI behavior, but ProfilesPage.tsx renders only name/style/provider — so they "
-    "cannot be set from the UI. strict: when the flag controls land, the unexpected pass "
-    "fails the run, forcing this marker's removal.",
-    strict=True,
-)
 def test_profile_flags_editable_in_ui(page, frontend_base_url, minimal) -> None:
+    """The per-profile capability flags drive real AI behavior, so they are settable."""
     p = ProfilesPage(page, frontend_base_url)
     p.go()
+    p.expect_error_boundary_absent()
     expect(page.get_by_label("Enable tools")).to_be_visible(timeout=5_000)
+    expect(page.get_by_label("Extended thinking")).to_be_visible()
+    expect(page.get_by_label("Memory")).to_be_visible()
+    expect(page.get_by_label("Decision Coach")).to_be_visible()
+    # The budget appears only once extended thinking is on.
+    expect(page.get_by_label("Thinking budget")).to_have_count(0)
+    page.get_by_label("Extended thinking").click()
+    expect(page.get_by_label("Thinking budget")).to_be_visible(timeout=5_000)
 
 
 @pytest.mark.integration
 @pytest.mark.ui
-@pytest.mark.xfail(
-    reason="GAP: /profiles has no Activate affordance — there is no way to mark a profile active "
-    "from the list UI. strict: when an activate control lands, the unexpected pass fails the "
-    "run, forcing this marker's removal.",
-    strict=True,
-)
 def test_profile_toggle_active(page, frontend_base_url, minimal) -> None:
+    """A profile's active flag is settable from its row (the seed profile is active)."""
     p = ProfilesPage(page, frontend_base_url)
     p.go()
-    expect(p.row("E2E Default")).to_be_visible(timeout=10_000)
-    # Attempt the (currently nonexistent) activate action — fails until the UI gains it.
-    p.row("E2E Default").get_by_role("button", name="Activate").click(timeout=5_000)
+    p.expect_error_boundary_absent()
+    row = p.row("E2E Default")
+    expect(row).to_be_visible(timeout=10_000)
+    row.get_by_role("button", name="Deactivate").click(timeout=5_000)
+    expect(p.row("E2E Default").get_by_role("button", name="Activate")).to_be_visible(
+        timeout=10_000
+    )

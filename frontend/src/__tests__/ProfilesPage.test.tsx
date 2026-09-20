@@ -32,6 +32,17 @@ const AI_MODELS = {
 };
 vi.mock("@/hooks/useAiModels", () => ({ useAiModels: () => ({ data: AI_MODELS }) }));
 
+// OpenAI has tool use switched off, so the form must say so when it is selected.
+const PROVIDER_CONFIGS = [
+  { provider: "claude", base_url: "", default_model: "", enabled: true, supports_vision: true,
+    supports_tools: true, daily_cost_cap_usd: "10", monthly_cost_cap_usd: null, api_key_present: true },
+  { provider: "openai", base_url: "", default_model: "", enabled: true, supports_vision: true,
+    supports_tools: false, daily_cost_cap_usd: "10", monthly_cost_cap_usd: null, api_key_present: true },
+];
+vi.mock("@/hooks/useProviderConfigs", () => ({
+  useProviderConfigs: () => ({ data: PROVIDER_CONFIGS }),
+}));
+
 import {
   useProfiles,
   useCreateProfile,
@@ -63,6 +74,11 @@ const PROFILE_A: TradingProfile = {
   default_provider: "claude",
   default_model: "claude-opus-5",
   active: true,
+  enable_tools: false,
+  enable_thinking: false,
+  thinking_budget: 8000,
+  enable_memory: false,
+  enable_coach: true,
 };
 
 function makeCreate(impl?: (body: unknown, opts?: { onSuccess?: () => void }) => void) {
