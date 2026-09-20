@@ -51,10 +51,21 @@ around a complete, closing feedback loop:
 ### 📸 Market capture & snapshots
 
 - **Point-in-time snapshots** of the whole picture, from opt-in sections: live
-  **quotes**, **OHLC history**, **option chains**, **positions**, **market
-  breadth**, **news**, **macro indicators**, **SEC filings**, **Treasury rates**,
-  **rendered chart images** (real PNGs from a headless browser), and a
-  **forward earnings/macro calendar**.
+  **quotes**, **OHLC history** (a 24-hour intraday window plus daily history for
+  the whole watchlist), **option chains**, **positions**, **market breadth &
+  sector rotation** (all 11 SPDR sectors, NYSE internals, relative strength vs.
+  $SPX), **news**, **company fundamentals**, **macro indicators** (FRED series +
+  live yield-curve quotes), **SEC filings**, **Treasury rates**, **rendered chart
+  images** (real PNGs from a headless browser), and a **forward earnings/macro
+  calendar**.
+- **The vol complex, always on.** Every capture ships $VIX spot plus the front
+  two /VX futures with basis and a contango/backwardation read — the AI always
+  knows the volatility regime, even when you didn't ask. Degrades honestly to
+  spot-only without a brokerage connection, with an explicit note.
+- **Options positioning, decoded.** The chain section doesn't stop at a strike
+  table: it computes put/call volume & open-interest ratios, max pain, 25-delta
+  IV skew, the ATM-IV term structure, and a dealer gamma-exposure estimate
+  (total GEX + the zero-gamma flip strike) over every fetched expiry.
 - **Free data sources, no brokerage required.** Add a free-tier key (Alpaca,
   Tiingo, Twelve Data, Polygon, Tradier, FRED, Marketaux) under Settings →
   Connections and the quotes / OHLC / option-chain / news pipeline falls back to it when
