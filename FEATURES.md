@@ -62,6 +62,8 @@ around a complete, closing feedback loop:
   **forward earnings/macro calendar**, **Fed communications** (`fed` —
   press releases, speeches, testimony, keyless), and a volume-based
   **flow proxy** (`flowlite` — always labeled a proxy, not real fund-flow data).
+  An always-on **VIX** section rides along on every capture — spot plus `/VX`
+  futures term structure, **VVIX**, and the VVIX/VIX ratio.
 - **Free data sources, no brokerage required.** Add a free-tier key (Alpaca,
   Tiingo, Twelve Data, Polygon, Tradier, FRED, Marketaux) under Settings →
   Connections and the quotes / OHLC / option-chain / news pipeline falls back to it when
