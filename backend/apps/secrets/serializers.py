@@ -38,6 +38,18 @@ class ProviderConfigSerializer(serializers.ModelSerializer):
         except InvalidToken:
             return False
 
+    def validate(self, attrs):
+        """``default_model`` must belong to this provider's catalog; ids the catalog
+        does not know (local model names) pass verbatim."""
+        from apps.ai.catalog import foreign_model_error
+
+        provider = attrs.get("provider") or (self.instance.provider if self.instance else "")
+        model = attrs.get("default_model", self.instance.default_model if self.instance else "")
+        err = foreign_model_error(provider, model)
+        if err:
+            raise serializers.ValidationError({"default_model": err})
+        return attrs
+
     def update(self, instance, validated_data):
         key = validated_data.pop("api_key_write", None)
         instance = super().update(instance, validated_data)

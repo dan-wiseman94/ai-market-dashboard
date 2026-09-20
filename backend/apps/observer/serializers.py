@@ -85,7 +85,25 @@ class ObserverScheduleSerializer(serializers.ModelSerializer):
         if fire_mode == "cron" and not attrs.get("cron") and not has_existing_pt:
             raise serializers.ValidationError({"cron": "cron is required for cron fire_mode"})
         self._validate_claude_only_modes(attrs)
+        self._validate_override_model(attrs)
         return attrs
+
+    def _validate_override_model(self, attrs) -> None:
+        """``override_model`` must belong to the provider the schedule resolves to
+        (``override_provider``, else the profile's default) — a Claude id sent to
+        OpenAI fails every fire."""
+        from apps.ai.catalog import foreign_model_error
+
+        model = self._resolved(attrs, "override_model", default="")
+        if not model:
+            return
+        profile = self._resolved(attrs, "profile", default=None)
+        provider = self._resolved(attrs, "override_provider", default="") or getattr(
+            profile, "default_provider", ""
+        )
+        err = foreign_model_error(provider, model) if provider else None
+        if err:
+            raise serializers.ValidationError({"override_model": err})
 
     def _validate_claude_only_modes(self, attrs) -> None:
         """``use_batch`` runs through Anthropic Messages Batches; reject it at
