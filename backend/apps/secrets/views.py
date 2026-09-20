@@ -18,6 +18,7 @@ from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
+from apps.ai.catalog import default_model_for
 from apps.ai.catalog import list_models as _list_catalog
 from apps.ai.cost import daily_spend_usd
 from apps.ai.providers import get_provider
@@ -272,9 +273,11 @@ def ai_models(request: HttpRequest) -> JsonResponse:
                     "cached_per_mtok": m.cached_per_mtok,
                     "context_window": m.context_window,
                     "supports_vision": m.supports_vision,
+                    "max_payload_tokens": m.max_payload_tokens,
                 }
                 for m in models
             ],
+            "defaults": {p: default_model_for(p) for p in ("claude", "openai", "local")},
         }
     )
 
