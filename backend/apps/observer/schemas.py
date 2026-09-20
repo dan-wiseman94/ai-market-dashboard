@@ -72,6 +72,13 @@ class ProviderTake(BaseModel):
         default_factory=dict,
         description="Per-ticker directional call lifted from this take's signals.",
     )
+    report: ObservationReport | None = Field(
+        default=None,
+        exclude=True,
+        description="The full report behind this take, carried in memory so the ledger "
+        "can record each provider's own call. Excluded from model_dump — the stored "
+        "consensus Message keeps only the agreement signal.",
+    )
 
 
 class ConsensusReport(BaseModel):

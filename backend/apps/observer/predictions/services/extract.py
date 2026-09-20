@@ -4,11 +4,13 @@ Zero added AI cost — this reads the ``ObservationReport`` the observer already
 produced. Best-effort and side-effect-isolated: the observer wraps the call so a
 failure here never breaks a fire.
 
-Dedup rule: at most one ``open`` prediction per ``(ticker, horizon_days, profile)``.
-A same-direction re-fire is a **no-op** (the open call stands, frozen as-stated so
-calibration scores the call as it was made). A direction **flip** resolves the
-prior open call early as ``invalidated`` ("the AI changed its mind") and creates a
-fresh one.
+Dedup rule: at most one ``open`` prediction per target, where a target is
+``(ticker, horizon_days, profile, provider, model)``. Provider and model are part of
+the key so two providers watching one profile each keep their own call — that is what
+makes a cross-provider A/B measurable. A same-direction re-fire on the same target is
+a **no-op** (the open call stands, frozen as-stated so calibration scores the call as
+it was made). A direction **flip** on that target resolves its prior open call early
+as ``invalidated`` ("the AI changed its mind") and creates a fresh one.
 """
 
 from __future__ import annotations
@@ -129,7 +131,12 @@ def extract_from_observation(
     inv_price = _invalidation_price_from_levels(report, direction, last_price(snapshot, ticker))
 
     existing = AIPrediction.objects.filter(
-        ticker=ticker, horizon_days=horizon, profile=profile, status="open"
+        ticker=ticker,
+        horizon_days=horizon,
+        profile=profile,
+        provider=provider,
+        model=model,
+        status="open",
     ).first()
     if existing is not None:
         if existing.direction == direction:

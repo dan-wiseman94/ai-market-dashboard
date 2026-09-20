@@ -155,7 +155,7 @@ def fire_observer(schedule_id: int) -> int | None:
     if sched.consensus:
         # Consensus is itself a structured operation (fans ObservationReport), so
         # it takes precedence over the plain structured path. Opt-in, ~Nx cost.
-        _run_consensus_and_record(sched, thread, user_text)
+        _run_consensus_and_record(sched, thread, user_text, snap=snap)
     elif sched.structured:
         _run_structured_and_record(
             sched, thread, user_text, provider_name, cfg, model_id=model_name, snap=snap
@@ -387,7 +387,9 @@ def _run_structured_and_record(
     )
 
 
-def _run_consensus_and_record(sched: ObserverSchedule, thread, payload_text: str) -> None:
+def _run_consensus_and_record(
+    sched: ObserverSchedule, thread, payload_text: str, *, snap=None
+) -> None:
     """Fan ObservationReport across structured-capable providers; record the signal.
 
     Always records an assistant ``consensus_report`` Message — even the honest
@@ -395,6 +397,10 @@ def _run_consensus_and_record(sched: ObserverSchedule, thread, payload_text: str
     a valid, truthful result, not a failure. ``consensus_report`` never raises
     (a provider that errors or is over its cap is skipped + counted out), so this
     needs no extra crash guard.
+
+    Each take's own directional call also enters the ledger under that take's
+    provider and model, which makes one consensus schedule a complete provider A/B:
+    identical prompt, every provider, per-provider calibration.
     """
     from apps.observer.services.consensus import consensus_report
 
@@ -402,9 +408,19 @@ def _run_consensus_and_record(sched: ObserverSchedule, thread, payload_text: str
         system=build_system_prompt(sched.profile, now=timezone.now()),
         user=payload_text,
     )
-    Message.objects.create(
+    msg = Message.objects.create(
         thread=thread,
         role="assistant",
         content={"kind": "consensus_report", "report": report.model_dump()},
         status="done",
     )
+    for take in report.takes:
+        if take.report is not None:
+            _extract_prediction(
+                take.report,
+                snap=snap,
+                message=msg,
+                provider=take.provider,
+                model=take.model,
+                profile=sched.profile,
+            )
