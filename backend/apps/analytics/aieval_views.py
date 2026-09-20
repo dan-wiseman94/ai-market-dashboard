@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from cryptography.fernet import InvalidToken
 from django.conf import settings
+from drf_spectacular.utils import extend_schema
 from rest_framework import generics
 from rest_framework import status as drf_status
 from rest_framework.response import Response
@@ -27,6 +28,10 @@ class EvalRunListCreateView(generics.ListAPIView):
     def get_queryset(self):
         return EvalRun.objects.order_by("-created_at")[:50]
 
+    # The view's serializer_class describes the GET rows; the POST takes a request
+    # body of its own and answers 202, so spell both out rather than let the schema
+    # advertise the read serializer as the request contract.
+    @extend_schema(request=EvalRunRequestSerializer, responses={202: None}, methods=["POST"])
     def post(self, request):
         ser = EvalRunRequestSerializer(data=request.data)
         ser.is_valid(raise_exception=True)

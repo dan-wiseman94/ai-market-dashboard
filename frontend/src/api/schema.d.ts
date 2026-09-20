@@ -11,9 +11,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /** @description GET: the 50 newest runs. POST: queue one bounded, billed eval run on a provider. */
         get: operations["aieval_runs_list"];
         put?: never;
-        post?: never;
+        /** @description GET: the 50 newest runs. POST: queue one bounded, billed eval run on a provider. */
+        post: operations["aieval_runs_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2118,6 +2120,7 @@ export interface components {
             readonly created_at: string;
             readonly source: components["schemas"]["SourceC68Enum"];
             readonly label: string;
+            readonly provider: string;
             readonly model: string;
             readonly horizon: number | null;
             readonly n: number;
@@ -2134,6 +2137,25 @@ export interface components {
             readonly calibration: unknown;
             readonly examples: unknown;
         };
+        /** @description Body of ``POST /api/aieval/runs/`` — one manual, bounded, billed eval run. */
+        EvalRunRequest: {
+            /** @default claude */
+            provider: components["schemas"]["EvalRunRequestProviderEnum"];
+            /** @default  */
+            model: string;
+            horizon?: number;
+            /** @default 25 */
+            limit: number;
+            /** @default manual */
+            label: string;
+        };
+        /**
+         * @description * `claude` - claude
+         *     * `openai` - openai
+         *     * `local` - local
+         * @enum {string}
+         */
+        EvalRunRequestProviderEnum: "claude" | "openai" | "local";
         EventTrigger: {
             readonly id: number;
             name: string;
@@ -2278,9 +2300,10 @@ export interface components {
          *     * `cal_drift` - Calibration drift
          *     * `contra` - Consistency conflict
          *     * `pred_invalid` - Prediction invalidated
+         *     * `eval_done` - Eval run finished
          * @enum {string}
          */
-        NotificationKindEnum: "trigger" | "observer_done" | "error" | "cost_limit" | "backup" | "postmortem" | "briefing" | "regime" | "book" | "desk" | "cal_drift" | "contra" | "pred_invalid";
+        NotificationKindEnum: "trigger" | "observer_done" | "error" | "cost_limit" | "backup" | "postmortem" | "briefing" | "regime" | "book" | "desk" | "cal_drift" | "contra" | "pred_invalid" | "eval_done";
         ObserverSchedule: {
             readonly id: number;
             name: string;
@@ -2514,7 +2537,7 @@ export interface components {
             readonly updated_at?: string;
         };
         PatchedProviderConfig: {
-            provider?: components["schemas"]["ProviderEnum"];
+            provider?: components["schemas"]["ProviderConfigProviderEnum"];
             base_url?: string;
             default_model?: string;
             enabled?: boolean;
@@ -2690,7 +2713,7 @@ export interface components {
             default_model?: string;
         };
         ProviderConfig: {
-            provider: components["schemas"]["ProviderEnum"];
+            provider: components["schemas"]["ProviderConfigProviderEnum"];
             base_url?: string;
             default_model?: string;
             enabled?: boolean;
@@ -2712,7 +2735,7 @@ export interface components {
          *     * `local` - Local (OpenAI-compatible)
          * @enum {string}
          */
-        ProviderEnum: "claude" | "openai" | "local";
+        ProviderConfigProviderEnum: "claude" | "openai" | "local";
         RegimeReading: {
             readonly id: number;
             /** Format: date-time */
@@ -2991,6 +3014,10 @@ export interface components {
             readonly status: components["schemas"]["WarRoomRunStatusEnum"];
             readonly error: string;
             readonly thread_id: number;
+            /**
+             * @description Each argument with the model that made it; null for a message with no run
+             *     (the verdict, whose one-shot AIRun carries no Message).
+             */
             readonly messages: {
                 [key: string]: unknown;
             }[];
@@ -3039,6 +3066,28 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["EvalRun"][];
                 };
+            };
+        };
+    };
+    aieval_runs_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["EvalRunRequest"];
+            };
+        };
+        responses: {
+            /** @description No response body */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
