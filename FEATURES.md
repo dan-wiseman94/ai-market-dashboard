@@ -51,15 +51,22 @@ around a complete, closing feedback loop:
 ### 📸 Market capture & snapshots
 
 - **Point-in-time snapshots** of the whole picture, from opt-in sections: live
-  **quotes**, **OHLC history**, **option chains**, **positions**, **market
-  breadth**, **news**, **macro indicators**, **SEC filings**, **Treasury rates**,
-  **rendered chart images** (real PNGs from a headless browser), and a
-  **forward earnings/macro calendar**.
+  **quotes**, **OHLC history** (52 weeks of stored daily bars, plus a
+  longer-horizon summary — 252-session high/low, SMA distance, 5/20/60-day
+  returns), **option chains** (dealer **GEX by strike**, top gamma walls,
+  top volume/OI strikes, and an unusual-activity block), **positions**,
+  **market breadth** (sector table, the dollar, cross-asset factor returns),
+  **macro indicators** (including HY/IG credit spreads), **SEC filings**
+  (Form 4 insider activity included), **Treasury rates**, **news**,
+  **rendered chart images** (real PNGs from a headless browser), a
+  **forward earnings/macro calendar**, **Fed communications** (`fed` —
+  press releases, speeches, testimony, keyless), and a volume-based
+  **flow proxy** (`flowlite` — always labeled a proxy, not real fund-flow data).
 - **Free data sources, no brokerage required.** Add a free-tier key (Alpaca,
   Tiingo, Twelve Data, Polygon, Tradier, FRED, Marketaux) under Settings →
   Connections and the quotes / OHLC / option-chain / news pipeline falls back to it when
-  Schwab isn't connected — plus keyless **SEC EDGAR** filings and **US Treasury**
-  rates. The whole dashboard runs without a Schwab login.
+  Schwab isn't connected — plus keyless **SEC EDGAR** filings, **US Treasury**
+  rates, and **Federal Reserve** RSS feeds. The whole dashboard runs without a Schwab login.
 - **Nothing is silently dropped.** If a section fails, it's flagged in the payload
   so the AI knows exactly what it couldn't see — partial captures are honest, not misleading.
 - **Overnight / pre-market mode** adds index, vol & rates **futures**, overseas
