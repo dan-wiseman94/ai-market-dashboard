@@ -12,6 +12,7 @@ from apps.market.services.chain import fetch_chain
 from apps.market.services.context import fetch_market_context
 from apps.market.services.edgar import fetch_filings as edgar_fetch_filings
 from apps.market.services.events import upcoming_events
+from apps.market.services.fed import fetch_fed_communications
 from apps.market.services.fred import fetch_macro as fred_fetch_macro
 from apps.market.services.fundamentals import fetch_fundamentals
 from apps.market.services.news import fetch_news
@@ -36,6 +37,7 @@ from apps.snapshots.primary import (
 from apps.snapshots.primary import (
     primary_ticker_from_quotes,
 )
+from apps.snapshots.services.flowlite import build_flowlite_payload
 from apps.snapshots.services.render import render_chart_png
 from apps.snapshots.token_budget import estimate_tokens
 
@@ -162,6 +164,30 @@ def _fetch_news_section(*, watchlist_tickers: list[str], **_) -> dict:
     return {"data": {"items": fetch_news(list(watchlist_tickers))}}
 
 
+def _fetch_events_section(*, watchlist_tickers: list[str], **_) -> dict:
+    import datetime as _dt
+
+    from apps.market.models import CorporateAction
+
+    data = upcoming_events(list(watchlist_tickers), within_days=14, include_macro=True)
+    today = _dt.date.today()
+    data["corporate_actions"] = [
+        {
+            "ticker": a.ticker,
+            "kind": a.kind,
+            "ex_date": a.ex_date.isoformat(),
+            "ratio": float(a.ratio) if a.ratio is not None else None,
+            "amount": float(a.amount) if a.amount is not None else None,
+        }
+        for a in CorporateAction.objects.filter(
+            ticker__in=[t.upper() for t in watchlist_tickers],
+            ex_date__gte=today,
+            ex_date__lte=today + _dt.timedelta(days=14),
+        ).order_by("ex_date")[:20]
+    ]
+    return {"data": data}
+
+
 _FETCHERS = {
     "breadth": lambda *, watchlist_tickers, **_: {
         "data": fetch_market_context(tickers=list(watchlist_tickers))
@@ -179,9 +205,7 @@ _FETCHERS = {
             ]
         },
     },
-    "events": lambda *, watchlist_tickers, **_: {
-        "data": upcoming_events(list(watchlist_tickers), within_days=14, include_macro=True),
-    },
+    "events": _fetch_events_section,
     "fundamentals": lambda *, watchlist_tickers, **_: {
         "data": {t: fetch_fundamentals(t) for t in (list(watchlist_tickers) or [])[:8]},
     },
@@ -197,13 +221,26 @@ _FETCHERS = {
     "filings": lambda *, watchlist_tickers, **_: {
         # Equity-like only — futures roots / indices aren't SEC filers, and a
         # bogus key ("NQ") in the payload reads as "no filings" to the AI.
+        # Form 4 rides a SEPARATE call (its own limit=5, max_age_days=45) —
+        # sharing the base call's limit=10 budget would let frequent Form 4s
+        # evict 10-K/10-Q/8-K rows from a busy filer.
         "data": {
-            t: edgar_fetch_filings(t)
+            t: {
+                "filings": edgar_fetch_filings(t),
+                "insider": edgar_fetch_filings(t, forms=("4",), limit=5, max_age_days=45),
+            }
             for t in [s for s in list(watchlist_tickers) if is_equity_like(s)][:6]
         },
     },
     "treasury": lambda **_: {"data": fetch_treasury()},
     "vix": lambda **_: {"data": vix_term_structure()},
+    "fed": lambda **_: {"data": {"items": fetch_fed_communications()}},
+    "flowlite": lambda *, watchlist_tickers, ohlc_ticker=None, **_: {
+        "data": build_flowlite_payload(
+            watchlist_tickers=list(watchlist_tickers),
+            primary=_pick_ticker(ohlc_ticker, list(watchlist_tickers)),
+        )
+    },
 }
 
 

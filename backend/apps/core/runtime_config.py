@@ -29,6 +29,7 @@ _SPEC: list[tuple[str, str, object]] = [
     ("aieval_scheduled_model", "AIEVAL_SCHEDULED_MODEL", "claude-sonnet-4-6"),
     ("aieval_scheduled_horizon", "AIEVAL_SCHEDULED_HORIZON", 30),
     ("aieval_scheduled_limit", "AIEVAL_SCHEDULED_LIMIT", 25),
+    ("tradingview_tools_enabled", "TRADINGVIEW_TOOLS_ENABLED", False),
 ]
 
 # Fields the API/UI may write, with a coercer per field — derived from _SPEC so the editable
@@ -54,6 +55,7 @@ class RuntimeConfig:
     aieval_scheduled_model: str
     aieval_scheduled_horizon: int
     aieval_scheduled_limit: int
+    tradingview_tools_enabled: bool
 
 
 def runtime_config() -> RuntimeConfig:

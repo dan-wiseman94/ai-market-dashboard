@@ -1,3 +1,6 @@
+from datetime import UTC, datetime
+from unittest.mock import patch
+
 from apps.snapshots.serializer import _render_chain
 
 CHAIN_PAYLOAD = {
@@ -296,3 +299,134 @@ def test_render_chain_omits_expected_move_when_no_iv():
     }
     md = _render_chain(payload, ticker="SPY")
     assert "Options-implied move" not in md
+
+
+def test_render_chain_analytics_gex_by_strike():
+    """GEX-by-strike ('gamma walls') line appears in the chain analytics block."""
+    md = _render_chain(ANALYTICS_PAYLOAD, ticker="TST")
+    assert "- GEX by strike" in md
+    assert "gamma walls" in md
+
+
+# Two expiries with deliberately distinct volume/OI per side so the top-strikes
+# ranking must span expiries (not just pick within one).
+TWO_EXPIRY_PAYLOAD = {
+    "underlying_last": "100.00",
+    "ticker": "TST",
+    "expiries": {
+        "2026-01-01": {
+            "calls": [
+                {
+                    "strike": "100.00",
+                    "volume": 500,
+                    "oi": 1000,
+                    "gamma": "0.05",
+                    "delta": "0.50",
+                    "iv": "18.0",
+                    "bid": "2.00",
+                    "ask": "2.10",
+                },
+            ],
+            "puts": [
+                {
+                    "strike": "100.00",
+                    "volume": 50,
+                    "oi": 200,
+                    "gamma": "0.05",
+                    "delta": "-0.50",
+                    "iv": "19.0",
+                    "bid": "1.80",
+                    "ask": "1.90",
+                },
+            ],
+        },
+        "2026-02-01": {
+            "calls": [
+                {
+                    "strike": "105.00",
+                    "volume": 900,
+                    "oi": 3000,
+                    "gamma": "0.03",
+                    "delta": "0.30",
+                    "iv": "17.0",
+                    "bid": "1.00",
+                    "ask": "1.10",
+                },
+            ],
+            "puts": [
+                {
+                    "strike": "95.00",
+                    "volume": 700,
+                    "oi": 2500,
+                    "gamma": "0.04",
+                    "delta": "-0.30",
+                    "iv": "21.0",
+                    "bid": "0.90",
+                    "ask": "1.00",
+                },
+            ],
+        },
+    },
+}
+
+
+def test_render_chain_top_strikes_lines():
+    md = _render_chain(TWO_EXPIRY_PAYLOAD, ticker="TST")
+    assert "**Top volume strikes**" in md
+    assert "**Top OI strikes**" in md
+    # Top call volume/OI is the Feb 105 line (900 vol / 3,000 oi), ranked above Jan 100.
+    assert "105.00 (2026-02-01) 900" in md
+    assert "105.00 (2026-02-01) 3,000" in md
+    # Top put volume/OI is the Feb 95 line (700 vol / 2,500 oi).
+    assert "95.00 (2026-02-01) 700" in md
+    assert "95.00 (2026-02-01) 2,500" in md
+
+
+_UNUSUAL_ROW = {
+    "side": "call",
+    "strike": "105.00",
+    "expiry": "2026-01-01",
+    "volume": 8400,
+    "oi": 2000,
+    "iv": 22.0,
+    "volume_ratio": 4.2,
+    "iv_z": 1.8,
+    "triggers": ["volume_vs_oi"],
+    "score": 4.2,
+}
+
+
+def test_render_chain_unusual_activity_present_when_flagged():
+    with patch(
+        "apps.analytics.services.unusual_options.unusual_options", return_value=[_UNUSUAL_ROW]
+    ) as mock_unusual:
+        md = _render_chain(
+            ANALYTICS_PAYLOAD, ticker="TST", captured_at=datetime(2026, 1, 1, tzinfo=UTC)
+        )
+    mock_unusual.assert_called_once()
+    assert mock_unusual.call_args.kwargs["ticker"] == "TST"
+    assert "**Unusual activity:**" in md
+    assert "call 105.00 2026-01-01: vol/OI 4.2 — volume 8,400 vs OI 2,000" in md
+
+
+def test_render_chain_unusual_activity_absent_without_captured_at():
+    """No captured_at → the unusual-options lookup is skipped entirely."""
+    with patch(
+        "apps.analytics.services.unusual_options.unusual_options", return_value=[_UNUSUAL_ROW]
+    ) as mock_unusual:
+        md = _render_chain(ANALYTICS_PAYLOAD, ticker="TST")
+    mock_unusual.assert_not_called()
+    assert "**Unusual activity:**" not in md
+
+
+def test_render_chain_unusual_activity_swallows_exception():
+    """unusual_options raising must degrade to no block, never crash the render."""
+    with patch(
+        "apps.analytics.services.unusual_options.unusual_options",
+        side_effect=RuntimeError("boom"),
+    ):
+        md = _render_chain(
+            ANALYTICS_PAYLOAD, ticker="TST", captured_at=datetime(2026, 1, 1, tzinfo=UTC)
+        )
+    assert "**Unusual activity:**" not in md
+    assert "### Chain analytics" in md  # render still completes

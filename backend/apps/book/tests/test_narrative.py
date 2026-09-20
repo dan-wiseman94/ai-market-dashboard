@@ -13,7 +13,7 @@ DATA = {
 }
 
 
-def test_no_claude_config_returns_empty():
+def test_no_provider_config_returns_empty():
     assert N.book_narrative(DATA) == ""
 
 
@@ -28,8 +28,7 @@ def test_returns_summary_when_ok(monkeypatch):
         summary = "Concentrated, net-long into a risk-off tape."
 
     monkeypatch.setattr(N, "run_structured", lambda **kw: _R())
-    monkeypatch.setattr(N, "check_daily_cap", lambda *a, **k: None)
-    monkeypatch.setattr(N, "check_monthly_cap", lambda *a, **k: None)
+    monkeypatch.setattr(N, "ensure_within_caps", lambda target: None)
     assert "Concentrated" in N.book_narrative(DATA)
 
 
@@ -44,6 +43,22 @@ def test_error_degrades(monkeypatch):
         raise RuntimeError("x")
 
     monkeypatch.setattr(N, "run_structured", _boom)
-    monkeypatch.setattr(N, "check_daily_cap", lambda *a, **k: None)
-    monkeypatch.setattr(N, "check_monthly_cap", lambda *a, **k: None)
+    monkeypatch.setattr(N, "ensure_within_caps", lambda target: None)
     assert N.book_narrative(DATA) == ""
+
+
+def test_openai_only_config_produces_summary(monkeypatch):
+    from apps.secrets.models import ProviderConfig
+
+    ProviderConfig.objects.create(
+        provider="openai", _api_key={"k": "sk-oai"}, default_model="gpt-5.6-sol"
+    )
+    captured = {}
+
+    class _R:
+        summary = "one paragraph"
+
+    monkeypatch.setattr(N, "run_structured", lambda **kw: captured.update(kw) or _R())
+    assert N.book_narrative(DATA) == "one paragraph"
+    assert captured["provider"] == "openai"
+    assert captured["model"] == "gpt-5.6-sol"

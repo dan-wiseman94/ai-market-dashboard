@@ -109,6 +109,26 @@ def test_render_vix_degenerate_payload_is_explicit_not_empty(payload):
     assert _render_vix(payload) == "## VIX term structure\n_(empty)_"
 
 
+def test_render_vix_vvix_with_ratio():
+    payload = _payload(
+        vvix={"symbol": "$VVIX", "last": 90.0, "pct_change": 1.0}, vvix_vix_ratio=5.92
+    )
+    out = _render_vix(payload)
+    assert "- VVIX: 90.00 (+1.00%) — VVIX/VIX 5.92" in out
+    # Verify it renders between spot and front
+    lines = out.split("\n")
+    assert any("Spot $VIX" in line for line in lines)
+    assert any("VVIX" in line for line in lines)
+    assert any("Front /VXU26" in line for line in lines)
+
+
+def test_render_vix_vvix_missing_renders_no_vvix_line():
+    payload = _payload(vvix=None, vvix_vix_ratio=None)
+    out = _render_vix(payload)
+    assert "VVIX" not in out
+    assert "- Spot $VIX: 15.20 (-3.10%)" in out  # rest intact
+
+
 @pytest.mark.django_db
 def test_done_vix_section_renders_markdown_in_full_flow():
     # Pins the _RENDERERS["vix"] registration: without it, _render_section

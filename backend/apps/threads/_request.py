@@ -180,9 +180,12 @@ def _resolve_capabilities(
     profile = thread.profile
     tools: list[dict] = []
     if getattr(profile, "enable_tools", False) and (provider_name == "claude" or supports_tools):
-        from apps.ai.tools.registry import default_toolset
+        # request_toolset() = defaults + TradingView tv_* (toggle on + connected). It does
+        # ORM/Redis I/O, which is fine HERE (sync Celery path) but not in the providers'
+        # async loops — those keep default_toolset(), whose resolver dispatches tv_* names.
+        from apps.ai.tools.registry import request_toolset
 
-        toolset = default_toolset()
+        toolset = request_toolset()
         tools = toolset.anthropic_tools() if provider_name == "claude" else toolset.openai_tools()
 
     if provider_name != "claude":

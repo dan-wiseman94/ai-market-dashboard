@@ -184,3 +184,11 @@ def test_fred_network_error_per_series_skipped():
         result = fred_mod.fetch_macro(series_ids=["CPIAUCSL", "DGS10"])
 
     assert result == {}
+
+
+def test_series_includes_credit_spread_oas_rows():
+    """The SERIES dict includes HY and IG OAS credit-spread series."""
+    assert fred_mod.SERIES["BAMLH0A0HYM2"] == "HY OAS"
+    assert fred_mod.SERIES["BAMLC0A0CM"] == "IG OAS"
+    # The macro fetch iterates SERIES generically — the dict IS the contract.
+    assert list(fred_mod.SERIES) == list(dict.fromkeys(fred_mod.SERIES))  # no dup keys

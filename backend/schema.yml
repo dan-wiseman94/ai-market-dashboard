@@ -5281,6 +5281,8 @@ components:
       - filings
       - treasury
       - vix
+      - fed
+      - flowlite
       type: string
       description: |-
         * `quotes` - Quotes
@@ -5298,6 +5300,8 @@ components:
         * `filings` - SEC filings
         * `treasury` - Treasury rates
         * `vix` - VIX term structure
+        * `fed` - Fed communication
+        * `flowlite` - Flow proxy
     SnapshotSectionStatusEnum:
       enum:
       - pending

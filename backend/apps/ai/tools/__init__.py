@@ -22,9 +22,32 @@ class ToolSpec:
 @dataclass
 class Toolset:
     specs: dict[str, ToolSpec] = field(default_factory=dict)
+    # Consulted by run() when a name has no registered spec. Lets a family of tools whose
+    # schemas are only known on the sync request path (TradingView's tv_*) still be
+    # executed from the providers' async loops, which build the toolset without I/O.
+    dynamic_resolvers: list[Callable[[str], ToolSpec | None]] = field(default_factory=list)
 
     def register(self, spec: ToolSpec) -> None:
         self.specs[spec.name] = spec
+
+    def add_resolver(self, resolver: Callable[[str], ToolSpec | None]) -> None:
+        self.dynamic_resolvers.append(resolver)
+
+    def merge(self, other: Toolset) -> Toolset:
+        """Add ``other``'s specs and resolvers into this toolset (in place); returns self."""
+        self.specs.update(other.specs)
+        self.dynamic_resolvers.extend(other.dynamic_resolvers)
+        return self
+
+    def resolve(self, name: str) -> ToolSpec | None:
+        spec = self.specs.get(name)
+        if spec is not None:
+            return spec
+        for resolver in self.dynamic_resolvers:
+            spec = resolver(name)
+            if spec is not None:
+                return spec
+        return None
 
     def anthropic_tools(self) -> list[dict]:
         """Serialize specs to the shape Claude's tools= param expects."""
@@ -49,7 +72,10 @@ class Toolset:
 
     def run(self, name: str, tool_input: dict) -> dict:
         """Execute the named tool. Returns {"ok": bool, "result"|"error": ...}."""
-        spec = self.specs.get(name)
+        try:
+            spec = self.resolve(name)
+        except Exception as exc:
+            return {"ok": False, "error": f"{type(exc).__name__}: {exc}"}
         if spec is None:
             return {"ok": False, "error": f"Unknown tool: {name}"}
         try:

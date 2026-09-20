@@ -6,8 +6,9 @@ from apps.ai.token_counter import estimate_tokens as _estimate
 
 # OHLC before news: the chronically-oversized section must never evict the
 # day's headlines (the serializer truncates OHLC bars first; this is the
-# whole-section last resort).
-_PRUNE_ORDER = ["chain", "ohlc", "news", "breadth", "quotes", "positions"]
+# whole-section last resort). fed/flowlite are enrichment — they drop after
+# news, before core context (breadth/quotes/positions).
+_PRUNE_ORDER = ["chain", "ohlc", "news", "fed", "flowlite", "breadth", "quotes", "positions"]
 
 
 def estimate_tokens(text: str, *, provider: str = "openai", model: str = "") -> int:

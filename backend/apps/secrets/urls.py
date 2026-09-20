@@ -16,6 +16,16 @@ urlpatterns = [
     path("models/", views.ai_models, name="ai-models"),
     path("usage/", views.ai_usage, name="ai-usage"),
     path("data-sources/", views.data_sources, name="data-sources"),
+    path(
+        "data-sources/tradingview/authorize/",
+        views.tradingview_authorize,
+        name="tradingview-authorize",
+    ),
+    path(
+        "data-sources/tradingview/callback/",
+        views.tradingview_callback,
+        name="tradingview-callback",
+    ),
     path("data-sources/<str:provider>/test/", views.data_source_test, name="data-source-test"),
     path("data-sources/<str:provider>/", views.data_source_detail, name="data-source-detail"),
     *router.urls,

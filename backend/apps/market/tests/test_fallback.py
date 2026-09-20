@@ -109,6 +109,46 @@ def test_alt_news_prefers_marketaux_over_tiingo():
 
 
 @pytest.mark.django_db
+def test_alt_bars_tiingo_converts_bar_count_to_calendar_days():
+    """Tiingo treats limit as a calendar-day lookback, not a bar count.
+    Convert 260 bars to ~382 calendar days so 260 bars means 260 bars."""
+    _cred("tiingo")
+    seen = {}
+
+    def capture_call(ticker, *, days):
+        seen["days"] = days
+        return []
+
+    with patch("apps.market.services.tiingo.fetch_daily_bars", side_effect=capture_call):
+        fallback.alt_bars("SPY", timeframe="1d", limit=260)
+
+    expected_days = int(260 * 1.45) + 5
+    assert seen["days"] == expected_days, (
+        f"Expected days={expected_days} but got days={seen['days']}"
+    )
+
+
+@pytest.mark.django_db
+def test_alt_bars_polygon_converts_bar_count_to_calendar_days():
+    """Polygon treats days as a calendar-day lookback, not a bar count.
+    Convert 260 bars to ~382 calendar days so 260 bars means 260 bars."""
+    _cred("polygon")
+    seen = {}
+
+    def capture_call(ticker, *, days):
+        seen["days"] = days
+        return []
+
+    with patch("apps.market.services.polygon.fetch_daily_bars", side_effect=capture_call):
+        fallback.alt_bars("SPY", timeframe="1d", limit=260)
+
+    expected_days = int(260 * 1.45) + 5
+    assert seen["days"] == expected_days, (
+        f"Expected days={expected_days} but got days={seen['days']}"
+    )
+
+
+@pytest.mark.django_db
 def test_fetch_quotes_falls_back_when_schwab_absent():
     from apps.market.services import quotes
 
@@ -149,3 +189,79 @@ def test_alt_quotes_uses_env_configured_provider(settings):
     ) as m:
         assert fallback.alt_quotes(["AAPL"]) == {"AAPL": {"last": 7.0}}
     m.assert_called_once()
+
+
+def _tv_cred() -> None:
+    ApiCredential.objects.create(
+        provider="tradingview",
+        token={"access_token": "a", "refresh_token": "r", "expires_at": 9999999999},
+    )
+
+
+@pytest.mark.django_db
+def test_alt_quotes_prefers_tradingview_over_alpaca():
+    _tv_cred()
+    _cred("alpaca")
+    with (
+        patch("apps.core.provider_health.auth_error", return_value=None),
+        patch(
+            "apps.market.services.tradingview.fetch_quotes", return_value={"AAPL": {"last": 9.0}}
+        ) as tv,
+        patch("apps.market.services.alpaca.fetch_quotes") as al,
+    ):
+        assert fallback.alt_quotes(["AAPL"]) == {"AAPL": {"last": 9.0}}
+    tv.assert_called_once_with(["AAPL"])
+    al.assert_not_called()
+
+
+@pytest.mark.django_db
+def test_alt_bars_prefers_tradingview_for_intraday():
+    _tv_cred()
+    _cred("alpaca")
+    with (
+        patch("apps.core.provider_health.auth_error", return_value=None),
+        patch("apps.market.services.tradingview.fetch_bars", return_value=[{"close": 1}]) as tv,
+    ):
+        assert fallback.alt_bars("AAPL", "5m", limit=10) == [{"close": 1}]
+    tv.assert_called_once_with("AAPL", timeframe="5m", limit=10)
+
+
+@pytest.mark.django_db
+def test_alt_news_prefers_tradingview():
+    _tv_cred()
+    _cred("marketaux")
+    with (
+        patch("apps.core.provider_health.auth_error", return_value=None),
+        patch(
+            "apps.market.services.tradingview.fetch_news", return_value=[{"headline": "x"}]
+        ) as tv,
+    ):
+        assert fallback.alt_news(["AAPL"], limit=3) == [{"headline": "x"}]
+    tv.assert_called_once_with(["AAPL"], limit=3)
+
+
+@pytest.mark.django_db
+def test_tradingview_skipped_when_auth_error_marker_set():
+    _tv_cred()
+    _cred("alpaca")
+    with (
+        patch("apps.core.provider_health.auth_error", return_value="rejected"),
+        patch("apps.market.services.tradingview.fetch_quotes") as tv,
+        patch("apps.market.services.alpaca.fetch_quotes", return_value={"AAPL": {"last": 1.0}}),
+    ):
+        assert fallback.alt_quotes(["AAPL"]) == {"AAPL": {"last": 1.0}}
+    tv.assert_not_called()
+
+
+@pytest.mark.django_db
+def test_tradingview_skipped_when_rate_limited():
+    _tv_cred()
+    _cred("alpaca")
+    with (
+        patch("apps.core.provider_health.auth_error", return_value=None),
+        patch("apps.market.services.tradingview_mcp.is_rate_limited", return_value=True),
+        patch("apps.market.services.tradingview.fetch_quotes") as tv,
+        patch("apps.market.services.alpaca.fetch_quotes", return_value={"AAPL": {"last": 1.0}}),
+    ):
+        assert fallback.alt_quotes(["AAPL"]) == {"AAPL": {"last": 1.0}}
+    tv.assert_not_called()

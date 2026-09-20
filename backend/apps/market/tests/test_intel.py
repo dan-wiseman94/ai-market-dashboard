@@ -46,6 +46,8 @@ import pytest
 from apps.market.models import OHLCBar
 from apps.market.services.intel import (
     BENCHMARK,
+    breadth_stats,
+    factor_returns,
     relative_strength,
     return_over_sessions,
     sector_rotation,
@@ -312,3 +314,97 @@ class TestSectorRotation:
         _spx_bars()
         result = sector_rotation(sectors=[])
         assert result == []
+
+
+def _factor_returns_bars() -> None:
+    """Seed bars for factor_returns tests.
+
+    MTUM: 5 sessions, from 100 to 110 (+10%)
+    VLUE: 5 sessions, from 100 to 102 (+2%)
+    IWM: 5 sessions, from 100 to 101 (+1%)
+    SPY: 5 sessions, from 100 to 103 (+3%)
+    """
+    # MTUM +10% over 5 sessions (need 6 bars for sessions+1)
+    for i, close in enumerate([100, 102, 104, 106, 108, 110]):
+        _bar("MTUM", i, float(close))
+    # VLUE +2% over 5 sessions
+    for i, close in enumerate([100, 100.4, 100.8, 101.2, 101.6, 102]):
+        _bar("VLUE", i, float(close))
+    # IWM +1% over 5 sessions
+    for i, close in enumerate([100, 100.2, 100.4, 100.6, 100.8, 101]):
+        _bar("IWM", i, float(close))
+    # SPY +3% over 5 sessions
+    for i, close in enumerate([100, 100.6, 101.2, 101.8, 102.4, 103]):
+        _bar("SPY", i, float(close))
+
+
+def _breadth_stats_bars() -> None:
+    """Seed 60 bars for each of 4 tickers for breadth_stats test.
+
+    Designed to produce exactly highs=1, lows=1:
+    - XLF: monotonically increasing, ends at span high (100 to 129.5)
+    - XLE: monotonically decreasing, ends at span low (130 to 100.5)
+    - XLK: interior peak at bar 30 (rises to 115, then falls to 101.5)
+    - XLV: interior valley at bar 30 (falls to 85, then rises to 98.5)
+
+    All four tickers have ≥20 bars, so pct_above_sma[20]["n"] == 4;
+    all have exactly 60 bars, so min_span_sessions == 60.
+    """
+    # XLF: closes 100, 100.5, 101, ..., 129.5 (60 bars, monotonically increasing, HIGH)
+    for i in range(60):
+        _bar("XLF", i, 100.0 + i * 0.5)
+
+    # XLE: closes 130, 129.5, 129, ..., 100.5 (60 bars, monotonically decreasing, LOW)
+    for i in range(60):
+        _bar("XLE", i, 130.0 - i * 0.5)
+
+    # XLK: interior peak at bar 30 (rises 100 to 115 over bars 0-30,
+    #      then falls 115 to 101 over bars 31-59; interior extremum)
+    for i in range(31):
+        _bar("XLK", i, 100.0 + i * 0.5)  # 100 to 115
+    for i in range(31, 60):
+        _bar("XLK", i, 115.5 - (i - 30) * 0.5)  # 115 to 101
+
+    # XLV: interior valley at bar 30 (falls 100 to 85.5 over bars 0-29,
+    #      then rises 85 to 99.5 over bars 30-59; interior extremum)
+    for i in range(30):
+        _bar("XLV", i, 100.0 - i * 0.5)  # 100 to 85.5
+    for i in range(30, 60):
+        _bar("XLV", i, 85.0 + (i - 30) * 0.5)  # 85.0 to 99.5
+
+
+class TestFactorReturns:
+    @pytest.mark.django_db
+    def test_factor_returns_shape_and_spreads(self):
+        """Test shape, spread calculations, and honest None for unseeded legs."""
+        _factor_returns_bars()
+        out = factor_returns(["MTUM", "VLUE", "QUAL", "USMV", "IWM", "SPY"])
+        assert out["windows"] == [1, 5, 20]
+        assert out["etfs"]["MTUM"][5] is not None
+        assert out["spreads"]["momentum_minus_value"][5] == round(
+            out["etfs"]["MTUM"][5] - out["etfs"]["VLUE"][5], 4
+        )
+        assert out["etfs"]["QUAL"][5] is None  # unseeded leg → honest None
+
+    @pytest.mark.django_db
+    def test_factor_returns_none_when_no_bars(self):
+        """No bars at all → None."""
+        out = factor_returns(["MTUM", "VLUE"])
+        assert out is None
+
+
+class TestBreadthStats:
+    @pytest.mark.django_db
+    def test_breadth_stats_counts_and_real_window(self):
+        """Test counts and that min_span_sessions reflects actual bars."""
+        _breadth_stats_bars()
+        out = breadth_stats(["XLK", "XLF", "XLE", "XLV"])
+        assert out["pct_above_sma"][20]["n"] == 4
+        assert out["highs"] == 1 and out["lows"] == 1
+        assert out["min_span_sessions"] == 60  # labels the REAL window, not 252
+
+    @pytest.mark.django_db
+    def test_breadth_stats_none_when_thin(self):
+        """< 3 usable tickers → None."""
+        out = breadth_stats(["XLK"])
+        assert out is None

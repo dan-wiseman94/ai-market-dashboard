@@ -41,7 +41,16 @@ class WatchlistSymbol(models.Model):
 class TradingProfile(models.Model):
     """A named trading style + AI preferences applied when capturing snapshots."""
 
-    DEFAULT_INCLUDES: ClassVar[list[str]] = ["quotes", "positions", "breadth"]
+    DEFAULT_INCLUDES: ClassVar[list[str]] = [
+        "quotes",
+        "positions",
+        "breadth",
+        "ohlc",
+        "chain",
+        "news",
+        "events",
+        "macro",
+    ]
 
     name = models.CharField(max_length=100, unique=True)
     style = models.TextField(help_text="The trading style text. Prepended as system prompt.")
