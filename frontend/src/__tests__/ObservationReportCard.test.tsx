@@ -36,6 +36,28 @@ describe("ObservationReportCard", () => {
     expect(badge.className).toContain("text-slate-300");
   });
 
+  it("renders the directional call and its grounding when the AI made one", () => {
+    render(
+      <ObservationReportCard
+        report={{
+          ...report,
+          predicted_direction: "bullish",
+          predicted_horizon_days: 5,
+          predicted_confidence: 0.72,
+          grounding: ["quotes", "chain analytics"],
+        }}
+      />,
+    );
+    // This call is what becomes an AIPrediction, so it has to be visible here.
+    expect(screen.getByTestId("observation-call").textContent).toBe("Call: bullish · 5d · 72%");
+    expect(screen.getByText("chain analytics")).toBeInTheDocument();
+  });
+
+  it("omits the call line when the report carries no directional call", () => {
+    render(<ObservationReportCard report={report} />);
+    expect(screen.queryByTestId("observation-call")).not.toBeInTheDocument();
+  });
+
   it("renders a SaveCardButton in the card header", () => {
     render(<ObservationReportCard report={report} />);
     expect(screen.getByRole("button", { name: /save image/i })).toBeInTheDocument();

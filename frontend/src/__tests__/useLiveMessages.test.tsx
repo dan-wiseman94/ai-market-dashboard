@@ -2,6 +2,7 @@ import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, it, expect, vi } from "vitest";
 import type { Thread, Message } from "@/api/threads";
 import type { ObservationReport } from "@/components/ObservationReportCard";
+import { isConsensusReport } from "@/api/observation";
 
 // Mock useChannel to capture the WS handler so tests can feed thread events
 // without a real socket.
@@ -104,7 +105,9 @@ describe("useLiveMessages — seed mapping", () => {
     expect(msg).toBeDefined();
     expect(msg!.kind).toBe("structured_observation");
     expect(msg!.report).toEqual(REPORT);
-    expect(msg!.report!.headline).toBe("SPY consolidates near highs");
+    // `report` is the union of every structured shape, so narrow before reading.
+    expect(isConsensusReport(msg!.report)).toBe(false);
+    expect((msg!.report as ObservationReport).headline).toBe("SPY consolidates near highs");
   });
 
   it("maps system role to assistant role in LiveMessage", () => {

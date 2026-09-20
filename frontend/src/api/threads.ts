@@ -1,6 +1,8 @@
 import { apiGet, apiPatch, apiPost } from "./client";
 import type { Schemas } from "./generated";
-import type { ObservationReport } from "./observation";
+import type {
+  StructuredKind, StructuredReport, WarRoomVerdictContent,
+} from "./observation";
 
 export type AiRun = {
   id: number; provider: string; model: string;
@@ -22,9 +24,12 @@ export type Message = Pick<
 > & {
   content: {
     text?: string;
-    kind?: "structured_observation";
-    report?: ObservationReport;
-  };
+    kind?: StructuredKind;
+    report?: StructuredReport;
+    // Structured one-shot runs stamp their own attribution: their AIRun has no Message.
+    provider?: string;
+    model?: string;
+  } & Partial<WarRoomVerdictContent>;
   status: "done" | "streaming" | "failed";
   error: string;
   ai_run?: AiRun | null;
