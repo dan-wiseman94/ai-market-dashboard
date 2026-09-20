@@ -237,7 +237,7 @@ No browser. Each asserts status, response shape, and key invariants.
 - **test_backups_contract.py** (1) — list/create/download
 - **test_export_contract.py** (1) — start/list/download + manifest v=1
 - **test_costs_caps.py** (1) — `check_monthly_cap` + `/api/costs/caps`
-- **test_scenario_engine_disabled_in_prod.py** (1) — `X-E2E-Scenario` is a no-op when `MOCK_EXTERNAL=false`
+- _(Prod posture moved off this lane: the overlay always sets `MOCK_EXTERNAL=true`, so a lane test could never reach its assertion. Guarded by `backend/apps/core/tests/test_scenario_prod_posture.py`, which runs in every lane.)_
 
 ### 5.2 WS lane — Channels assertions (~10)
 
@@ -447,7 +447,7 @@ class ScenarioClient:
         self.api.headers["X-E2E-Scenario"] = name
 ```
 
-**Guardrail:** `api/test_scenario_engine_disabled_in_prod.py` asserts that with `MOCK_EXTERNAL=false`, setting `X-E2E-Scenario: claude-5xx` has no effect.
+**Guardrail:** `backend/apps/core/tests/test_scenario_prod_posture.py` asserts that without `MOCK_EXTERNAL` the scenario routes are never registered and `ScenarioHeaderMiddleware` is never installed, so `X-E2E-Scenario: claude-5xx` is inert. It lives in the backend suite because the e2e overlay always sets `MOCK_EXTERNAL=true`.
 
 ---
 

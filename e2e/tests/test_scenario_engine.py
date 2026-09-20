@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import os
-
 import httpx
 import pytest
 
@@ -112,25 +110,3 @@ def test_claude_provider_default_scenario_returns_events(api_base_url) -> None:
     body = r.json()
     assert body["events"] >= 1
     assert body["scenario"] == "default"
-
-
-@pytest.mark.integration
-def test_prod_guard_scenario_probe_404_without_mock_external() -> None:
-    """When MOCK_EXTERNAL is off, the probe endpoint must not be registered.
-
-    Skip when the e2e overlay is active — both the env var AND the resolved Django
-    setting are consulted because ``os.environ`` can be empty in some test contexts
-    even though ``settings.MOCK_EXTERNAL`` is True.
-    """
-    from django.conf import settings
-
-    overlay_on = os.environ.get("MOCK_EXTERNAL", "").lower() in ("1", "true", "yes") or getattr(
-        settings, "MOCK_EXTERNAL", False
-    )
-    if overlay_on:
-        pytest.skip("e2e overlay is up; this test is prod-posture-only")
-
-    import httpx as _httpx
-
-    r = _httpx.get("http://web:8000/api/_scenario_probe/", timeout=3)
-    assert r.status_code == 404

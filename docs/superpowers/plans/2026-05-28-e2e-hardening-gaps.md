@@ -39,9 +39,9 @@ changed as part of the test work (out of scope).
 - `ws/test_snapshot_progress.py` — profile always seeded → hard assert.
 
 **Kept — legitimate (environment / posture / deliberate flakiness defense):**
-- `api/test_scenario_engine_disabled_in_prod.py` ×2 and `tests/test_scenario_engine.py` — prod-posture-only; skip when the e2e overlay is up (by design).
-- `perf/test_lighthouse.py` ×2 — skip when docker/lighthouse isn't available in the runner.
-- `a11y/test_keyboard_only.py` ×2 — skip when a nav target isn't reachable within the Tab-step budget (reachability probe, not a coverage hole).
+- ~~`api/test_scenario_engine_disabled_in_prod.py` ×2 and `tests/test_scenario_engine.py` — prod-posture-only~~ **RESOLVED 2026-09-20:** these could never assert (deselected by `-m 'not integration'` in the unit lanes, always skipped in the e2e lanes, because the overlay sets `MOCK_EXTERNAL=true`). Removed and replaced by `backend/apps/core/tests/test_scenario_prod_posture.py`, which exercises both gates and is mutation-verified.
+- ~~`perf/test_lighthouse.py` ×2~~ **STALE:** that file no longer exists — the perf lane was rewritten to `perf/test_perf_budgets.py` (Playwright metrics, infrastructure errors fail the lane).
+- ~~`a11y/test_keyboard_only.py` ×2~~ **STALE:** the reachability skip was removed; the module now states a miss is a hard failure, never a skip.
 - `ws/test_ws_reconnect.py:43` — skip if the mock stream produces no `text_delta` in-window; deliberate flakiness defense for a reconnect test (the replay assertion that follows is unconditional).
 
 **Kept — dead defensive guards (never fire at runtime; tests pass):**
