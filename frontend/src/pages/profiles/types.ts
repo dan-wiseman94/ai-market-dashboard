@@ -10,6 +10,11 @@ export type Draft = {
   default_includes: string[];
   default_provider: string;
   default_model: string;
+  enable_tools: boolean;
+  enable_thinking: boolean;
+  thinking_budget: number;
+  enable_memory: boolean;
+  enable_coach: boolean;
 };
 
 // Mirrors TradingProfile.DEFAULT_INCLUDES (backend/apps/profiles/models.py) — the
@@ -19,6 +24,12 @@ export const BLANK_DRAFT: Draft = {
   name: "", style: "",
   default_includes: ["quotes", "positions", "breadth", "ohlc", "chain", "news", "events", "macro"],
   default_provider: DEFAULT_PICK.provider, default_model: DEFAULT_PICK.model,
+  // Mirrors the TradingProfile field defaults (backend/apps/profiles/models.py).
+  enable_tools: false,
+  enable_thinking: false,
+  thinking_budget: 8000,
+  enable_memory: false,
+  enable_coach: true,
 };
 
 export type PresetDraft = {
