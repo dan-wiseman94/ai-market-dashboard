@@ -20,7 +20,7 @@ export default function ModelFacts({ provider, modelId }: { provider: string; mo
     return (
       <p data-testid="model-facts" className={base}>
         {provider === "local"
-          ? "local model — no API cost · 40k payload budget"
+          ? "runs on your machine · 40k payload budget"
           : "not in catalog — billed at the provider's top rate · 40k payload budget"}
       </p>
     );

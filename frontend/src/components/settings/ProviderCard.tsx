@@ -3,15 +3,18 @@ import { useProviderConfigs, useUpsertProviderConfig, useProbeProvider } from "@
 import { useAiUsage } from "@/hooks/useAiUsage";
 import { useCostsCaps } from "@/hooks/useCosts";
 import { useToast } from "@/hooks/useToast";
-import type { ProviderConfig } from "@/api/ai";
+import type { ProviderConfig, ProviderId } from "@/api/ai";
+import { PROVIDER_LABEL as LABEL } from "@/api/ai";
 import Field from "@/components/settings/Field";
 import Toggle from "@/components/ui/Toggle";
 import ModelSelect from "@/components/settings/ModelSelect";
 import CapMeter from "@/components/settings/CapMeter";
-import { DEFAULT_MODEL_BY_PROVIDER } from "@/lib/modelDefaults";
+import { useCatalog } from "@/hooks/useCatalog";
+import { formatRelative } from "@/utils/format";
 
-type ProviderId = "claude" | "openai" | "local";
-const LABEL: Record<ProviderId, string> = { claude: "Claude", openai: "OpenAI", local: "Local" };
+/** Claude honors every profile feature; the other two are toggled per config. */
+const CLAUDE_CAPS =
+  "Streaming · tools · structured output · thinking · memory · files · citations · batches";
 
 type Draft = {
   api_key_write?: string;
@@ -19,6 +22,8 @@ type Draft = {
   daily_cost_cap_usd?: string;
   monthly_cost_cap_usd?: string;
   base_url?: string;
+  supports_tools?: boolean;
+  supports_vision?: boolean;
 };
 
 type ProbeMsg = { ok: boolean; text: string } | null;
@@ -38,6 +43,8 @@ type DerivedState = {
   baseUrl: string;
   apiKey: string;
   discovered: string[];
+  supportsTools: boolean;
+  supportsVision: boolean;
   dailyInvalid: boolean;
   monthlyInvalid: boolean;
   modelInvalid: boolean;
@@ -53,6 +60,8 @@ type ResolvedFields = {
   baseUrl: string;
   apiKey: string;
   discovered: string[];
+  supportsTools: boolean;
+  supportsVision: boolean;
 };
 
 function resolveCaps(draft: Draft, cfg: ProviderConfig | undefined): { daily: string; monthly: string } {
@@ -62,12 +71,31 @@ function resolveCaps(draft: Draft, cfg: ProviderConfig | undefined): { daily: st
   };
 }
 
-function resolveFields(provider: ProviderId, draft: Draft, cfg: ProviderConfig | undefined): ResolvedFields {
+/** Capability flags default to on: a config row written before they existed should
+ * not read as "this provider can't use tools". */
+function resolveCapabilities(
+  draft: Draft,
+  cfg: ProviderConfig | undefined,
+): { supportsTools: boolean; supportsVision: boolean } {
   return {
-    model: draft.default_model ?? cfg?.default_model ?? DEFAULT_MODEL_BY_PROVIDER[provider],
+    supportsTools: draft.supports_tools ?? cfg?.supports_tools ?? true,
+    supportsVision: draft.supports_vision ?? cfg?.supports_vision ?? true,
+  };
+}
+
+function resolveFields(
+  draft: Draft,
+  cfg: ProviderConfig | undefined,
+  catalogDefault: string,
+): ResolvedFields {
+  return {
+    // A stored default_model of "" means "unset", so fall through to the catalog's
+    // own fallback rather than showing an empty picker.
+    model: draft.default_model ?? (cfg?.default_model || catalogDefault),
     baseUrl: draft.base_url ?? cfg?.base_url ?? "",
     apiKey: draft.api_key_write ?? "",
     discovered: cfg?.discovered_models ?? [],
+    ...resolveCapabilities(draft, cfg),
     ...resolveCaps(draft, cfg),
   };
 }
@@ -99,6 +127,7 @@ function deriveState(
   configs: ProviderConfig[] | undefined,
   caps: CapRow[] | undefined,
   usage: ReturnType<typeof useAiUsage>["data"],
+  catalogDefault: string,
 ): DerivedState {
   const isLocal = provider === "local";
   const cfg = configs?.find((c) => c.provider === provider);
@@ -106,7 +135,7 @@ function deriveState(
   const spent = usage?.today?.[provider] ?? "0";
   const enabled = cfg?.enabled ?? true;
 
-  const fields = resolveFields(provider, draft, cfg);
+  const fields = resolveFields(draft, cfg, catalogDefault);
   const flags = validate(isLocal, fields);
 
   return { isLocal, cfg, capRow, spent, enabled, ...fields, ...flags };
@@ -172,28 +201,35 @@ function ApiKeyField({
   );
 }
 
-function LocalBaseUrlField({
-  baseUrl, baseUrlInvalid, probeMsg, probePending, onProbe, setDraft,
+/** Base URL + model discovery. Required for local; optional for OpenAI, where it
+ * points at a proxy or an Azure-compatible endpoint. The backend probe serves both. */
+function BaseUrlField({
+  provider, baseUrl, baseUrlInvalid, probeMsg, probePending, probeDisabled, onProbe, setDraft,
 }: {
+  provider: ProviderId;
   baseUrl: string;
   baseUrlInvalid: boolean;
   probeMsg: ProbeMsg;
   probePending: boolean;
+  probeDisabled: boolean;
   onProbe: () => void;
   setDraft: SetDraft;
 }) {
+  const isLocal = provider === "local";
   return (
     <div className="sm:col-span-2">
       <Field
-        label="Base URL"
-        hint="Your OpenAI-compatible server (Ollama, LM Studio, vLLM). On Linux: http://host.docker.internal:<port>/v1"
+        label={isLocal ? "Base URL" : "Base URL (optional)"}
+        hint={isLocal
+          ? "Your OpenAI-compatible server (Ollama, LM Studio, vLLM). On Linux: http://host.docker.internal:<port>/v1"
+          : "Leave blank for the vendor's own endpoint; set it for a proxy or an Azure-compatible deployment."}
         error={baseUrlInvalid ? "Base URL is required for local." : undefined}
       >
         {({ id, describedBy }) => (
           <div className="space-y-2">
             <input
-              id={id} aria-describedby={describedBy} value={baseUrl} aria-required="true"
-              placeholder="http://host.docker.internal:11434/v1"
+              id={id} aria-describedby={describedBy} value={baseUrl} aria-required={isLocal}
+              placeholder={isLocal ? "http://host.docker.internal:11434/v1" : "https://api.openai.com/v1"}
               onChange={(e) => setDraft({ base_url: e.target.value })}
               className="ledger-input w-full py-2 font-mono text-[12px]"
             />
@@ -201,7 +237,7 @@ function LocalBaseUrlField({
               <button
                 type="button" className="ledger-cta"
                 onClick={onProbe}
-                disabled={baseUrlInvalid || probePending}
+                disabled={probeDisabled || probePending}
               >
                 {probePending ? "Testing…" : "Test connection"}
               </button>
@@ -218,26 +254,78 @@ function LocalBaseUrlField({
   );
 }
 
+/** What this provider can do: fixed for Claude, per-config toggles elsewhere. */
+function CapabilitiesRow({
+  provider, supportsTools, supportsVision, setDraft,
+}: {
+  provider: ProviderId;
+  supportsTools: boolean;
+  supportsVision: boolean;
+  setDraft: SetDraft;
+}) {
+  return (
+    <div className="sm:col-span-2 border-t border-rule-soft pt-4">
+      <p className="font-mono text-[10px] uppercase tracking-loose2 text-copper-400">Capabilities</p>
+      {provider === "claude" ? (
+        <p className="mt-1.5 text-[12px] text-ink-300">{CLAUDE_CAPS}</p>
+      ) : (
+        <div className="mt-2 flex flex-wrap items-center gap-x-6 gap-y-2 text-[12px] text-ink-300">
+          <span>Streaming · structured output</span>
+          <label className="flex items-center gap-2">
+            <Toggle checked={supportsTools} onChange={(v) => setDraft({ supports_tools: v })} label="Tool use" />
+            <span>Tool use</span>
+          </label>
+          <label className="flex items-center gap-2">
+            <Toggle checked={supportsVision} onChange={(v) => setDraft({ supports_vision: v })} label="Vision" />
+            <span>Vision</span>
+          </label>
+          <span className="text-ink-500">
+            Thinking, memory, files, citations and batches are Claude only.
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** When the model list was last pulled from the endpoint. */
+function SyncedLine({ cfg }: { cfg: ProviderConfig | undefined }) {
+  if (!cfg?.models_synced_at) return null;
+  const n = cfg.discovered_models?.length ?? 0;
+  return (
+    <p className="mt-1.5 font-mono text-[11px] text-ink-400">
+      Models synced {formatRelative(cfg.models_synced_at)} · {n} discovered
+    </p>
+  );
+}
+
 function ModelField({
-  provider, isLocal, model, modelInvalid, discovered, setDraft,
+  provider, isLocal, model, modelInvalid, discovered, cfg, setDraft,
 }: {
   provider: ProviderId;
   isLocal: boolean;
   model: string;
   modelInvalid: boolean;
   discovered: string[];
+  cfg: ProviderConfig | undefined;
   setDraft: SetDraft;
 }) {
   return (
     <Field
       label="Default model"
-      hint={isLocal && discovered.length === 0 ? "Test the connection to list available models." : undefined}
+      hint={isLocal && discovered.length === 0
+        ? "Test the connection to list available models."
+        : "Used when a profile or schedule doesn't name a model."}
       error={modelInvalid ? "Pick or enter a model." : undefined}
     >
       {({ id, describedBy }) => (
-        <ModelSelect provider={provider} value={model} id={id} describedBy={describedBy}
-          models={isLocal ? discovered : undefined}
-          onChange={(m) => setDraft({ default_model: m })} />
+        <>
+          <ModelSelect provider={provider} value={model} id={id} describedBy={describedBy}
+            ariaLabel="Default model"
+            models={isLocal ? discovered : undefined}
+            onChange={(m) => setDraft({ default_model: m })} facts />
+          {provider !== "claude" && <SyncedLine cfg={cfg} />}
+        </>
       )}
     </Field>
   );
@@ -304,8 +392,11 @@ export default function ProviderCard({ provider }: { provider: ProviderId }) {
   const [draft, setDraft] = useState<Draft>({});
   const [probeMsg, setProbeMsg] = useState<ProbeMsg>(null);
 
-  const d = deriveState(provider, draft, configs, caps, usage);
+  const { defaultFor } = useCatalog();
+  const d = deriveState(provider, draft, configs, caps, usage, defaultFor(provider));
   const set: SetDraft = (patch) => setDraft((prev) => ({ ...prev, ...patch }));
+  // Model discovery is served for local and openai; Claude publishes no list endpoint.
+  const canProbe = provider !== "claude";
 
   // Populate the local model list once when we have an endpoint but no models yet.
   // Auto-probe is silent (no status message); only the explicit button surfaces errors.
@@ -355,6 +446,11 @@ export default function ProviderCard({ provider }: { provider: ProviderId }) {
           monthly_cost_cap_usd: d.monthly === "" ? null : d.monthly,
         };
     if (d.apiKey) body.api_key_write = d.apiKey; // omit when blank → serializer keeps the stored key
+    if (provider === "openai" && draft.base_url !== undefined) body.base_url = d.baseUrl;
+    // Only send a capability the user actually touched, so a save never overwrites
+    // one config field with another card's assumed default.
+    if (draft.supports_tools !== undefined) body.supports_tools = draft.supports_tools;
+    if (draft.supports_vision !== undefined) body.supports_vision = draft.supports_vision;
     upsert.mutate(
       { provider, body },
       {
@@ -374,16 +470,18 @@ export default function ProviderCard({ provider }: { provider: ProviderId }) {
       <div className="mt-5 grid gap-4 sm:grid-cols-2">
         <ApiKeyField provider={provider} cfg={d.cfg} isLocal={d.isLocal} apiKey={d.apiKey} setDraft={set} />
 
-        {d.isLocal && (
-          <LocalBaseUrlField
-            baseUrl={d.baseUrl} baseUrlInvalid={d.baseUrlInvalid} probeMsg={probeMsg}
-            probePending={probe.isPending} onProbe={runProbe} setDraft={set}
+        {canProbe && (
+          <BaseUrlField
+            provider={provider} baseUrl={d.baseUrl} baseUrlInvalid={d.baseUrlInvalid}
+            probeMsg={probeMsg} probePending={probe.isPending}
+            probeDisabled={d.isLocal ? d.baseUrlInvalid : false}
+            onProbe={runProbe} setDraft={set}
           />
         )}
 
         <ModelField
           provider={provider} isLocal={d.isLocal} model={d.model} modelInvalid={d.modelInvalid}
-          discovered={d.discovered} setDraft={set}
+          discovered={d.discovered} cfg={d.cfg} setDraft={set}
         />
 
         {!d.isLocal && (
@@ -392,6 +490,11 @@ export default function ProviderCard({ provider }: { provider: ProviderId }) {
             monthlyInvalid={d.monthlyInvalid} setDraft={set}
           />
         )}
+
+        <CapabilitiesRow
+          provider={provider} supportsTools={d.supportsTools}
+          supportsVision={d.supportsVision} setDraft={set}
+        />
       </div>
 
       <CardFooter isLocal={d.isLocal} capRow={d.capRow} />
