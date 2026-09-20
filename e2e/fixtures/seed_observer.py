@@ -1,7 +1,7 @@
 """Rung 5 — observer schedules + observer thread with mixed outcomes.
 
 Four schedules:
-  * E2E active schedule — enabled, mode=full
+  * E2E active schedule — enabled, mode=full, market_hours_only=False (fires any time)
   * E2E paused schedule — disabled, mode=full
   * E2E structured schedule — enabled, mode=full, structured=True
   * E2E diff schedule — enabled, mode=diff
@@ -26,9 +26,21 @@ def seed_observer() -> None:
 
     profile = TradingProfile.objects.get(name="E2E Default")
 
+    # market_hours_only=False is load-bearing, not incidental: ObserverSchedule
+    # defaults it to True, and fire_observer() returns early when every watched
+    # market is closed. With the default, any lane that drives this schedule only
+    # passes inside NYSE regular hours — ws/test_notifications.py's run-now test
+    # failed every evening and weekend. The gate itself is covered deterministically
+    # in apps/observer/tests/test_run_gate.py (both branches), so the e2e lanes
+    # should exercise delivery, not the calendar.
     s1, _ = ObserverSchedule.objects.update_or_create(
         name="E2E active schedule",
-        defaults={"profile": profile, "enabled": True, "mode": "full"},
+        defaults={
+            "profile": profile,
+            "enabled": True,
+            "mode": "full",
+            "market_hours_only": False,
+        },
     )
     sync_periodic_task(s1, cron="*/5 * * * *")
     s2, _ = ObserverSchedule.objects.update_or_create(
