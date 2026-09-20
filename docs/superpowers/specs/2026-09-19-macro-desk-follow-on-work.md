@@ -6,10 +6,16 @@
 that intentionally does NOT happen in that plan, plus what the audit → spec → verification
 cycle established that a future session should not have to re-derive.
 
-## 1. Gated on the TradingView MCP branch merging (Workstream E)
+**Status update (2026-09-20):** the macro-desk branch (PR #138), the TradingView MCP
+branch, and the provider-neutral structured-output branch have all merged to main; the
+doc-sync merge hazard in §2 was resolved as planned (union reconciliation, commit
+`a155a906`). Workstream E below is therefore **unblocked and actionable now**. Execution
+learnings appended in §5.
 
-`worktree-tradingview-mcp` (spec `…/specs/2026-09-19-tradingview-mcp-design.md`) was in
-execution when this was written. Once it merges, a small follow-up plan covers:
+## 1. Workstream E — now unblocked (TradingView MCP is on main)
+
+Once gated on `worktree-tradingview-mcp`; that branch has merged. A small follow-up
+plan covers:
 
 - **Symbol-map rows** in `apps/market/services/tradingview.py` — `$`-prefixed into
   `INDEX_SYMBOLS`, `/`-prefixed into `FUTURE_SYMBOLS`: `$VVIX→TVC:VVIX`,
@@ -126,3 +132,41 @@ execution when this was written. Once it merges, a small follow-up plan covers:
 - Adversarial verification of an already-"verified" spec surfaced 22 findings including
   one genuine blocker (the yields unit contract) and the 3–10× cost error — worth the
   pass every time a spec commits to numbers or cross-provider behavior.
+
+## 5. Execution learnings (added 2026-09-20, after the 17-task build shipped)
+
+**Surviving fix-later items** (triaged non-blocking by the final whole-branch review):
+- `factor_returns` re-queries spread legs instead of reusing its own rows (~18 extra
+  indexed queries per 30s-cached context fetch).
+- The 14-day events window is a duplicated magic number (fetcher + corporate-actions
+  filter); extract on next touch.
+- Treasury render omits the `record_date` fields — an "as of" provenance line would help.
+- `profiles/0013`'s `RunPython` noop reverse deserves a one-line comment (stripping
+  backfilled kinds can't distinguish user-added ones — that's why reverse is a noop).
+- `fed.py` never explicitly closes its streamed `resp`; wrap in `with`.
+- The stale `_RENDERERS["ohlc"]` dict entry is dead code (the chain/ohlc special-cases
+  intercept before lookup) — remove alongside any serializer touch.
+- No query-budget test pins the ohlc render (the chain render has one; the long-horizon
+  block adds ≤4 fixed queries).
+
+**Seed-refresh trigger:** BLS/BEA had not published 2027 schedules as of 2026-09-19 —
+the seed carries CPI/NFP through 2026-12 and PCE/GDP through 2026-12-23 (FOMC through
+2027-12-08). Refresh `events_seed.py` when those calendars post (typically late in the
+prior year); with TradingView connected the seed is fallback-only, but TV-disconnected
+installs go macro-blind when it lapses.
+
+**SDD retro — what the process caught and what it missed:**
+- Per-task reviews caught 6 single-round fixes; three **plan field-name defects**
+  (`captured_at`→`fetched_at`, `date`→`event_time`, a C901-violating inline block) were
+  caught by mandated implementation-time field-confirmation steps — keep writing those
+  steps into plans.
+- All three final-review defects (a look-ahead leak into the eval harness, the dropped
+  `FACTOR_ETFS` ingest-universe line, the macro `forecast`/`prior` key mistranscription)
+  were **spec→plan transcription drops** invisible to task-scoped reviews: the pre-flight
+  scan checked task↔task seams but not spec↔plan fidelity. Future SDD pre-flight scans
+  should diff every spec-mandated constant, key name, and one-line wiring instruction
+  against the plan before Task 1.
+- The look-ahead-safety invariant now has a serializer-level guard (`ts <= captured_at`
+  in the long-horizon block); anything that adds a DB read to a renderer must honor the
+  snapshot's `captured_at` — re-serialization paths (eval replays, re-pins, recall
+  indexing) run long after capture.
