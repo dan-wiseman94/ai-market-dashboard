@@ -4,6 +4,19 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import ScorecardPage from "@/pages/ScorecardPage";
 import * as hooks from "@/hooks/useAnalytics";
 
+// This suite renders the page bare (no QueryClientProvider) and spies on the
+// analytics hooks, so the eval section's own hooks are stubbed rather than fetched.
+const mockEvalRuns = vi.fn(() => ({ data: [] as unknown[], isLoading: false }));
+vi.mock("@/hooks/useAieval", () => ({
+  useEvalRuns: () => mockEvalRuns(),
+  useTriggerEvalRun: () => ({ mutateAsync: vi.fn(), isPending: false }),
+}));
+vi.mock("@/hooks/useAiModels", () => ({
+  useAiModels: () => ({ data: { models: [], defaults: {} }, isLoading: false }),
+}));
+vi.mock("@/hooks/useProviderConfigs", () => ({ useProviderConfigs: () => ({ data: [] }) }));
+vi.mock("@/hooks/useToast", () => ({ useToast: () => ({ push: vi.fn() }) }));
+
 function mock(data: unknown, isLoading = false) {
   vi.spyOn(hooks, "useCalibration").mockReturnValue({ data, isLoading } as never);
 }

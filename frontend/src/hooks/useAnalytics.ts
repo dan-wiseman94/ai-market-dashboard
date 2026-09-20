@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { apiGet } from "@/api/client";
+import { fetchLatestEvalRun, type EvalRun } from "@/api/aieval";
 
 export interface LeaderboardRow {
   provider: string;
@@ -276,37 +277,16 @@ export function useContradictions() {
   });
 }
 
-export interface EvalReliabilityBucket {
-  bin_low: number;
-  bin_high: number;
-  n: number;
-  hits: number;
-  observed_hit_rate: number | null;
-  mean_confidence: number | null;
-}
-
-export interface EvalRunSummary {
-  id: number;
-  created_at: string;
-  source: string;
-  label: string;
-  model: string;
-  horizon: number | null;
-  n: number;
-  skipped: number;
-  scored: number;
-  hit_rate: number | null;
-  brier: number | null;
-  avg_confidence: number | null;
-  calibration_error: number | null;
-  calibration: EvalReliabilityBucket[];
-}
+// The eval-run shapes live in api/aieval.ts (the module that owns the endpoint);
+// re-exported here because the Scorecard reached for them through this hook first.
+export type { EvalReliabilityBucket, EvalRun } from "@/api/aieval";
+export type EvalRunSummary = EvalRun;
 
 /** Latest persisted offline eval run. undefined when none has run yet (204). */
 export function useLatestEvalRun() {
   return useQuery({
     queryKey: ["aieval/latest"],
-    queryFn: () => apiGet<EvalRunSummary | null>("/api/aieval/runs/latest/"),
+    queryFn: fetchLatestEvalRun,
   });
 }
 

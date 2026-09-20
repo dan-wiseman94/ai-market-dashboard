@@ -23,6 +23,8 @@ export type PostMortemStatus =
   | "skipped";
 
 export interface PostMortemReport {
+  /** Which provider wrote the narrative; absent on reports written before it was stamped. */
+  ai?: { provider: string; model: string };
   summary: string;
   what_worked: string[];
   what_missed: string[];

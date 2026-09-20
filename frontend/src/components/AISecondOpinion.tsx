@@ -1,3 +1,4 @@
+import AiAttribution from "@/components/ai/AiAttribution";
 import { useAIView } from "@/hooks/usePredictions";
 
 const AGREEMENT: Record<string, { label: string; cls: string }> = {
@@ -32,6 +33,9 @@ export function AISecondOpinion({ ticker, against }: { ticker: string; against?:
           The AI <span className={agree.cls}>{agree.label}</span>.
         </>
       ) : null}
+      {data.provider && (
+        <AiAttribution provider={data.provider} model={data.model} className="ml-2" />
+      )}
     </div>
   );
 }
