@@ -104,6 +104,7 @@ def extract_from_observation(
     provider: str,
     model: str,
     profile=None,
+    flag_contradictions: bool = True,
 ) -> AIPrediction | None:
     """Create/update an ``AIPrediction`` from a structured ``ObservationReport``.
 
@@ -180,7 +181,8 @@ def extract_from_observation(
         return AIPrediction.objects.filter(
             ticker=ticker, horizon_days=horizon, profile=profile, status="open"
         ).first()
-    _flag_contradictions(ticker, direction)
+    if flag_contradictions:
+        _flag_contradictions(ticker, direction)
     return pred
 
 

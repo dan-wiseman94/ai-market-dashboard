@@ -23,9 +23,11 @@ def current_ai_view(ticker: str):
     prediction — or ``None``. Resolved/invalidated calls are not "current"."""
     from apps.observer.models import AIPrediction
 
+    # `-id` breaks the tie deterministically: one consensus fire opens a call per
+    # provider, all stamped with the same message timestamp.
     return (
         AIPrediction.objects.filter(ticker=ticker.upper(), status="open")
-        .order_by("-predicted_at")
+        .order_by("-predicted_at", "-id")
         .first()
     )
 
@@ -48,8 +50,10 @@ def open_divergences(*, include_partial: bool = True) -> list[dict]:
     # thesis. This runs on every dashboard load, so the N+1 actually mattered.
     tickers = {t.ticker.upper() for t in theses}
     views: dict[str, AIPrediction] = {}
+    # `-id` matches current_ai_view's tie-breaker, so both reads name the same call
+    # when a consensus fire opened several at one timestamp.
     for p in AIPrediction.objects.filter(ticker__in=tickers, status="open").order_by(
-        "ticker", "-predicted_at"
+        "ticker", "-predicted_at", "-id"
     ):
         views.setdefault(p.ticker, p)  # first row per ticker = latest predicted_at
 

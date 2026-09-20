@@ -121,7 +121,7 @@ export function ProfileForm({ form }: { form: ReturnType<typeof useProfileForm> 
         />
         {draft.enable_thinking && (
           <div className="pb-2 pl-12">
-            <Field label="Thinking budget" hint="Tokens, billed as output.">
+            <Field label="Thinking budget" hint="Tokens, billed as output. Minimum 1024.">
               {({ id, describedBy }) => (
                 <input
                   id={id}
@@ -131,6 +131,14 @@ export function ProfileForm({ form }: { form: ReturnType<typeof useProfileForm> 
                   value={draft.thinking_budget}
                   onChange={(e) =>
                     setDraft({ ...draft, thinking_budget: Number(e.target.value.replace(/\D/g, "")) })
+                  }
+                  onBlur={(e) =>
+                    // Anthropic rejects a budget below 1024, and 0 silently disables
+                    // thinking — clamp rather than save a value that can't work.
+                    setDraft({
+                      ...draft,
+                      thinking_budget: Math.max(1024, Number(e.target.value.replace(/\D/g, ""))),
+                    })
                   }
                   className="ledger-input w-40 py-2 tabular-nums"
                 />

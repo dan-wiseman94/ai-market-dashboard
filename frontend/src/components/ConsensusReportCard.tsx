@@ -1,6 +1,7 @@
 import { useRef } from "react";
 import { SaveCardButton } from "./SaveCardButton";
 import AiAttribution from "@/components/ai/AiAttribution";
+import { providerLabel } from "@/api/ai";
 import { BIAS_COLOR } from "@/components/ObservationReportCard";
 import type { Bias, ConsensusReport } from "@/api/observation";
 
@@ -67,7 +68,9 @@ export default function ConsensusReportCard({ report }: { report: ConsensusRepor
               <tr className="text-left text-ink-400">
                 <th className="py-1 pr-3 font-normal">Ticker</th>
                 {columns.map((c) => (
-                  <th key={c} className="py-1 pr-3 font-mono font-normal">{c.split("/")[0]}</th>
+                  <th key={c} className="py-1 pr-3 font-normal">
+                    {providerLabel(c.split("/")[0])}
+                  </th>
                 ))}
                 <th className="py-1 text-right font-normal">Agreement</th>
               </tr>

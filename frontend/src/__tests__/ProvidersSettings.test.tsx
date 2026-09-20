@@ -18,5 +18,6 @@ describe("ProvidersSettings", () => {
     expect(screen.getByTestId("pc-claude")).toBeInTheDocument();
     expect(screen.getByTestId("pc-openai")).toBeInTheDocument();
     expect(screen.getByTestId("pc-local")).toBeInTheDocument();
+    expect(screen.getByTestId("catalog-panel")).toBeInTheDocument();
   });
 });

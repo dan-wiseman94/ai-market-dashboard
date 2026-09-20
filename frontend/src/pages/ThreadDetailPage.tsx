@@ -49,11 +49,14 @@ function ThreadLoadState({ isError, onRetry }: { isError: boolean; onRetry: () =
  * state when data changes"), not an effect. */
 function useReplyTarget(thread: Thread | undefined) {
   const [picker, setPicker] = useState({ ...DEFAULT_PICK });
-  const [seeded, setSeeded] = useState(false);
+  // Keyed on the thread id, not a one-shot flag: the route reuses this component
+  // instance when only the :id changes, so a per-instance flag would leave the
+  // previous thread's provider selected — and billed.
+  const [seededId, setSeededId] = useState<number | null>(null);
   const profile = thread?.profile;
-  if (!seeded && profile) {
+  if (profile && thread && seededId !== thread.id) {
     setPicker({ provider: profile.default_provider, model: profile.default_model });
-    setSeeded(true);
+    setSeededId(thread.id);
   }
   return [picker, setPicker] as const;
 }

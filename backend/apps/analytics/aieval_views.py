@@ -56,8 +56,8 @@ class EvalRunListCreateView(generics.ListAPIView):
             need = "a base URL" if provider == "local" else "an API key"
             return _err(
                 "no_provider",
-                f"No usable {provider} provider: add {need} and enable it in "
-                "Settings → AI Providers.",
+                f"No usable {provider} target: add {need} and a default model, and enable "
+                "it in Settings → AI Providers.",
                 400,
             )
         # Preflight here as well as in the task: a capped provider should be refused
@@ -67,14 +67,21 @@ class EvalRunListCreateView(generics.ListAPIView):
         except CostCapExceededError as exc:
             return _err("cost_cap", str(exc), 409)
 
+        # Queue the RESOLVED target, not the requested one: `default_model_for("local")`
+        # is "" by design, and the resolver is what chains in the ProviderConfig's own
+        # default. Queueing the request's blank id would run the eval against no model.
         aieval_run.delay(
-            provider=provider, model=model, horizon=horizon, limit=d["limit"], label=d["label"]
+            provider=target.provider,
+            model=target.model,
+            horizon=horizon,
+            limit=d["limit"],
+            label=d["label"],
         )
         return Response(
             {
                 "queued": True,
-                "provider": provider,
-                "model": model,
+                "provider": target.provider,
+                "model": target.model,
                 "horizon": horizon,
                 "limit": d["limit"],
                 "label": d["label"],

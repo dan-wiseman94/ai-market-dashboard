@@ -6,14 +6,21 @@ from unittest.mock import patch
 import pytest
 
 from apps.core.models import SystemSettings
+from apps.secrets.models import ProviderConfig
 
 
-def _configure(provider: str, model: str) -> None:
+def _configure(provider: str, model: str, *, config_model: str = "") -> None:
+    """Point the scheduled eval at a provider, and give that provider a usable config —
+    the task resolves its model through one."""
     cfg = SystemSettings.load()
     cfg.aieval_scheduled_enabled = True
     cfg.aieval_scheduled_provider = provider
     cfg.aieval_scheduled_model = model
     cfg.save()
+
+    pc = ProviderConfig.objects.create(provider=provider, enabled=True, default_model=config_model)
+    pc.api_key = "sk-test"
+    pc.save()
 
 
 @pytest.mark.django_db
@@ -49,11 +56,51 @@ def test_run_scheduled_keeps_a_same_vendor_model():
 
 
 @pytest.mark.django_db
+def test_run_scheduled_resolves_a_local_model_from_its_config_not_the_catalog():
+    """`local` has no catalog default, so a blank scheduled model must come from the
+    provider's own config rather than reaching `evaluate` empty."""
+    cfg = SystemSettings.load()
+    cfg.aieval_scheduled_enabled = True
+    cfg.aieval_scheduled_provider = "local"
+    cfg.aieval_scheduled_model = ""
+    cfg.save()
+    ProviderConfig.objects.create(
+        provider="local",
+        enabled=True,
+        base_url="http://host.docker.internal:11434/v1",
+        default_model="llama-3.1-70b",
+    )
+    from apps.analytics import tasks
+
+    with (
+        patch.object(tasks, "preflight_cost_cap"),
+        patch.object(tasks, "evaluate", return_value={"n": 0}) as evaluate,
+    ):
+        tasks.run_scheduled()
+
+    assert evaluate.call_args.kwargs["model"] == "llama-3.1-70b"
+    assert evaluate.call_args.kwargs["provider"] == "local"
+
+
+@pytest.mark.django_db
+def test_run_scheduled_skips_when_the_provider_has_no_usable_config():
+    cfg = SystemSettings.load()
+    cfg.aieval_scheduled_enabled = True
+    cfg.aieval_scheduled_provider = "openai"
+    cfg.save()
+    from apps.analytics import tasks
+
+    with patch.object(tasks, "evaluate") as evaluate:
+        assert tasks.run_scheduled() == {"skipped": "no_provider"}
+    evaluate.assert_not_called()
+
+
+@pytest.mark.django_db
 def test_run_scheduled_cost_cap_is_checked_on_the_configured_provider():
     from apps.ai.cost import CostCapExceededError
     from apps.analytics import tasks
 
-    _configure("openai", "")
+    _configure("openai", "", config_model="gpt-5.6-sol")
     with (
         patch.object(tasks, "preflight_cost_cap", side_effect=CostCapExceededError("over")),
         patch.object(tasks, "evaluate") as evaluate,

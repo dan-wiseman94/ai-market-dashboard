@@ -61,6 +61,49 @@ def test_config_default_then_catalog_default(profile):
 
 
 @pytest.mark.django_db
+def test_plain_fire_sends_the_resolved_pair_as_the_override(profile):
+    """The router honours an override only when BOTH provider and model are present, so
+    a schedule with a provider override and no model would otherwise silently run on
+    the profile's provider."""
+    from unittest.mock import patch
+
+    from apps.observer.services import run as run_service
+    from apps.secrets.models import ProviderConfig
+
+    cfg = ProviderConfig.objects.create(
+        provider="openai", enabled=True, default_model="gpt-5.6-sol"
+    )
+    cfg.api_key = "sk-oai"
+    cfg.save()
+    sched = ObserverSchedule.objects.create(
+        name="S",
+        profile=profile,
+        market_hours_only=False,
+        override_provider="openai",  # provider only: no override_model
+    )
+
+    with (
+        patch.object(run_service, "any_market_open", return_value=True),
+        patch.object(run_service, "check_daily_cap"),
+        patch.object(run_service, "check_monthly_cap"),
+        patch.object(run_service, "capture") as capture,
+        patch.object(run_service, "serialize_for_ai", return_value="## BODY"),
+        patch.object(run_service, "assemble_coach_context", return_value=""),
+        patch.object(run_service, "notify"),
+        patch.object(run_service.run_ai_on_message, "delay") as streaming,
+    ):
+        from apps.snapshots.models import Snapshot
+
+        capture.return_value = Snapshot.objects.create(
+            profile=profile, includes=["quotes"], source="observer", status="ready"
+        )
+        run_service.fire_observer(sched.id)
+
+    override = streaming.call_args.kwargs["override"]
+    assert override == {"provider": "openai", "model": "gpt-5.6-sol"}
+
+
+@pytest.mark.django_db
 def test_local_provider_falls_through_to_the_configs_own_model(profile):
     # `local` has no catalog default, so a blank config default yields "".
     cfg = ProviderConfig(provider="local", default_model="llama-3.1-70b")

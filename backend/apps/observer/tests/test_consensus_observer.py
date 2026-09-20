@@ -197,6 +197,18 @@ def test_consensus_fire_records_one_ledger_call_per_provider():
     assert all("report" not in take for take in msg.content["report"]["takes"])
     assert all(c.source_message_id == msg.id for c in calls)
 
+    # The takes ARE one another's opposing open call, and the report already reports
+    # that as `divergent` — the self-contradiction sentinel must stay quiet.
+    from apps.observer.models import Notification
+
+    assert not Notification.objects.filter(kind="contra").exists()
+
+    # One timestamp for every take, so the "current view" reads need a tie-breaker.
+    from apps.observer.predictions.services.reconcile import current_ai_view
+
+    assert len({c.predicted_at for c in calls}) == 1
+    assert current_ai_view("SPY").id == max(c.id for c in calls)
+
 
 def test_consensus_fire_degrades_with_single_provider():
     """One usable provider -> honest degraded consensus_report Message (no fake)."""

@@ -54,6 +54,36 @@ def test_post_rejects_an_unknown_provider_and_a_foreign_model(api, openai_cfg):
 
 
 @pytest.mark.django_db
+def test_post_queues_the_resolved_model_for_a_local_provider(api):
+    """`local` has no catalog default, so the queued model must come from the provider's
+    own config — queueing the request's blank id would run the eval against no model."""
+    ProviderConfig.objects.create(
+        provider="local",
+        enabled=True,
+        base_url="http://host.docker.internal:11434/v1",
+        default_model="llama-3.1-70b",
+    )
+    with patch("apps.analytics.aieval_views.aieval_run") as task:
+        r = api.post("/api/aieval/runs/", {"provider": "local"}, format="json")
+
+    assert r.status_code == 202
+    assert r.json()["model"] == "llama-3.1-70b"
+    assert task.delay.call_args.kwargs["model"] == "llama-3.1-70b"
+
+
+@pytest.mark.django_db
+def test_post_400_when_no_model_can_be_resolved(api):
+    """A local endpoint with no default model resolves to no target at all — refuse
+    rather than queue a run that would replay every row against an empty model id."""
+    ProviderConfig.objects.create(
+        provider="local", enabled=True, base_url="http://x:11434/v1", default_model=""
+    )
+    r = api.post("/api/aieval/runs/", {"provider": "local"}, format="json")
+    assert r.status_code == 400
+    assert r.json()["code"] == "no_provider"
+
+
+@pytest.mark.django_db
 def test_post_400_when_the_provider_has_no_credential(api):
     ProviderConfig.objects.create(provider="openai")  # enabled, no key
     r = api.post("/api/aieval/runs/", {"provider": "openai"}, format="json")

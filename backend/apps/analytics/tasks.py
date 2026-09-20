@@ -145,14 +145,27 @@ def run_scheduled() -> dict:
     # SystemSettings (UI) values override the base.py / env defaults; the resolver's
     # fallbacks keep this a BOUNDED run (25 rows / 30d horizon), never an unbounded —
     # and costly — replay.
-    from apps.ai.catalog import default_model_for, is_foreign_model
+    from cryptography.fernet import InvalidToken
+
+    from apps.ai.structured import resolve_structured_target
 
     provider = rc.aieval_scheduled_provider or "claude"
-    model = rc.aieval_scheduled_model
-    if not model or is_foreign_model(provider, model):
-        # The provider changed but the model did not: never send another vendor's id —
-        # it fails every call and the run reports "no data" instead of an error.
-        model = default_model_for(provider)
+    # Resolve through the provider's own config: it repairs a model id carried over
+    # from another vendor AND supplies the model for `local`, which has no catalog
+    # default. A blank model would otherwise make every replay fail and report "no data".
+    try:
+        target = resolve_structured_target(
+            override_provider=provider, override_model=rc.aieval_scheduled_model
+        )
+    except InvalidToken:
+        log.warning("analytics.aieval_run_scheduled skipped — %s key is undecryptable", provider)
+        return {"skipped": "undecryptable_key"}
+    if target is None:
+        log.warning(
+            "analytics.aieval_run_scheduled skipped — no usable %s provider/model", provider
+        )
+        return {"skipped": "no_provider"}
+    model = target.model
     horizon = rc.aieval_scheduled_horizon
     limit = rc.aieval_scheduled_limit
 
