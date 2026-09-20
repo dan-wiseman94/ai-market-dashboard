@@ -58,7 +58,7 @@ I built Ledger because every "AI + stocks" tool I tried was a glorified chat box
 
 Ledger is a single-user, local-first dashboard (Docker, binds to 127.0.0.1) that closes the loop:
 
-- Capture a point-in-time snapshot of the market — quotes, OHLC, option chains (with dealer gamma exposure), positions, breadth, macro/credit indicators, Fed communications, news, and server-rendered chart PNGs.
+- Capture a point-in-time snapshot of the market — quotes, OHLC with 52 weeks of stored history, option chains with positioning analytics (put/call ratios, max pain, IV skew, dealer gamma by strike), sector breadth and rotation, macro and credit indicators, Fed communications, a VIX term structure with VVIX on every capture, news, and server-rendered chart PNGs.
 - Hand it to the AI of your choice — Claude, OpenAI, or any local OpenAI-compatible endpoint (Ollama/LM Studio/vLLM) — framed by a trading-style profile and an objective. You can fan the same prompt across several models and compare.
 - Record the decision you actually made as a "thesis."
 - A scheduled, deterministic post-mortem (no AI involved) computes the real forward return at 7/30/90 days and grades the call correct/incorrect/mixed.
