@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import base64
+from collections.abc import Callable
 from datetime import UTC, datetime
+from typing import Any
 
 from apps.snapshots.image_store import read_image_bytes
 from apps.snapshots.models import Snapshot, SnapshotImage
@@ -461,10 +463,10 @@ def _render_breadth(payload: dict) -> str:
     lines = ["## Market breadth"]
     idx = payload.get("index_complex") or []
     if idx:
-        bits = ", ".join(
+        idx_bits = ", ".join(
             f"{r['symbol']} {_fmt(r.get('last'))} ({_fmt(r.get('pct_change'))}%)" for r in idx
         )
-        lines.append(f"- Index complex: {bits}")
+        lines.append(f"- Index complex: {idx_bits}")
     else:
         lines.append(f"- SPX: {_fmt(payload.get('spx_last'))}")
         lines.append(f"- QQQ: {_fmt(payload.get('qqq_last'))}")
@@ -1110,7 +1112,7 @@ def _render_flowlite(payload) -> str:
     return "\n".join(lines)
 
 
-_RENDERERS = {
+_RENDERERS: dict[str, Callable[[Any], str]] = {
     "quotes": _render_quotes,
     "ohlc": _render_ohlc,
     # "chain" is NOT here: serialize_for_ai special-cases it to pass captured_at

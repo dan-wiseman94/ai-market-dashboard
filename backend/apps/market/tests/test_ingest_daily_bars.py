@@ -111,9 +111,7 @@ def test_ingest_daily_bars_requests_260():
         ingest_daily_bars()
     assert seen, "Expected at least one fetch_ohlc call"
     for sym, _timeframe, bar_count in seen:
-        assert bar_count == 260, (
-            f"Expected bars=260 but got bars={bar_count} for {sym}"
-        )
+        assert bar_count == 260, f"Expected bars=260 but got bars={bar_count} for {sym}"
 
 
 def test_beat_registration():

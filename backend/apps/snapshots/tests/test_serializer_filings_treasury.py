@@ -63,7 +63,12 @@ def test_render_filings_legacy_flat_list_shape_still_renders_table():
 
 
 def test_render_filings_ticker_with_only_insider_rows():
-    payload = {"AAPL": {"filings": [], "insider": [{"form": "4", "filed": "2026-09-10", "title": "t", "url": "u"}]}}
+    payload = {
+        "AAPL": {
+            "filings": [],
+            "insider": [{"form": "4", "filed": "2026-09-10", "title": "t", "url": "u"}],
+        }
+    }
 
     md = _render_filings(payload)
 

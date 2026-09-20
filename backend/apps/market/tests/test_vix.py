@@ -285,7 +285,7 @@ def test_vvix_rides_the_batched_quote(monkeypatch):
 
     monkeypatch.setattr("apps.market.services.vix.fetch_quotes", mock_fetch)
     payload = vix_term_structure(today=today)
-    assert "$VVIX" in seen["syms"]                      # one batch, no extra call
+    assert "$VVIX" in seen["syms"]  # one batch, no extra call
     assert payload["vvix"] == {"symbol": "$VVIX", "last": 90.0, "pct_change": 1.0}
     assert payload["vvix_vix_ratio"] == 6.0
 
@@ -297,4 +297,4 @@ def test_missing_vvix_never_fails_the_section(monkeypatch):
     monkeypatch.setattr("apps.market.services.vix.fetch_quotes", lambda syms: quotes)
     payload = vix_term_structure(today=today)
     assert payload["vvix"] is None and payload["vvix_vix_ratio"] is None
-    assert payload["front"] is not None                 # rest of the section intact
+    assert payload["front"] is not None  # rest of the section intact
