@@ -66,6 +66,74 @@ def calibration_drift_sentinel() -> dict:
     return {"checked": len(result["models"]), "fired": fired}
 
 
+@shared_task(name="analytics.aieval_run", acks_late=False, reject_on_worker_lost=False)
+def aieval_run(
+    *, provider: str, model: str, horizon: int, limit: int, label: str = "manual"
+) -> dict:
+    """One manual eval run queued by ``POST /api/aieval/runs/``.
+
+    At-most-once: it bills a provider and is not idempotent, so a worker crash must
+    not redeliver it. Every exit notifies, because the UI has no other signal that a
+    queued run finished.
+    """
+    from apps.market.services.safe_log import scrub_secret_params
+    from apps.observer.services.notifications import notify
+
+    try:
+        preflight_cost_cap(provider)
+    except CostCapExceededError as exc:
+        log.warning("analytics.aieval_run skipped — cost cap: %s", exc)
+        notify(
+            user_id=None,
+            kind="eval_done",
+            title="Eval run skipped",
+            body=str(exc),
+            link="/scorecard",
+        )
+        return {"skipped": "cost_cap"}
+
+    try:
+        res = evaluate(
+            system=DEFAULT_EVAL_SYSTEM,
+            model=model,
+            label=label,
+            horizon=horizon,
+            limit=limit,
+            provider=provider,
+        )
+    except Exception as exc:
+        notify(
+            user_id=None,
+            kind="error",
+            title="Eval run failed",
+            body=scrub_secret_params(str(exc))[:500],
+            link="/scorecard",
+        )
+        raise
+
+    if not res["n"]:
+        notify(
+            user_id=None,
+            kind="eval_done",
+            title="Eval run: nothing to replay",
+            body=f"No decisive post-mortems with a frozen snapshot at {horizon}d.",
+            link="/scorecard",
+        )
+        return {"skipped": "no_data"}
+
+    run = persist_eval_run(res, source="manual")
+    hit = res.get("hit_rate")
+    hit_txt = f"hit-rate {hit:.0%}" if hit is not None else "no scored rows"
+    notify(
+        user_id=None,
+        kind="eval_done",
+        title=f"Eval run #{run.id} finished",
+        body=f"{provider} · {model}: {hit_txt} over {res['scored']} scored ({label}).",
+        link="/scorecard",
+    )
+    return {"ran": run.id, "n": res["n"], "hit_rate": hit}
+
+
 @shared_task(name="analytics.aieval_run_scheduled")
 def run_scheduled() -> dict:
     from apps.core.runtime_config import runtime_config
