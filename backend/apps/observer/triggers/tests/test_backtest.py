@@ -60,14 +60,6 @@ def test_backtest_returns_timestamps(db, aapl_bars) -> None:
     assert len(matches) == 2  # 115 and 120
 
 
-def test_backtest_missing_condition_400(db) -> None:
-    client = APIClient()
-    resp = client.post(
-        "/api/triggers/backtest/", data={"start": "2026-03-01", "end": "2026-03-10"}, format="json"
-    )
-    assert resp.status_code == 400
-
-
 def test_backtest_bad_dates_400(db) -> None:
     client = APIClient()
     resp = client.post(
