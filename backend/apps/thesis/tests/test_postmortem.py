@@ -313,6 +313,13 @@ def test_run_postmortem_ai_path_populates_report_and_posts_message(thesis, fake_
     assert pm.verdict == "correct"
     assert pm.report["summary"] == fake_report.summary
     assert pm.report["would_repeat"] is True
+    # Which provider wrote the narrative — the one-shot AIRun has no Message to read it
+    # from. The stamp must name the target the call actually ran on.
+    assert pm.report["ai"] == {
+        "provider": mock_run.call_args.kwargs["provider"],
+        "model": mock_run.call_args.kwargs["model"],
+    }
+    assert pm.report["ai"]["provider"] == "claude"
     # The verdict is deterministic (objective_verdict), not an AI-emitted field.
     assert "narrative_verdict" not in pm.report
 

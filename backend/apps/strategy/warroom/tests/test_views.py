@@ -43,3 +43,30 @@ def test_list_and_detail_runs():
     assert len(APIClient().get("/api/warroom/runs/").json()) == 1
     body = APIClient().get(f"/api/warroom/runs/{run.id}/").json()
     assert "messages" in body and len(body["messages"]) == 1
+
+
+def test_run_messages_carry_the_provider_that_argued_them():
+    """Each persona lane names its model; a message with no run reports nulls."""
+    from decimal import Decimal
+
+    from apps.threads.models import AIRun, Message, Thread
+
+    th = Thread.objects.create(kind="warroom", title="t")
+    argued = Message.objects.create(
+        thread=th, role="assistant", content={"persona": "bull", "argument": "a"}
+    )
+    AIRun.objects.create(
+        message=argued,
+        provider="openai",
+        model="gpt-5.6-sol",
+        cost_usd=Decimal("0.01"),
+        status="done",
+    )
+    Message.objects.create(thread=th, role="assistant", content={"kind": "warroom_verdict"})
+    run = WarRoomRun.objects.create(thread=th, subject_kind="free", subject_label="q")
+
+    messages = APIClient().get(f"/api/warroom/runs/{run.id}/").json()["messages"]
+    assert messages[0]["provider"] == "openai"
+    assert messages[0]["model"] == "gpt-5.6-sol"
+    assert messages[1]["provider"] is None
+    assert messages[1]["model"] is None

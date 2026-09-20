@@ -1,9 +1,17 @@
 import { apiGet, apiPost } from "@/api/client";
 
-export interface WarRoomMessage { role: string; content: Record<string, unknown> }
+export interface WarRoomMessage {
+  role: string;
+  content: Record<string, unknown>;
+  /** The model that made this argument; null for a message with no AIRun. */
+  provider?: string | null;
+  model?: string | null;
+}
 export interface WarRoomVerdict {
   verdict?: string; confidence?: number; strongest_bull?: string;
   strongest_bear?: string; what_would_change_my_mind?: string;
+  /** Which provider reached the verdict; absent on runs from before it was stamped. */
+  ai?: { provider: string; model: string };
 }
 export interface WarRoomRun {
   id: number;

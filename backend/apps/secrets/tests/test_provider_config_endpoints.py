@@ -103,3 +103,42 @@ def test_can_reenter_key_over_undecryptable_row(api):
     r = api.patch("/api/schwab/providers/claude/", {"api_key_write": "sk-ant-new"}, format="json")
     assert r.status_code == 200, r.content
     assert ProviderConfig.objects.get(provider="claude").api_key == "sk-ant-new"
+
+
+@pytest.mark.django_db
+def test_ai_models_endpoint_carries_payload_budget_and_defaults(api):
+    r = api.get("/api/schwab/models/")
+    assert r.status_code == 200
+    body = r.json()
+    row = next(m for m in body["models"] if m["id"] == "claude-opus-5")
+    assert row["max_payload_tokens"] == 150_000
+    assert body["defaults"] == {"claude": "claude-opus-5", "openai": "gpt-5.6-sol", "local": ""}
+
+
+@pytest.mark.django_db
+def test_ai_models_endpoint_provider_filter_keeps_full_defaults(api):
+    r = api.get("/api/schwab/models/?provider=openai")
+    assert {m["provider"] for m in r.json()["models"]} == {"openai"}
+    assert r.json()["defaults"]["claude"] == "claude-opus-5"
+
+
+@pytest.mark.django_db
+def test_provider_config_rejects_foreign_default_model(api):
+    ProviderConfig.objects.create(provider="openai")
+    r = api.patch(
+        "/api/schwab/providers/openai/", {"default_model": "claude-sonnet-5"}, format="json"
+    )
+    assert r.status_code == 400
+    assert "claude catalog model" in r.json()["default_model"][0]
+
+
+@pytest.mark.django_db
+def test_provider_config_accepts_own_and_unknown_models(api):
+    ProviderConfig.objects.create(provider="local")
+    r = api.patch("/api/schwab/providers/local/", {"default_model": "llama3"}, format="json")
+    assert r.status_code == 200
+    ProviderConfig.objects.create(provider="claude")
+    r = api.patch(
+        "/api/schwab/providers/claude/", {"default_model": "claude-fable-5-1"}, format="json"
+    )
+    assert r.status_code == 200

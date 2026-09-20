@@ -11,11 +11,19 @@ vi.mock("@/hooks/useSchedules", () => ({
   useDeleteSchedule: () => ({ mutate: vi.fn() }),
   useRunSchedule: () => ({ mutate: vi.fn() }),
   useCreateSchedule: () => ({ mutateAsync: mockCreate, isPending: false }),
+  useUpdateSchedule: () => ({ mutate: vi.fn() }),
   useUpdateScheduleIncludes: () => ({ mutate: vi.fn() }),
 }));
 vi.mock("@/hooks/useProfiles", () => ({
   useProfiles: () => ({ data: [{ id: 1, name: "P1" }] }),
 }));
+// This suite renders the page bare (no QueryClientProvider), so every hook the AI
+// fieldset and the page's toasts reach for has to be stubbed too.
+vi.mock("@/hooks/useAiModels", () => ({
+  useAiModels: () => ({ data: { models: [], defaults: {} }, isLoading: false }),
+}));
+vi.mock("@/hooks/useProviderConfigs", () => ({ useProviderConfigs: () => ({ data: [] }) }));
+vi.mock("@/hooks/useToast", () => ({ useToast: () => ({ push: vi.fn() }) }));
 
 beforeEach(() => mockCreate.mockClear());
 

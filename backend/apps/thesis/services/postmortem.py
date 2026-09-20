@@ -127,7 +127,12 @@ def _attempt_ai_narrative(
         base_url=target.base_url,
     )
 
-    pm.report = report.model_dump()
+    # The one-shot AIRun carries no Message, so the report itself is the only place
+    # the UI can learn which provider wrote the narrative.
+    pm.report = {
+        **report.model_dump(),
+        "ai": {"provider": target.provider, "model": target.model},
+    }
     thread = get_or_create_review_thread(thesis)
     msg = Message.objects.create(
         thread=thread,

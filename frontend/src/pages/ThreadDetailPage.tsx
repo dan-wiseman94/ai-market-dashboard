@@ -18,6 +18,7 @@ import ThesisForm from "./thread-detail/ThesisForm";
 import JournalPanel from "./thread-detail/JournalPanel";
 import { useLiveMessages } from "./thread-detail/useLiveMessages";
 import { DEFAULT_PICK } from "@/lib/modelDefaults";
+import type { Thread } from "@/api/threads";
 import { useThesisJournal } from "./thread-detail/useThesisJournal";
 import { RelatedObservations } from "@/components/RelatedObservations";
 
@@ -42,6 +43,24 @@ function ThreadLoadState({ isError, onRetry }: { isError: boolean; onRetry: () =
   );
 }
 
+/** The provider/model a reply goes to. Seeds from the thread's own profile once it
+ * loads, so a reply continues on the provider the thread was started with, then
+ * stays wherever the user puts it. Render-phase guarded update (React's "adjust
+ * state when data changes"), not an effect. */
+function useReplyTarget(thread: Thread | undefined) {
+  const [picker, setPicker] = useState({ ...DEFAULT_PICK });
+  // Keyed on the thread id, not a one-shot flag: the route reuses this component
+  // instance when only the :id changes, so a per-instance flag would leave the
+  // previous thread's provider selected — and billed.
+  const [seededId, setSeededId] = useState<number | null>(null);
+  const profile = thread?.profile;
+  if (profile && thread && seededId !== thread.id) {
+    setPicker({ provider: profile.default_provider, model: profile.default_model });
+    setSeededId(thread.id);
+  }
+  return [picker, setPicker] as const;
+}
+
 export default function ThreadDetailPage() {
   const { id } = useParams<{ id: string }>();
   const [search] = useSearchParams();
@@ -55,7 +74,7 @@ export default function ThreadDetailPage() {
   const { ordered, branchesByParent, toolCalls } = useLiveMessages(tid, thread, refetch);
 
   const [activeBranchByParent, setActiveBranchByParent] = useState<Record<number, number>>({});
-  const [picker, setPicker] = useState({ ...DEFAULT_PICK });
+  const [picker, setPicker] = useReplyTarget(thread);
   const [showCompare, setShowCompare] = useState(false);
   const [input, setInput] = useState("");
 

@@ -19,6 +19,7 @@ export interface ObserverSchedule {
   structured: boolean;
   use_batch: boolean;
   consensus: boolean;
+  investigate: boolean;
   last_batch_id: string;
   last_fired_at: string | null;
   cron_display: string;
@@ -43,6 +44,7 @@ export interface CreateScheduleBody {
   structured?: boolean;
   use_batch?: boolean;
   consensus?: boolean;
+  investigate?: boolean;
   fire_mode?: ObserverFireMode;
   close_offset_minutes?: number;
 }
@@ -59,7 +61,7 @@ export const runScheduleNow = (id: number) =>
 
 export interface NotificationDTO {
   id: number;
-  kind: "trigger" | "observer_done" | "error" | "cost_limit" | "backup";
+  kind: "trigger" | "observer_done" | "error" | "cost_limit" | "backup" | "eval_done";
   title: string;
   body: string;
   link: string;

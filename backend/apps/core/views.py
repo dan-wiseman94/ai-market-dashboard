@@ -179,6 +179,10 @@ class SystemSettingsView(APIView):
         return Response(asdict(runtime_config()))
 
 
+_PROVIDER_KNOBS = frozenset({"ai_failover_provider", "aieval_scheduled_provider"})
+_PROVIDER_VALUES = ("", "claude", "openai", "local")
+
+
 def _coerce_setting(key: str, value: object, typ: type) -> tuple[object, str | None]:
     """Coerce/validate a single PATCH value. None clears the override (inherit default)."""
     if value is None:
@@ -198,6 +202,10 @@ def _coerce_setting(key: str, value: object, typ: type) -> tuple[object, str | N
         return None, f"{key} must be {typ.__name__}"
     if typ in (int, float) and coerced < 0:  # type: ignore[operator]
         return None, f"{key} must be >= 0"
+    if key in _PROVIDER_KNOBS and coerced not in _PROVIDER_VALUES:
+        # A free-text provider name silently disables the knob it configures: the
+        # failover lookup and the eval preflight both resolve a ProviderConfig by name.
+        return None, f"{key} must be one of claude, openai, local (or blank)"
     if key.startswith("retention_") and typ is int:
         # 0 days would make the next prune delete EVERY row of that model; use
         # null to disable pruning instead. OHLC is read by date by post-mortems,

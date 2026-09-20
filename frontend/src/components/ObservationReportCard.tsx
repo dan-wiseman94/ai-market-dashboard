@@ -7,7 +7,7 @@ import type { Bias, ObservationReport } from "@/api/observation";
 // importers of this component.
 export type { ObservationReport } from "@/api/observation";
 
-const BIAS_COLOR: Record<Bias, string> = {
+export const BIAS_COLOR: Record<Bias, string> = {
   bullish: "text-gain-400 border-gain-500/40",
   bearish: "text-loss-400 border-loss-500/40",
   neutral: "text-slate-300 border-slate-500/40",
@@ -36,6 +36,18 @@ export default function ObservationReportCard({ report }: { report: ObservationR
         <SaveCardButton targetRef={cardRef} filename={filename} />
       </div>
       <p className="text-sm text-ink-300">{report.summary}</p>
+
+      {report.predicted_direction && (
+        <p data-testid="observation-call" className="font-mono text-[11px] text-ink-300">
+          Call:{" "}
+          <span className={BIAS_COLOR[report.predicted_direction].split(" ")[0]}>
+            {report.predicted_direction}
+          </span>
+          {report.predicted_horizon_days != null && ` · ${report.predicted_horizon_days}d`}
+          {report.predicted_confidence != null &&
+            ` · ${Math.round(report.predicted_confidence * 100)}%`}
+        </p>
+      )}
 
       {report.signals.length > 0 && (
         <section>
@@ -75,6 +87,17 @@ export default function ObservationReportCard({ report }: { report: ObservationR
           <ul className="text-xs text-ink-300 list-disc pl-5">
             {report.risks.map((r, i) => <li key={i}>{r}</li>)}
           </ul>
+        </section>
+      )}
+
+      {(report.grounding?.length ?? 0) > 0 && (
+        <section>
+          <SectionHeading>Grounded in</SectionHeading>
+          <div className="flex flex-wrap gap-1">
+            {report.grounding?.map((g) => (
+              <span key={g} className="ledger-pill">{g}</span>
+            ))}
+          </div>
         </section>
       )}
 

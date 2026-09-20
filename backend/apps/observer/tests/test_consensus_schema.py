@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 
 from apps.observer.models import ObserverSchedule
-from apps.observer.schemas import ConsensusReport, ProviderTake
+from apps.observer.schemas import ConsensusReport, ObservationReport, ProviderTake
 from apps.profiles.models import TradingProfile
 
 pytestmark = pytest.mark.django_db
@@ -68,3 +68,17 @@ def test_consensus_flag_defaults_false():
         default_watchlist_tickers=["AAPL"],
     )
     assert sched.consensus is False
+
+
+def test_provider_take_report_is_carried_in_memory_only():
+    """The take's full report feeds the ledger but must never reach the stored
+    consensus Message — that row keeps the agreement signal only."""
+    take = ProviderTake(
+        provider="claude",
+        model="claude-opus-5",
+        bias="bullish",
+        signal_bias={},
+        report=ObservationReport(headline="h", bias="bullish", summary="s", next_check_in="n"),
+    )
+    assert take.report is not None
+    assert "report" not in take.model_dump()

@@ -3,9 +3,12 @@ import pytest
 from apps.ai.catalog import (
     DEFAULT_CLAUDE_MODEL,
     DEFAULT_OPENAI_MODEL,
+    catalog_owner,
     ceiling_for_provider,
     default_model_for,
+    foreign_model_error,
     get_model,
+    is_foreign_model,
     list_models,
 )
 
@@ -100,3 +103,31 @@ def test_default_model_for_each_provider():
 def test_defaults_are_catalog_rows():
     assert get_model("claude", DEFAULT_CLAUDE_MODEL) is not None
     assert get_model("openai", DEFAULT_OPENAI_MODEL) is not None
+
+
+def test_catalog_owner_maps_ids_to_provider():
+    assert catalog_owner("claude-opus-5") == "claude"
+    assert catalog_owner("gpt-5.6-sol") == "openai"
+    assert catalog_owner("llama-3.1-70b") is None
+
+
+@pytest.mark.parametrize(
+    ("provider", "model", "foreign"),
+    [
+        ("claude", "claude-opus-5", False),
+        ("anthropic", "claude-opus-5", False),
+        ("claude", "gpt-5.6-sol", True),
+        ("openai", "claude-sonnet-5", True),
+        ("local", "llama-3.1-70b", False),
+        ("local", "gpt-5", True),
+        ("openai", "", False),
+    ],
+)
+def test_is_foreign_model(provider, model, foreign):
+    assert is_foreign_model(provider, model) is foreign
+
+
+def test_foreign_model_error_names_owner():
+    assert foreign_model_error("claude", "claude-opus-5") is None
+    msg = foreign_model_error("claude", "gpt-5.6-sol")
+    assert msg == "gpt-5.6-sol is an openai catalog model; pick a claude model or clear the field."

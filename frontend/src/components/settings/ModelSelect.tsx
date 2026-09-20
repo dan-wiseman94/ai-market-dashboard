@@ -1,5 +1,5 @@
-import { useAiModels } from "@/hooks/useAiModels";
-import type { AiModel } from "@/api/ai";
+import ModelFacts from "@/components/ai/ModelFacts";
+import { useCatalog } from "@/hooks/useCatalog";
 
 const CUSTOM = "__custom__";
 
@@ -8,17 +8,20 @@ type Props = {
   value: string;
   onChange: (model: string) => void;
   id?: string;
+  ariaLabel?: string;
   describedBy?: string;
   models?: string[]; // explicit id list (used for local discovery); overrides the catalog
+  /** Render price / context / payload facts for the selected id below the select. */
+  facts?: boolean;
 };
 
-export default function ModelSelect({ provider, value, onChange, id, describedBy, models: explicit }: Props) {
-  const { data } = useAiModels(provider);
+export default function ModelSelect({
+  provider, value, onChange, id, ariaLabel, describedBy, models: explicit, facts,
+}: Props) {
+  const { modelsFor } = useCatalog();
   const options: { id: string; name: string }[] = explicit
     ? explicit.map((m) => ({ id: m, name: m }))
-    : (data?.models ?? [])
-        .filter((m: AiModel) => m.provider === provider)
-        .map((m) => ({ id: m.id, name: m.name }));
+    : modelsFor(provider).map((m) => ({ id: m.id, name: m.name }));
   const known = options.some((o) => o.id === value);
   const showCustom = !known;
 
@@ -26,6 +29,7 @@ export default function ModelSelect({ provider, value, onChange, id, describedBy
     <div className="space-y-2">
       <select
         id={id}
+        aria-label={ariaLabel}
         aria-describedby={describedBy}
         value={showCustom ? CUSTOM : value}
         onChange={(e) => onChange(e.target.value === CUSTOM ? "" : e.target.value)}
@@ -45,6 +49,7 @@ export default function ModelSelect({ provider, value, onChange, id, describedBy
           className="ledger-input w-full py-2 font-mono text-[12px]"
         />
       )}
+      {facts && <ModelFacts provider={provider} modelId={value} />}
     </div>
   );
 }
