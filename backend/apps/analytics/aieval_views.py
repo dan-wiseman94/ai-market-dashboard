@@ -34,7 +34,11 @@ class EvalRunListCreateView(generics.ListAPIView):
     @extend_schema(request=EvalRunRequestSerializer, responses={202: None}, methods=["POST"])
     def post(self, request):
         ser = EvalRunRequestSerializer(data=request.data)
-        ser.is_valid(raise_exception=True)
+        if not ser.is_valid():
+            # One error shape for this endpoint: the UI reads `code`/`message`, and a
+            # bare DRF field-error dict would surface as an empty toast.
+            field, messages = next(iter(ser.errors.items()))
+            return _err("invalid_request", f"{field}: {messages[0]}", 400)
         d = ser.validated_data
         provider: str = d["provider"]
         model: str = d["model"] or default_model_for(provider)

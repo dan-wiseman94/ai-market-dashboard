@@ -45,7 +45,11 @@ def test_post_queues_the_task_with_resolved_defaults(api, openai_cfg):
 
 @pytest.mark.django_db
 def test_post_rejects_an_unknown_provider_and_a_foreign_model(api, openai_cfg):
-    assert api.post("/api/aieval/runs/", {"provider": "gemini"}, format="json").status_code == 400
+    bad = api.post("/api/aieval/runs/", {"provider": "gemini"}, format="json")
+    assert bad.status_code == 400
+    # One error shape for the endpoint, so the UI always has a message to show.
+    assert bad.json()["code"] == "invalid_request"
+    assert "provider" in bad.json()["message"]
     r = api.post(
         "/api/aieval/runs/", {"provider": "openai", "model": "claude-opus-5"}, format="json"
     )
