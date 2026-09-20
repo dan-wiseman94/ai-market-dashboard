@@ -167,19 +167,27 @@ def extract_from_observation(
                 resolve_at=_resolve_at(ticker, predicted_at, horizon),
             )
     except IntegrityError:
-        # A concurrent fire opened a prediction for this (ticker, horizon, profile)
-        # between our .first() check above and this create — the partial unique
-        # constraint (status="open") rejected ours. We are the race-loser: treat it
-        # as the same-direction no-op and let the already-open call stand, frozen as
-        # stated so calibration scores it honestly.
+        # A concurrent fire opened a prediction for this target between our .first()
+        # check above and this create — the partial unique constraint (status="open")
+        # rejected ours. We are the race-loser: treat it as the same-direction no-op
+        # and let the already-open call stand, frozen as stated so calibration scores
+        # it honestly. The re-fetch must use the whole key, provider and model
+        # included, or it would hand back another provider's call.
         log.info(
-            "prediction dedup race: open %s %sd for %s already exists; keeping it",
+            "prediction dedup race: open %s %sd for %s on %s/%s already exists; keeping it",
             ticker,
             horizon,
             getattr(profile, "id", "?"),
+            provider,
+            model,
         )
         return AIPrediction.objects.filter(
-            ticker=ticker, horizon_days=horizon, profile=profile, status="open"
+            ticker=ticker,
+            horizon_days=horizon,
+            profile=profile,
+            provider=provider,
+            model=model,
+            status="open",
         ).first()
     if flag_contradictions:
         _flag_contradictions(ticker, direction)

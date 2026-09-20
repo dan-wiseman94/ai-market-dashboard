@@ -117,6 +117,23 @@ describe("ObserverTimelinePage — attribution and kinds", () => {
     expect(screen.getByText("boom")).toBeInTheDocument();
   });
 
+  it("marks a reused observation so it is not read as a fresh call", async () => {
+    mockApi({
+      "GET /api/observer/threads/1/": {
+        ...THREAD,
+        messages: [
+          {
+            id: 9, role: "assistant", status: "done", error: "", ai_run: null,
+            content: { kind: "cached_observation", text: "Reused prior observation." },
+            created_at: "2026-04-17T09:40:00Z",
+          },
+        ],
+      },
+    });
+    renderPage();
+    expect(await screen.findByRole("button", { name: /Cached observation/ })).toBeInTheDocument();
+  });
+
   it("still shows a structured card under its headline", async () => {
     renderPage();
     const header = await screen.findByRole("button", { name: /Range day/ });

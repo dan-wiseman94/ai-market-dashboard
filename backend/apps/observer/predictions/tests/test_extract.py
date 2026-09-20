@@ -252,6 +252,48 @@ def test_extract_race_loser_returns_the_concurrent_open(profile):
     assert AIPrediction.objects.filter(status="open").count() == 1
 
 
+@pytest.mark.django_db
+def test_extract_race_loser_refetch_is_scoped_to_its_own_target(profile):
+    """The re-fetch must use the whole key: another provider's open call on the same
+    ticker/horizon is a different target, not the race winner."""
+    from unittest.mock import patch
+
+    from apps.observer.predictions.services import extract as extract_mod
+
+    snap = _snap(profile, "NVDA")
+    other_provider = AIPrediction.objects.create(
+        direction="bearish", **_open_kwargs(profile, provider="openai", model="gpt-5.6-sol")
+    )
+    mine = AIPrediction.objects.create(direction="bullish", **_open_kwargs(profile))
+
+    real_filter = AIPrediction.objects.filter
+    state = {"n": 0}
+
+    class _MissQS:
+        def first(self):
+            return None
+
+    def fake_filter(*args, **kwargs):
+        if kwargs.get("status") == "open" and state["n"] == 0:
+            state["n"] += 1
+            return _MissQS()
+        return real_filter(*args, **kwargs)
+
+    with patch.object(AIPrediction.objects, "filter", side_effect=fake_filter):
+        result = extract_mod.extract_from_observation(
+            _report(direction="bullish"),
+            snapshot=snap,
+            message=None,
+            provider="claude",
+            model="m",
+            profile=profile,
+        )
+
+    assert result is not None
+    assert result.id == mine.id  # our own target's call, not the other provider's
+    assert result.id != other_provider.id
+
+
 # ---------------------------------------------------------------------------
 # Expected-move freeze: the options-implied 1σ move for the prediction's
 # horizon is captured at decision time from the snapshot's own chain section.

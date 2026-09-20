@@ -64,6 +64,8 @@ function messageHeadline(m: Message): string {
   const when = new Date(m.created_at).toLocaleString();
   if (m.role === "user") return `📷 Snapshot — ${when}`;
   if (m.status === "failed") return `⚠️ Failed — ${when}`;
+  // A reused observation cost nothing and is not a fresh read of the market.
+  if (m.content.kind === "cached_observation") return `♻️ Cached observation — ${when}`;
   if (isConsensus(m)) {
     const r = m.content.report;
     return `🧭 Consensus — ${r.modal_bias ?? "no consensus"} · ${r.n_providers} providers — ${when}`;
