@@ -1,7 +1,7 @@
 # Provider-neutral UI — visible and configurable — design
 
 **Date:** 2026-09-20
-**Status:** approved for implementation (autonomous session; assumptions listed in §0)
+**Status:** implemented on `feat/provider-neutral-ui` (2026-09-20)
 **Branch:** `feat/provider-neutral-ui` (off `main` at `59a562be`)
 **Follows:** `2026-09-19-provider-neutral-structured-output-design.md` (PR #136, merged)
 
