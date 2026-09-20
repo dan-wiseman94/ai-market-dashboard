@@ -37,7 +37,8 @@ def test_render_events_shows_detail_and_corporate_actions():
             {
                 "title": "CPI YoY",
                 "days_until": 5,
-                "detail": {"estimate": 2.9, "prev": 3.1, "actual": None},
+                # Producer shape (apps.market.services.events._upsert_macro): forecast/prior/actual.
+                "detail": {"forecast": 2.9, "prior": 3.1, "actual": None},
             }
         ],
         "corporate_actions": [

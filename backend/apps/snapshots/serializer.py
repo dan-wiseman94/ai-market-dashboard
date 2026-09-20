@@ -3,13 +3,16 @@
 from __future__ import annotations
 
 import base64
+import logging
 from collections.abc import Callable
 from datetime import UTC, datetime
 from typing import Any
 
 from apps.snapshots.image_store import read_image_bytes
-from apps.snapshots.models import Snapshot, SnapshotImage
+from apps.snapshots.models import Snapshot, SnapshotImage, SnapshotSection
 from apps.snapshots.token_budget import estimate_tokens, prune_to_budget
+
+log = logging.getLogger(__name__)
 
 # Never truncate the OHLC tail below this many bars — fewer stops being a price
 # path; at that point dropping the section (prune_to_budget) is more honest.
@@ -34,6 +37,29 @@ def _age_str(captured_at: datetime) -> str:
     if minutes >= 1:
         return f"{minutes} minutes ago" if minutes > 1 else "1 minute ago"
     return "just now"
+
+
+def _render_included_section(kind: str, sec: SnapshotSection | None, snapshot: Snapshot) -> str:
+    """Render one included section for the AI payload.
+
+    Dispatches kinds whose renderer needs the snapshot's captured_at — chain's
+    unusual-activity lookup and OHLC's long-horizon stored-bar query bound (eval
+    replay re-serializes FROZEN past snapshots and must stay look-ahead-safe; an
+    unbounded OHLC query would leak the outcome window into the replayed prompt).
+    Extracted from serialize_for_ai's loop to keep it under the complexity gate.
+    """
+    if sec is None or sec.status == "failed":
+        err = sec.error if sec else "missing"
+        return f"## {_title(kind)}\n_(unavailable: {err})_"
+    if kind == "chain":
+        return _render_chain(
+            sec.payload,
+            ticker=(sec.payload or {}).get("ticker", "?"),
+            captured_at=snapshot.captured_at,
+        )
+    if kind == "ohlc":
+        return _render_ohlc(sec.payload, captured_at=snapshot.captured_at)
+    return _render_section(kind, sec.payload)
 
 
 def serialize_for_ai(
@@ -89,19 +115,7 @@ def serialize_for_ai(
     rendered: dict[str, str] = {}
 
     for kind in snapshot.includes:
-        sec = sections_by_kind.get(kind)
-        if sec is None or sec.status == "failed":
-            err = sec.error if sec else "missing"
-            rendered[kind] = f"## {_title(kind)}\n_(unavailable: {err})_"
-            continue
-        if kind == "chain":
-            text = _render_chain(
-                sec.payload,
-                ticker=(sec.payload or {}).get("ticker", "?"),
-                captured_at=snapshot.captured_at,
-            )
-        else:
-            text = _render_section(kind, sec.payload)
+        text = _render_included_section(kind, sections_by_kind.get(kind), snapshot)
         if text:
             rendered[kind] = text
 
@@ -113,6 +127,7 @@ def serialize_for_ai(
             max_tokens=max_tokens,
             provider=provider,
             model=model,
+            captured_at=snapshot.captured_at,
         )
 
     pruned_sections, pruned_kinds = prune_to_budget(
@@ -285,23 +300,29 @@ def _ohlc_csv(bars: list[dict], ticker: str) -> str:
     return result
 
 
-def _long_horizon_summary(ticker: str | None) -> str:
+def _long_horizon_summary(ticker: str | None, captured_at: datetime | None = None) -> str:
     """52-week context off stored daily bars — the persisted OHLCBar archive
-    otherwise never reaches the prompt. Empty string when bars are thin."""
+    otherwise never reaches the prompt. Empty string when bars are thin.
+
+    ``captured_at``, when given, bounds the bar query to ``ts <= captured_at``.
+    This is load-bearing for eval replay: apps.analytics.services.aieval.replay_one
+    re-serializes FROZEN past snapshots, and an unbounded query would leak
+    returns computed over the (future, relative to the snapshot) outcome window
+    into the replayed prompt. ``None`` (the default) keeps the prior unbounded
+    behavior for callers without a snapshot context (e.g. bare-helper tests).
+    """
     if not ticker:
         return ""
     try:
         from apps.market.models import OHLCBar
-        from apps.market.services.intel import return_over_sessions
 
-        closes = [
-            float(b.close)
-            for b in OHLCBar.objects.filter(ticker=ticker.upper(), timeframe="1d").order_by("-ts")[
-                :252
-            ]
-        ]
-    except Exception:
+        qs = OHLCBar.objects.filter(ticker=ticker.upper(), timeframe="1d")
+        if captured_at is not None:
+            qs = qs.filter(ts__lte=captured_at)
+        closes = [float(b.close) for b in qs.order_by("-ts")[:252]]
+    except Exception as exc:
         # Database not available (e.g., unit tests without django_db mark), or other errors.
+        log.debug("snapshots.long_horizon skipped for %s: %s", ticker, exc)
         return ""
     if len(closes) < 20:
         return ""
@@ -314,15 +335,20 @@ def _long_horizon_summary(ticker: str | None) -> str:
         if len(closes) >= p:
             sma = sum(closes[:p]) / p
             bits.append(f"{(last - sma) / sma * 100:+.1f}% vs {p}dSMA")
-    rets = [
-        f"{w}d {r:+.1f}%" for w in (5, 20, 60) if (r := return_over_sessions(ticker, w)) is not None
-    ]
+    # Computed from the already-fetched (and already-bounded) closes list, NOT
+    # apps.market.services.intel.return_over_sessions — that helper re-queries
+    # OHLCBar with no time bound and would reintroduce the look-ahead leak.
+    rets = []
+    for w in (5, 20, 60):
+        if len(closes) > w and closes[w]:
+            r = round((closes[0] - closes[w]) / closes[w] * 100, 4)
+            rets.append(f"{w}d {r:+.1f}%")
     if rets:
         bits.append("returns " + ", ".join(rets))
     return "\n\n**Longer horizon (stored daily bars):** " + " | ".join(bits)
 
 
-def _render_ohlc(payload: dict) -> str:
+def _render_ohlc(payload: dict, *, captured_at: datetime | None = None) -> str:
     bars = payload.get("bars", [])
     if not bars:
         return "## OHLC\n_(empty)_"
@@ -351,7 +377,7 @@ def _render_ohlc(payload: dict) -> str:
             )
     if payload.get("watchlist_daily_omitted"):
         result += "\n\n_(per-ticker watchlist daily history omitted to fit the token budget)_"
-    long_horizon = _long_horizon_summary(ticker if ticker != "?" else None)
+    long_horizon = _long_horizon_summary(ticker if ticker != "?" else None, captured_at)
     if long_horizon:
         result += long_horizon
     return result
@@ -364,6 +390,7 @@ def _shrink_ohlc_to_budget(
     max_tokens: int,
     provider: str,
     model: str,
+    captured_at: datetime | None = None,
 ) -> dict[str, str]:
     """Truncate the OHLC bars (oldest first) when the total overflows the budget.
 
@@ -382,7 +409,7 @@ def _shrink_ohlc_to_budget(
     # series loses a single bar — the intraday path is what the AI reasons over.
     if ohlc_payload.get("watchlist_daily"):
         ohlc_payload = {**ohlc_payload, "watchlist_daily": {}, "watchlist_daily_omitted": True}
-        rendered = {**rendered, "ohlc": _render_ohlc(ohlc_payload)}
+        rendered = {**rendered, "ohlc": _render_ohlc(ohlc_payload, captured_at=captured_at)}
         sizes["ohlc"] = estimate_tokens(rendered["ohlc"], provider=provider, model=model)
         total = sum(sizes.values())
         if total <= max_tokens:
@@ -399,7 +426,7 @@ def _shrink_ohlc_to_budget(
     while True:
         keep = min(keep, len(bars))
         shrunk = {**ohlc_payload, "bars": bars[-keep:], "truncated_from": len(bars)}
-        text = _render_ohlc(shrunk)
+        text = _render_ohlc(shrunk, captured_at=captured_at)
         fits = estimate_tokens(text, provider=provider, model=model) <= headroom
         if fits or keep <= _OHLC_MIN_BARS:
             return {**rendered, "ohlc": text}
@@ -831,7 +858,7 @@ def _render_events(payload) -> str:
         d = m.get("detail") or {}
         extra = ", ".join(
             f"{label} {d[k]}"
-            for label, k in (("est", "estimate"), ("prev", "prev"), ("actual", "actual"))
+            for label, k in (("est", "forecast"), ("prev", "prior"), ("actual", "actual"))
             if d.get(k) is not None
         )
         lines.append(f"- {m['title']} in {m['days_until']}d" + (f" ({extra})" if extra else ""))

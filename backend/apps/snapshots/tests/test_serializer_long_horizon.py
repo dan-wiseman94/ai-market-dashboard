@@ -109,6 +109,57 @@ class TestLongHorizonSummary:
         assert "vs 50dSMA" not in result
         assert "vs 200dSMA" not in result
 
+    @pytest.mark.django_db
+    def test_long_horizon_summary_bounds_to_captured_at(self):
+        """Bars at/after captured_at must never leak into the summary — eval
+        replay (apps.analytics.services.aieval.replay_one) re-serializes FROZEN
+        past snapshots and an unbounded query would leak the outcome window."""
+        captured_at = datetime(2026, 6, 1, 16, 0, tzinfo=UTC)
+
+        # 25 pre-capture daily bars, most-recent (closest to captured_at) first:
+        # closes 474, 473, ..., 450 at ts = captured_at, captured_at-1d, ...
+        for i in range(25):
+            close = 474 - i
+            OHLCBar.objects.create(
+                ticker="SPY",
+                timeframe="1d",
+                open=Decimal(str(close)),
+                high=Decimal(str(close + 1)),
+                low=Decimal(str(close - 1)),
+                close=Decimal(str(close)),
+                volume=1_000_000,
+                ts=captured_at - timedelta(days=i),
+            )
+        # A post-capture bar with an extreme close — a bounded query must never see it.
+        OHLCBar.objects.create(
+            ticker="SPY",
+            timeframe="1d",
+            open=Decimal("9999"),
+            high=Decimal("9999"),
+            low=Decimal("9999"),
+            close=Decimal("9999"),
+            volume=1_000_000,
+            ts=captured_at + timedelta(days=1),
+        )
+
+        bounded = _long_horizon_summary("SPY", captured_at)
+        unbounded = _long_horizon_summary("SPY", None)
+
+        # Bounded: high/low/returns reflect ONLY the 25 pre-capture bars.
+        assert "9999" not in bounded
+        assert "25-session high 474.00 / low 450.00" in bounded
+        assert "returns 5d +1.1%, 20d +4.4%" in bounded
+
+        # Unbounded (back-compat / no snapshot context): sees the future outlier.
+        assert "9999" in unbounded
+        assert "26-session high 9999.00" in unbounded
+
+    def test_long_horizon_summary_captured_at_none_is_back_compat(self):
+        """Explicitly passing captured_at=None (the default) behaves like the
+        pre-fix unbounded call — no DB access here, just the signature check."""
+        assert _long_horizon_summary(None, None) == ""
+        assert _long_horizon_summary("", None) == ""
+
 
 class TestRenderOhlcWithLongHorizonSummary:
     """Tests for _render_ohlc with long-horizon summary appended."""
@@ -160,6 +211,40 @@ class TestRenderOhlcWithLongHorizonSummary:
         summary_idx = result.find("**Longer horizon")
         assert csv_idx < summary_idx
 
+    @pytest.mark.django_db
+    def test_render_ohlc_passes_captured_at_bound_to_long_horizon(self):
+        """captured_at flows from _render_ohlc into the long-horizon bar query bound."""
+        captured_at = datetime(2026, 6, 1, tzinfo=UTC)
+        for i in range(25):
+            close = 474 - i
+            OHLCBar.objects.create(
+                ticker="SPY",
+                timeframe="1d",
+                open=Decimal(str(close)),
+                high=Decimal(str(close + 1)),
+                low=Decimal(str(close - 1)),
+                close=Decimal(str(close)),
+                volume=1_000_000,
+                ts=captured_at - timedelta(days=i),
+            )
+        OHLCBar.objects.create(
+            ticker="SPY",
+            timeframe="1d",
+            open=Decimal("9999"),
+            high=Decimal("9999"),
+            low=Decimal("9999"),
+            close=Decimal("9999"),
+            volume=1_000_000,
+            ts=captured_at + timedelta(days=1),
+        )
+        payload = _ohlc_payload("SPY")
+
+        bounded = _render_ohlc(payload, captured_at=captured_at)
+        unbounded = _render_ohlc(payload)
+
+        assert "9999" not in bounded
+        assert "9999" in unbounded
+
 
 class TestSerializeForAiWithLongHorizonSummary:
     """End-to-end tests for serialize_for_ai with long-horizon summary."""
@@ -201,3 +286,52 @@ class TestSerializeForAiWithLongHorizonSummary:
         assert "**Longer horizon (stored daily bars):**" not in result
         # But should still have the intraday OHLC
         assert "## OHLC" in result
+
+    @pytest.mark.django_db
+    def test_serialize_for_ai_long_horizon_bounded_to_snapshot_captured_at(self):
+        """The full serialize_for_ai path must not leak bars captured after the
+        snapshot's own captured_at — the eval harness (apps.analytics.services.aieval
+        .replay_one) re-serializes FROZEN past snapshots and relies on this bound to
+        stay look-ahead-safe."""
+        captured_at = datetime(2026, 6, 1, tzinfo=UTC)
+        for i in range(25):
+            close = 474 - i
+            OHLCBar.objects.create(
+                ticker="SPY",
+                timeframe="1d",
+                open=Decimal(str(close)),
+                high=Decimal(str(close + 1)),
+                low=Decimal(str(close - 1)),
+                close=Decimal(str(close)),
+                volume=1_000_000,
+                ts=captured_at - timedelta(days=i),
+            )
+        # A future bar (relative to captured_at) that must never leak into the prompt.
+        OHLCBar.objects.create(
+            ticker="SPY",
+            timeframe="1d",
+            open=Decimal("9999"),
+            high=Decimal("9999"),
+            low=Decimal("9999"),
+            close=Decimal("9999"),
+            volume=1_000_000,
+            ts=captured_at + timedelta(days=1),
+        )
+
+        profile = TradingProfile.objects.create(name="bound-test", style="s")
+        snap = Snapshot.objects.create(profile=profile, includes=["ohlc"], status="ready")
+        # captured_at is auto_now_add=True; override it to the fixed time above.
+        Snapshot.objects.filter(pk=snap.pk).update(captured_at=captured_at)
+        snap.refresh_from_db()
+        SnapshotSection.objects.create(
+            snapshot=snap,
+            kind="ohlc",
+            status="done",
+            payload=_ohlc_payload("SPY"),
+        )
+
+        result = serialize_for_ai(snap)
+
+        assert "**Longer horizon (stored daily bars):**" in result
+        assert "9999" not in result
+        assert "25-session high 474.00" in result
