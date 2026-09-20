@@ -68,8 +68,8 @@ class EvalRunListCreateView(generics.ListAPIView):
         # at the click, not silently queued and dropped.
         try:
             ensure_within_caps(target)
-        except CostCapExceededError as exc:
-            return _err("cost_cap", str(exc), 409)
+        except CostCapExceededError:
+            return _err("cost_cap", "Cost cap exceeded for the selected provider.", 409)
 
         # Queue the RESOLVED target, not the requested one: `default_model_for("local")`
         # is "" by design, and the resolver is what chains in the ProviderConfig's own
