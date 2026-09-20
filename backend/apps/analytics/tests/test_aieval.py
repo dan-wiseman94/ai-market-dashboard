@@ -457,7 +457,8 @@ def test_confidence_none_when_no_signals_and_no_predicted():
 def test_persist_eval_run_maps_result_to_row(db):
     result = {
         "label": "smoke",
-        "model": "claude-sonnet-4-6",
+        "model": "gpt-5.6-sol",
+        "provider": "openai",
         "horizon": 30,
         "n": 5,
         "skipped": 1,
@@ -485,7 +486,9 @@ def test_persist_eval_run_maps_result_to_row(db):
     assert run.pk is not None
     assert run.source == "scheduled"
     assert run.label == "smoke"
-    assert run.model == "claude-sonnet-4-6"
+    assert run.model == "gpt-5.6-sol"
+    # A local model id names no vendor, so the run stores its provider explicitly.
+    assert run.provider == "openai"
     assert run.horizon == 30
     assert run.n == 5 and run.skipped == 1 and run.scored == 4
     assert run.hit_rate == 0.75 and run.brier == 0.21
@@ -497,6 +500,7 @@ def test_persist_eval_run_maps_result_to_row(db):
 def test_persist_eval_run_defaults_source_manual(db):
     run = persist_eval_run({"label": "x", "model": "m", "n": 0})
     assert run.source == "manual"
+    assert run.provider == "claude"  # every run written before the column was Claude
     assert run.horizon is None and run.hit_rate is None
 
 

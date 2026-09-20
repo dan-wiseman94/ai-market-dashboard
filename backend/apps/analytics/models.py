@@ -19,6 +19,8 @@ class EvalRun(models.Model):
     source = models.CharField(max_length=12, choices=SOURCE, default="manual")
     label = models.CharField(max_length=64, default="baseline")
     model = models.CharField(max_length=128, db_index=True)
+    # A local model id names no vendor, so the model alone can't attribute a run.
+    provider = models.CharField(max_length=32, default="claude", blank=True)
     horizon = models.PositiveIntegerField(null=True, blank=True)
 
     n = models.PositiveIntegerField(default=0)
