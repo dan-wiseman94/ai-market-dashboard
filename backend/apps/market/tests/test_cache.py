@@ -31,10 +31,18 @@ def test_get_or_fetch_refetches_after_expiry(redis_fake):
     assert fetcher.call_count == 2
 
 
-def test_ttl_for_kind_returns_configured_values():
-    assert cache_module.ttl_for_kind("quotes") == 5
-    assert cache_module.ttl_for_kind("positions") == 10
-    assert cache_module.ttl_for_kind("ohlc_1m") == 30
-    assert cache_module.ttl_for_kind("ohlc_1d") == 3600
-    assert cache_module.ttl_for_kind("news") == 300
+def test_ttl_for_kind_reads_the_table_and_defaults_for_unknown_kinds():
+    """Only the lookup behaviour is asserted — restating _TTL's values here would
+    just mirror the source, so a TTL edit would break the test without any bug
+    being catchable."""
+    for kind, configured in cache_module._TTL.items():
+        assert cache_module.ttl_for_kind(kind) == configured
     assert cache_module.ttl_for_kind("unknown-kind") == 30
+    assert cache_module.ttl_for_kind("") == 30
+
+
+def test_every_configured_ttl_is_a_positive_int():
+    """A zero/negative TTL would disable caching for that kind silently."""
+    assert cache_module._TTL, "TTL table must not be empty"
+    for kind, ttl in cache_module._TTL.items():
+        assert isinstance(ttl, int) and ttl > 0, f"{kind} has a non-positive TTL: {ttl}"
