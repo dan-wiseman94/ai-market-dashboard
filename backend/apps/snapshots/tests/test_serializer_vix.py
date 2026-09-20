@@ -110,7 +110,9 @@ def test_render_vix_degenerate_payload_is_explicit_not_empty(payload):
 
 
 def test_render_vix_vvix_with_ratio():
-    payload = _payload(vvix={"symbol": "$VVIX", "last": 90.0, "pct_change": 1.0}, vvix_vix_ratio=5.92)
+    payload = _payload(
+        vvix={"symbol": "$VVIX", "last": 90.0, "pct_change": 1.0}, vvix_vix_ratio=5.92
+    )
     out = _render_vix(payload)
     assert "- VVIX: 90.00 (+1.00%) — VVIX/VIX 5.92" in out
     # Verify it renders between spot and front

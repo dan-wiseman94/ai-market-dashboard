@@ -290,9 +290,7 @@ def _gex(contracts: list[dict], *, spot: float | None) -> dict:
     flip = _find_flip_strike(strike_gex)
 
     top = sorted(strike_gex.items(), key=lambda kv: abs(kv[1]), reverse=True)[:6]
-    by_strike = [
-        {"strike": k, "gex": round(v, 2)} for k, v in sorted(top, key=lambda kv: kv[0])
-    ]
+    by_strike = [{"strike": k, "gex": round(v, 2)} for k, v in sorted(top, key=lambda kv: kv[0])]
 
     return {
         "total": round(total, 2),

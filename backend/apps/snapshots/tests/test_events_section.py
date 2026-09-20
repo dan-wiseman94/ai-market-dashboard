@@ -25,12 +25,30 @@ def test_render_events_empty():
 
 def test_render_events_shows_detail_and_corporate_actions():
     payload = {
-        "earnings": [{"ticker": "NVDA", "days_until": 3, "when_hint": "amc",
-                      "detail": {"eps_est": 1.25, "eps_actual": 1.3, "rev_est": 46_000_000_000}}],
-        "macro": [{"title": "CPI YoY", "days_until": 5,
-                   "detail": {"estimate": 2.9, "prev": 3.1, "actual": None}}],
-        "corporate_actions": [{"ticker": "AAPL", "kind": "dividend", "ex_date": "2026-09-26",
-                               "ratio": None, "amount": 0.26}],
+        "earnings": [
+            {
+                "ticker": "NVDA",
+                "days_until": 3,
+                "when_hint": "amc",
+                "detail": {"eps_est": 1.25, "eps_actual": 1.3, "rev_est": 46_000_000_000},
+            }
+        ],
+        "macro": [
+            {
+                "title": "CPI YoY",
+                "days_until": 5,
+                "detail": {"estimate": 2.9, "prev": 3.1, "actual": None},
+            }
+        ],
+        "corporate_actions": [
+            {
+                "ticker": "AAPL",
+                "kind": "dividend",
+                "ex_date": "2026-09-26",
+                "ratio": None,
+                "amount": 0.26,
+            }
+        ],
     }
     out = _render_events(payload)
     assert "est EPS 1.25" in out and "last actual 1.3" in out and "est rev" in out
@@ -45,9 +63,7 @@ def test_render_events_empty_with_no_corporate_actions_key():
 
 
 def test_render_events_all_empty_including_corporate_actions():
-    assert "_(none" in _render_events(
-        {"earnings": [], "macro": [], "corporate_actions": []}
-    )
+    assert "_(none" in _render_events({"earnings": [], "macro": [], "corporate_actions": []})
 
 
 def test_render_events_split_branch():
@@ -55,8 +71,13 @@ def test_render_events_split_branch():
         "earnings": [],
         "macro": [],
         "corporate_actions": [
-            {"ticker": "NVDA", "kind": "split", "ex_date": "2026-10-01", "ratio": 10.0,
-             "amount": None},
+            {
+                "ticker": "NVDA",
+                "kind": "split",
+                "ex_date": "2026-10-01",
+                "ratio": 10.0,
+                "amount": None,
+            },
         ],
     }
     out = _render_events(payload)
@@ -69,8 +90,13 @@ def test_render_events_skips_malformed_corporate_action_row():
         "earnings": [],
         "macro": [],
         "corporate_actions": [
-            {"ticker": "AAPL", "kind": "dividend", "ex_date": "2026-09-26", "ratio": None,
-             "amount": None},
+            {
+                "ticker": "AAPL",
+                "kind": "dividend",
+                "ex_date": "2026-09-26",
+                "ratio": None,
+                "amount": None,
+            },
         ],
     }
     out = _render_events(payload)

@@ -136,8 +136,6 @@ class TestBuildFlowlitePayload:
         def _boom(*args, **kwargs):
             raise RuntimeError("boom")
 
-        monkeypatch.setattr(
-            "apps.analytics.services.unusual_options.unusual_options", _boom
-        )
+        monkeypatch.setattr("apps.analytics.services.unusual_options.unusual_options", _boom)
         payload = build_flowlite_payload(watchlist_tickers=["SPY"], primary="SPY")
         assert payload["unusual"] == []
