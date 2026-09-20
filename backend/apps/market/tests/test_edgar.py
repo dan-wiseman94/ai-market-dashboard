@@ -208,6 +208,61 @@ def test_fetch_filings_mock_mode_respects_form_filter():
     assert all(f["form"] == "10-K" for f in result)
 
 
+def test_fetch_filings_active_insider_does_not_evict_base_filings():
+    """An issuer with heavy Form 4 (insider trade) activity must not push the
+    10-K/10-Q/8-K rows out of the base call's limit=10 window — the snapshots
+    filings fetcher relies on forms-then-limit filtering (not limit-then-forms)
+    to keep the two calls (base + Form 4) independent. See spec 6.3."""
+    # 15 Form 4 filings, newest-first, all more recent than the 3 base filings
+    # that follow them in the raw (still newest-first) EDGAR feed — the worst
+    # case for a naive "take the first `limit` rows, then filter by form" bug.
+    form4_dates = [_days_ago(n) for n in range(1, 16)]
+    base_dates = [_days_ago(60), _days_ago(90), _days_ago(120)]
+    base_forms = ["10-K", "10-Q", "8-K"]
+
+    forms = ["4"] * 15 + base_forms
+    filed = form4_dates + base_dates
+    n = len(forms)
+    submissions = {
+        "name": "Active Insider Corp",
+        "filings": {
+            "recent": {
+                "form": forms,
+                "filingDate": filed,
+                "accessionNumber": [f"0-{i}" for i in range(n)],
+                "primaryDocument": [f"doc{i}.htm" for i in range(n)],
+                "reportDate": [""] * n,
+            }
+        },
+    }
+
+    def _side_effect(url: str, *, headers: dict) -> dict:
+        if "company_tickers" in url:
+            return {"0": {"cik_str": 42, "ticker": "AIC", "title": "Active Insider Corp"}}
+        return submissions
+
+    with (
+        patch("apps.market.services.edgar._get", side_effect=_side_effect),
+        patch(
+            "apps.market.services.edgar.cache.get_or_fetch",
+            side_effect=_passthrough_cache,
+        ),
+    ):
+        base = fetch_filings("AIC")
+        insider = fetch_filings("AIC", forms=("4",), limit=5, max_age_days=45)
+
+    # The base call's default forms (10-K/10-Q/8-K) budget is untouched — all 3
+    # base filings survive despite 15 more-recent Form 4s ahead of them.
+    assert {f["form"] for f in base} == set(base_forms)
+    assert len(base) == 3
+    assert sorted(f["filed"] for f in base) == sorted(base_dates)
+
+    # The insider call returns its own top-5-by-recency Form 4 rows.
+    assert all(f["form"] == "4" for f in insider)
+    assert len(insider) == 5
+    assert [f["filed"] for f in insider] == form4_dates[:5]
+
+
 def test_fetch_filings_drop_stale_entries_by_default():
     """A rarely-filing issuer (the audit's QQQ trust served 8-Ks from 2014) must
     not surface decade-old documents as current context."""

@@ -109,6 +109,46 @@ def test_alt_news_prefers_marketaux_over_tiingo():
 
 
 @pytest.mark.django_db
+def test_alt_bars_tiingo_converts_bar_count_to_calendar_days():
+    """Tiingo treats limit as a calendar-day lookback, not a bar count.
+    Convert 260 bars to ~382 calendar days so 260 bars means 260 bars."""
+    _cred("tiingo")
+    seen = {}
+
+    def capture_call(ticker, *, days):
+        seen["days"] = days
+        return []
+
+    with patch("apps.market.services.tiingo.fetch_daily_bars", side_effect=capture_call):
+        fallback.alt_bars("SPY", timeframe="1d", limit=260)
+
+    expected_days = int(260 * 1.45) + 5
+    assert seen["days"] == expected_days, (
+        f"Expected days={expected_days} but got days={seen['days']}"
+    )
+
+
+@pytest.mark.django_db
+def test_alt_bars_polygon_converts_bar_count_to_calendar_days():
+    """Polygon treats days as a calendar-day lookback, not a bar count.
+    Convert 260 bars to ~382 calendar days so 260 bars means 260 bars."""
+    _cred("polygon")
+    seen = {}
+
+    def capture_call(ticker, *, days):
+        seen["days"] = days
+        return []
+
+    with patch("apps.market.services.polygon.fetch_daily_bars", side_effect=capture_call):
+        fallback.alt_bars("SPY", timeframe="1d", limit=260)
+
+    expected_days = int(260 * 1.45) + 5
+    assert seen["days"] == expected_days, (
+        f"Expected days={expected_days} but got days={seen['days']}"
+    )
+
+
+@pytest.mark.django_db
 def test_fetch_quotes_falls_back_when_schwab_absent():
     from apps.market.services import quotes
 

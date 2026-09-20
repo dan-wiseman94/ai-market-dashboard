@@ -1,5 +1,6 @@
 import ModelSelect from "@/components/settings/ModelSelect";
 import { useAiModels } from "@/hooks/useAiModels";
+import { SECTION_LABELS, VIX_LABEL } from "@/lib/snapshotSections";
 import { SECTION_OPTIONS } from "./types";
 import type { useProfileForm } from "./useProfileForm";
 
@@ -28,9 +29,17 @@ export function ProfileForm({ form }: { form: ReturnType<typeof useProfileForm> 
                 type="checkbox" checked={draft.default_includes.includes(sec)}
                 onChange={() => toggleSection(sec)}
               />
-              {sec}
+              {SECTION_LABELS[sec]}
             </label>
           ))}
+        </div>
+        <div className="mt-2">
+          <span
+            data-testid="vix-always-included-chip"
+            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-slate-700 bg-slate-800/60 text-xs text-slate-400"
+          >
+            {VIX_LABEL} — always included
+          </span>
         </div>
       </div>
       <div className="flex gap-2 items-start">

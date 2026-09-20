@@ -154,3 +154,28 @@ def test_fetch_daily_bars_requests_unadjusted_bars():
         polygon_mod.fetch_daily_bars("AAPL", days=120)
 
     assert captured["params"]["adjusted"] == "false"
+
+
+@pytest.mark.django_db
+def test_fetch_daily_bars_limit_is_500():
+    """Polygon's aggregates limit must be 500 to cover 260 trading bars
+    (≈382 calendar days) plus buffer."""
+    captured: dict = {}
+
+    def _capture(path, params, api_key):
+        captured["params"] = params
+        return _RAW_AGGS_BODY
+
+    with (
+        patch("apps.market.services.polygon._api_key", return_value="k"),
+        patch("apps.market.services.polygon._get", side_effect=_capture),
+        patch(
+            "apps.market.services.polygon.cache.get_or_fetch",
+            side_effect=lambda key, *, ttl_seconds, fetcher: fetcher(),
+        ),
+    ):
+        polygon_mod.fetch_daily_bars("AAPL", days=120)
+
+    assert captured["params"]["limit"] == 500, (
+        f"Expected limit=500 but got limit={captured['params']['limit']}"
+    )

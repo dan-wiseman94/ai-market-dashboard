@@ -38,6 +38,8 @@ SERIES: dict[str, str] = {
     "DGS10": "10Y yield",
     "DGS30": "30Y yield",
     "T10Y2Y": "10Y-2Y spread",
+    "BAMLH0A0HYM2": "HY OAS",
+    "BAMLC0A0CM": "IG OAS",
     "VIXCLS": "VIX",
     "DTWEXBGS": "Dollar index",
     "MORTGAGE30US": "30Y mortgage",

@@ -3,11 +3,16 @@
 from __future__ import annotations
 
 import base64
+import logging
+from collections.abc import Callable
 from datetime import UTC, datetime
+from typing import Any
 
 from apps.snapshots.image_store import read_image_bytes
-from apps.snapshots.models import Snapshot, SnapshotImage
+from apps.snapshots.models import Snapshot, SnapshotImage, SnapshotSection
 from apps.snapshots.token_budget import estimate_tokens, prune_to_budget
+
+log = logging.getLogger(__name__)
 
 # Never truncate the OHLC tail below this many bars — fewer stops being a price
 # path; at that point dropping the section (prune_to_budget) is more honest.
@@ -32,6 +37,29 @@ def _age_str(captured_at: datetime) -> str:
     if minutes >= 1:
         return f"{minutes} minutes ago" if minutes > 1 else "1 minute ago"
     return "just now"
+
+
+def _render_included_section(kind: str, sec: SnapshotSection | None, snapshot: Snapshot) -> str:
+    """Render one included section for the AI payload.
+
+    Dispatches kinds whose renderer needs the snapshot's captured_at — chain's
+    unusual-activity lookup and OHLC's long-horizon stored-bar query bound (eval
+    replay re-serializes FROZEN past snapshots and must stay look-ahead-safe; an
+    unbounded OHLC query would leak the outcome window into the replayed prompt).
+    Extracted from serialize_for_ai's loop to keep it under the complexity gate.
+    """
+    if sec is None or sec.status == "failed":
+        err = sec.error if sec else "missing"
+        return f"## {_title(kind)}\n_(unavailable: {err})_"
+    if kind == "chain":
+        return _render_chain(
+            sec.payload,
+            ticker=(sec.payload or {}).get("ticker", "?"),
+            captured_at=snapshot.captured_at,
+        )
+    if kind == "ohlc":
+        return _render_ohlc(sec.payload, captured_at=snapshot.captured_at)
+    return _render_section(kind, sec.payload)
 
 
 def serialize_for_ai(
@@ -87,12 +115,7 @@ def serialize_for_ai(
     rendered: dict[str, str] = {}
 
     for kind in snapshot.includes:
-        sec = sections_by_kind.get(kind)
-        if sec is None or sec.status == "failed":
-            err = sec.error if sec else "missing"
-            rendered[kind] = f"## {_title(kind)}\n_(unavailable: {err})_"
-            continue
-        text = _render_section(kind, sec.payload)
+        text = _render_included_section(kind, sections_by_kind.get(kind), snapshot)
         if text:
             rendered[kind] = text
 
@@ -104,6 +127,7 @@ def serialize_for_ai(
             max_tokens=max_tokens,
             provider=provider,
             model=model,
+            captured_at=snapshot.captured_at,
         )
 
     pruned_sections, pruned_kinds = prune_to_budget(
@@ -156,6 +180,10 @@ def _title(kind: str) -> str:
         "overnight": "Overnight board",
         "fundamentals": "Company fundamentals",
         "vix": "VIX term structure",
+        "filings": "SEC filings",
+        "treasury": "Treasury",
+        "fed": "Fed communication",
+        "flowlite": "Flow proxy (volume-based)",
     }.get(kind, kind.title())
 
 
@@ -272,7 +300,55 @@ def _ohlc_csv(bars: list[dict], ticker: str) -> str:
     return result
 
 
-def _render_ohlc(payload: dict) -> str:
+def _long_horizon_summary(ticker: str | None, captured_at: datetime | None = None) -> str:
+    """52-week context off stored daily bars — the persisted OHLCBar archive
+    otherwise never reaches the prompt. Empty string when bars are thin.
+
+    ``captured_at``, when given, bounds the bar query to ``ts <= captured_at``.
+    This is load-bearing for eval replay: apps.analytics.services.aieval.replay_one
+    re-serializes FROZEN past snapshots, and an unbounded query would leak
+    returns computed over the (future, relative to the snapshot) outcome window
+    into the replayed prompt. ``None`` (the default) keeps the prior unbounded
+    behavior for callers without a snapshot context (e.g. bare-helper tests).
+    """
+    if not ticker:
+        return ""
+    try:
+        from apps.market.models import OHLCBar
+
+        qs = OHLCBar.objects.filter(ticker=ticker.upper(), timeframe="1d")
+        if captured_at is not None:
+            qs = qs.filter(ts__lte=captured_at)
+        closes = [float(b.close) for b in qs.order_by("-ts")[:252]]
+    except Exception as exc:
+        # Database not available (e.g., unit tests without django_db mark), or other errors.
+        log.debug("snapshots.long_horizon skipped for %s: %s", ticker, exc)
+        return ""
+    if len(closes) < 20:
+        return ""
+    last, hi, lo = closes[0], max(closes), min(closes)
+    bits = [
+        f"{len(closes)}-session high {hi:.2f} / low {lo:.2f}",
+        f"{(last - hi) / hi * 100:+.1f}% off high",
+    ]
+    for p in (20, 50, 200):
+        if len(closes) >= p:
+            sma = sum(closes[:p]) / p
+            bits.append(f"{(last - sma) / sma * 100:+.1f}% vs {p}dSMA")
+    # Computed from the already-fetched (and already-bounded) closes list, NOT
+    # apps.market.services.intel.return_over_sessions — that helper re-queries
+    # OHLCBar with no time bound and would reintroduce the look-ahead leak.
+    rets = []
+    for w in (5, 20, 60):
+        if len(closes) > w and closes[w]:
+            r = round((closes[0] - closes[w]) / closes[w] * 100, 4)
+            rets.append(f"{w}d {r:+.1f}%")
+    if rets:
+        bits.append("returns " + ", ".join(rets))
+    return "\n\n**Longer horizon (stored daily bars):** " + " | ".join(bits)
+
+
+def _render_ohlc(payload: dict, *, captured_at: datetime | None = None) -> str:
     bars = payload.get("bars", [])
     if not bars:
         return "## OHLC\n_(empty)_"
@@ -301,6 +377,9 @@ def _render_ohlc(payload: dict) -> str:
             )
     if payload.get("watchlist_daily_omitted"):
         result += "\n\n_(per-ticker watchlist daily history omitted to fit the token budget)_"
+    long_horizon = _long_horizon_summary(ticker if ticker != "?" else None, captured_at)
+    if long_horizon:
+        result += long_horizon
     return result
 
 
@@ -311,6 +390,7 @@ def _shrink_ohlc_to_budget(
     max_tokens: int,
     provider: str,
     model: str,
+    captured_at: datetime | None = None,
 ) -> dict[str, str]:
     """Truncate the OHLC bars (oldest first) when the total overflows the budget.
 
@@ -329,7 +409,7 @@ def _shrink_ohlc_to_budget(
     # series loses a single bar — the intraday path is what the AI reasons over.
     if ohlc_payload.get("watchlist_daily"):
         ohlc_payload = {**ohlc_payload, "watchlist_daily": {}, "watchlist_daily_omitted": True}
-        rendered = {**rendered, "ohlc": _render_ohlc(ohlc_payload)}
+        rendered = {**rendered, "ohlc": _render_ohlc(ohlc_payload, captured_at=captured_at)}
         sizes["ohlc"] = estimate_tokens(rendered["ohlc"], provider=provider, model=model)
         total = sum(sizes.values())
         if total <= max_tokens:
@@ -346,7 +426,7 @@ def _shrink_ohlc_to_budget(
     while True:
         keep = min(keep, len(bars))
         shrunk = {**ohlc_payload, "bars": bars[-keep:], "truncated_from": len(bars)}
-        text = _render_ohlc(shrunk)
+        text = _render_ohlc(shrunk, captured_at=captured_at)
         fits = estimate_tokens(text, provider=provider, model=model) <= headroom
         if fits or keep <= _OHLC_MIN_BARS:
             return {**rendered, "ohlc": text}
@@ -373,23 +453,88 @@ def _render_positions(payload: list) -> str:
     return "\n".join(lines)
 
 
-def _render_breadth(payload: dict) -> str:
-    lines = [
-        "## Market breadth",
-        f"- SPX: {_fmt(payload.get('spx_last'))}",
-        f"- QQQ: {_fmt(payload.get('qqq_last'))}",
-        f"- VIX: {_fmt(payload.get('vix_last'))}",
+def _render_factor_returns(factor: dict | None) -> list[str]:
+    """Render factor ETFs and spreads lines (extracted to reduce _render_breadth complexity)."""
+    if not isinstance(factor, dict):
+        return []
+
+    def _w5(row: dict) -> int | float | None:
+        v = row.get(5, row.get("5"))
+        return v if isinstance(v, int | float) else None
+
+    lines = []
+    etf_bits = [
+        f"{etf} {v:+.2f}%"
+        for etf, row in (factor.get("etfs") or {}).items()
+        if (v := _w5(row)) is not None
     ]
-    if payload.get("sectors"):
-        lines.append(
-            "- Sectors: " + ", ".join(f"{k}={_fmt(v)}" for k, v in payload["sectors"].items())
+    if etf_bits:
+        lines.append("- Factor ETFs (5d): " + ", ".join(etf_bits))
+
+    sp_labels = (
+        ("Mom-Val", "momentum_minus_value"),
+        ("Small-Large", "small_minus_large"),
+        ("Growth-Value", "growth_minus_value_proxy"),
+    )
+    sp_bits = [
+        f"{label} {v:+.2f}%"
+        for label, key in sp_labels
+        if (v := _w5((factor.get("spreads") or {}).get(key) or {})) is not None
+    ]
+    if sp_bits:
+        lines.append("- Factor spreads (5d): " + ", ".join(sp_bits))
+    return lines
+
+
+def _render_breadth(payload: dict) -> str:
+    lines = ["## Market breadth"]
+    idx = payload.get("index_complex") or []
+    if idx:
+        idx_bits = ", ".join(
+            f"{r['symbol']} {_fmt(r.get('last'))} ({_fmt(r.get('pct_change'))}%)" for r in idx
         )
+        lines.append(f"- Index complex: {idx_bits}")
+    else:
+        lines.append(f"- SPX: {_fmt(payload.get('spx_last'))}")
+        lines.append(f"- QQQ: {_fmt(payload.get('qqq_last'))}")
+    lines.append(f"- VIX: {_fmt(payload.get('vix_last'))}")
+    dollar = payload.get("dollar")
+    if isinstance(dollar, dict):
+        lines.append(
+            f"- Dollar (UUP): {_fmt(dollar.get('last'))} ({_fmt(dollar.get('pct_change'))}%)"
+        )
+    sectors = payload.get("sectors") or {}
+    if sectors:
+        pct = payload.get("sector_pct") or {}
+        rot = {r["sector"]: r for r in (payload.get("sector_rotation") or [])}
+        lines += ["", "| Sector | Last | 1d% | 5d% | RS vs SPX (5d) |", "|---|---:|---:|---:|---:|"]
+        for etf, last in sectors.items():
+            r = rot.get(etf) or {}
+            lines.append(
+                f"| {etf} | {_fmt(last)} | {_fmt(pct.get(etf))} | "
+                f"{_fmt(r.get('return_pct'))} | {_fmt(r.get('rs'))} |"
+            )
+        lines.append("")
     if payload.get("breadth"):
         lines.append(
-            "- Breadth: " + ", ".join(f"{k}={_fmt(v)}" for k, v in payload["breadth"].items())
+            "- Internals: " + ", ".join(f"{k}={_fmt(v)}" for k, v in payload["breadth"].items())
         )
-    # Relative strength — keys in windows dict are int in Python but may be str after a
-    # JSON round-trip (stored payload); .items() works for both, so no special casing needed.
+    stats = payload.get("breadth_stats")
+    if isinstance(stats, dict):
+        sma_bits = [
+            f">{p}dSMA {d['pct']:.0f}% ({d['above']}/{d['n']})"
+            for p, d in (stats.get("pct_above_sma") or {}).items()
+            if isinstance(d, dict) and d.get("pct") is not None
+        ]
+        if sma_bits:
+            lines.append("- Sector breadth: " + ", ".join(sma_bits))
+        if stats.get("hl_n"):
+            span = stats.get("min_span_sessions") or stats.get("hl_window")
+            lines.append(
+                f"- Fresh highs/lows (≤{span}-session span, {stats['hl_n']} names): "
+                f"{stats.get('highs', 0)} high / {stats.get('lows', 0)} low"
+            )
+    # Relative strength — keys may be int or str after a JSON round-trip.
     rs = payload.get("relative_strength")
     if rs and rs.get("windows"):
         bits = []
@@ -400,16 +545,7 @@ def _render_breadth(payload: dict) -> str:
             lines.append(
                 f"- Relative strength ({rs['ticker']} vs {rs['benchmark']}): " + ", ".join(bits)
             )
-    # Sector rotation — show leader (first) and laggard (last).
-    rotation = payload.get("sector_rotation") or []
-    if rotation:
-        top = rotation[0]
-        bot = rotation[-1]
-        lines.append(
-            f"- Sector rotation ({len(rotation)} sectors): "
-            f"leader {top['sector']} {top['return_pct']:+.2f}%, "
-            f"laggard {bot['sector']} {bot['return_pct']:+.2f}%"
-        )
+    lines.extend(_render_factor_returns(payload.get("factor_returns")))
     return "\n".join(lines)
 
 
@@ -470,21 +606,20 @@ def _or_dash(v) -> str:
     return "—" if v is None else str(v)
 
 
-def _render_chain(payload: dict, *, ticker: str = "?") -> str:
-    from apps.market.services.option_analytics import chain_analytics
+def _flatten_contracts(expiries: dict) -> list[dict]:
+    """Flatten {expiry: {"calls": [...], "puts": [...]}} into one list, tagging side+expiry."""
+    flat: list[dict] = []
+    for exp, section in expiries.items():
+        for contract in section.get("calls", []):
+            flat.append({**contract, "side": "call", "expiry": exp})
+        for contract in section.get("puts", []):
+            flat.append({**contract, "side": "put", "expiry": exp})
+    return flat
 
-    underlying = payload.get("underlying_last")
-    header = f"## Option chain — {ticker}"
-    if underlying:
-        header += f" (underlying ${underlying})"
-    expiries = payload.get("expiries") or {}
-    if not expiries:
-        return f"{header}\n_(no expiries)_"
 
-    # Keep the 2 nearest expiries (sorted ascending; payload may include weeklies + monthlies).
-    keep = sorted(expiries.keys())[:2]
-
-    lines = [header]
+def _render_expiry_tables(keep: list[str], expiries: dict) -> list[str]:
+    """Per-expiry call/put strike tables for the nearest `keep` expiries."""
+    lines: list[str] = []
     for exp in keep:
         section = expiries[exp]
         calls_by_strike = {c["strike"]: c for c in section.get("calls", [])}
@@ -504,6 +639,68 @@ def _render_chain(payload: dict, *, ticker: str = "?") -> str:
                 f"{_or_dash(p.get('bid'))} | {_or_dash(p.get('ask'))} | "
                 f"{_or_dash(p.get('delta'))} | {_or_dash(p.get('iv'))} |"
             )
+    return lines
+
+
+def _sf(v) -> float:
+    try:
+        return float(v or 0)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _top_strikes(flat: list[dict], side: str, key: str) -> str:
+    rows = sorted(
+        (c for c in flat if c.get("side") == side and _sf(c.get(key)) > 0),
+        key=lambda c: _sf(c.get(key)),
+        reverse=True,
+    )[:5]
+    return ", ".join(
+        f"{c.get('strike')} ({c.get('expiry')}) {int(_sf(c.get(key))):,}" for c in rows
+    )
+
+
+def _render_top_strikes_lines(flat: list[dict]) -> list[str]:
+    """Top-5-by-volume and top-5-by-OI strikes, calls and puts side by side."""
+    lines: list[str] = []
+    for label, key in (("volume", "volume"), ("OI", "oi")):
+        calls_s, puts_s = _top_strikes(flat, "call", key), _top_strikes(flat, "put", key)
+        if calls_s or puts_s:
+            lines.append(
+                f"\n**Top {label} strikes** — calls: {calls_s or '—'} | puts: {puts_s or '—'}"
+            )
+    return lines
+
+
+def _render_unusual_activity_lines(ticker: str, captured_at) -> list[str]:
+    """Unusual-options lookup for this chain; failure-proof — degrades to no block."""
+    if captured_at is None or ticker in ("?", "", None):
+        return []
+    try:
+        from apps.analytics.services.unusual_options import unusual_options
+
+        flagged = unusual_options(ticker=ticker, at=captured_at, top_n=5)
+    except Exception:
+        flagged = []
+    if not flagged:
+        return []
+    return ["\n**Unusual activity:**", *(f"- {_describe_unusual(row)}" for row in flagged)]
+
+
+def _render_chain(payload: dict, *, ticker: str = "?", captured_at=None) -> str:
+    from apps.market.services.option_analytics import chain_analytics
+
+    underlying = payload.get("underlying_last")
+    header = f"## Option chain — {ticker}"
+    if underlying:
+        header += f" (underlying ${underlying})"
+    expiries = payload.get("expiries") or {}
+    if not expiries:
+        return f"{header}\n_(no expiries)_"
+
+    # Keep the 2 nearest expiries (sorted ascending; payload may include weeklies + monthlies).
+    keep = sorted(expiries.keys())[:2]
+    lines = [header, *_render_expiry_tables(keep, expiries)]
 
     # Chain analytics — computed over ALL expiries in the payload (not just the 2 displayed).
     try:
@@ -511,12 +708,7 @@ def _render_chain(payload: dict, *, ticker: str = "?") -> str:
     except (TypeError, ValueError):
         spot = None
 
-    flat: list[dict] = []
-    for exp, section in expiries.items():
-        for contract in section.get("calls", []):
-            flat.append({**contract, "side": "call", "expiry": exp})
-        for contract in section.get("puts", []):
-            flat.append({**contract, "side": "put", "expiry": exp})
+    flat = _flatten_contracts(expiries)
 
     analytics = chain_analytics(flat, spot=spot)
     lines.append("\n### Chain analytics")
@@ -532,7 +724,28 @@ def _render_chain(payload: dict, *, ticker: str = "?") -> str:
         priced = " · ".join(f"±{r['move_pct'] * 100:.1f}% ({r['horizon_days']}d)" for r in em_rows)
         lines.append(f"\n**Options-implied move (1σ):** {priced}")
 
+    lines.extend(_render_top_strikes_lines(flat))
+    lines.extend(_render_unusual_activity_lines(ticker, captured_at))
+
     return "\n".join(lines)
+
+
+def _describe_unusual(row: dict) -> str:
+    """Format one apps.analytics.services.unusual_options flagged-row dict.
+
+    Row keys: side ("call"|"put"), strike, expiry, volume, oi, volume_ratio
+    (volume / max(oi, 1)), iv_z, triggers, score.
+    """
+    side = row.get("side", "?")
+    strike = row.get("strike", "?")
+    expiry = row.get("expiry", "?")
+    vol_ratio = row.get("volume_ratio")
+    ratio_s = f"{vol_ratio:.1f}" if vol_ratio is not None else "—"
+    volume = row.get("volume")
+    oi = row.get("oi")
+    vol_s = f"{volume:,}" if isinstance(volume, int | float) else "—"
+    oi_s = f"{oi:,}" if isinstance(oi, int | float) else "—"
+    return f"{side} {strike} {expiry}: vol/OI {ratio_s} — volume {vol_s} vs OI {oi_s}"
 
 
 def _render_chain_analytics(a: dict) -> str:
@@ -569,6 +782,11 @@ def _render_chain_analytics(a: dict) -> str:
     gex_total_s = f"{total_gex:,.0f}" if total_gex is not None else "—"
     gex_flip_s = _fmt(flip) if flip is not None else "—"
     parts.append(f"- Dealer GEX total: {gex_total_s} | zero-gamma flip strike: {gex_flip_s}")
+
+    by_strike = gex.get("by_strike") or []
+    if by_strike:
+        walls = ", ".join(f"{_fmt(r['strike'])}: {r['gex']:,.0f}" for r in by_strike)
+        parts.append(f"- GEX by strike (top {len(by_strike)}, gamma walls): {walls}")
 
     return "\n".join(parts)
 
@@ -620,16 +838,40 @@ def build_image_blocks(image_ids: list[int], *, provider_name: str) -> list[dict
 def _render_events(payload) -> str:
     earnings = payload.get("earnings", []) if isinstance(payload, dict) else []
     macro = payload.get("macro", []) if isinstance(payload, dict) else []
-    if not earnings and not macro:
+    actions = payload.get("corporate_actions", []) if isinstance(payload, dict) else []
+    if not earnings and not macro and not actions:
         return "## Upcoming events\n_(none in the next 14 days)_"
     lines = ["## Upcoming events"]
     for e in earnings:
         hint = f", {e['when_hint'].upper()}" if e.get("when_hint") else ""
-        est = (e.get("detail") or {}).get("eps_est")
-        est_s = f", est EPS {est}" if est is not None else ""
+        d = e.get("detail") or {}
+        bits = []
+        if d.get("eps_est") is not None:
+            bits.append(f"est EPS {d['eps_est']}")
+        if d.get("eps_actual") is not None:
+            bits.append(f"last actual {d['eps_actual']}")
+        if d.get("rev_est") is not None:
+            bits.append(f"est rev {d['rev_est']}")
+        est_s = f", {', '.join(bits)}" if bits else ""
         lines.append(f"- {e['ticker']} earnings in {e['days_until']}d{hint}{est_s}")
     for m in macro:
-        lines.append(f"- {m['title']} in {m['days_until']}d")
+        d = m.get("detail") or {}
+        extra = ", ".join(
+            f"{label} {d[k]}"
+            for label, k in (("est", "forecast"), ("prev", "prior"), ("actual", "actual"))
+            if d.get(k) is not None
+        )
+        lines.append(f"- {m['title']} in {m['days_until']}d" + (f" ({extra})" if extra else ""))
+    for a in actions:
+        if a.get("kind") == "split" and a.get("ratio") is not None:
+            what = f"split {a['ratio']}"
+        elif a.get("kind") == "dividend" and a.get("amount") is not None:
+            what = f"dividend ${a['amount']}"
+        else:
+            # Unknown kind or the expected value is missing — garbage must not
+            # reach the AI as a fabricated "dividend $None"/"split None" line.
+            continue
+        lines.append(f"- {a['ticker']} {what} ex {a['ex_date']}")
     return "\n".join(lines)
 
 
@@ -727,6 +969,15 @@ def _render_macro(payload: dict) -> str:
             y = live.get(tenor)
             if y:
                 lines.append(f"| {tenor} | {_fmt(y.get('yield_pct'))} |")
+        # Live curve proxy (30Y − 13W) spread
+        ly = payload.get("live_yields") or {}
+        long_y = (ly.get("30Y") or {}).get("yield_pct")
+        short_y = (ly.get("13W") or {}).get("yield_pct")
+        if isinstance(long_y, int | float) and isinstance(short_y, int | float):
+            lines.append(
+                f"- Live curve proxy (30Y − 13W): {long_y - short_y:+.2f}pp "
+                f"(official 2s10s is the lagged FRED 10Y-2Y spread row above)"
+            )
     return "\n".join(lines)
 
 
@@ -745,6 +996,13 @@ def _render_vix(payload) -> str:
         lines.append(
             f"- Spot {spot.get('symbol', '$VIX')}: "
             f"{_fmt(spot.get('last'))}{_signed_pct(spot.get('pct_change'))}"
+        )
+    vvix = payload.get("vvix")
+    if isinstance(vvix, dict) and vvix.get("last") is not None:
+        ratio = payload.get("vvix_vix_ratio")
+        ratio_s = f" — VVIX/VIX {float(ratio):.2f}" if isinstance(ratio, int | float) else ""
+        lines.append(
+            f"- VVIX: {_fmt(vvix.get('last'))}{_signed_pct(vvix.get('pct_change'))}{ratio_s}"
         )
     front = payload.get("front")
     if isinstance(front, dict):
@@ -775,10 +1033,117 @@ def _render_vix(payload) -> str:
     return "\n".join(lines)
 
 
-_RENDERERS = {
+def _render_filings(payload) -> str:
+    if not isinstance(payload, dict) or not payload:
+        return "## SEC filings\n_(none)_"
+    lines = ["## SEC filings"]
+    any_rows = False
+    for ticker, entry in payload.items():
+        rows = entry.get("filings") if isinstance(entry, dict) else entry
+        insider = entry.get("insider", []) if isinstance(entry, dict) else []
+        if not rows and not insider:
+            continue
+        any_rows = True
+        lines.append(f"\n### {ticker}")
+        if rows:
+            lines += ["| Form | Filed | Title |", "|---|---|---|"]
+            for f in rows:
+                lines.append(
+                    f"| {f.get('form')} | {f.get('filed')} | [{f.get('title')}]({f.get('url')}) |"
+                )
+        if insider:
+            lines.append(
+                "**Insider activity (Form 4):** "
+                + "; ".join(f"{i.get('filed')} [{i.get('title')}]({i.get('url')})" for i in insider)
+            )
+    return "\n".join(lines) if any_rows else "## SEC filings\n_(none)_"
+
+
+def _render_treasury(payload: dict) -> str:
+    """Average interest rates by security + total public debt.
+
+    payload keys (apps.market.services.treasury.fetch_treasury):
+    {"rates": {"record_date": "YYYY-MM-DD", "rates": {security_desc: float}},
+     "debt": {"record_date": "YYYY-MM-DD", "total_public_debt": float}}.
+    Either sub-dict independently degrades to {} on fetch failure.
+    """
+    if not isinstance(payload, dict):
+        return "## Treasury\n_(unavailable)_"
+    rates = (payload.get("rates") or {}).get("rates") or {}
+    debt = payload.get("debt") or {}
+    total_debt = debt.get("total_public_debt")
+    if not rates and total_debt is None:
+        return "## Treasury\n_(unavailable)_"
+    lines = ["## Treasury"]
+    if rates:
+        lines += ["| Security | Avg rate |", "|---|---:|"]
+        for security, rate in rates.items():
+            lines.append(f"| {security} | {_fmt(rate)}% |")
+    if total_debt is not None:
+        lines.append(f"- Debt to the penny: ${total_debt:,.0f}")
+    return "\n".join(lines)
+
+
+def _next_fomc_line() -> str:
+    """Days-to-next-FOMC line, sourced from the market events calendar.
+
+    Mirrors the query pattern `upcoming_events` uses for macro kinds (`kind`
+    + `event_time__gte=now`, ordered by `event_time`) — MarketEvent has no
+    plain `date` field.
+    """
+    from django.utils import timezone
+
+    from apps.market.models import MarketEvent
+
+    now = timezone.now()
+    ev = MarketEvent.objects.filter(kind="fomc", event_time__gte=now).order_by("event_time").first()
+    if ev is None:
+        return ""
+    days = (ev.event_time.date() - now.date()).days
+    return f"- Next FOMC decision in {days}d ({ev.event_time.date().isoformat()})"
+
+
+def _render_fed(payload) -> str:
+    items = payload.get("items", []) if isinstance(payload, dict) else []
+    lines = ["## Fed communication"]
+    fomc = _next_fomc_line()
+    if fomc:
+        lines.append(fomc)
+    if not items:
+        lines.append("_(no recent Fed communications)_")
+        return "\n".join(lines)
+    for it in items[:10]:
+        when = (it.get("published") or "")[:10] or "?"
+        lines.append(f"- **{when}** [{it.get('kind')}] [{it.get('title')}]({it.get('url')})")
+    return "\n".join(lines)
+
+
+def _render_flowlite(payload) -> str:
+    lines = ["## Flow proxy (volume-based — not fund-flow data)"]
+    vz = payload.get("volume_z") or [] if isinstance(payload, dict) else []
+    if vz:
+        lines.append(
+            "- Volume z vs 20d avg: " + ", ".join(f"{r['ticker']} {r['z']:+.1f}σ" for r in vz[:8])
+        )
+    pc = payload.get("put_call_delta") if isinstance(payload, dict) else None
+    if isinstance(pc, dict):
+        lines.append(
+            f"- {pc['ticker']} P/C volume ratio {pc['latest']:.2f} "
+            f"(Δ {pc['delta']:+.2f} vs prior chain)"
+        )
+    unusual = payload.get("unusual") or [] if isinstance(payload, dict) else []
+    for row in unusual:
+        lines.append(f"- Unusual: {_describe_unusual(row)}")
+    if len(lines) == 1:
+        lines.append("_(insufficient stored data — needs nightly bar ingest + a prior chain)_")
+    return "\n".join(lines)
+
+
+_RENDERERS: dict[str, Callable[[Any], str]] = {
     "quotes": _render_quotes,
     "ohlc": _render_ohlc,
-    "chain": lambda p: _render_chain(p, ticker=p.get("ticker", "?")),
+    # "chain" is NOT here: serialize_for_ai special-cases it to pass captured_at
+    # through to _render_chain (for the unusual-activity lookup) — see the loop above.
     "positions": _render_positions,
     "breadth": _render_breadth,
     "news": _render_news,
@@ -789,4 +1154,8 @@ _RENDERERS = {
     "macro": _render_macro,
     "notes": lambda _p: "",
     "vix": _render_vix,
+    "filings": _render_filings,
+    "treasury": _render_treasury,
+    "fed": _render_fed,
+    "flowlite": _render_flowlite,
 }

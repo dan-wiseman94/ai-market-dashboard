@@ -6,6 +6,7 @@ import {
   useRunSchedule,
   useSchedules,
   useToggleSchedule,
+  useUpdateScheduleIncludes,
 } from "@/hooks/useSchedules";
 import { hookWrapper, mockApi, mockApiError, newQueryClient } from "../testUtils";
 
@@ -90,6 +91,23 @@ describe("useDeleteSchedule", () => {
     await act(async () => {
       await result.current.mutateAsync(3);
     });
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["schedules"] });
+  });
+});
+
+describe("useUpdateScheduleIncludes", () => {
+  it("PATCHes with {default_includes} and URL contains id; invalidates ['schedules']", async () => {
+    const client = newQueryClient();
+    const invalidateSpy = vi.spyOn(client, "invalidateQueries");
+    const { calls } = mockApi({ "PATCH /api/observer/schedules/3/": scheduleFixture });
+    const { result } = renderHook(() => useUpdateScheduleIncludes(), {
+      wrapper: hookWrapper(client),
+    });
+    await act(async () => {
+      await result.current.mutateAsync({ id: 3, default_includes: ["quotes", "news"] });
+    });
+    expect(calls[0].url).toContain("/api/observer/schedules/3/");
+    expect(calls[0].body).toMatchObject({ default_includes: ["quotes", "news"] });
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["schedules"] });
   });
 });
