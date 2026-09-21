@@ -303,6 +303,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/backups/{id}/restore/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Restore the database from this backup, replacing its entire contents.
+         *
+         *     Requires `{"confirm": "<exact backup filename>"}` in the body.
+         */
+        post: operations["backups_restore_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/backups/run/": {
         parameters: {
             query?: never;
@@ -390,6 +411,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /** @description Paginated briefing history, newest first ({count, next, previous, results}). */
         get: operations["briefings_list"];
         put?: never;
         post?: never;
@@ -471,7 +493,16 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Read the per-ticker house views; trigger a manual revision. */
+        /**
+         * @description The note for a ticker, or 204 when nothing has opened coverage there yet.
+         *
+         *     An uncovered ticker is the ordinary case, not an error: the market page
+         *     renders a house-view strip for every symbol and most have no note. A 404
+         *     would put a console error on each of those page loads, which both drowns
+         *     real failures and fails the e2e console guard. 204 is the shape the API
+         *     client already coalesces to null for the other "latest, maybe absent"
+         *     reads.
+         */
         get: operations["coverage_retrieve"];
         put?: never;
         post?: never;
@@ -698,6 +729,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/features/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Read-only inventory of every user-switchable capability: copy, grouping, effective value, provenance and per-object rollups. Writes go to the endpoint named by each row's write_path. */
+        get: operations["features_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/files/": {
         parameters: {
             query?: never;
@@ -765,10 +813,21 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Read + prune/mute the distilled lessons — the lessons hygiene surface. */
+        /**
+         * @description Author, review, mute/pin and prune the lessons the Coach draws on.
+         *
+         *     List filters (all optional): ``?muted=``, ``?pinned=``, ``?visible=`` (the
+         *     resolved coach-visibility rule). Ordering is pinned first, then best-supported.
+         */
         get: operations["lessons_list"];
         put?: never;
-        post?: never;
+        /**
+         * @description Author, review, mute/pin and prune the lessons the Coach draws on.
+         *
+         *     List filters (all optional): ``?muted=``, ``?pinned=``, ``?visible=`` (the
+         *     resolved coach-visibility rule). Ordering is pinned first, then best-supported.
+         */
+        post: operations["lessons_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -782,15 +841,36 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
-        /** @description Read + prune/mute the distilled lessons — the lessons hygiene surface. */
+        /**
+         * @description Author, review, mute/pin and prune the lessons the Coach draws on.
+         *
+         *     List filters (all optional): ``?muted=``, ``?pinned=``, ``?visible=`` (the
+         *     resolved coach-visibility rule). Ordering is pinned first, then best-supported.
+         */
+        get: operations["lessons_retrieve"];
+        /**
+         * @description Author, review, mute/pin and prune the lessons the Coach draws on.
+         *
+         *     List filters (all optional): ``?muted=``, ``?pinned=``, ``?visible=`` (the
+         *     resolved coach-visibility rule). Ordering is pinned first, then best-supported.
+         */
         put: operations["lessons_update"];
         post?: never;
-        /** @description Read + prune/mute the distilled lessons — the lessons hygiene surface. */
+        /**
+         * @description Author, review, mute/pin and prune the lessons the Coach draws on.
+         *
+         *     List filters (all optional): ``?muted=``, ``?pinned=``, ``?visible=`` (the
+         *     resolved coach-visibility rule). Ordering is pinned first, then best-supported.
+         */
         delete: operations["lessons_destroy"];
         options?: never;
         head?: never;
-        /** @description Read + prune/mute the distilled lessons — the lessons hygiene surface. */
+        /**
+         * @description Author, review, mute/pin and prune the lessons the Coach draws on.
+         *
+         *     List filters (all optional): ``?muted=``, ``?pinned=``, ``?visible=`` (the
+         *     resolved coach-visibility rule). Ordering is pinned first, then best-supported.
+         */
         patch: operations["lessons_partial_update"];
         trace?: never;
     };
@@ -1044,6 +1124,44 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/predictions/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Browse the ledger: ``?ticker=``, ``?status=`` (open/resolving/resolved/
+         *     invalidated), ``?horizon=`` (days). Newest call first. An unknown status or a
+         *     non-numeric horizon is ignored rather than 400ing — these are URL-driven UI
+         *     filters, not a contract.
+         */
+        get: operations["predictions_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/predictions/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["predictions_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/predictions/ai-view/": {
         parameters: {
             query?: never;
@@ -1076,6 +1194,27 @@ export interface paths {
          *     divergence rollup. ``?partial=false`` to show only hard diverges.
          */
         get: operations["predictions_divergences_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/predictions/stats/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Ledger rollup: overall counts + per-ticker hit rate, under the same
+         *     ``ticker``/``status``/``horizon`` filters as the list. Two aggregate queries
+         *     total — no per-ticker fan-out.
+         */
+        get: operations["predictions_stats_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1148,6 +1287,30 @@ export interface paths {
         patch: operations["profiles_partial_update"];
         trace?: never;
     };
+    "/api/profiles/{id}/memory/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read this profile's memory store
+         * @description Lists every file Claude's Memory tool wrote under this profile, with a truncated preview of each so injected content is visible. A profile that has never run has no directory: that is a 200 with an empty list.
+         */
+        get: operations["profiles_memory_retrieve"];
+        put?: never;
+        post?: never;
+        /**
+         * Clear this profile's memory store
+         * @description Deletes everything the model stored for this profile and reports what went. The context is gone for good; later runs start from an empty store.
+         */
+        delete: operations["profiles_memory_destroy"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/recall/": {
         parameters: {
             query?: never;
@@ -1158,6 +1321,29 @@ export interface paths {
         get: operations["recall_retrieve"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/recall/backfill/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Queue an index catch-up over every un-indexed source.
+         *
+         *     Safe to press repeatedly: the backfill is idempotent and embeddings are computed
+         *     locally, so it costs CPU, never provider spend. Poll /api/recall/status/ for the
+         *     per-kind counts as they fill in.
+         */
+        post: operations["recall_backfill_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1511,6 +1697,20 @@ export interface paths {
         get: operations["theses_retrieve"];
         put: operations["theses_update"];
         post?: never;
+        /**
+         * @description Archive the thesis (204). It leaves the list, the coach and the guard, and
+         *     keeps its history.
+         *
+         *     PostMortem cascades off Thesis, so dropping the row would take every
+         *     completed post-mortem with it — and with them the conviction calibration,
+         *     Brier score and cohort base rates the scorecard, Mirror and Coach compute
+         *     from decisive post-mortems. It would also leave the review thread and the
+         *     recall documents pointing at a thesis that no longer exists.
+         *
+         *     ``?purge=true`` drops the row for real, and only while there is nothing to
+         *     destroy: a thesis with a completed post-mortem answers 409 and must be
+         *     archived instead.
+         */
         delete: operations["theses_destroy"];
         options?: never;
         head?: never;
@@ -1533,6 +1733,26 @@ export interface paths {
          *            close_note?: str}
          */
         post: operations["theses_close_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/theses/{id}/restore/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Bring an archived thesis back to the list. The price guard stays off —
+         *     re-arm it deliberately.
+         */
+        post: operations["theses_restore_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1934,6 +2154,55 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * @description One ledger row, read-only: predictions are written by the extractor and
+         *     scored by the resolver, never by a client.
+         */
+        AIPrediction: {
+            readonly id: number;
+            readonly ticker: string;
+            readonly direction: components["schemas"]["DirectionalCallEnum"];
+            readonly horizon_days: number;
+            /** Format: double */
+            readonly confidence: number;
+            /** Format: double */
+            readonly expected_move_pct: number | null;
+            readonly rationale: string;
+            /** Format: decimal */
+            readonly invalidation_price: string | null;
+            readonly invalidation_note: string;
+            readonly provider: string;
+            readonly model: string;
+            readonly status: components["schemas"]["AIPredictionStatusEnum"];
+            /** Format: date-time */
+            readonly predicted_at: string;
+            /** Format: date-time */
+            readonly resolve_at: string;
+            /** Format: date-time */
+            readonly resolved_at: string | null;
+            /** Format: date-time */
+            readonly invalidated_at: string | null;
+            /** Format: double */
+            readonly forward_return_pct: number | null;
+            readonly verdict: components["schemas"]["VerdictEnum"];
+            readonly source_message_id: number | null;
+            readonly source_snapshot_id: number | null;
+            readonly profile_id: number | null;
+            /** @default  */
+            readonly profile_name: string;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+        };
+        /**
+         * @description * `open` - open
+         *     * `resolving` - resolving
+         *     * `resolved` - resolved
+         *     * `invalidated` - invalidated
+         * @enum {string}
+         */
+        AIPredictionStatusEnum: "open" | "resolving" | "resolved" | "invalidated";
         AIRun: {
             readonly id: number;
             provider: string;
@@ -1971,6 +2240,12 @@ export interface components {
             /** Format: date-time */
             readonly updated_at: string;
         };
+        /** @description 202 body of POST /api/recall/backfill/. */
+        BackfillQueued: {
+            task_id: string;
+            /** @description Always "queued". */
+            status: string;
+        };
         BackupRecord: {
             readonly id: number;
             /** Format: date-time */
@@ -1978,7 +2253,7 @@ export interface components {
             readonly filename: string;
             readonly size_bytes: number;
             readonly sha256: string;
-            readonly kind: components["schemas"]["KindC68Enum"];
+            readonly kind: components["schemas"]["ManualOrScheduledEnum"];
             readonly status: components["schemas"]["BackupRecordStatusEnum"];
             readonly error: string;
         };
@@ -2007,8 +2282,52 @@ export interface components {
             readonly narrative: string;
             readonly var_beta: unknown;
         };
+        /**
+         * @description One point on the book's history curve.
+         *
+         *     The detail serializer's per-position arrays (exposures, clusters, VaR
+         *     positions) are what make a row heavy and none of them plot, so this flattens
+         *     the scalars a trend/sparkline reads and leaves the arrays to
+         *     ``GET /api/book/<id>/``. Every metric is nullable: a day with no priceable
+         *     position has no VaR, and plotting a zero there would invent a reading.
+         */
+        BookSnapshotTrend: {
+            readonly id: number;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date */
+            readonly as_of_date: string;
+            /** Format: double */
+            readonly hhi: number | null;
+            /** Format: double */
+            readonly top_n_share: number | null;
+            /** Format: double */
+            readonly total_abs: number | null;
+            /** Format: double */
+            readonly net_long: number | null;
+            /** Format: double */
+            readonly net_short: number | null;
+            /** Format: double */
+            readonly gross_dollar: number | null;
+            /** Format: double */
+            readonly net_dollar: number | null;
+            /** Format: double */
+            readonly diversified_var_usd: number | null;
+            /** Format: double */
+            readonly undiversified_var_usd: number | null;
+            /** Format: double */
+            readonly beta_adjusted_net_exposure_usd: number | null;
+            readonly regime: string | null;
+            readonly alignment: string | null;
+            readonly position_count: number;
+            readonly cluster_count: number;
+            readonly near_invalidation_count: number;
+        };
         BriefingConfig: {
+            /** @description When True, observer.briefing_run_scheduled assembles and posts one briefing per local day once send_at_local has passed. */
             enabled?: boolean;
+            /** @description When True, a ready briefing also pays for one AI synthesis pass over the assembled data. When False the deterministic sections still render; only the AI call is skipped. */
+            synthesis_enabled?: boolean;
             /** Format: time */
             send_at_local?: string;
             profile?: number | null;
@@ -2046,6 +2365,10 @@ export interface components {
             /** Format: date-time */
             readonly updated_at: string;
         };
+        Choice: {
+            value: string;
+            label: string;
+        };
         CoverageNote: {
             readonly id: number;
             ticker: string;
@@ -2074,6 +2397,23 @@ export interface components {
             /** Format: date-time */
             readonly updated_at: string;
             readonly revisions: components["schemas"]["CoverageRevision"][];
+        };
+        /**
+         * @description Index row: enough to rank and route on, without the case text. The two
+         *     counters are annotated on the queryset, not resolved per row.
+         */
+        CoverageNoteList: {
+            readonly id: number;
+            ticker: string;
+            stance?: components["schemas"]["StanceEnum"];
+            conviction?: number;
+            readonly revision_count: number;
+            /** Format: date-time */
+            readonly last_revised_at: string | null;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
         };
         CoverageRevision: {
             readonly id: number;
@@ -2114,11 +2454,37 @@ export interface components {
          * @enum {string}
          */
         DeskEntryStatusEnum: "new" | "acted" | "dismissed";
+        /**
+         * @description * `bullish` - Bullish
+         *     * `bearish` - Bearish
+         *     * `neutral` - Neutral
+         * @enum {string}
+         */
+        DirectionalCallEnum: "bullish" | "bearish" | "neutral";
+        /**
+         * @description * `low` - Low
+         *     * `medium` - Medium
+         *     * `high` - High
+         *     * `xhigh` - Extra high
+         *     * `max` - Max
+         * @enum {string}
+         */
+        EffortEnum: "low" | "medium" | "high" | "xhigh" | "max";
+        /**
+         * @description The shape both helpers below emit. Declared here so a view documenting one of
+         *     its refusals points at the envelope itself rather than re-describing it.
+         */
+        ErrorEnvelope: {
+            /** @description Machine-readable reason. */
+            code: string;
+            /** @description Human-readable detail. */
+            message: string;
+        };
         EvalRun: {
             readonly id: number;
             /** Format: date-time */
             readonly created_at: string;
-            readonly source: components["schemas"]["SourceC68Enum"];
+            readonly source: components["schemas"]["ManualOrScheduledEnum"];
             readonly label: string;
             readonly provider: string;
             readonly model: string;
@@ -2137,17 +2503,53 @@ export interface components {
             readonly calibration: unknown;
             readonly examples: unknown;
         };
-        /** @description Body of ``POST /api/aieval/runs/`` — one manual, bounded, billed eval run. */
+        /**
+         * @description The reason a run was not queued. One error shape for the endpoint, so the UI
+         *     always has a message to show: 400 for a body or provider that cannot resolve to a
+         *     usable target, 409 for a breached cost cap or for MOCK_EXTERNAL (a mocked run
+         *     would persist a fabricated EvalRun that the coach and the calibration-weighted
+         *     router then read as measurement).
+         */
+        EvalRunError: {
+            /** @description invalid_request | foreign_model | undecryptable_key | no_provider | cost_cap | mock_mode */
+            code: string;
+            message: string;
+        };
+        /**
+         * @description 202 body of ``POST /api/aieval/runs/``: the fully resolved parameters the task
+         *     was queued with (omissions filled from ``runtime_config()``, the model resolved
+         *     through the provider's own config), so the caller sees what will be scored.
+         */
+        EvalRunQueued: {
+            /** @description Always true. */
+            queued: boolean;
+            provider: string;
+            model: string;
+            /** @description null means every horizon. */
+            horizon: number | null;
+            limit: number;
+            label: string;
+        };
+        /**
+         * @description Body of ``POST /api/aieval/runs/`` — one manual, bounded, billed eval run.
+         *
+         *     Every field is optional so the UI can fire a run with an empty body; the view
+         *     fills the omissions from ``runtime_config()`` and resolves the target through
+         *     the provider's own config. ``limit`` is bounded because the endpoint bills one
+         *     model call per replayed row — the unbounded replay stays on ``manage.py
+         *     aieval``, where the operator sees the row count first.
+         */
         EvalRunRequest: {
             /** @default claude */
             provider: components["schemas"]["EvalRunRequestProviderEnum"];
             /** @default  */
             model: string;
-            horizon?: number;
-            /** @default 25 */
-            limit: number;
+            horizon?: number | null;
+            limit?: number;
             /** @default manual */
             label: string;
+            /** @description System-prompt override for A/B-ing a prompt; omit for the default. */
+            system?: string;
         };
         /**
          * @description * `claude` - claude
@@ -2163,6 +2565,8 @@ export interface components {
             condition: unknown;
             cooldown_seconds?: number;
             enabled?: boolean;
+            /** @description When True, a fire runs a bounded tool-using investigation instead of a single observation. Bounded by AI_INVESTIGATION_MAX_ITERATIONS tool rounds and the separate AI_AUTONOMOUS_DAILY_CAP_USD daily ceiling. */
+            investigate?: boolean;
             /** Format: date-time */
             readonly last_fired_at: string | null;
             /** @default 0 */
@@ -2197,6 +2601,126 @@ export interface components {
          * @enum {string}
          */
         ExportJobStatusEnum: "pending" | "running" | "done" | "failed" | "deleted" | "missing";
+        /** @description A rendered section of the Features page. */
+        FeatureGroup: {
+            key: string;
+            label: string;
+            blurb: string;
+            order: number;
+        };
+        /** @description Fields every row carries, whatever its control. */
+        FeatureNumber: {
+            key: string;
+            label: string;
+            summary: string;
+            help: string;
+            group: string;
+            order: number;
+            scope: string;
+            backing: string;
+            value_type: string;
+            editable: boolean;
+            write_path: string;
+            field: string;
+            env_var: string;
+            env_only_reason: string;
+            costs_money: boolean;
+            cost_note: string;
+            retroactive: boolean;
+            requires: string[];
+            requirement: components["schemas"]["Requirement"] | null;
+            provider_only: string;
+            deep_link: string;
+            /** Format: double */
+            value: number;
+            /** Format: double */
+            default_value: number;
+            /** Format: double */
+            shipped_default: number | null;
+            /** Format: double */
+            override: number | null;
+            source: string;
+            /** Format: double */
+            min_value: number | null;
+            /** Format: double */
+            max_value: number | null;
+            unit: string;
+            is_float: boolean;
+        };
+        FeatureRegistry: {
+            groups: components["schemas"]["FeatureGroup"][];
+            toggles: components["schemas"]["FeatureToggle"][];
+            numbers: components["schemas"]["FeatureNumber"][];
+            texts: components["schemas"]["FeatureText"][];
+            per_object: components["schemas"]["PerObjectFeature"][];
+        };
+        /** @description Fields every row carries, whatever its control. */
+        FeatureText: {
+            key: string;
+            label: string;
+            summary: string;
+            help: string;
+            group: string;
+            order: number;
+            scope: string;
+            backing: string;
+            value_type: string;
+            editable: boolean;
+            write_path: string;
+            field: string;
+            env_var: string;
+            env_only_reason: string;
+            costs_money: boolean;
+            cost_note: string;
+            retroactive: boolean;
+            requires: string[];
+            requirement: components["schemas"]["Requirement"] | null;
+            provider_only: string;
+            deep_link: string;
+            value: string;
+            default_value: string;
+            shipped_default: string | null;
+            override: string | null;
+            source: string;
+            choices: components["schemas"]["Choice"][];
+            max_length: number;
+        };
+        /**
+         * @description A boolean row.
+         *
+         *     ``source`` is the provenance tri-state made visible: "override" when the singleton
+         *     column holds an explicit value, "env" when the environment names it, "default"
+         *     otherwise. ``default_value`` is what "Reset to default" actually restores (the
+         *     env-or-shipped value), which is why it can differ from ``shipped_default``.
+         */
+        FeatureToggle: {
+            key: string;
+            label: string;
+            summary: string;
+            help: string;
+            group: string;
+            order: number;
+            scope: string;
+            backing: string;
+            value_type: string;
+            editable: boolean;
+            write_path: string;
+            field: string;
+            env_var: string;
+            env_only_reason: string;
+            costs_money: boolean;
+            cost_note: string;
+            retroactive: boolean;
+            requires: string[];
+            requirement: components["schemas"]["Requirement"] | null;
+            provider_only: string;
+            deep_link: string;
+            value: boolean;
+            default_value: boolean;
+            shipped_default: boolean | null;
+            override: boolean | null;
+            source: string;
+        };
         /**
          * @description * `cron` - Cron
          *     * `relative_to_close` - Relative to close
@@ -2218,26 +2742,31 @@ export interface components {
             /** Format: date-time */
             readonly created_at: string;
         };
+        Lesson: {
+            readonly id: number;
+            /** @description Representative bullet of the cluster. */
+            text: string;
+            tags?: unknown;
+            /** @description Number of post-mortems supporting this lesson. */
+            readonly support_n: number;
+            /** @description Hidden from the coach when True. */
+            muted?: boolean;
+            /** @description Reaches the coach regardless of support_n. Hand-written lessons carry no post-mortem evidence, so this is what makes them visible. */
+            pinned?: boolean;
+            readonly visible_to_coach: boolean;
+            /** Format: date-time */
+            readonly last_seen: string | null;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+        };
         /**
          * @description * `scheduled` - Scheduled
          *     * `manual` - Manual
          * @enum {string}
          */
-        KindC68Enum: "scheduled" | "manual";
-        Lesson: {
-            readonly id: number;
-            /** @description Representative bullet of the cluster. */
-            readonly text: string;
-            readonly tags: unknown;
-            /** @description Number of post-mortems supporting this lesson. */
-            readonly support_n: number;
-            /** @description Hidden from the coach when True. */
-            muted?: boolean;
-            /** Format: date-time */
-            readonly last_seen: string | null;
-            /** Format: date-time */
-            readonly created_at: string;
-        };
+        ManualOrScheduledEnum: "scheduled" | "manual";
         /**
          * @description * `us_equity` - US equities (NYSE/NASDAQ)
          *     * `us_bond` - US bonds (SIFMA)
@@ -2249,6 +2778,18 @@ export interface components {
          * @enum {string}
          */
         MarketKeyEnum: "us_equity" | "us_bond" | "cme_futures" | "cfe_futures" | "crypto" | "lse" | "jpx";
+        /** @description One file the model wrote into this profile's memory store. */
+        MemoryEntry: {
+            /** @description Path relative to the profile's memory directory. */
+            path: string;
+            size_bytes: number;
+            /** Format: date-time */
+            modified_at: string;
+            /** @description The first characters of the file, so injected content is visible. */
+            preview: string;
+            /** @description True when the file is longer than the preview. */
+            preview_truncated: boolean;
+        };
         Message: {
             readonly id: number;
             role: components["schemas"]["RoleEnum"];
@@ -2304,6 +2845,8 @@ export interface components {
          * @enum {string}
          */
         NotificationKindEnum: "trigger" | "observer_done" | "error" | "cost_limit" | "backup" | "postmortem" | "briefing" | "regime" | "book" | "desk" | "cal_drift" | "contra" | "pred_invalid" | "eval_done";
+        /** @enum {unknown} */
+        NullEnum: null;
         ObserverSchedule: {
             readonly id: number;
             name: string;
@@ -2328,7 +2871,7 @@ export interface components {
             use_batch?: boolean;
             /** @description When True (with structured), fan the ObservationReport across every structured-capable provider and record a cross-model agreement signal instead of a single structured report. ~Nx cost; opt-in only. */
             consensus?: boolean;
-            /** @description When True (plain mode only), the fire runs a bounded tool-using investigation instead of a single observation. */
+            /** @description When True (plain mode only), the fire runs a bounded tool-using investigation instead of a single observation. Bounded by AI_INVESTIGATION_MAX_ITERATIONS tool rounds and the separate AI_AUTONOMOUS_DAILY_CAP_USD daily ceiling. */
             investigate?: boolean;
             readonly last_batch_id: string;
             /** Format: date-time */
@@ -2342,6 +2885,21 @@ export interface components {
             close_offset_minutes?: number;
             cron?: string;
             readonly cron_display: string;
+        };
+        PaginatedAIPredictionList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous?: string | null;
+            results: components["schemas"]["AIPrediction"][];
         };
         PaginatedBackupRecordList: {
             /** @example 123 */
@@ -2357,6 +2915,21 @@ export interface components {
              */
             previous?: string | null;
             results: components["schemas"]["BackupRecord"][];
+        };
+        PaginatedBriefingRunList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous?: string | null;
+            results: components["schemas"]["BriefingRun"][];
         };
         PaginatedExportJobList: {
             /** @example 123 */
@@ -2419,7 +2992,10 @@ export interface components {
             readonly updated_at?: string;
         };
         PatchedBriefingConfig: {
+            /** @description When True, observer.briefing_run_scheduled assembles and posts one briefing per local day once send_at_local has passed. */
             enabled?: boolean;
+            /** @description When True, a ready briefing also pays for one AI synthesis pass over the assembled data. When False the deterministic sections still render; only the AI call is skipped. */
+            synthesis_enabled?: boolean;
             /** Format: time */
             send_at_local?: string;
             profile?: number | null;
@@ -2445,6 +3021,8 @@ export interface components {
             condition?: unknown;
             cooldown_seconds?: number;
             enabled?: boolean;
+            /** @description When True, a fire runs a bounded tool-using investigation instead of a single observation. Bounded by AI_INVESTIGATION_MAX_ITERATIONS tool rounds and the separate AI_AUTONOMOUS_DAILY_CAP_USD daily ceiling. */
+            investigate?: boolean;
             /** Format: date-time */
             readonly last_fired_at?: string | null;
             /** @default 0 */
@@ -2458,16 +3036,21 @@ export interface components {
         PatchedLesson: {
             readonly id?: number;
             /** @description Representative bullet of the cluster. */
-            readonly text?: string;
-            readonly tags?: unknown;
+            text?: string;
+            tags?: unknown;
             /** @description Number of post-mortems supporting this lesson. */
             readonly support_n?: number;
             /** @description Hidden from the coach when True. */
             muted?: boolean;
+            /** @description Reaches the coach regardless of support_n. Hand-written lessons carry no post-mortem evidence, so this is what makes them visible. */
+            pinned?: boolean;
+            readonly visible_to_coach?: boolean;
             /** Format: date-time */
             readonly last_seen?: string | null;
             /** Format: date-time */
             readonly created_at?: string;
+            /** Format: date-time */
+            readonly updated_at?: string;
         };
         PatchedObserverSchedule: {
             readonly id?: number;
@@ -2493,7 +3076,7 @@ export interface components {
             use_batch?: boolean;
             /** @description When True (with structured), fan the ObservationReport across every structured-capable provider and record a cross-model agreement signal instead of a single structured report. ~Nx cost; opt-in only. */
             consensus?: boolean;
-            /** @description When True (plain mode only), the fire runs a bounded tool-using investigation instead of a single observation. */
+            /** @description When True (plain mode only), the fire runs a bounded tool-using investigation instead of a single observation. Bounded by AI_INVESTIGATION_MAX_ITERATIONS tool rounds and the separate AI_AUTONOMOUS_DAILY_CAP_USD daily ceiling. */
             investigate?: boolean;
             readonly last_batch_id?: string;
             /** Format: date-time */
@@ -2567,7 +3150,7 @@ export interface components {
             readonly id?: number;
             title?: string;
             ticker?: string;
-            direction?: components["schemas"]["ThesisDirectionEnum"];
+            direction?: components["schemas"]["DirectionalCallEnum"];
             rationale?: string;
             conviction?: number;
             /** Format: decimal */
@@ -2593,6 +3176,8 @@ export interface components {
             /** Format: date-time */
             readonly closed_at?: string | null;
             close_note?: string;
+            /** Format: date-time */
+            readonly archived_at?: string | null;
             /** Format: date-time */
             readonly created_at?: string;
             /** Format: date-time */
@@ -2623,6 +3208,16 @@ export interface components {
             enable_thinking?: boolean;
             /** @description Thinking token budget when enable_thinking=True. Billed as output. */
             thinking_budget?: number;
+            /**
+             * @description Reasoning effort applied to this profile's runs.
+             *
+             *     * `low` - Low
+             *     * `medium` - Medium
+             *     * `high` - High
+             *     * `xhigh` - Extra high
+             *     * `max` - Max
+             */
+            effort?: components["schemas"]["EffortEnum"];
             /** @description Expose the Memory tool with a per-profile namespace under /data/memory/<profile_id>/. */
             enable_memory?: boolean;
             /** @description Inject the Decision Coach context (prior theses, diff-vs-last snapshot, per-ticker track record, recall) plus a base observational system prompt. Off = the system prompt is just the style. */
@@ -2639,6 +3234,44 @@ export interface components {
             /** Format: date-time */
             readonly created_at?: string;
             readonly tickers?: components["schemas"]["WatchlistSymbol"][];
+        };
+        /**
+         * @description A setting that lives on individual rows, never globally.
+         *
+         *     The page renders a rollup and a deep link rather than a switch: a disabled switch
+         *     reports ``aria-checked="false"``, which states "this is off" — factually wrong when
+         *     four of thirteen profiles have it on.
+         *
+         *     ``on``/``total`` are nullable and paired with ``degraded``. A failed aggregate must
+         *     not fall back to ``0 of 0``: that renders as a confident lie the user would act on.
+         *     ``on`` is also null for non-boolean fields, where "how many are on" is meaningless.
+         */
+        PerObjectFeature: {
+            key: string;
+            label: string;
+            summary: string;
+            help: string;
+            group: string;
+            order: number;
+            scope: string;
+            backing: string;
+            value_type: string;
+            editable: boolean;
+            write_path: string;
+            field: string;
+            env_var: string;
+            env_only_reason: string;
+            costs_money: boolean;
+            cost_note: string;
+            retroactive: boolean;
+            requires: string[];
+            requirement: components["schemas"]["Requirement"] | null;
+            provider_only: string;
+            deep_link: string;
+            on: number | null;
+            total: number | null;
+            degraded: boolean;
+            noun: string;
         };
         Position: {
             readonly id: number;
@@ -2706,11 +3339,86 @@ export interface components {
          * @enum {string}
          */
         PostMortemStatusEnum: "scheduled" | "running" | "done" | "failed" | "skipped";
+        /**
+         * @description Counts over one cohort of ledger rows. ``hit_rate`` and
+         *     ``avg_forward_return_pct`` are null rather than 0.0 when nothing is decisive —
+         *     ``mixed`` and ``inconclusive`` are not scored either way.
+         */
+        PredictionCounts: {
+            open: number;
+            resolving: number;
+            resolved: number;
+            invalidated: number;
+            correct: number;
+            incorrect: number;
+            mixed: number;
+            inconclusive: number;
+            total: number;
+            /** Format: double */
+            avg_forward_return_pct: number | null;
+            /** Format: double */
+            hit_rate: number | null;
+        };
+        /**
+         * @description The ledger filters as actually applied — not as sent. An unknown status or a
+         *     non-numeric horizon is dropped rather than rejected, so each key is null when
+         *     the corresponding filter was absent or ignored.
+         */
+        PredictionFilters: {
+            ticker: string | null;
+            status: (components["schemas"]["AIPredictionStatusEnum"] | components["schemas"]["NullEnum"]) | null;
+            horizon: number | null;
+        };
+        /** @description Body of GET /api/predictions/stats/. */
+        PredictionStats: {
+            filters: components["schemas"]["PredictionFilters"];
+            totals: components["schemas"]["PredictionCounts"];
+            by_ticker: components["schemas"]["PredictionTickerStats"][];
+        };
+        /** @description One per-ticker row of the rollup, busiest ticker first. */
+        PredictionTickerStats: {
+            open: number;
+            resolving: number;
+            resolved: number;
+            invalidated: number;
+            correct: number;
+            incorrect: number;
+            mixed: number;
+            inconclusive: number;
+            total: number;
+            /** Format: double */
+            avg_forward_return_pct: number | null;
+            /** Format: double */
+            hit_rate: number | null;
+            ticker: string;
+        };
         ProfileInline: {
             readonly id: number;
             name: string;
             default_provider?: string;
             default_model?: string;
+        };
+        /** @description Everything stored under `<AI_MEMORY_ROOT>/<profile_id>/`. */
+        ProfileMemory: {
+            profile: number;
+            /** @description False when the profile has never run with memory on (no directory yet). */
+            exists: boolean;
+            entries: components["schemas"]["MemoryEntry"][];
+            total_files: number;
+            total_bytes: number;
+            /** @description Preview length each entry was truncated to. */
+            preview_chars: number;
+        };
+        /** @description What a clear removed. */
+        ProfileMemoryCleared: {
+            profile: number;
+            removed_files: number;
+            removed_bytes: number;
+        };
+        /** @description Refusal envelope — the requested id did not resolve inside the memory root. */
+        ProfileMemoryError: {
+            code: string;
+            message: string;
         };
         ProviderConfig: {
             provider: components["schemas"]["ProviderConfigProviderEnum"];
@@ -2736,6 +3444,10 @@ export interface components {
          * @enum {string}
          */
         ProviderConfigProviderEnum: "claude" | "openai" | "local";
+        /** @description The 202 body of a fire-and-forget action: the work is queued, not done. */
+        Queued: {
+            queued: boolean;
+        };
         RegimeReading: {
             readonly id: number;
             /** Format: date-time */
@@ -2745,6 +3457,56 @@ export interface components {
             readonly drivers: unknown;
             readonly narrative: string;
             readonly changed_axes: unknown;
+        };
+        /**
+         * @description An external precondition (today: a connected data source).
+         *
+         *     ``satisfied`` is nullable on purpose: the probe touches Redis and the provider
+         *     health marker, so a failure degrades to "unknown" rather than claiming "not
+         *     connected" and inviting the user to re-authorise something that is fine.
+         */
+        Requirement: {
+            id: string;
+            label: string;
+            satisfied: boolean | null;
+            manage_path: string;
+        };
+        /**
+         * @description The restore endpoint's refusal envelope. ``code`` is the machine-readable
+         *     reason; the optional keys are present only for the codes that carry them.
+         */
+        RestoreError: {
+            code: string;
+            detail: string;
+            /** @description confirmation_mismatch only: the filename the client had to type. */
+            expected?: string;
+            /** @description restore_failed only: pg_restore's exit status. */
+            exit_code?: number;
+            /** @description restore_failed only: the last 4000 bytes of credential-scrubbed pg_restore stderr. */
+            stderr?: string;
+        };
+        /**
+         * @description Body of ``POST /api/backups/{id}/restore/``.
+         *
+         *     The confirmation is a deliberate-action guard, not a secret: it must equal the
+         *     backup's own ``filename``, which the list endpoint already hands out.
+         */
+        RestoreRequest: {
+            /** @description The backup's exact filename. Anything else answers 400. */
+            confirm: string;
+        };
+        /**
+         * @description A completed restore. ``workers_quiesced`` is always false — this endpoint
+         *     cannot stop worker/beat (no Docker socket in the container), so ``warning``
+         *     says to restart them.
+         */
+        RestoreResponse: {
+            restored: boolean;
+            backup_id: number;
+            filename: string;
+            duration_ms: number;
+            workers_quiesced: boolean;
+            warning: string;
         };
         /**
          * @description * `user` - User
@@ -2760,9 +3522,9 @@ export interface components {
             notes?: string;
             manual_positions?: string;
             candidate_positions?: string;
-            readonly status: components["schemas"]["Status95aEnum"];
+            readonly status: components["schemas"]["SnapshotStatusEnum"];
             includes?: unknown;
-            source?: components["schemas"]["Source7c9Enum"];
+            source?: components["schemas"]["SnapshotSourceEnum"];
             /** Format: date-time */
             readonly captured_at: string;
             primary_ticker?: string | null;
@@ -2776,8 +3538,8 @@ export interface components {
             readonly profile_name: string;
             objective?: string;
             notes?: string;
-            status?: components["schemas"]["Status95aEnum"];
-            source?: components["schemas"]["Source7c9Enum"];
+            status?: components["schemas"]["SnapshotStatusEnum"];
+            source?: components["schemas"]["SnapshotSourceEnum"];
             primary_ticker?: string | null;
             readonly section_kinds: string;
             readonly section_statuses: string;
@@ -2826,13 +3588,14 @@ export interface components {
          *     * `briefing` - Briefing
          * @enum {string}
          */
-        Source7c9Enum: "manual" | "observer" | "trigger" | "briefing";
+        SnapshotSourceEnum: "manual" | "observer" | "trigger" | "briefing";
         /**
-         * @description * `manual` - Manual
-         *     * `scheduled` - Scheduled
+         * @description * `pending` - Pending
+         *     * `ready` - Ready
+         *     * `failed` - Failed
          * @enum {string}
          */
-        SourceC68Enum: "manual" | "scheduled";
+        SnapshotStatusEnum: "pending" | "ready" | "failed";
         /**
          * @description * `bull` - Bull
          *     * `bear` - Bear
@@ -2840,13 +3603,6 @@ export interface components {
          * @enum {string}
          */
         StanceEnum: "bull" | "bear" | "neutral";
-        /**
-         * @description * `pending` - Pending
-         *     * `ready` - Ready
-         *     * `failed` - Failed
-         * @enum {string}
-         */
-        Status95aEnum: "pending" | "ready" | "failed";
         Theme: {
             readonly id: number;
             name: string;
@@ -2861,7 +3617,7 @@ export interface components {
             readonly id: number;
             title: string;
             ticker: string;
-            direction: components["schemas"]["ThesisDirectionEnum"];
+            direction: components["schemas"]["DirectionalCallEnum"];
             rationale?: string;
             conviction?: number;
             /** Format: decimal */
@@ -2888,18 +3644,13 @@ export interface components {
             readonly closed_at: string | null;
             close_note?: string;
             /** Format: date-time */
+            readonly archived_at: string | null;
+            /** Format: date-time */
             readonly created_at: string;
             /** Format: date-time */
             readonly updated_at: string;
             readonly postmortems: components["schemas"]["PostMortem"][];
         };
-        /**
-         * @description * `bullish` - Bullish
-         *     * `bearish` - Bearish
-         *     * `neutral` - Neutral
-         * @enum {string}
-         */
-        ThesisDirectionEnum: "bullish" | "bearish" | "neutral";
         /**
          * @description * `open` - Open
          *     * `closed_win` - Closed — Win
@@ -2963,6 +3714,16 @@ export interface components {
             enable_thinking?: boolean;
             /** @description Thinking token budget when enable_thinking=True. Billed as output. */
             thinking_budget?: number;
+            /**
+             * @description Reasoning effort applied to this profile's runs.
+             *
+             *     * `low` - Low
+             *     * `medium` - Medium
+             *     * `high` - High
+             *     * `xhigh` - Extra high
+             *     * `max` - Max
+             */
+            effort?: components["schemas"]["EffortEnum"];
             /** @description Expose the Memory tool with a per-profile namespace under /data/memory/<profile_id>/. */
             enable_memory?: boolean;
             /** @description Inject the Decision Coach context (prior theses, diff-vs-last snapshot, per-ticker track record, recall) plus a base observational system prompt. Off = the system prompt is just the style. */
@@ -3082,12 +3843,29 @@ export interface operations {
             };
         };
         responses: {
-            /** @description No response body */
             202: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["EvalRunQueued"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvalRunError"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvalRunError"];
+                };
             };
         };
     };
@@ -3450,7 +4228,80 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BackupRecord"];
+                    "application/octet-stream": string;
+                };
+            };
+            /** @description No response body */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    backups_restore_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this backup record. */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RestoreRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RestoreResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RestoreError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RestoreError"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RestoreError"];
+                };
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RestoreError"];
+                };
+            };
+            504: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RestoreError"];
                 };
             };
         };
@@ -3462,18 +4313,14 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: {
-            content: {
-                "application/json": components["schemas"]["BackupRecord"];
-            };
-        };
+        requestBody?: never;
         responses: {
-            200: {
+            202: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BackupRecord"];
+                    "application/json": components["schemas"]["Queued"];
                 };
             };
         };
@@ -3492,7 +4339,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BookSnapshot"][];
+                    "application/json": components["schemas"]["BookSnapshotTrend"][];
                 };
             };
         };
@@ -3563,7 +4410,12 @@ export interface operations {
     };
     briefings_list: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Number of results to return per page. */
+                page_size?: number;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -3575,7 +4427,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["BriefingRun"][];
+                    "application/json": components["schemas"]["PaginatedBriefingRunList"];
                 };
             };
         };
@@ -3672,7 +4524,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["CoverageNote"][];
+                    "application/json": components["schemas"]["CoverageNoteList"][];
                 };
             };
         };
@@ -3695,6 +4547,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["CoverageNoteDetail"];
                 };
+            };
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -4027,6 +4886,25 @@ export interface operations {
             };
         };
     };
+    features_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeatureRegistry"];
+                };
+            };
+        };
+    };
     files_list: {
         parameters: {
             query?: never;
@@ -4156,7 +5034,14 @@ export interface operations {
     };
     lessons_list: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Only muted lessons, or only unmuted ones. */
+                muted?: boolean;
+                /** @description Only pinned lessons, or only unpinned ones. */
+                pinned?: boolean;
+                /** @description Filter on the resolved coach-visibility rule (the same rule the ``visible_to_coach`` field reports), not on a stored column. */
+                visible?: boolean;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -4173,6 +5058,51 @@ export interface operations {
             };
         };
     };
+    lessons_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Lesson"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Lesson"];
+                };
+            };
+        };
+    };
+    lessons_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this lesson. */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Lesson"];
+                };
+            };
+        };
+    };
     lessons_update: {
         parameters: {
             query?: never;
@@ -4183,7 +5113,7 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: {
+        requestBody: {
             content: {
                 "application/json": components["schemas"]["Lesson"];
             };
@@ -4799,6 +5729,57 @@ export interface operations {
             };
         };
     };
+    predictions_list: {
+        parameters: {
+            query?: {
+                /** @description Horizon in days (matches horizon_days). A non-numeric value is ignored. */
+                horizon?: number;
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Number of results to return per page. */
+                page_size?: number;
+                /** @description Ledger status. An unrecognized value is ignored, not rejected. */
+                status?: "invalidated" | "open" | "resolved" | "resolving";
+                /** @description Exact ticker, case-insensitive. Ignored when blank. */
+                ticker?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedAIPredictionList"];
+                };
+            };
+        };
+    };
+    predictions_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AIPrediction"];
+                };
+            };
+        };
+    };
     predictions_ai_view_retrieve: {
         parameters: {
             query?: never;
@@ -4832,6 +5813,32 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    predictions_stats_retrieve: {
+        parameters: {
+            query?: {
+                /** @description Horizon in days (matches horizon_days). A non-numeric value is ignored. */
+                horizon?: number;
+                /** @description Ledger status. An unrecognized value is ignored, not rejected. */
+                status?: "invalidated" | "open" | "resolved" | "resolving";
+                /** @description Exact ticker, case-insensitive. Ignored when blank. */
+                ticker?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PredictionStats"];
+                };
             };
         };
     };
@@ -5109,6 +6116,66 @@ export interface operations {
             };
         };
     };
+    profiles_memory_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this trading profile. */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProfileMemory"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProfileMemoryError"];
+                };
+            };
+        };
+    };
+    profiles_memory_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this trading profile. */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProfileMemoryCleared"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProfileMemoryError"];
+                };
+            };
+        };
+    };
     recall_retrieve: {
         parameters: {
             query?: never;
@@ -5124,6 +6191,25 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    recall_backfill_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BackfillQueued"];
+                };
             };
         };
     };
@@ -5737,7 +6823,10 @@ export interface operations {
     };
     theses_list: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Which theses to list: omitted or falsy for live ones only (the default), truthy for archived only, 'all' for both. */
+                archived?: "0" | "1" | "all";
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -5827,7 +6916,10 @@ export interface operations {
     };
     theses_destroy: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description true to delete the row outright instead of archiving it. Answers 409 when a completed post-mortem exists, because dropping the thesis would cascade away the calibration it feeds. */
+                purge?: boolean;
+            };
             header?: never;
             path: {
                 /** @description A unique integer value identifying this thesis. */
@@ -5843,6 +6935,14 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
         };
     };
@@ -5887,6 +6987,28 @@ export interface operations {
                 "application/json": components["schemas"]["Thesis"];
             };
         };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Thesis"];
+                };
+            };
+        };
+    };
+    theses_restore_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A unique integer value identifying this thesis. */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
         responses: {
             200: {
                 headers: {

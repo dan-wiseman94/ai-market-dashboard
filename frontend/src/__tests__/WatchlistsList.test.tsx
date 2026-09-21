@@ -8,17 +8,20 @@ import type { Watchlist } from "@/api/watchlists";
 vi.mock("@/hooks/useWatchlists", () => ({
   useWatchlists: vi.fn(),
   useCreateWatchlist: vi.fn(),
+  useRenameWatchlist: vi.fn(),
   useDeleteWatchlist: vi.fn(),
 }));
 
 import {
   useWatchlists,
   useCreateWatchlist,
+  useRenameWatchlist,
   useDeleteWatchlist,
 } from "@/hooks/useWatchlists";
 
 const mockUseWatchlists = vi.mocked(useWatchlists);
 const mockUseCreateWatchlist = vi.mocked(useCreateWatchlist);
+const mockUseRenameWatchlist = vi.mocked(useRenameWatchlist);
 const mockUseDeleteWatchlist = vi.mocked(useDeleteWatchlist);
 
 const WATCHLIST_A: Watchlist = {
@@ -51,11 +54,18 @@ function makeDelete() {
   return mockMutate;
 }
 
+function makeRename() {
+  const mockMutate = vi.fn();
+  mockUseRenameWatchlist.mockReturnValue({ mutate: mockMutate, isPending: false } as never);
+  return mockMutate;
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   mockUseWatchlists.mockReturnValue({ data: [WATCHLIST_A, WATCHLIST_B], isLoading: false } as never);
   makeCreate();
   makeDelete();
+  makeRename();
 });
 
 describe("WatchlistsList", () => {
@@ -124,8 +134,58 @@ describe("WatchlistsList", () => {
     const user = userEvent.setup();
     renderWithProviders(<WatchlistsList />);
 
-    const deleteButtons = screen.getAllByRole("button", { name: /delete/i });
-    await user.click(deleteButtons[0]);
+    await user.click(screen.getByRole("button", { name: `Delete ${WATCHLIST_A.name}` }));
     expect(delMutate).toHaveBeenCalledWith(WATCHLIST_A.id);
+  });
+
+  it("inline rename: Rename opens an input and Save sends {id, name}", async () => {
+    const renameMutate = makeRename();
+    const user = userEvent.setup();
+    renderWithProviders(<WatchlistsList />);
+
+    await user.click(screen.getByRole("button", { name: `Rename ${WATCHLIST_A.name}` }));
+    const input = screen.getByRole("textbox", { name: `New name for ${WATCHLIST_A.name}` });
+    await user.clear(input);
+    await user.type(input, "  Renamed list  ");
+    await user.click(screen.getByRole("button", { name: `Save name for ${WATCHLIST_A.name}` }));
+
+    expect(renameMutate).toHaveBeenCalledWith({ id: WATCHLIST_A.id, name: "Renamed list" });
+  });
+
+  it("inline rename: Escape abandons the edit without mutating", async () => {
+    const renameMutate = makeRename();
+    const user = userEvent.setup();
+    renderWithProviders(<WatchlistsList />);
+
+    await user.click(screen.getByRole("button", { name: `Rename ${WATCHLIST_A.name}` }));
+    await user.type(
+      screen.getByRole("textbox", { name: `New name for ${WATCHLIST_A.name}` }),
+      "x{Escape}",
+    );
+
+    expect(renameMutate).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: `Rename ${WATCHLIST_A.name}` })).toBeInTheDocument();
+  });
+
+  it("inline rename: an unchanged name does not mutate", async () => {
+    const renameMutate = makeRename();
+    const user = userEvent.setup();
+    renderWithProviders(<WatchlistsList />);
+
+    await user.click(screen.getByRole("button", { name: `Rename ${WATCHLIST_B.name}` }));
+    await user.click(screen.getByRole("button", { name: `Save name for ${WATCHLIST_B.name}` }));
+
+    expect(renameMutate).not.toHaveBeenCalled();
+  });
+
+  it("each row's rename controls are distinguishable by watchlist name", async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<WatchlistsList />);
+    await user.click(screen.getByRole("button", { name: "Rename ETFs" }));
+    // Only the ETFs row entered edit mode.
+    expect(screen.getByRole("textbox", { name: "New name for ETFs" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: `Rename ${WATCHLIST_A.name}` }),
+    ).toBeInTheDocument();
   });
 });

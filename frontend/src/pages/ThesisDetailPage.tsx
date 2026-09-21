@@ -9,6 +9,7 @@ import { ThesisFields } from "./thesis-detail/ThesisFields";
 import { SourceLinks } from "./thesis-detail/SourceLinks";
 import { CloseThesisForm } from "./thesis-detail/CloseThesisForm";
 import { PostMortemsSection } from "./thesis-detail/PostMortemsSection";
+import { ArchiveControls } from "./thesis-detail/ArchiveControls";
 import Toggle from "@/components/ui/Toggle";
 import type { Thesis } from "@/api/thesis";
 import { TrackRecordHint } from "@/components/TrackRecordHint";
@@ -191,6 +192,7 @@ export default function ThesisDetailPage() {
       <LinkedPositionsSection thesisId={thesis.id} />
       {thesis.status === "open" && <CloseThesisForm thesisId={thesis.id} />}
       <PostMortemsSection thesisId={thesis.id} postmortems={thesis.postmortems} />
+      <ArchiveControls thesis={thesis} />
     </main>
   );
 }

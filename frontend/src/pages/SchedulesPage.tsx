@@ -7,10 +7,10 @@ import { useProfiles } from "@/hooks/useProfiles";
 import { useToast } from "@/hooks/useToast";
 import { SkeletonRows } from "@/components/Skeleton";
 import { EmptyState } from "@/components/EmptyState";
-import CreateScheduleForm from "./schedules/CreateScheduleForm";
+import ScheduleForm from "./schedules/ScheduleForm";
 import ScheduleRow from "./schedules/ScheduleRow";
-import type { AiFieldsValue } from "./schedules/ScheduleAiFields";
 import { useScheduleForm } from "./schedules/useScheduleForm";
+import type { CreateScheduleBody } from "@/api/observer";
 
 export default function SchedulesPage() {
   const { data: schedules, isLoading } = useSchedules();
@@ -51,8 +51,9 @@ export default function SchedulesPage() {
     }
   }
 
-  const saveAi = (id: number, value: AiFieldsValue, onSuccess: () => void) =>
-    update.mutate({ id, body: value }, { onSuccess, onError });
+  /** The one save path for an existing schedule — every writable field, not a subset. */
+  const onSave = (id: number, body: CreateScheduleBody, onSuccess: () => void) =>
+    update.mutate({ id, body }, { onSuccess, onError });
 
   if (isLoading) {
     return (
@@ -81,8 +82,10 @@ export default function SchedulesPage() {
           <ScheduleRow
             key={s.id}
             schedule={s}
+            profiles={profiles}
             profileName={profileName}
             profileFor={profileFor}
+            isSaving={update.isPending}
             onToggle={(id, en) => toggle.mutate({ id, enabled: en })}
             onRun={(id) =>
               run.mutate(id, {
@@ -94,7 +97,7 @@ export default function SchedulesPage() {
             onDelete={(id) => del.mutate(id)}
             onSaveSections={(id, includes) =>
               updateIncludes.mutate({ id, default_includes: includes })}
-            onSaveAi={saveAi}
+            onSave={onSave}
           />
         ))}
       </ul>
@@ -108,11 +111,14 @@ export default function SchedulesPage() {
       </button>
 
       {showForm && (
-        <CreateScheduleForm
+        <ScheduleForm
+          idPrefix="sched-new"
           profiles={profiles}
           isPending={create.isPending}
           onSubmit={onCreate}
           form={form}
+          submitLabel="Create"
+          pendingLabel="Creating…"
         />
       )}
     </main>

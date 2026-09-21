@@ -1,4 +1,5 @@
 import { useState } from "react";
+import type { AiTarget } from "@/components/ai/AiTargetPicker";
 import type { TradingProfile } from "@/api/profiles";
 import { useCreateProfile, useUpdateProfile } from "@/hooks/useProfiles";
 import { useToast } from "@/hooks/useToast";
@@ -27,10 +28,34 @@ export function useProfileForm() {
       enable_tools: p.enable_tools ?? BLANK_DRAFT.enable_tools,
       enable_thinking: p.enable_thinking ?? BLANK_DRAFT.enable_thinking,
       thinking_budget: p.thinking_budget ?? BLANK_DRAFT.thinking_budget,
+      effort: p.effort ?? BLANK_DRAFT.effort,
       enable_memory: p.enable_memory ?? BLANK_DRAFT.enable_memory,
       enable_coach: p.enable_coach ?? BLANK_DRAFT.enable_coach,
+      active: p.active ?? BLANK_DRAFT.active,
     });
   };
+
+  /**
+   * Point the profile at a provider+model pair.
+   *
+   * Moving to a different provider drops the Claude-only flags: extended
+   * thinking and memory are honored by Claude alone (apps/ai/capabilities.py),
+   * and leaving them on writes a capability-warning message into every single
+   * run instead of doing nothing. A model-only change keeps them — the form
+   * still lets a stranded flag be switched off by hand.
+   */
+  const setTarget = ({ provider, model }: AiTarget) =>
+    setDraft((d) =>
+      provider === d.default_provider
+        ? { ...d, default_model: model }
+        : {
+            ...d,
+            default_provider: provider,
+            default_model: model,
+            enable_thinking: provider === "claude" ? d.enable_thinking : false,
+            enable_memory: provider === "claude" ? d.enable_memory : false,
+          },
+    );
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,5 +72,5 @@ export function useProfileForm() {
   const toggleSection = (sec: string) =>
     setDraft((d) => ({ ...d, default_includes: toggleInArray(d.default_includes, sec) }));
 
-  return { editing, draft, setDraft, submit, toggleSection, startEdit, reset };
+  return { editing, draft, setDraft, setTarget, submit, toggleSection, startEdit, reset };
 }

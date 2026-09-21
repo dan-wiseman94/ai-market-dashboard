@@ -87,13 +87,16 @@ class ThesisSerializer(serializers.ModelSerializer):
             "opened_at",
             "closed_at",
             "close_note",
+            "archived_at",
             "created_at",
             "updated_at",
             "postmortems",
         ]
+        # archived_at moves through DELETE / restore, not a field write.
         read_only_fields: ClassVar = [
             "status",
             "closed_at",
+            "archived_at",
             "created_at",
             "updated_at",
             "guard_trigger_id",

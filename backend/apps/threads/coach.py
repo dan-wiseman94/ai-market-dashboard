@@ -168,11 +168,15 @@ def _fmt_num(v) -> str:
 
 
 def _open_theses_qs(ticker: str):
-    """Open theses on ``ticker``, highest-conviction then newest — the single ordering
-    every coach block that keys off the leading open thesis shares (was inlined 4×)."""
+    """Live open theses on ``ticker``, highest-conviction then newest — the single
+    ordering every coach block that keys off the leading open thesis shares.
+    Archived theses are excluded: the user removed them, so they no longer describe
+    what is on the book."""
     from apps.thesis.models import Thesis
 
-    return Thesis.objects.filter(ticker=ticker, status="open").order_by("-conviction", "-opened_at")
+    return Thesis.objects.filter(ticker=ticker, status="open", archived_at=None).order_by(
+        "-conviction", "-opened_at"
+    )
 
 
 def _theses_block(ticker: str, snapshot, last: Any = _UNSET) -> str:
@@ -307,9 +311,9 @@ def _lessons_block(ticker: str) -> str:
     return "\n".join(lines)
 
 
-# Distilled-lessons block: a lesson must recur (>= this many post-mortems)
-# to count as a pattern, and we surface at most this many, highest-support first.
-_MIN_LESSON_SUPPORT = 2
+# Distilled-lessons block: at most this many, pinned first then highest-support.
+# Which lessons are eligible at all is `apps.thesis.lessons` — the lessons API reads
+# the same rule, so the review UI shows exactly what reaches the model here.
 _MAX_DISTILLED = 2
 
 
@@ -318,7 +322,7 @@ def _distilled_lessons_block(ticker: str, top: Any = _UNSET) -> str:
     same direction (leading open thesis) and/or same sector. Cross-ticker by
     design — surfaces "you've been too bullish on biotech into earnings" even on a
     name with no prior theses on it. "" when nothing matches or no lesson recurs."""
-    from apps.thesis.models import Lesson
+    from apps.thesis.lessons import coach_visible_lessons
 
     if top is _UNSET:
         top = _open_theses_qs(ticker).first()
@@ -327,7 +331,7 @@ def _distilled_lessons_block(ticker: str, top: Any = _UNSET) -> str:
     if not direction and not sector:
         return ""
     matched = []
-    for lesson in Lesson.objects.filter(muted=False, support_n__gte=_MIN_LESSON_SUPPORT)[:50]:
+    for lesson in coach_visible_lessons()[:50]:
         tags = lesson.tags if isinstance(lesson.tags, dict) else {}
         if (direction and direction in tags.get("directions", [])) or (
             sector and sector in tags.get("sectors", [])
@@ -339,7 +343,14 @@ def _distilled_lessons_block(ticker: str, top: Any = _UNSET) -> str:
         return ""
     lines = ["### Recurring lessons for setups like this"]
     for lesson in matched:
-        lines.append(f"- {lesson.text}  (seen across {lesson.support_n} past calls)")
+        # support_n is 0 only for a lesson the trader wrote by hand (the distiller
+        # stamps at least one evidence row) — don't render it as "0 past calls".
+        provenance = (
+            f"seen across {lesson.support_n} past calls"
+            if lesson.support_n
+            else "your own standing rule"
+        )
+        lines.append(f"- {lesson.text}  ({provenance})")
     return "\n".join(lines)
 
 

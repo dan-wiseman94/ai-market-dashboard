@@ -18,7 +18,12 @@ export function useRenameWatchlist() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, name }: { id: number; name: string }) => renameWatchlist(id, name),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["watchlists"] }),
+    // The detail page reads ["watchlist", id] — a rename from either surface has
+    // to refresh both or the other one keeps showing the stale name.
+    onSuccess: (_data, { id }) => {
+      qc.invalidateQueries({ queryKey: ["watchlists"] });
+      qc.invalidateQueries({ queryKey: ["watchlist", id] });
+    },
   });
 }
 

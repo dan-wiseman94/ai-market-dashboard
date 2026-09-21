@@ -15,20 +15,24 @@ SPX_SYMBOL = "$SPX"
 
 
 def theme_health(theme, *, window_days: int = 20, now: datetime | None = None) -> dict:
+    from apps.core.runtime_config import runtime_config
     from apps.market.returns import forward_return_pct
 
     now = now or timezone.now()
     start = now - timedelta(days=window_days)
+    # Resolved once and threaded into every call — the helper would otherwise read
+    # the runtime config per member ticker.
+    adjust_dividends = runtime_config().returns_adjust_dividends
 
     members: list[dict] = []
     priced: list[tuple[str, float]] = []
     for t in theme.tickers:
-        r = forward_return_pct(t, start, now)
+        r = forward_return_pct(t, start, now, adjust_dividends=adjust_dividends)
         members.append({"ticker": t, "return_pct": round(r, 2) if r is not None else None})
         if r is not None:
             priced.append((t, r))
 
-    spx = forward_return_pct(SPX_SYMBOL, start, now)
+    spx = forward_return_pct(SPX_SYMBOL, start, now, adjust_dividends=adjust_dividends)
     spx_pct = round(spx, 2) if spx is not None else None
     coverage = {"priced": len(priced), "total": len(theme.tickers)}
 

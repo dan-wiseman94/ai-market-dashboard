@@ -23,7 +23,8 @@ def _coverage():
 def _theses():
     from apps.thesis.models import Thesis
 
-    return Thesis.objects.filter(status="open").values_list("ticker", flat=True)
+    # Archived theses are off the book — sweeping their tickers is paid-for noise.
+    return Thesis.objects.filter(status="open", archived_at=None).values_list("ticker", flat=True)
 
 
 def _positions():

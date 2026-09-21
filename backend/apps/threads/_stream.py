@@ -15,6 +15,7 @@ from typing import Any
 
 from apps.ai.providers.base import Provider
 from apps.ai.types import (
+    CitationEvent,
     DoneEvent,
     ErrorEvent,
     RunRequest,
@@ -80,6 +81,19 @@ def _build_stream_runner(
                 elif isinstance(evt, ThinkingDeltaEvent):
                     await emit(
                         {"event": "thinking_delta", "message_id": assistant_id, "text": evt.text}
+                    )
+                elif isinstance(evt, CitationEvent):
+                    # Marker only — it lands between the text deltas it annotates,
+                    # so the client can anchor it against the text already streamed.
+                    await emit(
+                        {
+                            "event": "citation",
+                            "message_id": assistant_id,
+                            "location": evt.location,
+                            "source": evt.source,
+                            "title": evt.title,
+                            "cited_text": evt.cited_text,
+                        }
                     )
                 elif isinstance(evt, ToolCallEvent):
                     tool_events.append(

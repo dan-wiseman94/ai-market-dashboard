@@ -33,6 +33,7 @@ ROUTES: list[tuple[str, str, str]] = [
     ("/events", "minimal", "events"),
     ("/settings/system", "minimal", "settings_system"),
     ("/settings/connections", "minimal", "settings_connections"),
+    ("/settings/features", "minimal", "settings_features"),
     ("/market-data", "market", "market_data"),
     ("/snapshots", "snapshots", "snapshots_list"),
     ("/scorecard", "thesis", "scorecard"),
@@ -46,6 +47,9 @@ ROUTES: list[tuple[str, str, str]] = [
     ("/theses/new", "minimal", "new_thesis"),
     ("/recall", "minimal", "recall"),
     ("/errors", "minimal", "errors"),
+    ("/predictions", "minimal", "predictions"),
+    ("/lessons", "minimal", "lessons"),
+    ("/coverage", "minimal", "coverage_index"),
 ]
 
 

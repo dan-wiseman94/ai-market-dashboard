@@ -36,6 +36,7 @@ class TradingProfileSerializer(serializers.ModelSerializer):
             "enable_tools",
             "enable_thinking",
             "thinking_budget",
+            "effort",
             "enable_memory",
             "enable_coach",
             "active",
@@ -72,6 +73,51 @@ class TradingProfileSerializer(serializers.ModelSerializer):
         if self.instance is not None:
             return getattr(self.instance, field)
         return getattr(TradingProfile(), field)
+
+
+class MemoryEntrySerializer(serializers.Serializer):
+    """One file the model wrote into this profile's memory store."""
+
+    path = serializers.CharField(help_text="Path relative to the profile's memory directory.")
+    size_bytes = serializers.IntegerField()
+    modified_at = serializers.DateTimeField()
+    preview = serializers.CharField(
+        allow_blank=True,
+        help_text="The first characters of the file, so injected content is visible.",
+    )
+    preview_truncated = serializers.BooleanField(
+        help_text="True when the file is longer than the preview."
+    )
+
+
+class ProfileMemorySerializer(serializers.Serializer):
+    """Everything stored under `<AI_MEMORY_ROOT>/<profile_id>/`."""
+
+    profile = serializers.IntegerField()
+    exists = serializers.BooleanField(
+        help_text="False when the profile has never run with memory on (no directory yet)."
+    )
+    entries = MemoryEntrySerializer(many=True)
+    total_files = serializers.IntegerField()
+    total_bytes = serializers.IntegerField()
+    preview_chars = serializers.IntegerField(
+        help_text="Preview length each entry was truncated to."
+    )
+
+
+class ProfileMemoryClearedSerializer(serializers.Serializer):
+    """What a clear removed."""
+
+    profile = serializers.IntegerField()
+    removed_files = serializers.IntegerField()
+    removed_bytes = serializers.IntegerField()
+
+
+class ProfileMemoryErrorSerializer(serializers.Serializer):
+    """Refusal envelope — the requested id did not resolve inside the memory root."""
+
+    code = serializers.CharField()
+    message = serializers.CharField()
 
 
 class AgentPresetSerializer(serializers.ModelSerializer):

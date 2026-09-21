@@ -102,8 +102,10 @@ export function apiPut<T>(path: string, body: unknown): Promise<T> {
   return request<T>("PUT", path, body);
 }
 
-export function apiDelete(path: string): Promise<void> {
-  return request<void>("DELETE", path);
+// Most DELETEs 204 with no body, hence the `void` default; a few (the profile
+// memory clear) answer 200 with a receipt, so the body type is opt-in.
+export function apiDelete<T = void>(path: string): Promise<T> {
+  return request<T>("DELETE", path);
 }
 
 export type HealthResponse = { status: "ok" };

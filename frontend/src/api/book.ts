@@ -45,7 +45,38 @@ export interface BookSnapshot {
   var_beta?: BookVarBeta;
 }
 
+/**
+ * One point on the book's history curve.
+ *
+ * `GET /api/book/` serves a *trend* row, not the full X-ray: the per-position
+ * arrays (exposures, clusters, VaR positions) are left to `GET /api/book/<id>/`.
+ * Every metric is nullable — a day with no priceable position has no VaR, and a
+ * zero there would invent a reading, so render a gap instead.
+ */
+export interface BookSnapshotTrend {
+  id: number;
+  created_at: string;
+  as_of_date: string;
+  hhi: number | null;
+  top_n_share: number | null;
+  total_abs: number | null;
+  net_long: number | null;
+  net_short: number | null;
+  gross_dollar: number | null;
+  net_dollar: number | null;
+  diversified_var_usd: number | null;
+  undiversified_var_usd: number | null;
+  beta_adjusted_net_exposure_usd: number | null;
+  regime: string | null;
+  alignment: string | null;
+  position_count: number;
+  cluster_count: number;
+  near_invalidation_count: number;
+}
+
 export const fetchCurrentBook = () => apiGet<BookSnapshot | null>("/api/book/current/");
-export const fetchBookHistory = () => apiGet<BookSnapshot[]>("/api/book/");
-/** @public — typed client for POST /api/book/recompute/; awaits a UI "recompute" affordance. */
+/** Newest-first trend rows. `limit` is clamped server-side (default 90, max 730). */
+export const fetchBookHistory = (limit = 30) =>
+  apiGet<BookSnapshotTrend[]>(`/api/book/?limit=${limit}`);
+/** Recompute the X-ray now (POST /api/book/recompute/) and return the fresh snapshot. */
 export const recomputeBook = () => apiPost<BookSnapshot>("/api/book/recompute/");

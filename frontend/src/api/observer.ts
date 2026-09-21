@@ -49,10 +49,14 @@ export interface CreateScheduleBody {
   close_offset_minutes?: number;
 }
 
+/** Every create field is editable after the fact — the ViewSet re-syncs the
+ *  PeriodicTask on update, so `cron` and `fire_mode` may be PATCHed too. */
+export type UpdateScheduleBody = Partial<CreateScheduleBody>;
+
 export const listSchedules = () => apiGet<ObserverSchedule[]>("/api/observer/schedules/");
 export const createSchedule = (body: CreateScheduleBody) =>
   apiPost<ObserverSchedule>("/api/observer/schedules/", body);
-export const patchSchedule = (id: number, body: Partial<CreateScheduleBody>) =>
+export const patchSchedule = (id: number, body: UpdateScheduleBody) =>
   apiPatch<ObserverSchedule>(`/api/observer/schedules/${id}/`, body);
 export const deleteSchedule = (id: number) =>
   apiDelete(`/api/observer/schedules/${id}/`);

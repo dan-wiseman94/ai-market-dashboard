@@ -1,10 +1,9 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Link } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
-import { useRecall } from "@/hooks/useRecall";
+import { useRecall, useRecallBackfill, useRecallStatus } from "@/hooks/useRecall";
 import { Skeleton, SkeletonRows } from "@/components/Skeleton";
 import { EmptyState } from "@/components/EmptyState";
-import { recallStatus } from "@/api/recall";
+import { useToast } from "@/hooks/useToast";
 import type { RecallHit } from "@/api/recall";
 
 const KIND_OPTIONS = [
@@ -47,11 +46,8 @@ function ModeBadge({
   );
 }
 
-function IndexHealth() {
-  const { data, isLoading, isError } = useQuery({
-    queryKey: ["recall/status"],
-    queryFn: recallStatus,
-  });
+function IndexCounts({ queuedAt }: { queuedAt: number | null }) {
+  const { data, isLoading, isError } = useRecallStatus(queuedAt);
 
   if (isLoading) {
     return <Skeleton className="h-5 w-64" where="recall-status" />;
@@ -76,6 +72,69 @@ function IndexHealth() {
         </span>
       ))}
     </div>
+  );
+}
+
+/**
+ * Index health plus the backfill control.
+ *
+ * POST /api/recall/backfill/ is fire-and-forget — a 202 with a task id and no
+ * completion event — so this says "queued", never "done", and re-reads the
+ * counts above on a short poll so progress is actually visible.
+ */
+function IndexHealth() {
+  const [queuedAt, setQueuedAt] = useState<number | null>(null);
+  const [taskId, setTaskId] = useState<string | null>(null);
+  const backfill = useRecallBackfill();
+  const { push } = useToast();
+  const helpId = useId();
+
+  function run() {
+    backfill.mutate(undefined, {
+      onSuccess: (data) => {
+        setTaskId(data.task_id);
+        setQueuedAt(Date.now());
+        push({ kind: "info", text: "Backfill queued." });
+      },
+      onError: (e) => push({ kind: "error", text: (e as Error).message }),
+    });
+  }
+
+  return (
+    <fieldset className="rounded border border-rule p-3">
+      <legend className="px-1 text-[10px] uppercase tracking-wider text-ink-500">
+        Index health
+      </legend>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <IndexCounts queuedAt={queuedAt} />
+        <button
+          type="button"
+          onClick={run}
+          disabled={backfill.isPending}
+          aria-describedby={helpId}
+          className="rounded border border-copper-600 px-3 py-1 text-[12px] text-copper-200 transition-colors hover:bg-copper-900/30 disabled:opacity-50"
+        >
+          {backfill.isPending ? "Queuing…" : "Backfill index"}
+        </button>
+      </div>
+      <p id={helpId} className="mt-2 text-[11px] leading-relaxed text-ink-500">
+        Re-embeds every document still pending semantic indexing — messages, snapshots, theses,
+        journal entries, observations and post-mortems written before the index existed, or while
+        it was unavailable. Embeddings are computed locally, so this costs worker CPU and no
+        provider spend. Idempotent: pressing it again only picks up what is still missing.
+      </p>
+      {taskId && (
+        <p
+          data-testid="recall-backfill-queued"
+          role="status"
+          className="mt-2 text-[11px] text-ink-400"
+        >
+          Queued as task <span className="font-mono">{taskId}</span>. Queued is not finished —
+          the worker reports no completion event, so the counts above re-read every 5s for the
+          next couple of minutes.
+        </p>
+      )}
+    </fieldset>
   );
 }
 
@@ -185,10 +244,13 @@ export default function RecallPage() {
             Search
           </button>
         </div>
-        <div className="mt-3 min-h-5">
-          <IndexHealth />
-        </div>
       </form>
+
+      {/* Outside the search form on purpose: the backfill is its own action, not
+          a second submit path for the query. */}
+      <div className="mb-6">
+        <IndexHealth />
+      </div>
 
       {submitted && (
         <div className="flex items-center gap-3 mb-4">

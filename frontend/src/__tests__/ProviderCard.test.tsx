@@ -25,7 +25,8 @@ vi.mock("@/hooks/useToast", () => ({ useToast: () => ({ push: mockPush }) }));
 function cfg(o: Partial<ProviderConfig> = {}): ProviderConfig {
   return {
     provider: "claude", base_url: "", default_model: "claude-sonnet-4-6",
-    enabled: true, supports_vision: true, daily_cost_cap_usd: "10.00",
+    enabled: true, supports_vision: true, supports_tools: true,
+    daily_cost_cap_usd: "10.00",
     monthly_cost_cap_usd: null, api_key_present: true,
     discovered_models: [], models_synced_at: null, ...o,
   };
@@ -64,7 +65,11 @@ describe("ProviderCard — catalog default, capabilities and discovery", () => {
     expect(facts).toContain("150k payload");
   });
 
-  it("offers tool-use and vision toggles off Claude and saves only the touched one", async () => {
+  // A save sends BOTH capability flags, the touched one and the untouched one at
+  // its displayed (stored) value — the switches show a value resolved in this card,
+  // so persisting only the touched one would leave a first-written row taking its
+  // other flag from the model default instead of from what the card showed.
+  it("offers tool-use and vision toggles off Claude and saves both flags", async () => {
     mockUseProviderConfigs.mockReturnValue({
       data: [cfg({ provider: "openai", default_model: "gpt-5.6-sol", supports_tools: true, supports_vision: true })],
     });
@@ -73,7 +78,7 @@ describe("ProviderCard — catalog default, capabilities and discovery", () => {
     await userEvent.click(screen.getByRole("button", { name: "Save" }));
     const [arg] = mockMutate.mock.calls[0];
     expect(arg.body.supports_tools).toBe(false);
-    expect("supports_vision" in arg.body).toBe(false);
+    expect(arg.body.supports_vision).toBe(true);
   });
 
   it("states Claude's fixed capabilities instead of offering toggles", () => {
@@ -239,5 +244,77 @@ describe("ProviderCard — local provider", () => {
     render(<ProviderCard provider="local" />);
     await userEvent.click(screen.getByRole("button", { name: "Test connection" }));
     expect(screen.getByText(/Couldn't reach/i)).toBeInTheDocument();
+  });
+});
+
+describe("ProviderCard — capability flags", () => {
+  it("renders the tool-use and vision switches from the stored config", () => {
+    mockUseProviderConfigs.mockReturnValue({
+      data: [cfg({ provider: "openai", supports_tools: false, supports_vision: true })],
+    });
+    render(<ProviderCard provider="openai" />);
+    expect(screen.getByLabelText("Tool use")).not.toBeChecked();
+    expect(screen.getByLabelText("Vision")).toBeChecked();
+  });
+
+  it("defaults both switches on when the stored row predates the fields", () => {
+    mockUseProviderConfigs.mockReturnValue({ data: [] });
+    render(<ProviderCard provider="openai" />);
+    expect(screen.getByLabelText("Tool use")).toBeChecked();
+    expect(screen.getByLabelText("Vision")).toBeChecked();
+  });
+
+  it("says out loud that tool use gates a profile's Tools switch for non-Claude", () => {
+    mockUseProviderConfigs.mockReturnValue({ data: [cfg({ provider: "openai" })] });
+    render(<ProviderCard provider="openai" />);
+    const hintId = screen.getByLabelText("Tool use").getAttribute("aria-describedby");
+    expect(document.getElementById(hintId ?? "")).toHaveTextContent(/Tools switch does nothing/i);
+  });
+
+  it("persists both flags on save", async () => {
+    mockUseProviderConfigs.mockReturnValue({ data: [cfg({ provider: "openai" })] });
+    render(<ProviderCard provider="openai" />);
+    await userEvent.click(screen.getByLabelText("Tool use"));
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+    const [arg] = mockMutate.mock.calls[0];
+    expect(arg.body).toMatchObject({ supports_tools: false, supports_vision: true });
+  });
+
+  it("persists them for the local provider too, alongside the base URL", async () => {
+    mockUseProviderConfigs.mockReturnValue({
+      data: [cfg({ provider: "local", api_key_present: false, default_model: "llama3",
+                   base_url: "http://x:11434/v1", discovered_models: ["llama3"] })],
+    });
+    render(<ProviderCard provider="local" />);
+    await userEvent.click(screen.getByLabelText("Vision"));
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+    const [arg] = mockMutate.mock.calls[0];
+    expect(arg.body).toMatchObject({ base_url: "http://x:11434/v1", supports_vision: false });
+  });
+});
+
+describe("ProviderCard — monthly cap is uncapped by default", () => {
+  it("spells out that a blank monthly box means no cap", () => {
+    render(<ProviderCard provider="claude" />);
+    const monthly = screen.getByLabelText("Monthly cap (USD)");
+    expect(monthly).toHaveValue("");
+    expect(monthly).toHaveAttribute("placeholder", "no cap");
+    const hintId = monthly.getAttribute("aria-describedby");
+    expect(document.getElementById(hintId ?? "")).toHaveTextContent(/No monthly cap/i);
+  });
+
+  it("swaps the hint once a monthly cap is entered", async () => {
+    render(<ProviderCard provider="claude" />);
+    await userEvent.type(screen.getByLabelText("Monthly cap (USD)"), "50");
+    const hintId = screen.getByLabelText("Monthly cap (USD)").getAttribute("aria-describedby");
+    expect(document.getElementById(hintId ?? "")).toHaveTextContent(/rolling 30 days/i);
+  });
+
+  it("says 'no cap set' in the meters block instead of omitting the row", () => {
+    mockUseCostsCaps.mockReturnValue({ data: [
+      { provider: "claude", daily: { cap: "10.00", spent: "6.00", pct: 0.6 }, monthly: null },
+    ] });
+    render(<ProviderCard provider="claude" />);
+    expect(screen.getByText(/Monthly — no cap set/i)).toBeInTheDocument();
   });
 });

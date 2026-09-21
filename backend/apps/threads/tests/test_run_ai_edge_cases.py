@@ -10,7 +10,7 @@ import pytest
 
 from apps.ai.cost import CostCapExceededError
 from apps.ai.router import ResolutionError
-from apps.ai.types import DoneEvent, ThinkingDeltaEvent
+from apps.ai.types import DoneEvent, TextDelta, ThinkingDeltaEvent
 from apps.profiles.models import TradingProfile
 from apps.secrets.models import ProviderConfig
 from apps.threads import tasks as task_mod
@@ -159,6 +159,49 @@ def test_stream_runner_broadcasts_thinking_delta():
     assert any(e["event"] == "thinking_delta" and e["text"] == "pondering" for e in seen)
 
 
+def test_stream_runner_broadcasts_citation_markers():
+    """A citation lands between the text deltas it annotates, so the client can
+    anchor it against text it has already rendered."""
+    from apps.ai.types import CitationEvent
+
+    seen: list[dict] = []
+
+    async def fake_broadcast(thread_id, payload):
+        seen.append(payload)
+
+    class _Provider:
+        name = "fake"
+
+        async def run(self, _req):
+            yield TextDelta(text="Rates held. ")
+            yield CitationEvent(
+                location="search_result_location",
+                source="news://7",
+                title="Fed holds rates",
+                cited_text="unchanged",
+            )
+            yield DoneEvent()
+
+    with patch("apps.threads.tasks._broadcast_async", fake_broadcast):
+        drive = task_mod._build_stream_runner(
+            [],
+            {"input_tokens": 0, "output_tokens": 0, "cached_tokens": 0},
+            [],
+            [],
+            _Provider(),
+            None,
+            1,
+            7,
+        )
+        asyncio.run(drive())
+
+    events = [e["event"] for e in seen]
+    assert events.index("text_delta") < events.index("citation")
+    citation = next(e for e in seen if e["event"] == "citation")
+    assert citation["source"] == "news://7"
+    assert citation["title"] == "Fed holds rates"
+
+
 @pytest.mark.django_db
 def test_run_ai_records_cancelled_run_when_message_flipped_during_stream():
     ProviderConfig.objects.create(provider="claude", api_key="sk")  # type: ignore[misc]
@@ -202,7 +245,6 @@ def test_run_ai_stop_flag_aborts_stream_via_should_stop():
     u = Message.objects.create(thread=t, role="user", content={"text": "hi"})
 
     async def fake_stream(self, req):
-        from apps.ai.types import TextDelta
 
         for i in range(5):
             yield TextDelta(text=f"t{i}")

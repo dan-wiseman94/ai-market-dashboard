@@ -23,6 +23,7 @@ from e2e.pages.base import BasePage
 ROUTES: list[tuple[str, str]] = [
     ("/settings/system", "minimal"),
     ("/settings/connections", "minimal"),
+    ("/settings/features", "minimal"),
     ("/market-data", "market"),
     ("/snapshots", "snapshots"),
     ("/scorecard", "thesis"),
@@ -36,6 +37,12 @@ ROUTES: list[tuple[str, str]] = [
     ("/theses/new", "minimal"),
     ("/recall", "minimal"),
     ("/errors", "minimal"),
+    # No rung seeds AIPrediction / Lesson / CoverageNote rows, so these three
+    # render their empty states — which is exactly what the smoke lane asserts
+    # (route mounts, breadcrumb renders, no console error from the fetch).
+    ("/predictions", "minimal"),
+    ("/lessons", "minimal"),
+    ("/coverage", "minimal"),
 ]
 
 

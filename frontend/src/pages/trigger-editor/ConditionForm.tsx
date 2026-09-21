@@ -3,10 +3,11 @@ import type { Condition, EvaluateResult, EventTrigger } from "@/api/triggers";
 import type { TradingProfile } from "@/api/profiles";
 import RuleBuilder from "@/components/triggers/RuleBuilder";
 import { Skeleton } from "@/components/Skeleton";
+import InvestigateToggle from "@/components/schedule/InvestigateToggle";
 
 export type TriggerForm = Pick<
   EventTrigger,
-  "name" | "condition" | "cooldown_seconds" | "enabled"
+  "name" | "condition" | "cooldown_seconds" | "enabled" | "investigate"
 >;
 
 export interface ConditionFormProps {
@@ -72,8 +73,9 @@ export default function ConditionForm({
               onChange={(e) => onFormChange({ ...form, cooldown_seconds: Number(e.target.value) })}
             />
           </div>
-          <label className="flex items-center gap-2 mt-7">
+          <label className="flex items-center gap-2 mt-7" htmlFor="tr-enabled">
             <input
+              id="tr-enabled"
               type="checkbox"
               checked={form.enabled}
               onChange={(e) => onFormChange({ ...form, enabled: e.target.checked })}
@@ -81,6 +83,12 @@ export default function ConditionForm({
             Enabled
           </label>
         </div>
+
+        <InvestigateToggle
+          idPrefix="tr"
+          checked={form.investigate}
+          onChange={(investigate) => onFormChange({ ...form, investigate })}
+        />
       </div>
 
       <RuleBuilder

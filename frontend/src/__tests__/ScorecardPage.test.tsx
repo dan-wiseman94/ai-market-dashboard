@@ -1,11 +1,28 @@
-import { render, screen, fireEvent } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { screen, fireEvent } from "@testing-library/react";
+import type { ReactElement } from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import ScorecardPage from "@/pages/ScorecardPage";
 import * as hooks from "@/hooks/useAnalytics";
+import { mockApi, renderWithProviders } from "./testUtils";
 
-// This suite renders the page bare (no QueryClientProvider) and spies on the
-// analytics hooks, so the eval section's own hooks are stubbed rather than fetched.
+// The eval section (run history + the queue form) is a live child of this page,
+// so every render needs its reads stubbed.
+const SETTINGS = {
+  aieval_scheduled_model: "claude-sonnet-4-6",
+  aieval_scheduled_horizon: 30,
+  aieval_scheduled_limit: 25,
+};
+
+function render(ui: ReactElement) {
+  return renderWithProviders(ui);
+}
+
+// The page renders inside the shared providers and spies on the analytics hooks,
+// so the eval section's own hooks are stubbed rather than fetched.
+//
+// `@/hooks/useToast` is deliberately NOT mocked: that module also exports
+// ToastProvider, which the shared Wrapper renders, so replacing the whole module
+// leaves the wrapper without a provider and every render in this file throws.
 const mockEvalRuns = vi.fn(() => ({ data: [] as unknown[], isLoading: false }));
 vi.mock("@/hooks/useAieval", () => ({
   useEvalRuns: () => mockEvalRuns(),
@@ -15,7 +32,6 @@ vi.mock("@/hooks/useAiModels", () => ({
   useAiModels: () => ({ data: { models: [], defaults: {} }, isLoading: false }),
 }));
 vi.mock("@/hooks/useProviderConfigs", () => ({ useProviderConfigs: () => ({ data: [] }) }));
-vi.mock("@/hooks/useToast", () => ({ useToast: () => ({ push: vi.fn() }) }));
 
 function mock(data: unknown, isLoading = false) {
   vi.spyOn(hooks, "useCalibration").mockReturnValue({ data, isLoading } as never);
@@ -112,6 +128,10 @@ const AI_CAL = {
 describe("ScorecardPage", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    mockApi({
+      "GET /api/aieval/runs/": [],
+      "GET /api/settings/": SETTINGS,
+    });
     mockAICal(); // default: no resolved AI predictions; the AI-calibration test overrides
     mockDrift(); // default: no drift data; the drift test overrides
     mockContra(); // default: no contradictions; the contradiction test overrides
@@ -171,7 +191,8 @@ describe("ScorecardPage", () => {
     mockEval();
     render(<ScorecardPage />);
     expect(screen.getByText(/Thesis calibration/i)).toBeInTheDocument();
-    expect(screen.getByText("claude")).toBeInTheDocument();
+    // Scoped to the table: "claude" is also an <option> in the eval-run panel.
+    expect(screen.getByRole("cell", { name: "claude" })).toBeInTheDocument();
     expect(screen.queryByText(/Model eval calibration/i)).not.toBeInTheDocument();
   });
 
@@ -199,11 +220,7 @@ describe("ScorecardPage", () => {
         },
       ],
     });
-    render(
-      <MemoryRouter>
-        <ScorecardPage />
-      </MemoryRouter>,
-    );
+    render(<ScorecardPage />);
     // The conviction "5" cell is a button (n > 0). Clicking it drills down.
     fireEvent.click(screen.getByRole("button", { name: "5" }));
     const link = screen.getByRole("link", { name: /NVDA · AI capex/ });

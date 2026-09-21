@@ -32,9 +32,12 @@ export type EvalRun = {
 export type EvalRunRequest = {
   provider: string;
   model: string;
-  horizon: number;
+  /** `null` replays every configured horizon; a number pins one. */
+  horizon: number | null;
   limit: number;
   label: string;
+  /** System-prompt override for A/B-ing a prompt. Omitted for the harness default. */
+  system?: string;
 };
 
 export type EvalRunQueued = EvalRunRequest & { queued: true };

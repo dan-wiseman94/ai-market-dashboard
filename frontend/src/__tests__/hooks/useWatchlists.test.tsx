@@ -61,6 +61,8 @@ describe("useRenameWatchlist", () => {
     expect(calls[0].url).toContain("/api/watchlists/1/");
     expect(calls[0].body).toMatchObject({ name: "Renamed" });
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["watchlists"] });
+    // The detail page reads a different key — a rename must refresh it too.
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["watchlist", 1] });
   });
 });
 

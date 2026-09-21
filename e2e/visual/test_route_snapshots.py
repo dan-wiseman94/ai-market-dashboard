@@ -40,6 +40,15 @@ ROUTES: list[tuple[str, str, str]] = [
     ("/briefing", "minimal", "briefing_empty"),
     # Events with no seeded MarketEvent rows shows the static empty sections.
     ("/events", "minimal", "events_empty"),
+    # No rung seeds AIPrediction / Lesson / CoverageNote, so all three render a
+    # static empty state with no timestamps — byte-stable.
+    ("/predictions", "minimal", "predictions_empty"),
+    ("/lessons", "minimal", "lessons_empty"),
+    ("/coverage", "minimal", "coverage_index_empty"),
+    # /settings/features is intentionally omitted from the byte-diff lane: the
+    # page renders live requirement probes (provider connected / key present)
+    # whose satisfied flag is not pinned by a seed rung, so the row badges
+    # differ run to run. Same limitation as /costs above.
 ]
 
 
