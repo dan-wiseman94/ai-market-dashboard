@@ -1,10 +1,11 @@
 """Authoritative inventory of the project's scheduled (Celery beat) work.
 
-19 beat entries across a dozen apps is a second, invisible execution model: nothing
-in a request path reveals what runs at 3am, how often, or whether it spends money.
-This registry makes that surface legible — every `app.conf.beat_schedule` task gets a
-cadence, owner, one-line summary, and (crucially) its **gate**: the feature flag that
-must be on for it to do anything, or "" for always-on.
+19 tasks across 20 beat entries (`strategy.regime_refresh` runs intraday and pre-open)
+are a second, invisible execution model: nothing in a request path reveals what runs at
+3am, how often, or whether it spends money. This registry makes that surface legible —
+every `app.conf.beat_schedule` task gets a cadence, owner, one-line summary, and
+(crucially) its **gate**: the feature flag that must be on for it to do anything, or ""
+for always-on.
 
 A drift gate (`apps/core/tests/test_scheduled_work_inventory.py`) asserts this set
 equals the live `beat_schedule`, so a new scheduled task with no entry here — or an
@@ -12,8 +13,10 @@ entry whose task was removed — fails CI. Same philosophy as the OpenAPI/featur
 drift gates. See docs/scheduled-work.md for the narrative.
 
 `spends` flags tasks that can incur real AI/$ cost autonomously — the rows worth the
-most scrutiny. (Many "analysis" tasks call the model only via their own cost caps; the
-two `spends=True` rows are the ones gated OFF by default.)
+most scrutiny. Both ship armed, switchable from Settings → Features, and bounded three
+ways: the autonomous daily cap, the per-provider caps, and a MOCK_EXTERNAL refusal
+inside the task (so an armed schedule in the e2e overlay does no work at all). (Many "analysis" tasks call the model too, but only on a path the user
+asked for, under their own cost caps.)
 """
 
 from __future__ import annotations
@@ -134,7 +137,7 @@ SCHEDULED_WORK: list[ScheduledTask] = [
         "Cluster recurring post-mortem lessons (deterministic embeddings, no AI call).",
         "",
     ),
-    # --- weekly, real spend, default OFF ---
+    # --- weekly, real spend, switchable ---
     ScheduledTask(
         "analytics.aieval_run_scheduled",
         "weekly Mon 05:00",

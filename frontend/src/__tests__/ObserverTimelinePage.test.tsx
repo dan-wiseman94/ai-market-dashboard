@@ -11,8 +11,16 @@ const FAKE_THREAD = {
   ],
 };
 
+const PROFILES = [
+  { id: 1, name: "Swing", default_includes: [] },
+  { id: 2, name: "Scalp", default_includes: [] },
+];
+
 beforeEach(() => {
-  mockApi({ "GET /api/observer/threads/1/": FAKE_THREAD });
+  mockApi({
+    "GET /api/observer/threads/1/": FAKE_THREAD,
+    "GET /api/profiles/": PROFILES,
+  });
 });
 
 describe("ObserverTimelinePage", () => {
@@ -27,5 +35,25 @@ describe("ObserverTimelinePage", () => {
     expect(headers.length).toBeGreaterThan(0);
     fireEvent.click(headers[0]);
     expect(screen.getByText(/AI response 1/i)).toBeInTheDocument();
+  });
+
+  it("switches the timeline to another profile (no other route reaches it)", async () => {
+    const mock = mockApi({
+      "GET /api/observer/threads/1/": FAKE_THREAD,
+      "GET /api/observer/threads/2/": { ...FAKE_THREAD, id: 8, profile_id: 2, title: "Observer: Scalp" },
+      "GET /api/profiles/": PROFILES,
+    });
+    renderWithProviders(<ObserverTimelinePage />, {
+      initialEntries: ["/threads/observer/1"],
+      routes: [
+        { path: "/threads/observer/:profileId", element: <ObserverTimelinePage /> },
+      ],
+    });
+
+    const picker = await screen.findByLabelText(/profile/i);
+    fireEvent.change(picker, { target: { value: "2" } });
+
+    expect(await screen.findByText("Observer: Scalp")).toBeInTheDocument();
+    expect(mock.calls.some((c) => c.url === "/api/observer/threads/2/")).toBe(true);
   });
 });

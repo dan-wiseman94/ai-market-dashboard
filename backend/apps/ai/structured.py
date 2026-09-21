@@ -25,13 +25,14 @@ from decimal import Decimal
 from typing import TYPE_CHECKING, NamedTuple
 
 from cryptography.fernet import InvalidToken
-from django.conf import settings
 from pydantic import BaseModel
 
 from apps.ai.catalog import CLAUDE_FAMILY_PROVIDERS, default_model_for, is_foreign_model
 from apps.ai.providers import claude_structured, openai_structured
 from apps.ai.providers.claude_structured import StructuredParseError, token_usage_from_anthropic
 from apps.ai.providers.openai_structured import token_usage_from_openai
+from apps.core.mocks.providers import canned_structured_instance, is_mock_mode
+from apps.core.runtime_config import runtime_config
 
 if TYPE_CHECKING:
     from apps.profiles.models import TradingProfile
@@ -65,6 +66,14 @@ def run_structured[M: BaseModel](
     base_url: str = "",
 ) -> M:
     """Run ``output_model`` as a one-shot structured call on ``provider``."""
+    # Single choke point for mock mode. The streaming providers short-circuit
+    # individually, but every structured caller — observer reports, consensus, the
+    # eval harness, post-mortems, coverage revisions, regime/book narratives, the
+    # War Room verdict — funnels through here, so one guard keeps the e2e overlay
+    # (and any beat task firing inside it) from reaching a billable endpoint.
+    if is_mock_mode():
+        log.info("run_structured: mock mode, returning a canned %s", output_model.__name__)
+        return canned_structured_instance(output_model)
     if provider in CLAUDE_FAMILY_PROVIDERS:
         return claude_structured.run_structured(
             api_key=api_key,
@@ -152,7 +161,7 @@ def resolve_structured_target(
     """The target a structured caller should use, or None when nothing usable exists.
 
     Precedence: ``override_provider`` → ``profile.default_provider`` →
-    calibration-weighted choice (``AI_CALIBRATION_ROUTING_ENABLED``) → first enabled
+    calibration-weighted choice (``ai_calibration_routing_enabled``) → first enabled
     config. An override or profile that names a provider does not fall through to
     the global tiers when that provider is unusable. ``InvalidToken`` propagates so
     callers can report an undecryptable key.
@@ -165,10 +174,12 @@ def resolve_structured_target(
     if profile is not None and profile.default_provider:
         cfg = ProviderConfig.objects.filter(provider=profile.default_provider, enabled=True).first()
         return _target_from_config(cfg, model=profile.default_model or "")
-    if getattr(settings, "AI_CALIBRATION_ROUTING_ENABLED", False):
+    rc = runtime_config()
+    if rc.ai_calibration_routing_enabled:
         from apps.ai.router import _calibration_choice
 
-        choice = _calibration_choice()
+        # Hand `rc` down: the thresholds are resolved once, not per candidate.
+        choice = _calibration_choice(rc)
         if choice is not None:
             prov, model_id = choice
             cfg = ProviderConfig.objects.filter(provider=prov, enabled=True).first()

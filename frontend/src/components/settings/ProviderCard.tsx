@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { useProviderConfigs, useUpsertProviderConfig, useProbeProvider } from "@/hooks/useProviderConfigs";
 import { useAiUsage } from "@/hooks/useAiUsage";
 import { useCostsCaps } from "@/hooks/useCosts";
@@ -263,6 +263,9 @@ function CapabilitiesRow({
   supportsVision: boolean;
   setDraft: SetDraft;
 }) {
+  const hintBase = useId();
+  const toolsHintId = `${hintBase}-tools`;
+  const visionHintId = `${hintBase}-vision`;
   return (
     <div className="sm:col-span-2 border-t border-rule-soft pt-4">
       <p className="font-mono text-[10px] uppercase tracking-loose2 text-copper-400">Capabilities</p>
@@ -272,16 +275,38 @@ function CapabilitiesRow({
         <div className="mt-2 flex flex-wrap items-center gap-x-6 gap-y-2 text-[12px] text-ink-300">
           <span>Streaming · structured output</span>
           <label className="flex items-center gap-2">
-            <Toggle checked={supportsTools} onChange={(v) => setDraft({ supports_tools: v })} label="Tool use" />
+            <Toggle
+              checked={supportsTools}
+              onChange={(v) => setDraft({ supports_tools: v })}
+              label="Tool use"
+              describedBy={toolsHintId}
+            />
             <span>Tool use</span>
           </label>
           <label className="flex items-center gap-2">
-            <Toggle checked={supportsVision} onChange={(v) => setDraft({ supports_vision: v })} label="Vision" />
+            <Toggle
+              checked={supportsVision}
+              onChange={(v) => setDraft({ supports_vision: v })}
+              label="Vision"
+              describedBy={visionHintId}
+            />
             <span>Vision</span>
           </label>
           <span className="text-ink-500">
             Thinking, memory, files, citations and batches are Claude only.
           </span>
+          {/* The gate is easy to miss from the profile side: a profile's Tools switch
+              is inert while this is off, and vision off drops a capture's charts. Each
+              hint is wired to its own switch, so it is announced with it rather than
+              sitting in the page as text only a sighted user finds. */}
+          <p id={toolsHintId} className="w-full text-[11px] text-ink-500">
+            Tool use off strips every tool from {LABEL[provider]} runs, so a profile&apos;s Tools
+            switch does nothing.
+          </p>
+          <p id={visionHintId} className="w-full text-[11px] text-ink-500">
+            Vision off leaves a capture&apos;s chart images out of the run and posts a notice in
+            the thread.
+          </p>
         </div>
       )}
     </div>
@@ -351,10 +376,15 @@ function CostCapFields({
         )}
       </Field>
 
-      <Field label="Monthly cap (USD)" hint="Blank = no monthly limit."
+      {/* A blank box reads as "zero" — say out loud that blank means uncapped. */}
+      <Field label="Monthly cap (USD)"
+             hint={monthly === ""
+               ? "No monthly cap — only the daily cap stops a run. Enter a number to add one."
+               : "Hard stop across a rolling 30 days. Clear the box for no monthly cap."}
              error={monthlyInvalid ? "Enter a non-negative number or leave blank." : undefined}>
         {({ id, describedBy }) => (
-          <input id={id} aria-describedby={describedBy} inputMode="decimal" value={monthly} placeholder="none"
+          <input id={id} aria-describedby={describedBy} inputMode="decimal" value={monthly}
+            placeholder="no cap"
             onChange={(e) => setDraft({ monthly_cost_cap_usd: e.target.value })}
             className="ledger-input w-full py-2 tabular-nums" />
         )}
@@ -375,8 +405,10 @@ function CardFooter({ isLocal, capRow }: { isLocal: boolean; capRow: CapRow | un
   return (
     <div className="mt-5 space-y-2 border-t border-rule-soft pt-4">
       <CapMeter label="Daily" cap={capRow.daily.cap} spent={capRow.daily.spent} pct={capRow.daily.pct} />
-      {capRow.monthly && (
+      {capRow.monthly ? (
         <CapMeter label="Monthly" cap={capRow.monthly.cap} spent={capRow.monthly.spent} pct={capRow.monthly.pct} />
+      ) : (
+        <p className="text-[11px] text-ink-400">Monthly — no cap set.</p>
       )}
     </div>
   );
@@ -447,10 +479,13 @@ export default function ProviderCard({ provider }: { provider: ProviderId }) {
         };
     if (d.apiKey) body.api_key_write = d.apiKey; // omit when blank → serializer keeps the stored key
     if (provider === "openai" && draft.base_url !== undefined) body.base_url = d.baseUrl;
-    // Only send a capability the user actually touched, so a save never overwrites
-    // one config field with another card's assumed default.
-    if (draft.supports_tools !== undefined) body.supports_tools = draft.supports_tools;
-    if (draft.supports_vision !== undefined) body.supports_vision = draft.supports_vision;
+    // Persist BOTH capability flags, touched or not: the switches show a resolved
+    // value (draft → stored row → this card's own `?? true`), and a save that sent
+    // only the touched one would create a first row whose untouched flag comes from
+    // the model default instead — two defaults free to drift apart, leaving the card
+    // showing one thing and the row holding another.
+    body.supports_tools = d.supportsTools;
+    body.supports_vision = d.supportsVision;
     upsert.mutate(
       { provider, body },
       {

@@ -12,8 +12,13 @@ must cover, and the suite can't test the cross-product.  Making the set legible 
 gated is the cheapest brake on that combinatorial growth.  See ``docs/feature-flags.md``
 for the narrative and the graduation/kill policy.
 
-All flags currently ship OFF.  ``category`` separates genuine product toggles from
-infra/test switches that merely happen to be ``env.bool``.
+Product flags ship ON: every capability the app has is reachable out of the box, and
+this inventory — not a README — is the drift-gated source of truth for what the
+default actually is.  Each one stays switchable from Settings → Features, which writes
+the matching ``SystemSettings`` override; a NULL override inherits the default below.
+``RETURNS_ADJUST_DIVIDENDS`` is the single product flag that defaults OFF, because
+turning it on restates already-recorded post-mortem history.  ``category`` separates
+genuine product toggles from infra/test switches that merely happen to be ``env.bool``.
 """
 
 from __future__ import annotations
@@ -48,52 +53,73 @@ FEATURE_FLAGS: list[FeatureFlag] = [
         "Short-circuit the AI/Schwab/Finnhub clients to canned fixtures (E2E overlay). "
         "Never set on the normal dev stack — provider tests would hit the mock.",
     ),
-    # --- opt-in product features: all default OFF, each a behaviour-space branch ---
+    # --- product features: each a behaviour-space branch, each UI-switchable ---
     FeatureFlag(
         "AI_CALIBRATION_ROUTING_ENABLED",
-        False,
+        True,
         "feature",
         "Router fallback tier picks the best-measured (provider, model) from recent EvalRuns.",
     ),
     FeatureFlag(
         "AI_FAILOVER_ENABLED",
-        False,
+        True,
         "feature",
         "Retry once on a secondary provider when the primary errors before emitting any token.",
     ),
     FeatureFlag(
         "AIEVAL_SCHEDULED_ENABLED",
-        False,
+        True,
         "feature",
-        "Run the calibration eval on a beat schedule — spends real AI $ (no MOCK_EXTERNAL short-circuit).",
+        "Run the calibration eval on a beat schedule — spends real AI $ (the beat task refuses under MOCK_EXTERNAL).",
+    ),
+    FeatureFlag(
+        "BOOK_NARRATIVE_ENABLED",
+        True,
+        "feature",
+        "Layer an AI paragraph onto the daily whole-book risk reading. Off keeps the "
+        "computed numbers and drops only the prose.",
     ),
     FeatureFlag(
         "CALIBRATION_DRIFT_SENTINEL_ENABLED",
-        False,
+        True,
         "feature",
         "Daily sentinel: notify when a model's calibration_error drifts (over/under-confident). No AI $.",
     ),
     FeatureFlag(
         "ANOMALY_SWEEP_ENABLED",
-        False,
+        True,
         "feature",
         "Arm the beat-scheduled Desk sweep: scan watched tickers and auto-originate DeskEntry investigations.",
     ),
     FeatureFlag(
         "OBSERVER_RESPONSE_CACHE_ENABLED",
-        False,
+        True,
         "feature",
         "Reuse a byte-identical recent observer prompt's response instead of paying for another AI call.",
+    ),
+    FeatureFlag(
+        "REGIME_NARRATIVE_ENABLED",
+        True,
+        "feature",
+        "Layer an AI paragraph onto each market-regime reading. Off keeps the computed "
+        "axes and drops only the prose.",
+    ),
+    FeatureFlag(
+        "RESTORE_FROM_UI_ENABLED",
+        True,
+        "feature",
+        "Allow restoring the database from a backup in the UI — the one destructive action in the app.",
     ),
     FeatureFlag(
         "RETURNS_ADJUST_DIVIDENDS",
         False,
         "feature",
-        "Dividend-adjust forward-return math in apps.market.returns — a semantic change to all calibration.",
+        "Dividend-adjust forward-return math in apps.market.returns — retroactive, so it restates "
+        "post-mortem/Scorecard/Mirror history already computed under price-return. Defaults OFF.",
     ),
     FeatureFlag(
         "TRADINGVIEW_TOOLS_ENABLED",
-        False,
+        True,
         "feature",
         "Expose the read-only tv_* TradingView MCP tools to the in-app AI (needs a connected TradingView).",
     ),

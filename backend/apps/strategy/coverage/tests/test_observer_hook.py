@@ -1,8 +1,9 @@
-"""The observer auto-revises a covered ticker's house view after a fire.
+"""The observer keeps the house view current after a fire.
 
-The hook is *opt-in by virtue of the CoverageNote already existing* — you opt in
-by covering a name. It is bounded to the snapshot's primary ticker and is
-best-effort (suppressed at the observer call site).
+A covered ticker is revised; an uncovered one gets its first note while
+auto-create is on, so the revision loop starts by itself on a newly watched name.
+Either way it is bounded to the snapshot's primary ticker and best-effort
+(suppressed at the observer call site).
 """
 
 from __future__ import annotations
@@ -10,6 +11,7 @@ from __future__ import annotations
 from unittest.mock import patch
 
 import pytest
+from django.test import override_settings
 
 from apps.snapshots.models import Snapshot
 from apps.strategy.coverage.hooks import maybe_revise_from_snapshot
@@ -31,7 +33,14 @@ def test_hook_dispatches_when_ticker_is_covered(ready_snapshot):
     delay.assert_called_once_with("SPY", ready_snapshot.id)
 
 
-def test_hook_noop_when_ticker_not_covered(ready_snapshot):
+def test_hook_opens_the_first_note_on_an_uncovered_ticker(ready_snapshot):
+    with patch(DELAY) as delay:
+        maybe_revise_from_snapshot(ready_snapshot)
+    delay.assert_called_once_with("SPY", ready_snapshot.id)
+
+
+@override_settings(COVERAGE_AUTO_CREATE_ENABLED=False)
+def test_hook_noop_on_an_uncovered_ticker_when_auto_create_is_off(ready_snapshot):
     with patch(DELAY) as delay:
         maybe_revise_from_snapshot(ready_snapshot)
     delay.assert_not_called()

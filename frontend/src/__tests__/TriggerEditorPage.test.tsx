@@ -175,4 +175,56 @@ describe("TriggerEditorPage", () => {
     const post = lastCall((u, init) => u === "/api/triggers/backtest/" && init?.method === "POST");
     expect(post).toBeDefined();
   });
+
+  it("creates with investigate on by default and shows the spend note", async () => {
+    renderFlow("/triggers/new", "/triggers/new");
+    await screen.findByLabelText(/name/i);
+
+    const box = screen.getByLabelText(/investigate \(autonomous tool loop/i);
+    expect(box).toBeChecked();
+    const descId = box.getAttribute("aria-describedby")!;
+    expect(document.getElementById(descId)!.textContent)
+      .toMatch(/costs materially more per fire/i);
+
+    fireEvent.change(screen.getByLabelText(/name/i), { target: { value: "SPY breakout" } });
+    fireEvent.click(screen.getByRole("button", { name: /save/i }));
+    expect(await screen.findByText("TRIGGERS LIST")).toBeInTheDocument();
+
+    const post = lastCall((u, init) => u === "/api/triggers/" && init?.method === "POST");
+    expect(JSON.parse(post![1]!.body as string).investigate).toBe(true);
+  });
+
+  it("seeds investigate from the existing trigger — saving must not silently re-enable it", async () => {
+    const TRIGGER = {
+      id: 5, name: "SPY breakout", profile: 1, firings_count: 0,
+      condition: { all: [{ metric: "price", ticker: "SPY", op: ">", value: 500 }] },
+      cooldown_seconds: 1800, enabled: true, investigate: false,
+    };
+    mockJsonByUrl((url) => {
+      if (url.startsWith("/api/profiles/")) return PROFILES;
+      if (url.includes("/evaluate/")) return { matched: false, values: {}, missing: [] };
+      if (url === "/api/triggers/" || url.startsWith("/api/triggers/?")) return [TRIGGER];
+      return {};
+    });
+    renderFlow("/triggers/5", "/triggers/:id");
+    await screen.findByDisplayValue("SPY breakout");
+
+    expect(screen.getByLabelText(/investigate \(autonomous tool loop/i)).not.toBeChecked();
+
+    fireEvent.click(screen.getByRole("button", { name: /save/i }));
+    expect(await screen.findByText("TRIGGERS LIST")).toBeInTheDocument();
+    const patch = lastCall((u, init) => u === "/api/triggers/5/" && init?.method === "PATCH");
+    expect(JSON.parse(patch![1]!.body as string).investigate).toBe(false);
+  });
+
+  it("toggling investigate off is sent on create", async () => {
+    renderFlow("/triggers/new", "/triggers/new");
+    await screen.findByLabelText(/name/i);
+    fireEvent.change(screen.getByLabelText(/name/i), { target: { value: "quiet" } });
+    fireEvent.click(screen.getByLabelText(/investigate \(autonomous tool loop/i));
+    fireEvent.click(screen.getByRole("button", { name: /save/i }));
+    expect(await screen.findByText("TRIGGERS LIST")).toBeInTheDocument();
+    const post = lastCall((u, init) => u === "/api/triggers/" && init?.method === "POST");
+    expect(JSON.parse(post![1]!.body as string).investigate).toBe(false);
+  });
 });

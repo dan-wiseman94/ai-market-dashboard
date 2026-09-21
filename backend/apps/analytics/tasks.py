@@ -1,8 +1,10 @@
-"""Beat task: run the offline eval harness on a schedule (opt-in, cost-capped).
+"""Analytics Celery tasks: the calibration-drift sentinel and the eval harness.
 
-OFF by default (AIEVAL_SCHEDULED_ENABLED). When on, it replays labeled theses
-through the real model, scores calibration, and persists an EvalRun the live
-coach reads. Guarded by the same cost-cap pre-flight as the manual command.
+The harness runs two ways — ``analytics.aieval_run_scheduled`` on beat and
+``analytics.aieval_run`` queued from POST /api/aieval/runs/. Both replay labeled
+theses through the real model, score calibration, and persist an EvalRun the live
+coach and the calibration-weighted router read, so both sit behind the same
+cost-cap pre-flight as ``manage.py aieval``.
 """
 
 from __future__ import annotations
@@ -31,13 +33,14 @@ def _redis():
 
 @shared_task(name="analytics.calibration_drift_sentinel")
 def calibration_drift_sentinel() -> dict:
-    """Daily: notify when a model's calibration newly drifts. Opt-in
-    (CALIBRATION_DRIFT_SENTINEL_ENABLED, default OFF). Idempotent via a per-model
-    Redis marker — alerts ONCE per drift episode and re-arms on recovery, so a
-    persistent drift never spams. Reads EvalRuns only; no AI spend."""
-    from django.conf import settings
+    """Daily: notify when a model's calibration newly drifts. Toggleable from the UI
+    (SystemSettings.calibration_drift_sentinel_enabled, else
+    CALIBRATION_DRIFT_SENTINEL_ENABLED). Idempotent via a per-model Redis marker —
+    alerts ONCE per drift episode and re-arms on recovery, so a persistent drift never
+    spams. Reads EvalRuns only; no AI spend."""
+    from apps.core.runtime_config import runtime_config
 
-    if not getattr(settings, "CALIBRATION_DRIFT_SENTINEL_ENABLED", False):
+    if not runtime_config().calibration_drift_sentinel_enabled:
         return {"skipped": "disabled"}
 
     from apps.analytics.services.calibration_drift import calibration_drift
@@ -68,13 +71,21 @@ def calibration_drift_sentinel() -> dict:
 
 @shared_task(name="analytics.aieval_run", acks_late=False, reject_on_worker_lost=False)
 def aieval_run(
-    *, provider: str, model: str, horizon: int, limit: int, label: str = "manual"
+    *,
+    provider: str,
+    model: str,
+    horizon: int | None,
+    limit: int,
+    label: str = "manual",
+    system: str | None = None,
 ) -> dict:
     """One manual eval run queued by ``POST /api/aieval/runs/``.
 
     At-most-once: it bills a provider and is not idempotent, so a worker crash must
     not redeliver it. Every exit notifies, because the UI has no other signal that a
-    queued run finished.
+    queued run finished. The request path resolves every parameter and refuses up
+    front on mock mode or a breached cap; the cap is re-checked here because spend
+    can cross the line between enqueue and execution.
     """
     from apps.market.services.safe_log import scrub_secret_params
     from apps.observer.services.notifications import notify
@@ -94,7 +105,7 @@ def aieval_run(
 
     try:
         res = evaluate(
-            system=DEFAULT_EVAL_SYSTEM,
+            system=system or DEFAULT_EVAL_SYSTEM,
             model=model,
             label=label,
             horizon=horizon,
@@ -112,11 +123,12 @@ def aieval_run(
         raise
 
     if not res["n"]:
+        span = f"{horizon}d" if horizon is not None else "any horizon"
         notify(
             user_id=None,
             kind="eval_done",
             title="Eval run: nothing to replay",
-            body=f"No decisive post-mortems with a frozen snapshot at {horizon}d.",
+            body=f"No decisive post-mortems with a frozen snapshot at {span}.",
             link="/scorecard",
         )
         return {"skipped": "no_data"}
@@ -134,9 +146,22 @@ def aieval_run(
     return {"ran": run.id, "n": res["n"], "hit_rate": hit}
 
 
-@shared_task(name="analytics.aieval_run_scheduled")
+# acks_late=False for the same reason as the manual twin: one billed model call per
+# labeled row plus an unconditional EvalRun append, so a redelivery after a worker
+# loss would re-bill the whole replay and store a duplicate run. At-most-once turns
+# a lost run into a missing result the user can re-trigger.
+@shared_task(name="analytics.aieval_run_scheduled", acks_late=False, reject_on_worker_lost=False)
 def run_scheduled() -> dict:
+    from apps.core.mocks import is_mock_mode
     from apps.core.runtime_config import runtime_config
+
+    # evaluate() reaches the provider through run_structured, which has NO
+    # MOCK_EXTERNAL short-circuit — so under the e2e overlay an armed schedule would
+    # bill a real model call. Refuse before any provider work. The manual path
+    # (`manage.py aieval`) calls evaluate() directly and is deliberately untouched.
+    if is_mock_mode():
+        log.info("analytics.aieval_run_scheduled skipped — MOCK_EXTERNAL")
+        return {"skipped": "mock_mode"}
 
     rc = runtime_config()
     if not rc.aieval_scheduled_enabled:

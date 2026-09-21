@@ -31,13 +31,25 @@ export interface CoverageNote extends CoverageSnapshot {
   revisions: CoverageRevision[];
 }
 
-/** @public — row shape for the coverage list endpoint; consumed as the list view adopts typed rows. */
+/** Row shape for the coverage index endpoint — enough to rank and route on, without
+ * the case text. `revision_count` / `last_revised_at` are annotated server-side. */
 export interface CoverageListRow {
   id: number;
   ticker: string;
   stance: Stance;
   conviction: number;
+  revision_count: number;
+  last_revised_at: string | null;
+  created_at: string;
   updated_at: string;
+}
+
+/** Every covered ticker, for the index. */
+export function useCoverageIndex() {
+  return useQuery({
+    queryKey: ["coverage"],
+    queryFn: () => apiGet<CoverageListRow[]>("/api/coverage/"),
+  });
 }
 
 /** The full house view for one ticker, with its revision history. */
@@ -64,6 +76,8 @@ export function useReviseCoverage(ticker: string) {
       apiPost<ReviseResponse>(
         `/api/coverage/${encodeURIComponent(ticker)}/revise/`,
       ),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["coverage", ticker] }),
+    // Invalidate the whole "coverage" root, not just this ticker: a revision moves
+    // the stance/conviction the index ranks on, and a first revision creates the row.
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["coverage"] }),
   });
 }

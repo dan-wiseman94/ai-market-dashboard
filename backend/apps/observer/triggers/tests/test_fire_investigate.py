@@ -37,8 +37,9 @@ def test_do_fire_passes_investigate_flag():
 
 
 @pytest.mark.django_db
-def test_do_fire_default_not_investigate():
-    """A plain trigger dispatches a normal (non-investigation) run."""
+def test_do_fire_investigates_by_default():
+    """A trigger created without an explicit flag investigates: the bounded tool
+    loop is the default fire, capped by AI_AUTONOMOUS_DAILY_CAP_USD."""
     ProviderConfig.objects.create(
         provider="claude", api_key="sk", enabled=True, daily_cost_cap_usd=Decimal("10.00")
     )
@@ -46,6 +47,32 @@ def test_do_fire_default_not_investigate():
     t = EventTrigger.objects.create(
         name="r",
         profile=p,
+        condition={"metric": "price", "ticker": "SPY", "op": ">", "value": 0},
+    )
+    assert t.investigate is True
+    snap = Snapshot.objects.create(profile=p, includes=["quotes"])
+    with (
+        patch("apps.observer.triggers.tasks.capture", return_value=snap),
+        patch("apps.observer.triggers.tasks.serialize_for_ai", return_value="payload"),
+        patch("apps.observer.triggers.tasks.run_ai_on_message") as ai,
+        patch("apps.observer.triggers.tasks.notify"),
+    ):
+        _do_fire(trigger_id=t.id, matched_values={"price:SPY": 1.0})
+
+    assert ai.delay.call_args.kwargs["investigate"] is True
+
+
+@pytest.mark.django_db
+def test_do_fire_honors_investigate_off():
+    """Opting out dispatches a normal (non-investigation) run."""
+    ProviderConfig.objects.create(
+        provider="claude", api_key="sk", enabled=True, daily_cost_cap_usd=Decimal("10.00")
+    )
+    p = TradingProfile.objects.create(name="P", style="x", default_provider="claude")
+    t = EventTrigger.objects.create(
+        name="r",
+        profile=p,
+        investigate=False,
         condition={"metric": "price", "ticker": "SPY", "op": ">", "value": 0},
     )
     snap = Snapshot.objects.create(profile=p, includes=["quotes"])

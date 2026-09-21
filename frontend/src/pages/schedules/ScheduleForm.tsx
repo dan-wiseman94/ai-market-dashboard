@@ -1,12 +1,14 @@
 import type { ObserverFireMode } from "@/api/observer";
 import type { TradingProfile } from "@/api/profiles";
+import TickerChipsInput from "@/components/TickerChipsInput";
 import { CRON_PRESETS } from "@/lib/cronPreview";
 import ScheduleAiFields from "./ScheduleAiFields";
-import type { ScheduleForm } from "./useScheduleForm";
+import type { ScheduleForm as ScheduleFormState } from "./useScheduleForm";
 
 function FireModeFields({
-  fireMode, setFireMode, closeOffset, setCloseOffset,
+  idPrefix, fireMode, setFireMode, closeOffset, setCloseOffset,
 }: {
+  idPrefix: string;
   fireMode: ObserverFireMode;
   setFireMode: (v: ObserverFireMode) => void;
   closeOffset: number;
@@ -14,9 +16,11 @@ function FireModeFields({
 }) {
   return (
     <div>
-      <label className="mb-1 block text-xs text-ink-500" htmlFor="sched-fire-mode">Fire mode</label>
+      <label className="mb-1 block text-xs text-ink-500" htmlFor={`${idPrefix}-fire-mode`}>
+        Fire mode
+      </label>
       <select
-        id="sched-fire-mode"
+        id={`${idPrefix}-fire-mode`}
         value={fireMode}
         onChange={(e) => setFireMode(e.target.value as ObserverFireMode)}
         className="ledger-input w-full py-2"
@@ -25,10 +29,10 @@ function FireModeFields({
         <option value="relative_to_close">Relative to market close</option>
       </select>
       {fireMode === "relative_to_close" && (
-        <label className="mt-2 block text-xs text-ink-500" htmlFor="sched-close-offset">
+        <label className="mt-2 block text-xs text-ink-500" htmlFor={`${idPrefix}-close-offset`}>
           Minutes before close
           <input
-            id="sched-close-offset"
+            id={`${idPrefix}-close-offset`}
             type="number"
             min={0}
             value={closeOffset}
@@ -41,7 +45,7 @@ function FireModeFields({
   );
 }
 
-function CronFields({ form }: { form: ScheduleForm }) {
+function CronFields({ form }: { form: ScheduleFormState }) {
   return (
     <div>
       <div className="mb-1 flex gap-2">
@@ -83,21 +87,51 @@ function CronFields({ form }: { form: ScheduleForm }) {
   );
 }
 
-export default function CreateScheduleForm({
-  profiles, isPending, onSubmit, form,
+function WatchlistFields({ idPrefix, form }: { idPrefix: string; form: ScheduleFormState }) {
+  const descId = `${idPrefix}-tickers-desc`;
+  return (
+    <div className="space-y-1">
+      <span className="block text-xs text-ink-500">Watchlist override</span>
+      <TickerChipsInput
+        value={form.tickers}
+        onChange={form.setTickers}
+        ariaLabel="Watchlist override tickers"
+        describedBy={descId}
+      />
+      <p id={descId} className="text-xs text-ink-500">
+        Empty — captures the profile&apos;s watchlist. Set tickers to pin this
+        schedule to its own symbols (also what market-hours and batch fan-out use).
+      </p>
+    </div>
+  );
+}
+
+/**
+ * The one schedule form. Create mounts it blank; the per-row edit expander
+ * mounts it seeded from the saved schedule, so every field a schedule has —
+ * cadence, market-hours gate, sections target, AI target and modes — stays
+ * editable after create.
+ */
+export default function ScheduleForm({
+  idPrefix, profiles, isPending, onSubmit, form, submitLabel, pendingLabel, onCancel,
 }: {
+  /** Distinguishes control ids when a create form and an edit form are both open. */
+  idPrefix: string;
   profiles: TradingProfile[] | undefined;
   isPending: boolean;
   onSubmit: (e: React.FormEvent) => void;
-  form: ScheduleForm;
+  form: ScheduleFormState;
+  submitLabel: string;
+  pendingLabel: string;
+  onCancel?: () => void;
 }) {
   const profile = profiles?.find((p) => p.id === form.profileId);
   return (
     <form onSubmit={onSubmit} className="ledger-surface space-y-3 p-4">
       <div>
-        <label className="mb-1 block text-xs text-ink-500" htmlFor="sched-name">Name</label>
+        <label className="mb-1 block text-xs text-ink-500" htmlFor={`${idPrefix}-name`}>Name</label>
         <input
-          id="sched-name"
+          id={`${idPrefix}-name`}
           type="text"
           value={form.name}
           onChange={(e) => form.setName(e.target.value)}
@@ -107,9 +141,11 @@ export default function CreateScheduleForm({
       </div>
 
       <div>
-        <label className="mb-1 block text-xs text-ink-500" htmlFor="sched-profile">Profile</label>
+        <label className="mb-1 block text-xs text-ink-500" htmlFor={`${idPrefix}-profile`}>
+          Profile
+        </label>
         <select
-          id="sched-profile"
+          id={`${idPrefix}-profile`}
           value={form.profileId ?? ""}
           onChange={(e) => form.setProfileId(parseInt(e.target.value, 10))}
           className="ledger-input w-full py-2"
@@ -119,16 +155,18 @@ export default function CreateScheduleForm({
       </div>
 
       <div className="flex gap-4 text-sm text-ink-200">
-        <label className="flex items-center gap-1">
+        <label className="flex items-center gap-1" htmlFor={`${idPrefix}-enabled`}>
           <input
+            id={`${idPrefix}-enabled`}
             type="checkbox"
             checked={form.enabled}
             onChange={(e) => form.setEnabled(e.target.checked)}
           />
           enabled
         </label>
-        <label className="flex items-center gap-1">
+        <label className="flex items-center gap-1" htmlFor={`${idPrefix}-market-hours-only`}>
           <input
+            id={`${idPrefix}-market-hours-only`}
             type="checkbox"
             checked={form.marketHoursOnly}
             onChange={(e) => form.setMarketHoursOnly(e.target.checked)}
@@ -138,6 +176,7 @@ export default function CreateScheduleForm({
       </div>
 
       <FireModeFields
+        idPrefix={idPrefix}
         fireMode={form.fireMode}
         setFireMode={form.setFireMode}
         closeOffset={form.closeOffset}
@@ -147,11 +186,11 @@ export default function CreateScheduleForm({
       {form.fireMode === "cron" && <CronFields form={form} />}
 
       <div>
-        <label className="mb-1 block text-xs text-ink-500" htmlFor="sched-objective">
+        <label className="mb-1 block text-xs text-ink-500" htmlFor={`${idPrefix}-objective`}>
           Objective template (sent with every fire)
         </label>
         <textarea
-          id="sched-objective"
+          id={`${idPrefix}-objective`}
           rows={2}
           value={form.objective}
           onChange={(e) => form.setObjective(e.target.value)}
@@ -160,20 +199,27 @@ export default function CreateScheduleForm({
         />
       </div>
 
+      <WatchlistFields idPrefix={idPrefix} form={form} />
+
       <ScheduleAiFields
         value={form.ai}
         onChange={form.setAi}
         profile={profile}
-        idPrefix="sched-new"
+        idPrefix={idPrefix}
       />
 
-      <button
-        type="submit"
-        disabled={isPending || !form.name || !form.profileId}
-        className="ledger-cta disabled:opacity-40"
-      >
-        {isPending ? "Creating…" : "Create"}
-      </button>
+      <div className="flex gap-2">
+        <button
+          type="submit"
+          disabled={isPending || !form.name || !form.profileId}
+          className="ledger-cta disabled:opacity-40"
+        >
+          {isPending ? pendingLabel : submitLabel}
+        </button>
+        {onCancel && (
+          <button type="button" onClick={onCancel} className="ledger-ghost">Cancel</button>
+        )}
+      </div>
     </form>
   );
 }

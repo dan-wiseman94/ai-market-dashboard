@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import { useNavigate, type NavigateFunction } from "react-router-dom";
 import { ApiError } from "@/api/client";
 import { waitForSnapshotReady } from "@/api/snapshots";
@@ -41,6 +41,28 @@ function threadTitle(title: string, objective: string): string {
   return title.trim() || objective.slice(0, 80) || `Consult ${new Date().toLocaleString()}`;
 }
 
+/**
+ * The timeframes the OHLC fetchers serve end to end, and the bar-count bounds —
+ * mirrored from backend/apps/market/services/ohlc.py (SUPPORTED_TIMEFRAMES,
+ * MIN_BARS/MAX_BARS/DEFAULT_BARS). The capture endpoint validates both and 400s
+ * on anything else, so the composer only ever offers valid values.
+ */
+const TIMEFRAMES = [
+  { value: "1m", label: "1 minute" },
+  { value: "5m", label: "5 minutes" },
+  { value: "15m", label: "15 minutes" },
+  { value: "1h", label: "1 hour" },
+  { value: "1d", label: "1 day" },
+] as const;
+
+type Timeframe = (typeof TIMEFRAMES)[number]["value"];
+
+/** Intraday timeframes capture a rolling 24h window; only "1d" reads the bar count. */
+const INTRADAY: ReadonlySet<string> = new Set(["1m", "5m", "15m", "1h"]);
+
+/** Presets inside the backend's 10–400 bound; 60 is the backend default. */
+const BAR_CHOICES = [30, 60, 90, 120, 180, 252, 400] as const;
+
 interface CaptureFields {
   profileId: number | null;
   objective: string;
@@ -51,6 +73,9 @@ interface CaptureFields {
   tickers: string[];
   stagedIds: number[];
   title: string;
+  ohlcTicker: string | undefined;
+  ohlcTimeframe: Timeframe;
+  ohlcBars: number;
 }
 
 interface RunCaptureDeps {
@@ -74,9 +99,9 @@ async function runCapture(deps: RunCaptureDeps): Promise<void> {
     manual_positions: fields.manualPositions,
     candidate_positions: fields.candidatePositions,
     watchlist_tickers: fields.tickers,
-    ohlc_ticker: fields.tickers[0],
-    ohlc_timeframe: "1m",
-    ohlc_bars: 60,
+    ohlc_ticker: fields.ohlcTicker,
+    ohlc_timeframe: fields.ohlcTimeframe,
+    ohlc_bars: fields.ohlcBars,
     image_ids: fields.stagedIds,
   });
   // Subscribe to the WS channel for live per-section progress. The HTTP
@@ -208,6 +233,110 @@ function PresetField({
   );
 }
 
+function OhlcOptionsField({
+  tickers,
+  ticker,
+  timeframe,
+  bars,
+  onTicker,
+  onTimeframe,
+  onBars,
+}: {
+  tickers: string[];
+  ticker: string | undefined;
+  timeframe: Timeframe;
+  bars: number;
+  onTicker: (t: string) => void;
+  onTimeframe: (t: Timeframe) => void;
+  onBars: (n: number) => void;
+}) {
+  const barsHelpId = useId();
+  const tickerHelpId = useId();
+  const intraday = INTRADAY.has(timeframe);
+
+  return (
+    <fieldset className="rounded border border-rule p-3 space-y-3">
+      <legend className="px-1 text-[10px] uppercase tracking-wider text-ink-500">
+        Price history (OHLC &amp; chart image)
+      </legend>
+
+      <div className="grid gap-3 sm:grid-cols-3">
+        <div>
+          <label htmlFor="ohlc-ticker" className="block text-xs text-ink-500 mb-1">
+            Ticker
+          </label>
+          <select
+            id="ohlc-ticker"
+            value={ticker ?? ""}
+            disabled={tickers.length === 0}
+            aria-describedby={tickerHelpId}
+            onChange={(e) => onTicker(e.target.value)}
+            className="w-full px-2 py-1.5 rounded bg-ink-900 border border-rule disabled:opacity-40"
+          >
+            {tickers.length === 0 ? (
+              <option value="">(no tickers selected)</option>
+            ) : (
+              tickers.map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))
+            )}
+          </select>
+        </div>
+
+        <div>
+          <label htmlFor="ohlc-timeframe" className="block text-xs text-ink-500 mb-1">
+            Timeframe
+          </label>
+          <select
+            id="ohlc-timeframe"
+            value={timeframe}
+            onChange={(e) => onTimeframe(e.target.value as Timeframe)}
+            className="w-full px-2 py-1.5 rounded bg-ink-900 border border-rule"
+          >
+            {TIMEFRAMES.map((t) => (
+              <option key={t.value} value={t.value}>
+                {t.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label htmlFor="ohlc-bars" className="block text-xs text-ink-500 mb-1">
+            Bars
+          </label>
+          <select
+            id="ohlc-bars"
+            value={bars}
+            disabled={intraday}
+            aria-describedby={barsHelpId}
+            onChange={(e) => onBars(parseInt(e.target.value, 10))}
+            className="w-full px-2 py-1.5 rounded bg-ink-900 border border-rule disabled:opacity-40"
+          >
+            {BAR_CHOICES.map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      <p id={tickerHelpId} className="text-xs text-ink-500">
+        Which symbol the OHLC section and the rendered chart image use. Defaults to the first
+        ticker above; the option chain always uses the first non-futures one.
+      </p>
+      <p id={barsHelpId} className="text-xs text-ink-500">
+        {intraday
+          ? "Intraday timeframes always capture a rolling 24-hour window, so the bar count does not apply. Switch to 1 day to choose one."
+          : "How many daily bars to capture. The server accepts 10–400."}
+      </p>
+    </fieldset>
+  );
+}
+
 function StagedImages({
   stagedIds,
   onDrop,
@@ -254,6 +383,11 @@ export default function SnapshotComposerPage() {
   const [manualPositions, setManualPositions] = useState("");
   const [candidatePositions, setCandidatePositions] = useState("");
   const [title, setTitle] = useState("");
+  // null = "follow the first effective ticker". Storing the choice rather than
+  // syncing it means changing the watchlist can never strand a stale symbol.
+  const [ohlcTicker, setOhlcTicker] = useState<string | null>(null);
+  const [ohlcTimeframe, setOhlcTimeframe] = useState<Timeframe>("1m");
+  const [ohlcBars, setOhlcBars] = useState(60);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   // Set to the created snapshot id once the POST returns so we can subscribe
@@ -294,6 +428,9 @@ export default function SnapshotComposerPage() {
   const { data: marketStatus } = useMarketStatus(tickers);
   const closedMarkets = closedMarketsOf(marketStatus);
 
+  const effectiveOhlcTicker =
+    ohlcTicker !== null && tickers.includes(ohlcTicker) ? ohlcTicker : tickers[0];
+
   const onCapture = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!profileId) return;
@@ -304,6 +441,9 @@ export default function SnapshotComposerPage() {
         fields: {
           profileId, objective, notes, includes, manualPositions,
           candidatePositions, tickers, stagedIds, title,
+          ohlcTicker: effectiveOhlcTicker,
+          ohlcTimeframe,
+          ohlcBars,
         },
         createSnap,
         createThread,
@@ -350,6 +490,16 @@ export default function SnapshotComposerPage() {
           <label className="block text-xs text-ink-500 mb-1">Sections</label>
           <SnapshotSectionPicker value={includes} onChange={setIncludes} />
         </div>
+
+        <OhlcOptionsField
+          tickers={tickers}
+          ticker={effectiveOhlcTicker}
+          timeframe={ohlcTimeframe}
+          bars={ohlcBars}
+          onTicker={setOhlcTicker}
+          onTimeframe={setOhlcTimeframe}
+          onBars={setOhlcBars}
+        />
 
         <PresetField presets={presets} onSetObjective={setObjective} />
 

@@ -6,7 +6,7 @@ import os
 
 from django.urls import path
 
-from . import views
+from . import feature_views, views
 
 app_name = "core"
 
@@ -16,6 +16,7 @@ urlpatterns = [
     path("errors/", views.ErrorEventListView.as_view(), name="error-list"),
     path("errors/<int:pk>/resolve/", views.ErrorEventResolveView.as_view(), name="error-resolve"),
     path("settings/", views.SystemSettingsView.as_view(), name="system-settings"),
+    path("features/", feature_views.FeatureRegistryView.as_view(), name="features"),
     path("mcp/", views.mcp_endpoint, name="mcp"),
 ]
 

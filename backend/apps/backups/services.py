@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import logging
 import os
+import re
 import subprocess
 import traceback
 from pathlib import Path
@@ -12,12 +13,30 @@ from django.conf import settings
 from django.utils import timezone
 
 from apps.backups.models import BackupRecord
+from apps.market.services.safe_log import scrub_secret_params
 from apps.observer.services.notifications import notify
 
 log = logging.getLogger(__name__)
 
 LOCK_KEY = "backup:running"
 LOCK_TTL_S = 30 * 60
+
+# libpq echoes the connection string in some failure modes; a DSN carries its password
+# in the userinfo segment.
+_DSN_USERINFO = re.compile(r"(?i)(postgres(?:ql)?://)[^/\s@]+@")
+
+
+class RestoreFailed(RuntimeError):
+    """``pg_restore`` exited non-zero.
+
+    ``stderr`` is already credential-scrubbed, so callers may surface it to the user or
+    the API; ``str(exc)`` carries only the exit code.
+    """
+
+    def __init__(self, returncode: int, stderr: str) -> None:
+        super().__init__(f"pg_restore failed (exit {returncode})")
+        self.returncode = returncode
+        self.stderr = stderr
 
 
 def _redis() -> redis.Redis:
@@ -67,6 +86,19 @@ def _pg_conn() -> tuple[str, str, str, dict[str, str]]:
     return host, user, db, env
 
 
+def scrub_pg_output(text: str, password: str = "") -> str:
+    """Strip credentials out of ``pg_restore`` / ``pg_dump`` diagnostics.
+
+    These land in an API response and on the CLI, so they must never echo a secret:
+    the literal password (libpq can repeat it back inside a DSN), a URI's ``user:pass@``
+    userinfo, and ``key=``-style query params. Never emit the database URL itself.
+    """
+    out = _DSN_USERINFO.sub(r"\1***@", scrub_secret_params(text))
+    if password:
+        out = out.replace(password, "***")
+    return out.strip()
+
+
 def perform_restore(filename: str) -> Path:
     """Restore the database from a pg_dump custom-format archive in ``backups_dir()``.
 
@@ -75,7 +107,8 @@ def perform_restore(filename: str) -> Path:
     restore connects with the container's real ``POSTGRES_*`` credentials.
     ``filename`` must be a bare name inside ``backups_dir()`` — a ``/`` or ``..``
     (path traversal) or a missing file raises ``FileNotFoundError``; a non-zero
-    ``pg_restore`` exit raises ``subprocess.CalledProcessError``.
+    ``pg_restore`` exit raises :class:`RestoreFailed`, carrying the scrubbed stderr
+    so the caller can report *why* rather than just an exit code.
     """
     if "/" in filename or "\\" in filename or ".." in filename:
         raise FileNotFoundError(f"invalid backup name: {filename!r}")
@@ -88,6 +121,10 @@ def perform_restore(filename: str) -> Path:
         "--clean",
         "--if-exists",
         "--no-owner",
+        # Fail fast instead of asking for a password: without this, a missing
+        # PGPASSWORD makes libpq try an interactive prompt, which on a tty would
+        # block the whole 1800s timeout.
+        "--no-password",
         "-h",
         host,
         "-U",
@@ -97,7 +134,17 @@ def perform_restore(filename: str) -> Path:
         str(path),
     ]
     # nosemgrep: python.lang.security.audit.dangerous-subprocess-use-tainted-env-args.dangerous-subprocess-use-tainted-env-args -- list-args (no shell), trusted operator/db config; filename traversal-guarded above
-    subprocess.run(cmd, check=True, timeout=1800, env=env)
+    proc = subprocess.run(
+        cmd,
+        capture_output=True,
+        text=True,
+        stdin=subprocess.DEVNULL,
+        timeout=1800,
+        env=env,
+    )
+    if proc.returncode != 0:
+        pw = env.get("PGPASSWORD", "")
+        raise RestoreFailed(proc.returncode, scrub_pg_output(proc.stderr or "", pw))
     return path
 
 

@@ -48,7 +48,11 @@ describe("ThesisGuardToggle", () => {
       initialEntries: ["/theses/1"],
       routePath: "/theses/:id",
     });
-    await waitFor(() => expect(screen.getByText(/Price guard/i)).toBeInTheDocument());
+    // Scoped to the section heading: the page's lifecycle copy also mentions the
+    // price guard, so a bare getByText would match more than one node.
+    await waitFor(() =>
+      expect(screen.getByRole("heading", { name: /price guard/i })).toBeInTheDocument(),
+    );
     expect(screen.getByRole("switch", { name: /price guard/i })).toBeInTheDocument();
   });
 

@@ -21,16 +21,25 @@ def _items(resp):
 
 
 @pytest.mark.django_db
-def test_list_returns_notes_without_revisions():
+def test_list_returns_index_rows_with_revision_counts():
     client = APIClient()
-    CoverageNote.objects.create(ticker="SPY", stance="bull", conviction=3)
+    spy = CoverageNote.objects.create(ticker="SPY", stance="bull", conviction=3)
     CoverageNote.objects.create(ticker="QQQ", stance="bear", conviction=2)
+    rev = CoverageRevision.objects.create(note=spy, prior={}, new={}, reason="established")
 
     resp = client.get("/api/coverage/")
     assert resp.status_code == 200
-    items = _items(resp)
-    assert {"SPY", "QQQ"} <= {it["ticker"] for it in items}
-    assert "revisions" not in items[0]  # list stays lean
+    rows = {it["ticker"]: it for it in _items(resp)}
+    assert {"SPY", "QQQ"} <= set(rows)
+    assert rows["SPY"]["stance"] == "bull"
+    assert rows["SPY"]["conviction"] == 3
+    assert rows["SPY"]["revision_count"] == 1
+    assert rows["SPY"]["last_revised_at"][:10] == rev.created_at.date().isoformat()
+    assert rows["QQQ"]["revision_count"] == 0
+    assert rows["QQQ"]["last_revised_at"] is None
+    # The index stays lean: no revision history, no case text.
+    assert "revisions" not in rows["SPY"]
+    assert "bull_case" not in rows["SPY"]
 
 
 @pytest.mark.django_db
@@ -54,9 +63,14 @@ def test_retrieve_returns_note_with_revisions_case_insensitive():
 
 
 @pytest.mark.django_db
-def test_retrieve_unknown_ticker_404():
+def test_retrieve_uncovered_ticker_is_204_not_404():
+    # An uncovered ticker is the ordinary case: the market page renders a house-view
+    # strip for every symbol. A 404 would log a console error on each of those loads,
+    # drowning real failures. 204 is what the API client coalesces to null.
     resp = APIClient().get("/api/coverage/NOPE/")
-    assert resp.status_code == 404
+
+    assert resp.status_code == 204
+    assert not resp.content
 
 
 @pytest.mark.django_db

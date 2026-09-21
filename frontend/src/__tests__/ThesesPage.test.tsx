@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import ThesesPage from "../pages/ThesesPage";
 import { mockApi, renderWithProviders } from "./testUtils";
 
@@ -22,6 +23,7 @@ const OPEN_THESIS = {
   opened_at: "2026-05-01T00:00:00Z",
   closed_at: null,
   close_note: "",
+  archived_at: null,
   created_at: "2026-05-01T00:00:00Z",
   updated_at: "2026-05-01T00:00:00Z",
   postmortems: [],
@@ -35,6 +37,14 @@ const WIN_THESIS = {
   direction: "bullish" as const,
   status: "closed_win" as const,
   closed_at: "2026-05-20T00:00:00Z",
+};
+
+const ARCHIVED_THESIS = {
+  ...OPEN_THESIS,
+  id: 3,
+  title: "Stale NVDA call",
+  ticker: "NVDA",
+  archived_at: "2026-06-01T00:00:00Z",
 };
 
 describe("ThesesPage", () => {
@@ -98,6 +108,80 @@ describe("ThesesPage", () => {
     renderWithProviders(<ThesesPage />, { initialEntries: ["/theses"] });
     await waitFor(() =>
       expect(screen.getByText(/1 open · 1 closed/i)).toBeInTheDocument(),
+    );
+  });
+
+  it("asks the server for the live slice by default", async () => {
+    const { calls } = mockApi({ "GET /api/theses/": [OPEN_THESIS] });
+    renderWithProviders(<ThesesPage />, { initialEntries: ["/theses"] });
+    await waitFor(() => expect(screen.getByText("SPY hits 600")).toBeInTheDocument());
+    expect(calls[0].url).toContain("archived=0");
+  });
+
+  it("switching to Archived re-queries that slice and shows the badge", async () => {
+    const user = userEvent.setup();
+    const { calls } = mockApi({
+      "GET /api/theses/": (_body: unknown, url: string) =>
+        url.includes("archived=1") ? [ARCHIVED_THESIS] : [OPEN_THESIS],
+    });
+    renderWithProviders(<ThesesPage />, { initialEntries: ["/theses"] });
+    await waitFor(() => expect(screen.getByText("SPY hits 600")).toBeInTheDocument());
+
+    await user.click(screen.getByRole("radio", { name: "Archived" }));
+
+    await waitFor(() =>
+      expect(screen.getByTestId(`archived-badge-${ARCHIVED_THESIS.id}`)).toBeInTheDocument(),
+    );
+    expect(calls.some((c) => c.url.includes("archived=1"))).toBe(true);
+  });
+
+  it("the Archived slice gets its own empty state", async () => {
+    const user = userEvent.setup();
+    mockApi({
+      "GET /api/theses/": (_body: unknown, url: string) => (url.includes("archived=1") ? [] : [OPEN_THESIS]),
+    });
+    renderWithProviders(<ThesesPage />, { initialEntries: ["/theses"] });
+    await waitFor(() => expect(screen.getByText("SPY hits 600")).toBeInTheDocument());
+
+    await user.click(screen.getByRole("radio", { name: "Archived" }));
+    await waitFor(() =>
+      expect(screen.getByText("No archived theses")).toBeInTheDocument(),
+    );
+  });
+
+  it("Archive sends a plain DELETE for that thesis", async () => {
+    const user = userEvent.setup();
+    const { calls } = mockApi({
+      "DELETE /api/theses/1/": undefined,
+      "GET /api/theses/": [OPEN_THESIS],
+    });
+    renderWithProviders(<ThesesPage />, { initialEntries: ["/theses"] });
+    await waitFor(() => expect(screen.getByText("SPY hits 600")).toBeInTheDocument());
+
+    await user.click(screen.getByRole("button", { name: "Archive SPY hits 600" }));
+
+    await waitFor(() => {
+      const del = calls.find((c) => c.method === "DELETE");
+      expect(del?.url).toContain("/api/theses/1/");
+      expect(del?.url).not.toContain("purge");
+    });
+  });
+
+  it("an archived row offers Restore, which POSTs to /restore/", async () => {
+    const user = userEvent.setup();
+    const { calls } = mockApi({
+      "POST /api/theses/3/restore/": { ...ARCHIVED_THESIS, archived_at: null },
+      "GET /api/theses/": [ARCHIVED_THESIS],
+    });
+    renderWithProviders(<ThesesPage />, { initialEntries: ["/theses"] });
+    await waitFor(() =>
+      expect(screen.getByText("Stale NVDA call")).toBeInTheDocument(),
+    );
+
+    await user.click(screen.getByRole("button", { name: "Restore Stale NVDA call" }));
+
+    await waitFor(() =>
+      expect(calls.some((c) => c.url.includes("/api/theses/3/restore/"))).toBe(true),
     );
   });
 });

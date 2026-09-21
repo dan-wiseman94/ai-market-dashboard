@@ -24,6 +24,7 @@ class EventTriggerSerializer(serializers.ModelSerializer):
             "condition",
             "cooldown_seconds",
             "enabled",
+            "investigate",
             "last_fired_at",
             "firings_count",
             "source_thesis_id",

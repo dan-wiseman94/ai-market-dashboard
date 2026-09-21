@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { BLANK_DRAFT, SECTION_OPTIONS } from "@/pages/profiles/types";
+import { BLANK_DRAFT, EFFORT_OPTIONS, SECTION_OPTIONS } from "@/pages/profiles/types";
 
 // Literal parity list from the task brief — every backend SnapshotSection kind
 // except `vix` (always-on, never user-selectable; see snapshotSections.ts).
@@ -20,5 +20,28 @@ describe("BLANK_DRAFT", () => {
     expect(BLANK_DRAFT.default_includes).toEqual([
       "quotes", "positions", "breadth", "ohlc", "chain", "news", "events", "macro",
     ]);
+  });
+});
+
+describe("BLANK_DRAFT AI capabilities", () => {
+  it("mirrors the TradingProfile model field defaults", () => {
+    // backend/apps/profiles/models.py — enable_* default True, effort "high",
+    // thinking_budget 8_000. A UI-created profile that disagrees silently ships
+    // a different AI posture than the backend's own default.
+    expect(BLANK_DRAFT).toMatchObject({
+      enable_tools: true,
+      enable_thinking: true,
+      thinking_budget: 8000,
+      effort: "high",
+      enable_memory: true,
+      enable_coach: true,
+      active: true,
+    });
+  });
+});
+
+describe("EFFORT_OPTIONS", () => {
+  it("lists the backend effort ladder cheapest first", () => {
+    expect(EFFORT_OPTIONS.map((o) => o.value)).toEqual(["low", "medium", "high", "xhigh", "max"]);
   });
 });
