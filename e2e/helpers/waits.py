@@ -26,5 +26,9 @@ def wait_for_app_ready(page: Any, *, timeout_ms: int = 10_000) -> None:
     hang the suite.
     """
     page.get_by_test_id("app-shell").wait_for(state="visible", timeout=timeout_ms)
+    # Honour the caller's budget rather than a second, shorter hidden one: this wait
+    # is suppressed, so a timeout here is silent and the test goes on to assert
+    # against a page whose data has not arrived. A hardcoded 5s under parallel CI
+    # load is how that happens.
     with contextlib.suppress(Exception):
-        page.wait_for_selector("[data-testid^='skeleton-']", state="detached", timeout=5_000)
+        page.wait_for_selector("[data-testid^='skeleton-']", state="detached", timeout=timeout_ms)
