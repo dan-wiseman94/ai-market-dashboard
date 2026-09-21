@@ -5,6 +5,8 @@ type Props = {
   onChange: (next: string[]) => void;
   /** Accessible name for the text input. */
   ariaLabel?: string;
+  /** Id of the hint describing the field, announced with the input. */
+  describedBy?: string;
   placeholder?: string;
 };
 
@@ -22,6 +24,7 @@ export default function TickerChipsInput({
   value,
   onChange,
   ariaLabel = "Add tickers",
+  describedBy,
   placeholder = "e.g. SPY, AAPL",
 }: Props) {
   const [draft, setDraft] = useState("");
@@ -64,6 +67,7 @@ export default function TickerChipsInput({
       ))}
       <input
         aria-label={ariaLabel}
+        aria-describedby={describedBy}
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
         onKeyDown={onKeyDown}

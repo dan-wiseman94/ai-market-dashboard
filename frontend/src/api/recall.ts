@@ -1,4 +1,4 @@
-import { apiGet } from "./client";
+import { apiGet, apiPost } from "./client";
 
 export interface RecallHit {
   kind: string;
@@ -52,4 +52,20 @@ export function recallRelated(params: RecallRelatedParams): Promise<RecallResult
 
 export function recallStatus(): Promise<RecallStatus> {
   return apiGet<RecallStatus>("/api/recall/status/");
+}
+
+/** 202 body of POST /api/recall/backfill/ — a queued Celery task, never a result. */
+export interface RecallBackfillQueued {
+  task_id: string;
+  status: string;
+}
+
+/**
+ * Queue an index catch-up over every source not yet embedded. Idempotent and
+ * safe to press again; embeddings are computed locally, so it costs worker CPU
+ * and never provider spend. Fire-and-forget — poll /api/recall/status/ for the
+ * per-kind counts as they fill in.
+ */
+export function recallBackfill(): Promise<RecallBackfillQueued> {
+  return apiPost<RecallBackfillQueued>("/api/recall/backfill/");
 }

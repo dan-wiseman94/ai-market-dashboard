@@ -8,8 +8,10 @@ whole endpoint (mirrors briefing's _safe_section pattern).
 from __future__ import annotations
 
 import logging
+from datetime import timedelta
 
 import sentry_sdk
+from django.db.models import Count, Q
 from django.utils import timezone
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -115,6 +117,39 @@ def _regime_section() -> dict:
     }
 
 
+# Full contract-valid shape for the predictions tile — the _safe() default and the
+# live payload must stay the same keys (a partial default crashes the SPA tile).
+_PREDICTIONS_DEFAULT = {
+    "open_count": 0,
+    "resolved_30d": 0,
+    "invalidated_30d": 0,
+    "hit_rate_30d": None,
+}
+
+
+def _predictions_section() -> dict:
+    """Prediction Ledger rollup: live calls now, plus how the last 30 days scored.
+    ``hit_rate_30d`` counts decisive verdicts only (correct vs incorrect), and is
+    None below one decisive call rather than a fabricated 0.0."""
+    from apps.observer.models import AIPrediction
+
+    since = timezone.now() - timedelta(days=30)
+    agg = AIPrediction.objects.aggregate(
+        open_count=Count("id", filter=Q(status="open")),
+        resolved_30d=Count("id", filter=Q(status="resolved", resolved_at__gte=since)),
+        invalidated_30d=Count("id", filter=Q(status="invalidated", invalidated_at__gte=since)),
+        correct=Count("id", filter=Q(verdict="correct", resolved_at__gte=since)),
+        incorrect=Count("id", filter=Q(verdict="incorrect", resolved_at__gte=since)),
+    )
+    decisive = agg["correct"] + agg["incorrect"]
+    return {
+        "open_count": agg["open_count"],
+        "resolved_30d": agg["resolved_30d"],
+        "invalidated_30d": agg["invalidated_30d"],
+        "hit_rate_30d": round(agg["correct"] / decisive, 4) if decisive else None,
+    }
+
+
 def _latest_briefing_summary() -> dict | None:
     from apps.observer.models import BriefingRun
 
@@ -144,5 +179,6 @@ class DashboardView(APIView):
                 "regime": _safe(_regime_section, {"composite": None, "drivers": [], "as_of": None}),
                 "book": _safe(_book_section, {"hhi": None, "alignment": None, "as_of": None}),
                 "desk": _safe(_desk_section, {"unread": 0, "latest": None}),
+                "predictions": _safe(_predictions_section, dict(_PREDICTIONS_DEFAULT)),
             }
         )

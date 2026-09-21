@@ -21,6 +21,7 @@ export default function EvalRunsTable({
             <th className="py-1 pr-3 font-normal">Run</th>
             <th className="py-1 pr-3 font-normal">Target</th>
             <th className="py-1 pr-3 font-normal">Label</th>
+            <th className="py-1 pr-3 font-normal">Horizon</th>
             <th className="py-1 pr-3 text-right font-normal">Scored</th>
             <th className="py-1 pr-3 text-right font-normal">Hit-rate</th>
             <th className="py-1 pr-3 text-right font-normal">Brier</th>
@@ -49,6 +50,11 @@ export default function EvalRunsTable({
               </td>
               <td className="py-1.5 pr-3 text-[12px] text-ink-400">
                 {r.label} · {r.source}
+              </td>
+              {/* A run can replay one horizon or every one of them; without this the
+                  two are indistinguishable in the history. */}
+              <td className="py-1.5 pr-3 text-[12px] text-ink-400">
+                {r.horizon === null ? "every" : `${r.horizon}d`}
               </td>
               <td className="py-1.5 pr-3 text-right tabular-nums">
                 {r.scored}/{r.n}

@@ -130,6 +130,54 @@ describe("RecallPage", () => {
     expect(screen.queryByTestId("skeleton-recall-status")).not.toBeInTheDocument();
   });
 
+  it("explains what the backfill does and what it costs", async () => {
+    mockApi({ "GET /api/recall/status/": RECALL_STATUS });
+    renderWithProviders(<RecallPage />, { initialEntries: ["/recall"] });
+
+    const button = await screen.findByRole("button", { name: /backfill index/i });
+    // The explanation is wired to the control, not just floating nearby.
+    const help = document.getElementById(button.getAttribute("aria-describedby") ?? "");
+    expect(help).toHaveTextContent(/re-embeds every document still pending semantic indexing/i);
+    expect(help).toHaveTextContent(/no provider spend/i);
+  });
+
+  it("reports a queued backfill as queued, not finished, and refetches the counts", async () => {
+    const fetchMock = mockApi({
+      "GET /api/recall/status/": RECALL_STATUS,
+      "POST /api/recall/backfill/": { task_id: "bf-9", status: "queued" },
+    });
+    renderWithProviders(<RecallPage />, { initialEntries: ["/recall"] });
+
+    await screen.findByTestId("recall-status");
+    const before = fetchMock.calls.filter((c) => c.url.includes("/api/recall/status/")).length;
+
+    fireEvent.click(screen.getByRole("button", { name: /backfill index/i }));
+
+    const banner = await screen.findByTestId("recall-backfill-queued");
+    expect(banner).toHaveTextContent("bf-9");
+    expect(banner).toHaveTextContent(/queued is not finished/i);
+
+    // Queuing invalidates the status query, so the counts re-read.
+    await waitFor(() =>
+      expect(
+        fetchMock.calls.filter((c) => c.url.includes("/api/recall/status/")).length,
+      ).toBeGreaterThan(before),
+    );
+  });
+
+  it("surfaces a failed backfill instead of claiming it was queued", async () => {
+    mockApi({
+      "GET /api/recall/status/": RECALL_STATUS,
+      "POST /api/recall/backfill/": { status: 500, message: "worker unreachable" },
+    });
+    renderWithProviders(<RecallPage />, { initialEntries: ["/recall"] });
+
+    fireEvent.click(await screen.findByRole("button", { name: /backfill index/i }));
+
+    expect(await screen.findByText(/worker unreachable/i)).toBeInTheDocument();
+    expect(screen.queryByTestId("recall-backfill-queued")).not.toBeInTheDocument();
+  });
+
   it("omits the readout when the status endpoint errors, without breaking search", async () => {
     mockApi({
       "GET /api/recall/": RECALL_RESULT,

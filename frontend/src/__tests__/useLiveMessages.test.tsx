@@ -355,3 +355,84 @@ describe("useLiveMessages — refetch reseed vs in-flight streams", () => {
     expect(live.status).toBe("streaming");
   });
 });
+
+function citation(id: number, over: Partial<{ location: string; source: string; title: string; cited_text: string }> = {}) {
+  act(() =>
+    wsHandler!({
+      event: "citation",
+      message_id: id,
+      location: "search_result_location",
+      source: "https://example.com/a",
+      title: "Fed holds",
+      cited_text: "Rates unchanged.",
+      ...over,
+    }),
+  );
+}
+
+describe("useLiveMessages — citations", () => {
+  it("accumulates citation frames onto the message they annotate", () => {
+    const refetch = vi.fn();
+    const empty = makeThread([]);
+    const { result } = renderHook(() => useLiveMessages(1, empty, refetch));
+    streamMessage(20, ["The Fed held."]);
+    citation(20);
+    citation(20, { source: "news://bzn-1", title: "Chips lead", cited_text: "Semis +1.4%." });
+
+    const msg = result.current.ordered.find((m) => m.id === 20)!;
+    expect(msg.citations).toEqual([
+      {
+        location: "search_result_location",
+        source: "https://example.com/a",
+        title: "Fed holds",
+        cited_text: "Rates unchanged.",
+      },
+      {
+        location: "search_result_location",
+        source: "news://bzn-1",
+        title: "Chips lead",
+        cited_text: "Semis +1.4%.",
+      },
+    ]);
+  });
+
+  // Claude emits one citation per cited SPAN, so a single article arrives many
+  // times. Numbering them separately would render five "sources" for one story.
+  it("dedupes repeated citations of the same source", () => {
+    const refetch = vi.fn();
+    const empty = makeThread([]);
+    const { result } = renderHook(() => useLiveMessages(1, empty, refetch));
+    streamMessage(21, ["a"]);
+    citation(21);
+    citation(21, { cited_text: "A different span of the same article." });
+    expect(result.current.ordered.find((m) => m.id === 21)!.citations).toHaveLength(1);
+  });
+
+  it("seeds a message from a citation that arrives before message_started", () => {
+    const refetch = vi.fn();
+    const empty = makeThread([]);
+    const { result } = renderHook(() => useLiveMessages(1, empty, refetch));
+    citation(22);
+    const msg = result.current.ordered.find((m) => m.id === 22)!;
+    expect(msg.role).toBe("assistant");
+    expect(msg.citations).toHaveLength(1);
+  });
+
+  // The persisted Message row has no citations field, so the refetch that
+  // follows message_done would blank the sources block it just rendered.
+  it("keeps citations across the reseed that follows message_done", () => {
+    const refetch = vi.fn();
+    const { result, rerender } = renderHook(
+      ({ thread }) => useLiveMessages(1, thread, refetch),
+      { initialProps: { thread: makeThread([]) } },
+    );
+    streamMessage(23, ["The Fed held."]);
+    citation(23);
+    act(() => wsHandler!({ event: "message_done", message_id: 23, cost_usd: "0.01" }));
+    rerender({ thread: makeThread([makeMsg(23, "done", "The Fed held.")]) });
+
+    const msg = result.current.ordered.find((m) => m.id === 23)!;
+    expect(msg.status).toBe("done");
+    expect(msg.citations).toHaveLength(1);
+  });
+});

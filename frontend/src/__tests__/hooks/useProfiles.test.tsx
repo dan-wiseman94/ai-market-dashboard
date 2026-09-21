@@ -1,8 +1,10 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import {
+  useClearProfileMemory,
   useCreateProfile,
   useDeleteProfile,
+  useProfileMemory,
   useProfiles,
   useUpdateProfile,
 } from "@/hooks/useProfiles";
@@ -101,5 +103,59 @@ describe("useDeleteProfile", () => {
       await result.current.mutateAsync(1);
     });
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["profiles"] });
+  });
+});
+
+const memoryFixture = {
+  profile: 1,
+  exists: true,
+  entries: [
+    {
+      path: "notes.md",
+      size_bytes: 3,
+      modified_at: "2026-09-20T00:00:00Z",
+      preview: "abc",
+      preview_truncated: false,
+    },
+  ],
+  total_files: 1,
+  total_bytes: 3,
+  preview_chars: 400,
+};
+
+describe("useProfileMemory", () => {
+  it("reads the profile's memory store", async () => {
+    mockApi({ "GET /api/profiles/1/memory/": memoryFixture });
+    const { result } = renderHook(() => useProfileMemory(1), { wrapper: hookWrapper() });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data?.entries[0].path).toBe("notes.md");
+  });
+
+  it("stays idle (and sends nothing) for an unsaved profile", async () => {
+    const { calls } = mockApi({ "GET /api/profiles/1/memory/": memoryFixture });
+    const { result } = renderHook(() => useProfileMemory(null), { wrapper: hookWrapper() });
+    await waitFor(() => expect(result.current.fetchStatus).toBe("idle"));
+    expect(calls).toHaveLength(0);
+  });
+});
+
+describe("useClearProfileMemory", () => {
+  it("DELETEs the store, returns the receipt and invalidates that profile's memory", async () => {
+    const client = newQueryClient();
+    const invalidateSpy = vi.spyOn(client, "invalidateQueries");
+    const { calls } = mockApi({
+      "DELETE /api/profiles/1/memory/": { profile: 1, removed_files: 2, removed_bytes: 9 },
+    });
+    const { result } = renderHook(() => useClearProfileMemory(), {
+      wrapper: hookWrapper(client),
+    });
+    let receipt;
+    await act(async () => {
+      receipt = await result.current.mutateAsync(1);
+    });
+    expect(calls[0].method).toBe("DELETE");
+    expect(calls[0].url).toContain("/api/profiles/1/memory/");
+    expect(receipt).toEqual({ profile: 1, removed_files: 2, removed_bytes: 9 });
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["profile-memory", 1] });
   });
 });

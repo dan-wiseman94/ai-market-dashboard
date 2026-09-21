@@ -81,6 +81,11 @@ class Thesis(models.Model):
     closed_at = models.DateTimeField(null=True, blank=True)
     close_note = models.TextField(blank=True, default="")
 
+    # Soft-delete marker: DELETE archives the row. PostMortem cascades off Thesis, so
+    # dropping a thesis takes its decisive post-mortem history — and the calibration,
+    # Brier and cohort base rates computed from it — with it, silently.
+    archived_at = models.DateTimeField(null=True, blank=True, db_index=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -256,6 +261,11 @@ class Lesson(models.Model):
         default=0, help_text="Number of post-mortems supporting this lesson."
     )
     muted = models.BooleanField(default=False, help_text="Hidden from the coach when True.")
+    pinned = models.BooleanField(
+        default=False,
+        help_text="Reaches the coach regardless of support_n. Hand-written lessons carry "
+        "no post-mortem evidence, so this is what makes them visible.",
+    )
     last_seen = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

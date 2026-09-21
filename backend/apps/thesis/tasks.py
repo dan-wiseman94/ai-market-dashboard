@@ -26,9 +26,12 @@ def run_due_postmortems() -> dict:
     """
     from .models import PostMortem
 
+    # An archived thesis is off the book: its pending post-mortems would still bill an
+    # AI narrative per horizon. Already-completed ones keep their verdicts.
     due = PostMortem.objects.filter(
         status="scheduled",
         due_at__lte=timezone.now(),
+        thesis__archived_at=None,
     ).values_list("id", flat=True)
 
     dispatched = 0

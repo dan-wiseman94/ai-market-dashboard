@@ -1,7 +1,12 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { useAddSymbol, useRemoveSymbol, useWatchlist } from "@/hooks/useWatchlist";
-import { hookWrapper, mockApi, newQueryClient } from "../testUtils";
+import {
+  useAddSymbol,
+  useRemoveSymbol,
+  useReorderSymbols,
+  useWatchlist,
+} from "@/hooks/useWatchlist";
+import { hookWrapper, mockApi, mockApiError, newQueryClient } from "../testUtils";
 
 const symbolFixture = { id: 7, ticker: "AAPL", sort_order: 0 };
 
@@ -68,5 +73,56 @@ describe("useRemoveSymbol", () => {
     });
     expect(calls[0].url).toContain("/api/watchlists/2/tickers/7/");
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["watchlist", 2] });
+  });
+});
+
+describe("useReorderSymbols", () => {
+  const twoSymbols = {
+    ...watchlistFixture,
+    tickers: [symbolFixture, { id: 8, ticker: "MSFT", sort_order: 1 }],
+  };
+
+  it("POSTs {order} to the reorder URL and invalidates ['watchlist', wid]", async () => {
+    const client = newQueryClient();
+    const invalidateSpy = vi.spyOn(client, "invalidateQueries");
+    const { calls } = mockApi({ "POST /api/watchlists/2/reorder/": { ok: true } });
+    const { result } = renderHook(() => useReorderSymbols(2), {
+      wrapper: hookWrapper(client),
+    });
+    await act(async () => {
+      await result.current.mutateAsync([8, 7]);
+    });
+    expect(calls[0].url).toContain("/api/watchlists/2/reorder/");
+    expect(calls[0].body).toMatchObject({ order: [8, 7] });
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["watchlist", 2] });
+  });
+
+  it("rewrites the cached order optimistically, resequencing sort_order", async () => {
+    const client = newQueryClient();
+    client.setQueryData(["watchlist", 2], twoSymbols);
+    mockApi({ "POST /api/watchlists/2/reorder/": { ok: true } });
+    const { result } = renderHook(() => useReorderSymbols(2), {
+      wrapper: hookWrapper(client),
+    });
+    await act(async () => {
+      await result.current.mutateAsync([8, 7]);
+    });
+    const cached = client.getQueryData<typeof twoSymbols>(["watchlist", 2]);
+    expect(cached?.tickers.map((s) => s.id)).toEqual([8, 7]);
+    expect(cached?.tickers.map((s) => s.sort_order)).toEqual([0, 1]);
+  });
+
+  it("rolls the cache back when the reorder fails", async () => {
+    const client = newQueryClient();
+    client.setQueryData(["watchlist", 2], twoSymbols);
+    mockApiError("POST /api/watchlists/2/reorder/", 500);
+    const { result } = renderHook(() => useReorderSymbols(2), {
+      wrapper: hookWrapper(client),
+    });
+    await act(async () => {
+      await result.current.mutateAsync([8, 7]).catch(() => undefined);
+    });
+    const cached = client.getQueryData<typeof twoSymbols>(["watchlist", 2]);
+    expect(cached?.tickers.map((s) => s.id)).toEqual([7, 8]);
   });
 });

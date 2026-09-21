@@ -21,7 +21,33 @@ def test_event_trigger_serializer_roundtrip():
     assert data["profile"] == p.id
     assert data["condition"] == {"metric": "price", "ticker": "SPY", "op": ">", "value": 550}
     assert data["enabled"] is True
+    assert data["investigate"] is True
     assert data["firings_count"] == 0
+
+
+@pytest.mark.django_db
+def test_event_trigger_serializer_round_trips_investigate():
+    """investigate is API-writable, not just a model field: without it in `fields`
+    the autonomous-investigation mode is unreachable from the API entirely."""
+    p = TradingProfile.objects.create(name="P", style="x")
+    ser = EventTriggerSerializer(
+        data={
+            "name": "quiet",
+            "profile": p.id,
+            "condition": {"metric": "price", "ticker": "SPY", "op": ">", "value": 550},
+            "investigate": False,
+        }
+    )
+    assert ser.is_valid(), ser.errors
+    obj = ser.save()
+    assert obj.investigate is False
+    assert EventTriggerSerializer(obj).data["investigate"] is False
+
+    ser = EventTriggerSerializer(obj, data={"investigate": True}, partial=True)
+    assert ser.is_valid(), ser.errors
+    obj = ser.save()
+    obj.refresh_from_db()
+    assert obj.investigate is True
 
 
 @pytest.mark.django_db

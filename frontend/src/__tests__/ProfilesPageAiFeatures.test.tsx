@@ -10,6 +10,9 @@ vi.mock("@/hooks/useProfiles", () => ({
   useCreateProfile: vi.fn(),
   useUpdateProfile: vi.fn(),
   useDeleteProfile: vi.fn(),
+  // The form's memory panel reads these; it has no store to show while creating.
+  useProfileMemory: () => ({ data: undefined, isLoading: false, isError: false }),
+  useClearProfileMemory: () => ({ mutate: vi.fn(), isPending: false }),
 }));
 vi.mock("@/hooks/useAgentPresets", () => ({
   useAgentPresets: () => ({ data: [] }),
@@ -62,6 +65,7 @@ const PROFILE: TradingProfile = {
   enable_tools: false,
   enable_thinking: false,
   thinking_budget: 8000,
+  effort: "high",
   enable_memory: false,
   enable_coach: true,
 };
@@ -86,9 +90,9 @@ describe("ProfileForm — AI features", () => {
     const user = userEvent.setup();
     renderWithProviders(<ProfilesPage />);
 
+    // A new draft starts on the model's defaults (all on), so a click turns one OFF.
     await user.type(screen.getByPlaceholderText("Profile name"), "Scalper");
     await user.click(screen.getByRole("switch", { name: "Enable tools" }));
-    await user.click(screen.getByRole("switch", { name: "Extended thinking" }));
     const budget = screen.getByLabelText("Thinking budget");
     await user.clear(budget);
     await user.type(budget, "16000");
@@ -96,22 +100,22 @@ describe("ProfileForm — AI features", () => {
 
     expect(mutate).toHaveBeenCalledWith(
       expect.objectContaining({
-        enable_tools: true,
+        enable_tools: false,
         enable_thinking: true,
         thinking_budget: 16000,
-        enable_memory: false,
+        enable_memory: true,
         enable_coach: true,
       }),
       expect.anything(),
     );
   });
 
-  it("reveals the thinking budget only once extended thinking is on", async () => {
+  it("hides the thinking budget once extended thinking is switched off", async () => {
     const user = userEvent.setup();
     renderWithProviders(<ProfilesPage />);
-    expect(screen.queryByLabelText("Thinking budget")).not.toBeInTheDocument();
-    await user.click(screen.getByRole("switch", { name: "Extended thinking" }));
     expect(screen.getByLabelText("Thinking budget")).toBeInTheDocument();
+    await user.click(screen.getByRole("switch", { name: "Extended thinking" }));
+    expect(screen.queryByLabelText("Thinking budget")).not.toBeInTheDocument();
   });
 
   it("names the features the selected provider cannot honor", async () => {

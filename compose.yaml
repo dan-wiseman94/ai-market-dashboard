@@ -44,6 +44,11 @@ services:
         condition: service_healthy
     volumes:
       - ./backend:/app/backend
+      # Read-only, for one test: apps/core/tests/test_toggles_doc.py compares the
+      # committed docs/toggles.md against what the Features registry renders. Without
+      # this mount that gate skips here and only bites in CI, which runs pytest from
+      # the repo root.
+      - ./docs:/app/docs:ro
       - app_data:/data
     # No host port publish in dev: the `tls-proxy` service owns host 127.0.0.1:8000
     # (HTTPS, for the Schwab OAuth callback) and forwards to web:8000 over the Docker

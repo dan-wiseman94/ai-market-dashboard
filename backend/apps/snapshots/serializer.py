@@ -18,6 +18,21 @@ log = logging.getLogger(__name__)
 # path; at that point dropping the section (prune_to_budget) is more honest.
 _OHLC_MIN_BARS = 30
 
+# The news section's heading, and what stands in for its prose when the same
+# headlines already reach the model as citable search_result blocks. The note is
+# constant (no item count) so the two suppression routes — serializing with
+# include_news_prose=False, and strip_news_section() over an already-frozen
+# payload — produce byte-identical text.
+NEWS_HEADING = "## News (last 24h)"
+NEWS_AS_CITATIONS_NOTE = (
+    f"{NEWS_HEADING}\n_(headlines attached as citable search results — cite them by reference.)_"
+)
+
+# Trailing footnote naming the sections token_budget dropped. It is the one part
+# of the payload that is neither a section nor inside one, so strip_news_section
+# treats it as a boundary.
+_PRUNED_NOTE_PREFIX = "_(pruned for token budget:"
+
 
 def _age_str(captured_at: datetime) -> str:
     """Return a human-readable age string relative to now (UTC)."""
@@ -39,7 +54,13 @@ def _age_str(captured_at: datetime) -> str:
     return "just now"
 
 
-def _render_included_section(kind: str, sec: SnapshotSection | None, snapshot: Snapshot) -> str:
+def _render_included_section(
+    kind: str,
+    sec: SnapshotSection | None,
+    snapshot: Snapshot,
+    *,
+    include_news_prose: bool = True,
+) -> str:
     """Render one included section for the AI payload.
 
     Dispatches kinds whose renderer needs the snapshot's captured_at — chain's
@@ -49,8 +70,12 @@ def _render_included_section(kind: str, sec: SnapshotSection | None, snapshot: S
     Extracted from serialize_for_ai's loop to keep it under the complexity gate.
     """
     if sec is None or sec.status == "failed":
+        # A missing/failed section carries no items, so there are no citation
+        # blocks either — say it is unavailable whatever include_news_prose says.
         err = sec.error if sec else "missing"
         return f"## {_title(kind)}\n_(unavailable: {err})_"
+    if kind == "news" and not include_news_prose:
+        return NEWS_AS_CITATIONS_NOTE
     if kind == "chain":
         return _render_chain(
             sec.payload,
@@ -68,6 +93,7 @@ def serialize_for_ai(
     max_tokens: int | None = None,
     provider: str = "openai",
     model: str = "",
+    include_news_prose: bool = True,
 ) -> str:
     """Return the Snapshot as a compact markdown blob suitable for the `user` turn.
 
@@ -76,6 +102,14 @@ def serialize_for_ai(
     When `max_tokens` is None, the budget is resolved from the model catalog
     (`ModelInfo.max_payload_tokens`), defaulting to 40k when model is unknown.
     Pass `provider`/`model` so token counting uses the right tokenizer.
+
+    `include_news_prose` defaults True: the payload is also read by humans (the
+    snapshot detail view) and replayed by the eval harness, so full prose is the
+    honest default. The request layer passes False when it is ALSO attaching the
+    same headlines as citable `search_result` blocks, which would otherwise send
+    every headline to the model twice in one turn. Use
+    :func:`strip_news_section` instead when the payload text is already frozen on
+    a Message and cannot be re-serialized.
     """
     from apps.ai.catalog import get_model
 
@@ -115,7 +149,12 @@ def serialize_for_ai(
     rendered: dict[str, str] = {}
 
     for kind in snapshot.includes:
-        text = _render_included_section(kind, sections_by_kind.get(kind), snapshot)
+        text = _render_included_section(
+            kind,
+            sections_by_kind.get(kind),
+            snapshot,
+            include_news_prose=include_news_prose,
+        )
         if text:
             rendered[kind] = text
 
@@ -140,7 +179,7 @@ def serialize_for_ai(
         if kind in pruned_sections:
             parts.append(pruned_sections[kind])
     if pruned_kinds:
-        parts.append(f"_(pruned for token budget: {', '.join(pruned_kinds)})_")
+        parts.append(f"{_PRUNED_NOTE_PREFIX} {', '.join(pruned_kinds)})_")
 
     return "\n\n".join(parts).strip() or "_(empty snapshot)_"
 
@@ -599,6 +638,41 @@ def _render_news(payload) -> str:
         if summary:
             lines.append(f"  {summary}")
     return "\n".join(lines)
+
+
+def strip_news_section(payload_text: str) -> str:
+    """Replace the rendered news prose in an already-serialized payload with
+    :data:`NEWS_AS_CITATIONS_NOTE`.
+
+    For the request layer: a pinned snapshot's payload is frozen into
+    ``Message.content["text"]`` at thread-create time, before the provider that
+    will consume it is known, so a Claude run that attaches the same headlines as
+    `search_result` blocks cannot re-serialize (the snapshot must not be loaded in
+    the request builder). This trims the duplicate in place instead. Output is
+    byte-identical to ``serialize_for_ai(..., include_news_prose=False)``.
+
+    The cut runs from the news heading to the next section boundary — a line
+    starting ``"## "`` (every section renderer opens with exactly one such heading
+    and uses ``###`` for its sub-headings) or the trailing pruned-sections note. A
+    payload with no news section is returned unchanged.
+    """
+    lines = payload_text.split("\n")
+    try:
+        start = lines.index(NEWS_HEADING)
+    except ValueError:
+        return payload_text
+    end = next(
+        (
+            i
+            for i in range(start + 1, len(lines))
+            if lines[i].startswith(("## ", _PRUNED_NOTE_PREFIX))
+        ),
+        len(lines),
+    )
+    # Sections are joined by a blank line; keep exactly one after the note.
+    while end > start + 1 and lines[end - 1] == "":
+        end -= 1
+    return "\n".join(lines[:start] + NEWS_AS_CITATIONS_NOTE.split("\n") + lines[end:])
 
 
 def _or_dash(v) -> str:

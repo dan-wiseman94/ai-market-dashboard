@@ -28,9 +28,23 @@ _METHOD_BY_TIMEFRAME = {
     "1d": "get_price_history_every_day",
 }
 
+# Every timeframe the fetchers serve end to end, finest first — Schwab maps each to
+# a price-history method above, the cache carries an `ohlc_<tf>` TTL for each, and
+# every intraday-capable fallback provider (TradingView, Alpaca, Twelve Data) maps
+# the same five. Anything outside this tuple raises before a request is made.
+SUPPORTED_TIMEFRAMES: tuple[str, ...] = tuple(_METHOD_BY_TIMEFRAME)
+
 # Intraday timeframes for which the rolling 24h window is meaningful; daily keeps
 # the fixed bar-count behavior.
 INTRADAY_TIMEFRAMES = frozenset({"1m", "5m", "15m", "1h"})
+
+# Bounds on a caller-supplied bar count. Below the floor a request stops being a
+# price path; above the ceiling the extra bars are dead weight — the serializer's
+# long-horizon summary reads at most 252 stored sessions and the payload budget
+# trims the tail back anyway.
+DEFAULT_BARS = 60
+MIN_BARS = 10
+MAX_BARS = 400
 
 # A 1m request keeps only the most recent _FINE_WINDOW of the 24h window at 1m
 # and coarsens everything older to this. Capping by recency (not "the current

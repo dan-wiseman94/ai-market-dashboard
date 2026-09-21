@@ -17,6 +17,8 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
+from pydantic import BaseModel
+
 
 def is_mock_mode() -> bool:
     return os.environ.get("MOCK_EXTERNAL", "").lower() in ("1", "true", "yes")
@@ -184,3 +186,46 @@ def get_service_result(scenario: str, service: str, *args: Any, **kwargs: Any) -
     handler_name = handler_for(scenario, service)
     handler = SERVICE_HANDLERS.get(handler_name, ok)
     return handler(*args, **kwargs)
+
+
+def canned_structured_instance(output_model: type[BaseModel]) -> Any:
+    """Build a minimal valid instance of a Pydantic ``output_model`` without a model call.
+
+    The structured path has no streaming fixtures to fall back on, so mock mode
+    synthesises the cheapest instance that satisfies the schema: every field that
+    declares a default keeps it, and every required field gets a type-appropriate
+    empty value. Callers get a real, validated object, so a scenario that renders a
+    structured report still renders — it just says nothing and costs nothing.
+    """
+    import enum
+    import typing
+
+    def _empty(annotation: Any) -> Any:
+        origin = typing.get_origin(annotation)
+        args = typing.get_args(annotation)
+        if origin is typing.Literal:
+            return args[0]
+        if origin in (typing.Union, __import__("types").UnionType):
+            if type(None) in args:
+                return None
+            return _empty(args[0])
+        if origin in (list, set, tuple):
+            return origin()
+        if origin is dict:
+            return {}
+        if isinstance(annotation, type):
+            if issubclass(annotation, enum.Enum):
+                return next(iter(annotation))
+            if issubclass(annotation, BaseModel):
+                return canned_structured_instance(annotation)
+            for typ, value in ((bool, False), (int, 0), (float, 0.0), (str, "")):
+                if issubclass(annotation, typ):
+                    return value
+        return None
+
+    values = {
+        name: _empty(field.annotation)
+        for name, field in output_model.model_fields.items()
+        if field.is_required()
+    }
+    return output_model(**values)

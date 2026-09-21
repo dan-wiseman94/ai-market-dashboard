@@ -1,15 +1,16 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import AiAttribution from "@/components/ai/AiAttribution";
 import ModeBadges from "@/components/ai/ModeBadges";
-import type { ObserverSchedule } from "@/api/observer";
+import type { CreateScheduleBody, ObserverSchedule } from "@/api/observer";
 import type { TradingProfile } from "@/api/profiles";
 import { useCatalog } from "@/hooks/useCatalog";
 import { useProviderConfigs } from "@/hooks/useProviderConfigs";
 import { explainCron } from "@/lib/cronPreview";
-import ScheduleAiFields, {
-  aiFieldsFrom, effectiveTarget, type AiFieldsValue,
-} from "./ScheduleAiFields";
+import { effectiveTarget } from "./ScheduleAiFields";
+import ScheduleForm from "./ScheduleForm";
 import ScheduleSectionsEditor from "./ScheduleSectionsEditor";
+import { useScheduleForm } from "./useScheduleForm";
 
 /** A row's AI mode at a glance: the opt-in flags, and the target the fire resolves to.
  * Tolerates a row fetched before a field existed — the page renders list payloads
@@ -44,15 +45,15 @@ function RowMode({
 }
 
 function RowActions({
-  schedule: s, aiOpen, sectionsOpen, onToggle, onRun, onDelete, onToggleAi, onToggleSections,
+  schedule: s, editOpen, sectionsOpen, onToggle, onRun, onDelete, onToggleEdit, onToggleSections,
 }: {
   schedule: ObserverSchedule;
-  aiOpen: boolean;
+  editOpen: boolean;
   sectionsOpen: boolean;
   onToggle: (id: number, enabled: boolean) => void;
   onRun: (id: number) => void;
   onDelete: (id: number) => void;
-  onToggleAi: () => void;
+  onToggleEdit: () => void;
   onToggleSections: () => void;
 }) {
   return (
@@ -66,10 +67,21 @@ function RowActions({
         enabled
       </label>
       <button type="button" onClick={() => onRun(s.id)} className="ledger-cta">Run now</button>
-      <button type="button" onClick={onToggleAi} className="ledger-ghost">
-        {aiOpen ? "Hide AI" : "AI"}
+      <button
+        type="button"
+        onClick={onToggleEdit}
+        aria-expanded={editOpen}
+        aria-label={`edit ${s.name}`}
+        className="ledger-ghost"
+      >
+        {editOpen ? "Close editor" : "Edit"}
       </button>
-      <button type="button" onClick={onToggleSections} className="ledger-ghost">
+      <button
+        type="button"
+        onClick={onToggleSections}
+        aria-expanded={sectionsOpen}
+        className="ledger-ghost"
+      >
         {sectionsOpen ? "Hide sections" : "Sections"}
       </button>
       <button
@@ -84,21 +96,58 @@ function RowActions({
   );
 }
 
+/** The edit path. Mounted on open so the form seeds from the saved row, and
+ * unmounted on close so a cancelled edit leaves nothing behind. */
+function ScheduleEditPanel({
+  schedule, profiles, isPending, onSave, onCancel,
+}: {
+  schedule: ObserverSchedule;
+  profiles: TradingProfile[] | undefined;
+  isPending: boolean;
+  onSave: (id: number, body: CreateScheduleBody, onSuccess: () => void) => void;
+  onCancel: () => void;
+}) {
+  const form = useScheduleForm(schedule);
+  return (
+    <div className="border-t border-rule pt-2">
+      <ScheduleForm
+        idPrefix={`sched-${schedule.id}`}
+        profiles={profiles}
+        isPending={isPending}
+        form={form}
+        submitLabel="Save schedule"
+        pendingLabel="Saving…"
+        onCancel={onCancel}
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (!form.profileId) return;
+          // Close on success only: a rejected edit (foreign model, batch off Claude)
+          // would otherwise discard everything the user just changed.
+          onSave(schedule.id, form.payload(), onCancel);
+        }}
+      />
+    </div>
+  );
+}
+
 export default function ScheduleRow({
-  schedule, profileName, profileFor, onToggle, onRun, onDelete, onSaveSections, onSaveAi,
+  schedule, profileName, profileFor, profiles, isSaving,
+  onToggle, onRun, onDelete, onSaveSections, onSave,
 }: {
   schedule: ObserverSchedule;
   profileName: (id: number) => string;
   profileFor: (id: number) => TradingProfile | undefined;
+  profiles: TradingProfile[] | undefined;
+  isSaving: boolean;
   onToggle: (id: number, enabled: boolean) => void;
   onRun: (id: number) => void;
   onDelete: (id: number) => void;
   onSaveSections: (id: number, includes: string[]) => void;
-  onSaveAi: (id: number, value: AiFieldsValue, onSuccess: () => void) => void;
+  onSave: (id: number, body: CreateScheduleBody, onSuccess: () => void) => void;
 }) {
   const s = schedule;
   const [showSections, setShowSections] = useState(false);
-  const [ai, setAi] = useState<AiFieldsValue | null>(null);
+  const [showEdit, setShowEdit] = useState(false);
   const profile = profileFor(s.profile);
 
   return (
@@ -115,37 +164,35 @@ export default function ScheduleRow({
               Last fired {new Date(s.last_fired_at).toLocaleString()}
             </div>
           )}
+          {/* Per-profile: every profile has its own observer thread, and a fixed
+              link would strand every timeline but one. */}
+          <Link
+            to={`/threads/observer/${s.profile}`}
+            className="text-xs text-ink-400 hover:text-copper-300"
+          >
+            Timeline →
+          </Link>
         </div>
         <RowActions
           schedule={s}
-          aiOpen={ai !== null}
+          editOpen={showEdit}
           sectionsOpen={showSections}
           onToggle={onToggle}
           onRun={onRun}
           onDelete={onDelete}
-          onToggleAi={() => setAi((v) => (v === null ? aiFieldsFrom(s) : null))}
+          onToggleEdit={() => setShowEdit((v) => !v)}
           onToggleSections={() => setShowSections((v) => !v)}
         />
       </div>
 
-      {ai !== null && (
-        <div className="space-y-2 border-t border-rule pt-2">
-          <ScheduleAiFields
-            value={ai}
-            onChange={setAi}
-            profile={profile}
-            idPrefix={`sched-${s.id}`}
-          />
-          <button
-            type="button"
-            // Close on success only: a rejected edit (foreign model, batch off Claude)
-            // would otherwise discard everything the user just changed.
-            onClick={() => onSaveAi(s.id, ai, () => setAi(null))}
-            className="ledger-cta"
-          >
-            Save AI settings
-          </button>
-        </div>
+      {showEdit && (
+        <ScheduleEditPanel
+          schedule={s}
+          profiles={profiles}
+          isPending={isSaving}
+          onSave={onSave}
+          onCancel={() => setShowEdit(false)}
+        />
       )}
 
       {showSections && (

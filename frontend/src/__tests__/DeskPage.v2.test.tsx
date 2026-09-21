@@ -17,7 +17,7 @@ describe("DeskPage v2", () => {
     ]);
     renderWithProviders(<DeskPage />);
     await waitFor(() => expect(screen.getByText(/Revise coverage on NVDA/)).toBeInTheDocument());
-    expect(screen.getByText(/investigation/i)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /view investigation/i })).toBeInTheDocument();
   });
 
   it("renders an open-thesis deep link prefilled from the finding", async () => {

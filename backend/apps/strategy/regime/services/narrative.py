@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 
 from apps.ai.cost import CostCapExceededError
 from apps.ai.structured import ensure_within_caps, resolve_structured_target, run_structured
+from apps.core.runtime_config import runtime_config
 
 log = logging.getLogger(__name__)
 
@@ -30,6 +31,8 @@ def _build_prompt(composite: str, axes: dict, drivers: list[str]) -> str:
 
 
 def regime_narrative(composite: str, axes: dict, drivers: list[str]) -> str:
+    if not runtime_config().regime_narrative_enabled:
+        return ""
     try:
         target = resolve_structured_target()
         if target is None:

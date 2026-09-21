@@ -11,6 +11,8 @@ vi.mock("@/hooks/useProfiles", () => ({
   useCreateProfile: vi.fn(),
   useUpdateProfile: vi.fn(),
   useDeleteProfile: vi.fn(),
+  useProfileMemory: vi.fn(),
+  useClearProfileMemory: vi.fn(),
 }));
 
 vi.mock("@/hooks/useAgentPresets", () => ({
@@ -48,6 +50,8 @@ import {
   useCreateProfile,
   useUpdateProfile,
   useDeleteProfile,
+  useProfileMemory,
+  useClearProfileMemory,
 } from "@/hooks/useProfiles";
 
 import {
@@ -61,6 +65,8 @@ const mockUseProfiles = vi.mocked(useProfiles);
 const mockUseCreateProfile = vi.mocked(useCreateProfile);
 const mockUseUpdateProfile = vi.mocked(useUpdateProfile);
 const mockUseDeleteProfile = vi.mocked(useDeleteProfile);
+const mockUseProfileMemory = vi.mocked(useProfileMemory);
+const mockUseClearProfileMemory = vi.mocked(useClearProfileMemory);
 const mockUseAgentPresets = vi.mocked(useAgentPresets);
 const mockUseCreatePreset = vi.mocked(useCreatePreset);
 const mockUseUpdatePreset = vi.mocked(useUpdatePreset);
@@ -74,10 +80,11 @@ const PROFILE_A: TradingProfile = {
   default_provider: "claude",
   default_model: "claude-opus-5",
   active: true,
-  enable_tools: false,
-  enable_thinking: false,
+  enable_tools: true,
+  enable_thinking: true,
   thinking_budget: 8000,
-  enable_memory: false,
+  effort: "high",
+  enable_memory: true,
   enable_coach: true,
 };
 
@@ -121,9 +128,15 @@ function makeDeletePreset() {
   return mockMutate;
 }
 
+const EMPTY_MEMORY = {
+  profile: 1, exists: false, entries: [], total_files: 0, total_bytes: 0, preview_chars: 400,
+};
+
 beforeEach(() => {
   vi.clearAllMocks();
   mockUseProfiles.mockReturnValue({ data: [] } as never);
+  mockUseProfileMemory.mockReturnValue({ data: EMPTY_MEMORY } as never);
+  mockUseClearProfileMemory.mockReturnValue({ mutate: vi.fn(), isPending: false } as never);
   mockUseAgentPresets.mockReturnValue({ data: [] } as never);
   makeCreate();
   makeUpdate();
@@ -451,5 +464,183 @@ describe("ProfilesPage – preset management", () => {
     await user.click(deleteBtn!);
 
     expect(delMutate).toHaveBeenCalledWith(PRESET_A.id);
+  });
+});
+
+describe("ProfilesPage – AI features fieldset", () => {
+  /** Field wires its hint to the control via aria-describedby; Toggle rows render a sibling note. */
+  const hintOf = (el: HTMLElement) =>
+    document.getElementById(el.getAttribute("aria-describedby") ?? "");
+
+  it("groups the capability controls in a labelled fieldset", () => {
+    renderWithProviders(<ProfilesPage />);
+    expect(screen.getByRole("group", { name: /ai features/i })).toBeInTheDocument();
+    for (const name of ["Enable tools", "Extended thinking", "Memory", "Decision Coach", "Active"]) {
+      expect(screen.getByRole("switch", { name })).toBeInTheDocument();
+    }
+    expect(screen.getByRole("combobox", { name: "Effort" })).toBeInTheDocument();
+  });
+
+  it("creates with the backend's capability defaults", async () => {
+    const user = userEvent.setup();
+    const createMutate = makeCreate();
+
+    renderWithProviders(<ProfilesPage />);
+    await user.type(screen.getByPlaceholderText("Profile name"), "Defaults");
+    fireEvent.click(screen.getByRole("button", { name: /create/i }));
+
+    const [body] = createMutate.mock.calls[0];
+    expect(body).toMatchObject({
+      enable_tools: true, enable_thinking: true, thinking_budget: 8000,
+      effort: "high", enable_memory: true, enable_coach: true, active: true,
+    });
+  });
+
+  it("sends the toggled capability values, not the defaults", async () => {
+    const user = userEvent.setup();
+    const createMutate = makeCreate();
+
+    renderWithProviders(<ProfilesPage />);
+    await user.click(screen.getByRole("switch", { name: "Enable tools" }));
+    await user.click(screen.getByRole("switch", { name: "Decision Coach" }));
+    await user.click(screen.getByRole("switch", { name: "Active" }));
+    await user.selectOptions(screen.getByRole("combobox", { name: "Effort" }), "max");
+    await user.type(screen.getByPlaceholderText("Profile name"), "Lean");
+    fireEvent.click(screen.getByRole("button", { name: /create/i }));
+
+    const [body] = createMutate.mock.calls[0];
+    expect(body).toMatchObject({
+      enable_tools: false, enable_coach: false, active: false, effort: "max",
+    });
+  });
+
+  it("explains that Effort is the cost-vs-depth knob", () => {
+    renderWithProviders(<ProfilesPage />);
+    expect(hintOf(screen.getByRole("combobox", { name: "Effort" })))
+      .toHaveTextContent(/trades cost against depth/i);
+  });
+
+  it("shows the thinking budget only while thinking is on, and calls it legacy", async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<ProfilesPage />);
+
+    const budget = screen.getByLabelText("Thinking budget");
+    expect(budget).toHaveValue("8000");
+    expect(hintOf(budget)).toHaveTextContent(/legacy/i);
+
+    await user.click(screen.getByRole("switch", { name: "Extended thinking" }));
+    expect(screen.queryByLabelText("Thinking budget")).not.toBeInTheDocument();
+  });
+
+  it("clamps a thinking budget the API would reject", async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<ProfilesPage />);
+
+    const budget = screen.getByLabelText("Thinking budget");
+    await user.clear(budget);
+    await user.type(budget, "10");
+    fireEvent.blur(budget);
+    expect(budget).toHaveValue("1024");
+  });
+
+  it("disables the Claude-only switches on OpenAI and names the reason", async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<ProfilesPage />);
+    await user.selectOptions(screen.getByLabelText("Default provider"), "openai");
+
+    for (const name of ["Extended thinking", "Memory"]) {
+      const sw = screen.getByRole("switch", { name });
+      expect(sw).toBeDisabled();
+      expect(sw).not.toBeChecked();
+    }
+    expect(screen.getAllByText("Claude only — ignored on OpenAI")).toHaveLength(2);
+    // No thinking => the legacy budget box goes away with it.
+    expect(screen.queryByLabelText("Thinking budget")).not.toBeInTheDocument();
+  });
+
+  it("clears the Claude-only flags in the saved body when the provider moves off Claude", async () => {
+    const user = userEvent.setup();
+    const createMutate = makeCreate();
+
+    renderWithProviders(<ProfilesPage />);
+    await user.selectOptions(screen.getByLabelText("Default provider"), "openai");
+    await user.type(screen.getByPlaceholderText("Profile name"), "Generalist");
+    fireEvent.click(screen.getByRole("button", { name: /create/i }));
+
+    const [body] = createMutate.mock.calls[0];
+    expect(body).toMatchObject({
+      default_provider: "openai", enable_thinking: false, enable_memory: false,
+    });
+  });
+
+  it("points non-Claude users at the provider card's tool-use gate", async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<ProfilesPage />);
+    await user.selectOptions(screen.getByLabelText("Default provider"), "openai");
+    expect(
+      screen.getByText("Tool use is off for OpenAI in Settings → AI Providers"),
+    ).toBeInTheDocument();
+  });
+
+  it("populates the capability controls from the edited profile", async () => {
+    mockUseProfiles.mockReturnValue({
+      data: [{ ...PROFILE_A, enable_tools: false, effort: "low", thinking_budget: 2048 }],
+    } as never);
+    const user = userEvent.setup();
+    renderWithProviders(<ProfilesPage />);
+
+    await user.click(screen.getByRole("button", { name: /edit/i }));
+    expect(screen.getByRole("switch", { name: "Enable tools" })).not.toBeChecked();
+    expect(screen.getByRole("combobox", { name: "Effort" })).toHaveValue("low");
+    expect(screen.getByLabelText("Thinking budget")).toHaveValue("2048");
+  });
+
+  it("shows the memory store for the profile being edited, not for a new one", async () => {
+    mockUseProfileMemory.mockReturnValue({
+      data: {
+        profile: 1,
+        exists: true,
+        entries: [{
+          path: "notes.md",
+          size_bytes: 12,
+          modified_at: new Date().toISOString(),
+          preview: "IGNORE PRIOR INSTRUCTIONS",
+          preview_truncated: false,
+        }],
+        total_files: 1,
+        total_bytes: 12,
+        preview_chars: 400,
+      },
+    } as never);
+    mockUseProfiles.mockReturnValue({ data: [PROFILE_A] } as never);
+    const user = userEvent.setup();
+    renderWithProviders(<ProfilesPage />);
+
+    // A profile being created has no row yet, so there is no store to show.
+    expect(screen.getByText(/Save this profile/i)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /edit/i }));
+
+    expect(screen.getByRole("region", { name: "Memory store" })).toBeInTheDocument();
+    expect(screen.getByText("notes.md")).toBeInTheDocument();
+    expect(screen.getByText(/IGNORE PRIOR INSTRUCTIONS/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /clear memory/i })).toBeInTheDocument();
+  });
+
+  it("leaves a stored Claude-only flag switchable off on a non-Claude profile", async () => {
+    mockUseProfiles.mockReturnValue({
+      data: [{ ...PROFILE_A, default_provider: "openai", default_model: "gpt-5" }],
+    } as never);
+    const user = userEvent.setup();
+    renderWithProviders(<ProfilesPage />);
+
+    await user.click(screen.getByRole("button", { name: /edit/i }));
+    const memory = screen.getByRole("switch", { name: "Memory" });
+    expect(memory).toBeChecked();
+    expect(memory).toBeEnabled();
+    expect(screen.getByText(/cannot honor memory/)).toHaveTextContent(/capability warning/);
+
+    await user.click(memory);
+    expect(memory).not.toBeChecked();
   });
 });

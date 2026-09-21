@@ -90,4 +90,59 @@ describe("WatchlistTable", () => {
     expect(onRemove).toHaveBeenCalledTimes(1);
     expect(onRemove).toHaveBeenCalledWith(1); // tickers[0].id
   });
+
+  it("move buttons are absent when onReorder is not provided", () => {
+    render(wrap(<WatchlistTable tickers={tickers} />));
+    expect(screen.queryByRole("button", { name: /move/i })).not.toBeInTheDocument();
+  });
+
+  it("each move button names its ticker and direction", () => {
+    render(wrap(<WatchlistTable tickers={tickers} onReorder={vi.fn()} />));
+    expect(screen.getByRole("button", { name: "Move AAPL up" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Move AAPL down" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Move TSLA up" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Move TSLA down" })).toBeInTheDocument();
+  });
+
+  it("moving down emits the full id list with the two rows swapped", async () => {
+    const user = userEvent.setup();
+    const onReorder = vi.fn();
+    render(wrap(<WatchlistTable tickers={tickers} onReorder={onReorder} />));
+    await user.click(screen.getByRole("button", { name: "Move AAPL down" }));
+    expect(onReorder).toHaveBeenCalledWith([2, 1]);
+  });
+
+  it("moving up emits the full id list with the two rows swapped", async () => {
+    const user = userEvent.setup();
+    const onReorder = vi.fn();
+    render(wrap(<WatchlistTable tickers={tickers} onReorder={onReorder} />));
+    await user.click(screen.getByRole("button", { name: "Move TSLA up" }));
+    expect(onReorder).toHaveBeenCalledWith([2, 1]);
+  });
+
+  it("a middle row can move in both directions", async () => {
+    const user = userEvent.setup();
+    const onReorder = vi.fn();
+    const three = [...tickers, { id: 3, ticker: "MSFT", sort_order: 2 }];
+    render(wrap(<WatchlistTable tickers={three} onReorder={onReorder} />));
+    await user.click(screen.getByRole("button", { name: "Move TSLA up" }));
+    expect(onReorder).toHaveBeenLastCalledWith([2, 1, 3]);
+    await user.click(screen.getByRole("button", { name: "Move TSLA down" }));
+    expect(onReorder).toHaveBeenLastCalledWith([1, 3, 2]);
+  });
+
+  it("disables the first row's up and the last row's down", () => {
+    render(wrap(<WatchlistTable tickers={tickers} onReorder={vi.fn()} />));
+    expect(screen.getByRole("button", { name: "Move AAPL up" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Move TSLA down" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Move AAPL down" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Move TSLA up" })).toBeEnabled();
+  });
+
+  it("disables every move button while a reorder is in flight", () => {
+    render(wrap(<WatchlistTable tickers={tickers} onReorder={vi.fn()} reorderPending />));
+    for (const b of screen.getAllByRole("button", { name: /move/i })) {
+      expect(b).toBeDisabled();
+    }
+  });
 });

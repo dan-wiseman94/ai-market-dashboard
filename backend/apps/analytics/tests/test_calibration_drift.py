@@ -131,3 +131,18 @@ def test_calibration_drift_endpoint_200():
     assert resp.status_code == 200
     body = resp.json()
     assert "models" in body and "window_days" in body
+
+
+@pytest.mark.django_db
+def test_sentinel_gate_reads_system_settings(settings):
+    """The UI switch must actually reach the task — a SystemSettings value overrides
+    the env default, so flipping it off in the UI stops the sentinel."""
+    from apps.analytics import tasks
+    from apps.core.models import SystemSettings
+
+    settings.CALIBRATION_DRIFT_SENTINEL_ENABLED = True
+    SystemSettings.objects.update_or_create(
+        pk=1, defaults={"calibration_drift_sentinel_enabled": False}
+    )
+
+    assert tasks.calibration_drift_sentinel() == {"skipped": "disabled"}
