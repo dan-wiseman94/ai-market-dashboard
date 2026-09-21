@@ -170,7 +170,10 @@ class BackupViewSet(viewsets.ModelViewSet):
             perform_restore(filename)
         except FileNotFoundError as exc:
             return Response(
-                {"code": "backup_file_missing", "detail": str(exc)},
+                {
+                    "code": "backup_file_missing",
+                    "detail": "The backup file could not be found on the server.",
+                },
                 status=status.HTTP_409_CONFLICT,
             )
         except RestoreFailed as exc:
