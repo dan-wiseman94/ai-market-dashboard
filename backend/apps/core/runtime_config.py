@@ -21,15 +21,29 @@ _SPEC: list[tuple[str, str, object]] = [
     ("retention_regime_days", "AI_RETENTION_REGIME_DAYS", 180),
     ("retention_desk_days", "AI_RETENTION_DESK_DAYS", 180),
     ("retention_book_days", "AI_RETENTION_BOOK_DAYS", 365),
-    ("ai_failover_enabled", "AI_FAILOVER_ENABLED", False),
+    ("ai_failover_enabled", "AI_FAILOVER_ENABLED", True),
     ("ai_failover_provider", "AI_FAILOVER_PROVIDER", ""),
-    ("observer_response_cache_enabled", "OBSERVER_RESPONSE_CACHE_ENABLED", False),
+    ("observer_response_cache_enabled", "OBSERVER_RESPONSE_CACHE_ENABLED", True),
     ("observer_response_cache_ttl_seconds", "OBSERVER_RESPONSE_CACHE_TTL_SECONDS", 1800),
-    ("aieval_scheduled_enabled", "AIEVAL_SCHEDULED_ENABLED", False),
+    ("aieval_scheduled_enabled", "AIEVAL_SCHEDULED_ENABLED", True),
     ("aieval_scheduled_model", "AIEVAL_SCHEDULED_MODEL", "claude-sonnet-4-6"),
     ("aieval_scheduled_horizon", "AIEVAL_SCHEDULED_HORIZON", 30),
     ("aieval_scheduled_limit", "AIEVAL_SCHEDULED_LIMIT", 25),
-    ("tradingview_tools_enabled", "TRADINGVIEW_TOOLS_ENABLED", False),
+    ("tradingview_tools_enabled", "TRADINGVIEW_TOOLS_ENABLED", True),
+    ("ai_calibration_routing_enabled", "AI_CALIBRATION_ROUTING_ENABLED", True),
+    ("calibration_drift_sentinel_enabled", "CALIBRATION_DRIFT_SENTINEL_ENABLED", True),
+    ("anomaly_sweep_enabled", "ANOMALY_SWEEP_ENABLED", True),
+    ("returns_adjust_dividends", "RETURNS_ADJUST_DIVIDENDS", False),
+    ("ai_investigation_max_iterations", "AI_INVESTIGATION_MAX_ITERATIONS", 8),
+    # float literal, not 5: EDITABLE_FIELDS derives the coercer from type(default),
+    # so an int here would make the API reject/ truncate a fractional dollar cap.
+    ("ai_autonomous_daily_cap_usd", "AI_AUTONOMOUS_DAILY_CAP_USD", 5.0),
+    ("ai_calibration_routing_min_scored", "AI_CALIBRATION_ROUTING_MIN_SCORED", 5),
+    ("ai_calibration_routing_max_age_days", "AI_CALIBRATION_ROUTING_MAX_AGE_DAYS", 30),
+    ("restore_from_ui_enabled", "RESTORE_FROM_UI_ENABLED", True),
+    ("ai_chat_max_tool_iterations", "AI_CHAT_MAX_TOOL_ITERATIONS", 12),
+    ("regime_narrative_enabled", "REGIME_NARRATIVE_ENABLED", True),
+    ("book_narrative_enabled", "BOOK_NARRATIVE_ENABLED", True),
 ]
 
 # Fields the API/UI may write, with a coercer per field — derived from _SPEC so the editable
@@ -38,6 +52,9 @@ _SPEC: list[tuple[str, str, object]] = [
 EDITABLE_FIELDS: dict[str, type] = {field: type(default) for field, _, default in _SPEC}
 
 
+# One annotation per _SPEC row, same names: runtime_config() constructs this with
+# **resolved, so a missing annotation raises TypeError on EVERY call, everywhere.
+# apps/core/tests/test_system_settings.py pins the two sides equal.
 @dataclass(frozen=True)
 class RuntimeConfig:
     retention_ohlc_days: int
@@ -56,6 +73,18 @@ class RuntimeConfig:
     aieval_scheduled_horizon: int
     aieval_scheduled_limit: int
     tradingview_tools_enabled: bool
+    ai_calibration_routing_enabled: bool
+    calibration_drift_sentinel_enabled: bool
+    anomaly_sweep_enabled: bool
+    returns_adjust_dividends: bool
+    ai_investigation_max_iterations: int
+    ai_autonomous_daily_cap_usd: float
+    ai_calibration_routing_min_scored: int
+    ai_calibration_routing_max_age_days: int
+    restore_from_ui_enabled: bool
+    ai_chat_max_tool_iterations: int
+    regime_narrative_enabled: bool
+    book_narrative_enabled: bool
 
 
 def runtime_config() -> RuntimeConfig:

@@ -119,16 +119,22 @@ OBSERVER_BEAT_TIMEZONE = env("OBSERVER_BEAT_TIMEZONE", default="UTC")
 TRIGGER_TICK_SECONDS = env.int("TRIGGER_TICK_SECONDS", default=10)
 # Observer response cache: reuse a recent prior observation when a fire's
 # assembled prompt is byte-identical (e.g. a quiet/closed market with mode=diff),
-# instead of paying for another AI call. OFF by default; opt-in cost lever.
-OBSERVER_RESPONSE_CACHE_ENABLED = env.bool("OBSERVER_RESPONSE_CACHE_ENABLED", default=False)
+# instead of paying for another AI call. ON by default; a pure cost saving that
+# never changes what a fresh prompt produces. Toggle in Settings → Features.
+OBSERVER_RESPONSE_CACHE_ENABLED = env.bool("OBSERVER_RESPONSE_CACHE_ENABLED", default=True)
 OBSERVER_RESPONSE_CACHE_TTL_SECONDS = env.int("OBSERVER_RESPONSE_CACHE_TTL_SECONDS", default=1800)
 # Thesis post-mortem horizons in days; run_due_postmortems schedules an AI replay at each.
 THESIS_POSTMORTEM_HORIZONS: list[int] = [7, 30, 90]
 
 # Corporate-action adjustment: stock splits are ALWAYS adjusted in the returns
 # math (a split is a non-event for the holder, so an unadjusted return is wrong).
-# Dividends are different — adding them back converts price-return to total-return,
-# a semantic change — so they're opt-in here. OFF by default; see apps.market.returns.
+# Dividends are different — adding them back converts price-return to total-return.
+# This one stays OFF by default even though every other feature ships ON, because it
+# is RETROACTIVE: it restates every post-mortem, Scorecard and Mirror number already
+# computed under price-return, so defaulting it on mixes two methodologies inside one
+# recorded history. It is fully UI-toggleable behind a confirm step (Settings →
+# Features), which is where a deliberate switch to total-return belongs.
+# See apps.market.returns.
 RETURNS_ADJUST_DIVIDENDS = env.bool("RETURNS_ADJUST_DIVIDENDS", default=False)
 
 AUTH_PASSWORD_VALIDATORS: list[dict[str, str]] = []
@@ -175,11 +181,27 @@ SPECTACULAR_SETTINGS = {
     "DESCRIPTION": "Single-user AI trading dashboard — internal API.",
     "VERSION": "0.4.0",
     "SERVE_INCLUDE_SCHEMA": False,
-    # Thread.kind is shared by ThreadSerializer + ThreadListSerializer; without this
-    # the enum component name flips to a hash-suffixed Kind<hash>Enum. Pin it so the
-    # name (and the generated frontend type) stays stable as serializers are added.
+    # A choice set reached by more than one serializer — or whose field name is
+    # shared with a different choice set elsewhere — otherwise gets a hash-suffixed
+    # component name (KindC68Enum, Status95aEnum, …). Those hashes churn whenever an
+    # unrelated enum is added, and every churn rewrites frontend/src/api/schema.d.ts,
+    # so pin each one by hand. Keyed by the choice set, not the field: two fields
+    # with identical (value, label) pairs share one name by design.
     "ENUM_NAME_OVERRIDES": {
+        # Thread.kind is shared by ThreadSerializer + ThreadListSerializer.
         "ThreadKindEnum": "apps.threads.models.Thread.KIND_CHOICES",
+        # bullish/bearish/neutral: DirectionalCall's set, reached by Thesis.direction
+        # and AIPrediction.direction. Collides on "direction" with Position's
+        # long/short.
+        "DirectionalCallEnum": "apps.core.model_bases.DIRECTION_CHOICES",
+        # manual/scheduled: BackupRecord.kind and EvalRun.source are the same set
+        # under two field names, so they must share one component name.
+        "ManualOrScheduledEnum": "apps.analytics.models.EvalRun.SOURCE",
+        # Snapshot's own two — both field names collide with other models'.
+        "SnapshotStatusEnum": "apps.snapshots.models.Snapshot.STATUS_CHOICES",
+        "SnapshotSourceEnum": "apps.snapshots.models.Snapshot.SOURCE_CHOICES",
+        # AIPrediction.status is now reached by the ledger-stats filter echo too.
+        "AIPredictionStatusEnum": "apps.observer.models.AIPrediction.STATUSES",
     },
 }
 
@@ -237,9 +259,11 @@ AI_PROVIDER_MAX_RETRIES = env.int("AI_PROVIDER_MAX_RETRIES", default=2)
 AI_PROVIDER_TIMEOUT_SECONDS = env.float("AI_PROVIDER_TIMEOUT_SECONDS", default=60.0)
 
 # Cross-provider failover: if the primary errors BEFORE emitting any token, retry
-# the run once on a secondary provider. OFF by default; never retries mid-stream
+# the run once on a secondary provider. ON by default; never retries mid-stream
 # (after a token has streamed). The secondary uses its ProviderConfig.default_model.
-AI_FAILOVER_ENABLED = env.bool("AI_FAILOVER_ENABLED", default=False)
+# An empty AI_FAILOVER_PROVIDER means "no secondary configured" — the retry is then
+# inert, so this is safe to arm before a second provider exists.
+AI_FAILOVER_ENABLED = env.bool("AI_FAILOVER_ENABLED", default=True)
 AI_FAILOVER_PROVIDER = env.str("AI_FAILOVER_PROVIDER", default="")
 
 # Autonomous investigation: a trigger/observer fire can run a BOUNDED
@@ -248,15 +272,22 @@ AI_FAILOVER_PROVIDER = env.str("AI_FAILOVER_PROVIDER", default="")
 # lower ceiling that GATES autonomous runs against total provider spend today
 # (0.0 = no separate gate; the provider's own daily cap still applies).
 AI_INVESTIGATION_MAX_ITERATIONS = env.int("AI_INVESTIGATION_MAX_ITERATIONS", default=8)
-AI_AUTONOMOUS_DAILY_CAP_USD = env.float("AI_AUTONOMOUS_DAILY_CAP_USD", default=0.0)
+# 0.0 disables the separate autonomous gate entirely (only the provider's own daily
+# cap then applies), so a real ceiling is the safer default for background spend.
+AI_AUTONOMOUS_DAILY_CAP_USD = env.float("AI_AUTONOMOUS_DAILY_CAP_USD", default=5.0)
 
-# Offline eval harness — scheduled run. OFF by default: it calls the REAL model
-# ($) and run_structured has no MOCK_EXTERNAL short-circuit. Enable deliberately.
-AIEVAL_SCHEDULED_ENABLED = env.bool("AIEVAL_SCHEDULED_ENABLED", default=False)
+# Chat tool-loop ceiling: max tool rounds an ordinary (non-investigation) chat run may
+# take before the provider must answer. Bounds a pathological tool loop's spend.
+AI_CHAT_MAX_TOOL_ITERATIONS = env.int("AI_CHAT_MAX_TOOL_ITERATIONS", default=12)
+
+# Offline eval harness — scheduled run. ON by default; bounded (25 rows / 30d horizon)
+# and cost-cap pre-flighted. It calls the REAL model and run_structured has no
+# MOCK_EXTERNAL short-circuit, so the beat entrypoint refuses under MOCK_EXTERNAL.
+AIEVAL_SCHEDULED_ENABLED = env.bool("AIEVAL_SCHEDULED_ENABLED", default=True)
 
 # Calibration-drift sentinel — daily notify when a model's calibration_error drifts.
-# OFF by default (it sends notifications autonomously). Reads EvalRuns only, no AI $.
-CALIBRATION_DRIFT_SENTINEL_ENABLED = env.bool("CALIBRATION_DRIFT_SENTINEL_ENABLED", default=False)
+# ON by default; reads EvalRuns only, no AI $. Notifies at most once per episode.
+CALIBRATION_DRIFT_SENTINEL_ENABLED = env.bool("CALIBRATION_DRIFT_SENTINEL_ENABLED", default=True)
 
 # Opt-in shared-token auth for the MCP-out server (/api/mcp/). Empty (default) keeps
 # the app's 127.0.0.1/AllowAny posture; set it (and send `Authorization: Bearer <token>`)
@@ -272,19 +303,27 @@ TRADINGVIEW_CALLBACK_URL = env.str(
     default="https://127.0.0.1:8000/api/schwab/data-sources/tradingview/callback/",
 )
 # Expose the read-only tv_* TradingView tools to the in-app AI. Env default behind the
-# SystemSettings.tradingview_tools_enabled UI override; needs a connected TradingView.
-TRADINGVIEW_TOOLS_ENABLED = env.bool("TRADINGVIEW_TOOLS_ENABLED", default=False)
+# SystemSettings.tradingview_tools_enabled UI override. ON by default; exposure also
+# requires a connected TradingView, so this is inert until the user connects one.
+TRADINGVIEW_TOOLS_ENABLED = env.bool("TRADINGVIEW_TOOLS_ENABLED", default=True)
 
-# Calibration-weighted routing (opt-in): when ON, the provider/model
-# FALLBACK (no per-send override, no profile pin) picks the best-MEASURED enabled
-# model from the eval harness instead of the first ProviderConfig by id. Per-send
-# overrides and profile pins still win. Gated by a min decisive-call floor + a
-# recency window so a stale or thin eval never pins routing.
-AI_CALIBRATION_ROUTING_ENABLED = env.bool("AI_CALIBRATION_ROUTING_ENABLED", default=False)
+# Calibration-weighted routing: when ON, the provider/model FALLBACK (no per-send
+# override, no profile pin) picks the best-MEASURED enabled model from the eval
+# harness instead of the first ProviderConfig by id. Per-send overrides and profile
+# pins still win. ON by default; the min decisive-call floor + recency window below
+# mean a stale or thin eval never pins routing, so it degrades to the plain fallback.
+AI_CALIBRATION_ROUTING_ENABLED = env.bool("AI_CALIBRATION_ROUTING_ENABLED", default=True)
 
-# Anomaly-sweep / Desk (opt-in): when ON, the beat-scheduled sweep
-# scans watched tickers for anomalies and auto-originates DeskEntry investigations.
-ANOMALY_SWEEP_ENABLED = env.bool("ANOMALY_SWEEP_ENABLED", default=False)
+# Anomaly-sweep / Desk: when ON, the beat-scheduled sweep scans watched tickers for
+# anomalies and auto-originates DeskEntry investigations. ON by default; autonomous
+# spend is bounded by the cost caps inside investigate(), and the beat entrypoint
+# refuses under MOCK_EXTERNAL so CI never bills it.
+ANOMALY_SWEEP_ENABLED = env.bool("ANOMALY_SWEEP_ENABLED", default=True)
+
+# AI prose on top of the deterministic daily regime/book readings. The numbers are
+# computed either way; off drops only the paragraph (and its per-run model spend).
+REGIME_NARRATIVE_ENABLED = env.bool("REGIME_NARRATIVE_ENABLED", default=True)
+BOOK_NARRATIVE_ENABLED = env.bool("BOOK_NARRATIVE_ENABLED", default=True)
 AI_CALIBRATION_ROUTING_MIN_SCORED = env.int("AI_CALIBRATION_ROUTING_MIN_SCORED", default=5)
 AI_CALIBRATION_ROUTING_MAX_AGE_DAYS = env.int("AI_CALIBRATION_ROUTING_MAX_AGE_DAYS", default=30)
 AIEVAL_SCHEDULED_MODEL = env.str("AIEVAL_SCHEDULED_MODEL", default="claude-sonnet-4-6")
@@ -305,6 +344,13 @@ AI_RETENTION_ERROR_DAYS = env.int("AI_RETENTION_ERROR_DAYS", default=90)
 AI_RETENTION_REGIME_DAYS = env.int("AI_RETENTION_REGIME_DAYS", default=180)
 AI_RETENTION_DESK_DAYS = env.int("AI_RETENTION_DESK_DAYS", default=180)
 AI_RETENTION_BOOK_DAYS = env.int("AI_RETENTION_BOOK_DAYS", default=365)
+
+# Restore-from-backup as a UI action (apps.backups): a restore overwrites the live
+# database with a dump, so it is the one destructive button in the app. ON by
+# default — a single-user desktop dashboard should be able to undo itself — and
+# switchable off from Settings → Features for anyone who wants `make restore` to be
+# the only path.
+RESTORE_FROM_UI_ENABLED = env.bool("RESTORE_FROM_UI_ENABLED", default=True)
 
 # Logging: handled by apps.core.logging.configure_structlog, called from dev/prod settings.
 # We intentionally leave LOGGING at Django's default and reconfigure structlog imperatively.
