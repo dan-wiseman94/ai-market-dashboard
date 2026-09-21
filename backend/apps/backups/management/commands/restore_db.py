@@ -8,11 +8,9 @@ sets ``POSTGRES_*``, never the ``PG*`` names libpq reads, so a Makefile-built
 
 from __future__ import annotations
 
-import subprocess
-
 from django.core.management.base import BaseCommand, CommandError
 
-from apps.backups.services import perform_restore
+from apps.backups.services import RestoreFailed, perform_restore
 
 
 class Command(BaseCommand):
@@ -27,6 +25,8 @@ class Command(BaseCommand):
             path = perform_restore(filename)
         except FileNotFoundError as exc:
             raise CommandError(str(exc)) from exc
-        except subprocess.CalledProcessError as exc:
-            raise CommandError(f"pg_restore failed (exit {exc.returncode})") from exc
+        except RestoreFailed as exc:
+            # exc.stderr is already credential-scrubbed by perform_restore.
+            detail = f": {exc.stderr}" if exc.stderr else ""
+            raise CommandError(f"{exc}{detail}") from exc
         self.stdout.write(self.style.SUCCESS(f"restored database from {path}"))
