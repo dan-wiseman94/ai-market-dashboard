@@ -24,18 +24,18 @@ def test_profile_create_persists(page, frontend_base_url, minimal) -> None:
 
 @pytest.mark.integration
 @pytest.mark.ui
-@pytest.mark.xfail(
-    reason="GAP: /profiles create form exposes no per-profile capability toggles. "
-    "TradingProfile.enable_tools / enable_memory / thinking_budget exist on the model and "
-    "drive real AI behavior, but ProfilesPage.tsx renders only name/style/provider — so they "
-    "cannot be set from the UI. strict: when the flag controls land, the unexpected pass "
-    "fails the run, forcing this marker's removal.",
-    strict=True,
-)
 def test_profile_flags_editable_in_ui(page, frontend_base_url, minimal) -> None:
+    """The per-profile capability flags are settable from /profiles.
+
+    These five gate tool use, extended thinking, memory and the Decision Coach on
+    every run the profile drives. Exact matching matters here: "Tools" is a
+    substring of nothing else on the form today, but "Active" is a substring of
+    "Inactive" and the labels sit in one fieldset.
+    """
     p = ProfilesPage(page, frontend_base_url)
     p.go()
-    expect(page.get_by_label("Enable tools")).to_be_visible(timeout=5_000)
+    for label in ("Tools", "Extended thinking", "Memory", "Decision Coach", "Effort"):
+        expect(page.get_by_label(label, exact=True)).to_be_visible(timeout=5_000)
 
 
 @pytest.mark.integration

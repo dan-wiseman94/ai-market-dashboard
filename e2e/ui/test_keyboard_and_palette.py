@@ -14,7 +14,7 @@ from playwright.sync_api import expect
 
 from e2e.pages.dashboard import DashboardPage
 
-# g <key> → destination path. Full map (all 13 chords).
+# g <key> → destination path. Full map (all 17 chords).
 SHORTCUTS: dict[str, str] = {
     "d": "/",
     "s": "/snapshot",
@@ -29,6 +29,10 @@ SHORTCUTS: dict[str, str] = {
     "k": "/scorecard",
     "n": "/snapshots",
     "r": "/recall",
+    "p": "/predictions",
+    "l": "/lessons",
+    "v": "/coverage",
+    "f": "/settings/features",
 }
 
 
