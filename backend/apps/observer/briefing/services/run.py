@@ -108,8 +108,10 @@ def run_briefing(*, scheduled: bool) -> BriefingRun | None:
     run.data, run.snapshot, run.status = data, snapshot, "ready"
     run.save()
 
+    # The deterministic sections above are free; the synthesis below is the only
+    # part of a briefing that costs money, so it has its own switch.
     profile = cfg.profile or TradingProfile.objects.first()
-    if profile is not None:
+    if cfg.synthesis_enabled and profile is not None:
         thread = get_or_create_briefing_thread(profile)
         msg = Message.objects.create(
             thread=thread,

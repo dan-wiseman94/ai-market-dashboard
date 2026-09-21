@@ -10,6 +10,7 @@ class BriefingConfigSerializer(serializers.ModelSerializer):
         model = BriefingConfig
         fields: ClassVar = [
             "enabled",
+            "synthesis_enabled",
             "send_at_local",
             "profile",
             "news_lookback_hours",
