@@ -3,6 +3,7 @@ and the create-from-source entry_price defaulting behaviour."""
 
 from __future__ import annotations
 
+from datetime import timedelta
 from unittest.mock import patch
 
 import pytest
@@ -169,13 +170,82 @@ def test_patch(api, profile):
 
 
 @pytest.mark.django_db
-def test_delete(api, profile):
+def test_delete_archives_and_leaves_the_list(api, profile):
     t = Thesis.objects.create(
-        title="delete me", ticker="GOOG", direction="bearish", profile=profile
+        title="delete me", ticker="GOOG", direction="bearish", profile=profile, guard_enabled=True
     )
     resp = api.delete(f"/api/theses/{t.id}/")
     assert resp.status_code == 204
+    t.refresh_from_db()
+    assert t.archived_at is not None
+    # The guard must stop firing captures + AI runs for a thesis that is off the book.
+    assert t.guard_enabled is False
+    assert [row["id"] for row in api.get("/api/theses/").json()] == []
+    assert [row["id"] for row in api.get("/api/theses/?archived=1").json()] == [t.id]
+    # The detail route still resolves, so recorded links don't rot.
+    assert api.get(f"/api/theses/{t.id}/").status_code == 200
+
+
+@pytest.mark.django_db
+def test_delete_keeps_postmortem_history(api, profile):
+    from apps.thesis.models import PostMortem
+
+    t = Thesis.objects.create(title="k", ticker="GOOG", direction="bearish", profile=profile)
+    pm = PostMortem.objects.create(
+        thesis=t, horizon_days=7, due_at=t.opened_at, status="done", verdict="correct"
+    )
+    api.delete(f"/api/theses/{t.id}/")
+    assert PostMortem.objects.filter(id=pm.id).exists()
+
+
+@pytest.mark.django_db
+def test_restore_brings_the_thesis_back(api, profile):
+    t = Thesis.objects.create(title="back", ticker="GOOG", direction="bearish", profile=profile)
+    api.delete(f"/api/theses/{t.id}/")
+    resp = api.post(f"/api/theses/{t.id}/restore/", format="json")
+    assert resp.status_code == 200
+    assert resp.json()["archived_at"] is None
+    assert [row["id"] for row in api.get("/api/theses/").json()] == [t.id]
+
+
+@pytest.mark.django_db
+def test_purge_drops_a_thesis_with_no_completed_postmortem(api, profile):
+    t = Thesis.objects.create(title="oops", ticker="GOOG", direction="bearish", profile=profile)
+    resp = api.delete(f"/api/theses/{t.id}/?purge=true")
+    assert resp.status_code == 204
     assert not Thesis.objects.filter(id=t.id).exists()
+
+
+@pytest.mark.django_db
+def test_purge_refused_when_postmortem_history_exists(api, profile):
+    from apps.thesis.models import PostMortem
+
+    t = Thesis.objects.create(title="scored", ticker="GOOG", direction="bearish", profile=profile)
+    PostMortem.objects.create(
+        thesis=t, horizon_days=7, due_at=t.opened_at, status="done", verdict="incorrect"
+    )
+    resp = api.delete(f"/api/theses/{t.id}/?purge=true")
+    assert resp.status_code == 409
+    assert Thesis.objects.filter(id=t.id).exists()
+
+
+@pytest.mark.django_db
+def test_archived_thesis_is_skipped_by_the_due_postmortem_tick(profile):
+    from django.utils import timezone
+
+    from apps.thesis.models import PostMortem
+    from apps.thesis.tasks import run_due_postmortems
+
+    t = Thesis.objects.create(title="archived", ticker="GOOG", direction="bearish", profile=profile)
+    PostMortem.objects.create(
+        thesis=t, horizon_days=7, due_at=timezone.now() - timedelta(minutes=1)
+    )
+    t.archived_at = timezone.now()
+    t.save(update_fields=["archived_at"])
+
+    with patch("apps.thesis.tasks.run_postmortem_task.delay") as delay:
+        assert run_due_postmortems() == {"dispatched": 0}
+    delay.assert_not_called()
 
 
 @pytest.mark.django_db
