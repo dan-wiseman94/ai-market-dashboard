@@ -28,6 +28,11 @@ export const SHORTCUTS: Record<string, { path: string; label: string }> = {
   k: { path: "/scorecard", label: "Scorecard" },
   n: { path: "/snapshots", label: "Snapshots" },
   r: { path: "/recall", label: "Recall" },
+  p: { path: "/predictions", label: "Predictions" },
+  l: { path: "/lessons", label: "Lessons" },
+  // "c" is Costs, so coVerage takes v.
+  v: { path: "/coverage", label: "Coverage" },
+  f: { path: "/settings/features", label: "Features" },
 };
 
 function isEditable(el: Element | null): boolean {

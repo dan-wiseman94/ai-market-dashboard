@@ -1,23 +1,58 @@
 import { NavLink } from "react-router-dom";
 import { useSidebarCollapsed } from "@/hooks/useSidebarCollapsed";
 
-const TRADING: Array<[string, string, string]> = [
+/** [path, label, two-letter monogram] — the monogram is the collapsed rail. */
+type NavItem = [string, string, string];
+
+/** Your book: the positions and standing views you own. */
+const TRADING: NavItem[] = [
   ["/theses", "Theses", "TH"],
   ["/portfolio", "Portfolio", "PF"],
-  ["/events", "Events", "EV"],
-  ["/market-data", "Market Data", "MD"],
-  ["/briefing", "Briefing", "BR"],
-  ["/snapshots", "Snapshots", "SN"],
-  ["/profiles", "Profiles", "PR"],
-  ["/watchlists", "Watchlists", "WL"],
-  ["/themes", "Themes", "TM"],
+  ["/book", "Book", "BK"],
+  ["/coverage", "Coverage", "CV"],
 ];
-const SYSTEM: Array<[string, string, string]> = [
+/** The tape: everything you read before acting. */
+const MARKET: NavItem[] = [
+  ["/briefing", "Briefing", "BR"],
+  ["/market-data", "Market Data", "MD"],
+  ["/watchlists", "Watchlists", "WL"],
+  ["/events", "Events", "EV"],
+  ["/themes", "Themes", "TM"],
+  ["/regime", "Regime", "RG"],
+  ["/snapshots", "Snapshots", "SN"],
+];
+/** The AI working on its own: sweeps, debates, and the calls it committed to. */
+const AGENTS: NavItem[] = [
+  ["/desk", "Desk", "DK"],
+  ["/warroom", "War Room", "WR"],
+  ["/predictions", "Predictions", "PD"],
+];
+/** How you and the AI are actually doing, after the fact. */
+const REVIEW: NavItem[] = [
   ["/analytics", "Analytics", "AN"],
   ["/scorecard", "Scorecard", "SC"],
+  ["/mirror", "The Mirror", "MR"],
+  ["/lessons", "Lessons", "LS"],
   ["/recall", "Recall", "RC"],
+];
+/** Configuration and plumbing. */
+const SYSTEM: NavItem[] = [
+  ["/profiles", "Profiles", "PR"],
   ["/errors", "Errors", "ER"],
   ["/settings", "Settings", "ST"],
+];
+
+/**
+ * Twenty-two destinations is too many for one list, so the rail is grouped by
+ * what you are doing rather than by which app owns the route. Collapsed, the
+ * group headings disappear and only the monograms remain.
+ */
+const GROUPS: Array<[string, NavItem[]]> = [
+  ["Trading", TRADING],
+  ["Market", MARKET],
+  ["Agents", AGENTS],
+  ["Review", REVIEW],
+  ["System", SYSTEM],
 ];
 
 export default function SideNav() {
@@ -55,9 +90,10 @@ export default function SideNav() {
         {!collapsed && <span>Collapse</span>}
       </button>
 
-      <div className={[collapsed ? "px-2" : "px-3", "space-y-6"].join(" ")}>
-        <Section title="Trading" links={TRADING} collapsed={collapsed} />
-        <Section title="System"  links={SYSTEM}  collapsed={collapsed} />
+      <div className={[collapsed ? "px-2" : "px-3", "space-y-6 pb-8"].join(" ")}>
+        {GROUPS.map(([title, links]) => (
+          <Section key={title} title={title} links={links} collapsed={collapsed} />
+        ))}
       </div>
     </aside>
   );
@@ -67,7 +103,7 @@ function Section({
   title, links, collapsed,
 }: {
   title: string;
-  links: Array<[string, string, string]>;
+  links: NavItem[];
   collapsed: boolean;
 }) {
   return (
