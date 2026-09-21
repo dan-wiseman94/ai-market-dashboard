@@ -1,6 +1,15 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { useTheses, useThesis, useCreateThesis, useCloseThesis, useDeleteThesis, useRunPostmortem } from "@/hooks/useTheses";
+import {
+  useTheses,
+  useThesis,
+  useCreateThesis,
+  useCloseThesis,
+  useArchiveThesis,
+  useRestoreThesis,
+  usePurgeThesis,
+  useRunPostmortem,
+} from "@/hooks/useTheses";
 import { hookWrapper, mockApi, mockApiError, newQueryClient } from "../testUtils";
 
 const thesisFixture = {
@@ -22,6 +31,7 @@ const thesisFixture = {
   opened_at: "2026-05-01T00:00:00Z",
   closed_at: null,
   close_note: "",
+  archived_at: null,
   created_at: "2026-05-01T00:00:00Z",
   updated_at: "2026-05-01T00:00:00Z",
   postmortems: [],
@@ -42,14 +52,25 @@ describe("useTheses", () => {
     await waitFor(() => expect(result.current.isError).toBe(true));
   });
 
-  it("uses query key ['theses']", async () => {
+  it("uses query key ['theses', {filter}] and defaults to the live slice", async () => {
     const client = newQueryClient();
-    mockApi({ "GET /api/theses/": [] });
+    const { calls } = mockApi({ "GET /api/theses/": [] });
     renderHook(() => useTheses(), { wrapper: hookWrapper(client) });
     await waitFor(() => {
       const keys = client.getQueryCache().findAll().map((q) => q.queryKey);
-      expect(keys).toContainEqual(["theses"]);
+      expect(keys).toContainEqual(["theses", { filter: "live" }]);
     });
+    expect(calls[0].url).toContain("archived=0");
+  });
+
+  it.each([
+    ["archived" as const, "archived=1"],
+    ["all" as const, "archived=all"],
+  ])("requests the %s slice", async (filter, param) => {
+    const { calls } = mockApi({ "GET /api/theses/": [] });
+    const { result } = renderHook(() => useTheses(filter), { wrapper: hookWrapper() });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(calls[0].url).toContain(param);
   });
 });
 
@@ -132,18 +153,66 @@ describe("useCloseThesis", () => {
   });
 });
 
-describe("useDeleteThesis", () => {
-  it("sends DELETE and invalidates ['theses']", async () => {
+describe("useArchiveThesis", () => {
+  it("sends a plain DELETE (no purge) and invalidates both list and detail", async () => {
     const client = newQueryClient();
     const invalidateSpy = vi.spyOn(client, "invalidateQueries");
-    mockApi({ "DELETE /api/theses/1/": undefined });
-    const { result } = renderHook(() => useDeleteThesis(), {
+    const { calls } = mockApi({ "DELETE /api/theses/1/": undefined });
+    const { result } = renderHook(() => useArchiveThesis(), {
       wrapper: hookWrapper(client),
     });
     await act(async () => {
       await result.current.mutateAsync(1);
     });
+    expect(calls[0].url).not.toContain("purge");
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["theses"] });
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["theses", 1] });
+  });
+});
+
+describe("useRestoreThesis", () => {
+  it("POSTs to /restore/ and invalidates both list and detail", async () => {
+    const client = newQueryClient();
+    const invalidateSpy = vi.spyOn(client, "invalidateQueries");
+    const { calls } = mockApi({ "POST /api/theses/1/restore/": thesisFixture });
+    const { result } = renderHook(() => useRestoreThesis(), {
+      wrapper: hookWrapper(client),
+    });
+    await act(async () => {
+      await result.current.mutateAsync(1);
+    });
+    expect(calls[0].method).toBe("POST");
+    expect(calls[0].url).toContain("/api/theses/1/restore/");
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["theses"] });
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["theses", 1] });
+  });
+});
+
+describe("usePurgeThesis", () => {
+  it("sends DELETE with ?purge=true", async () => {
+    const { calls } = mockApi({ "DELETE /api/theses/1/": undefined });
+    const { result } = renderHook(() => usePurgeThesis(), { wrapper: hookWrapper() });
+    await act(async () => {
+      await result.current.mutateAsync(1);
+    });
+    expect(calls[0].url).toContain("purge=true");
+  });
+
+  it("rejects with the 409 envelope when a completed post-mortem exists", async () => {
+    mockApi({
+      "DELETE /api/theses/1/": {
+        status: 409,
+        code: "postmortem_history",
+        message: "This thesis has 2 completed post-mortem(s) feeding your calibration.",
+      },
+    });
+    const { result } = renderHook(() => usePurgeThesis(), { wrapper: hookWrapper() });
+    await act(async () => {
+      await expect(result.current.mutateAsync(1)).rejects.toMatchObject({
+        status: 409,
+        code: "postmortem_history",
+      });
+    });
   });
 });
 

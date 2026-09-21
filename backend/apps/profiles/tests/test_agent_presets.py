@@ -203,3 +203,13 @@ def test_patch_slug_collision_returns_400(api):
     assert resp.status_code == 400
     body = resp.json()
     assert body["code"] == "duplicate"
+
+
+def test_structured_is_declared_as_metadata_not_a_switch():
+    """`structured` records how the author describes the objective; nothing routes
+    on it, because only `objective_template` travels into the composer. The Features
+    registry must therefore exempt it explicitly rather than advertise a behaviour."""
+    from apps.core.features import EXEMPT_MODEL_FIELDS, model_field_pairs
+
+    assert "profiles.AgentPreset.structured" in EXEMPT_MODEL_FIELDS
+    assert ("profiles.AgentPreset", "structured") not in model_field_pairs()

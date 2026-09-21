@@ -5,8 +5,17 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 
 from django.http import HttpRequest, JsonResponse
+from rest_framework import serializers
 from rest_framework.request import Request
 from rest_framework.response import Response
+
+
+class ErrorEnvelopeSerializer(serializers.Serializer):
+    """The shape both helpers below emit. Declared here so a view documenting one of
+    its refusals points at the envelope itself rather than re-describing it."""
+
+    code = serializers.CharField(help_text="Machine-readable reason.")
+    message = serializers.CharField(allow_blank=True, help_text="Human-readable detail.")
 
 
 def error_response(code: str, message: str = "", *, status: int) -> Response:

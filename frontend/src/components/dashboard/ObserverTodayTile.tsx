@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { useSchedules } from "@/hooks/useSchedules";
 import type { DashboardObserver } from "@/hooks/useDashboard";
 
 export function ObserverTodayTile({
@@ -6,6 +7,14 @@ export function ObserverTodayTile({
 }: {
   observer: DashboardObserver;
 }) {
+  // The timeline is per trading profile, so the link has to resolve to a real
+  // profile: prefer an armed schedule, else any schedule. With no schedules at
+  // all there is no timeline to open — point at the schedules page instead of
+  // guessing profile #1 (which may not exist, and hides every other profile).
+  const { data: schedules } = useSchedules();
+  const rows = Array.isArray(schedules) ? schedules : [];
+  const target = rows.find((s) => s.enabled) ?? rows[0];
+
   return (
     <div className="ledger-surface overflow-hidden h-full">
       <div className="flex items-center gap-3 px-5 py-3 border-b border-rule">
@@ -41,12 +50,23 @@ export function ObserverTodayTile({
             schedules armed
           </span>
         </div>
-        <Link
-          to="/threads/observer/1"
-          className="mt-1 font-mono text-[11px] text-ink-500 hover:text-copper-300 transition-colors"
-        >
-          View timeline →
-        </Link>
+        {target ? (
+          <Link
+            to={`/threads/observer/${target.profile}`}
+            data-testid="observer-timeline-link"
+            className="mt-1 font-mono text-[11px] text-ink-500 hover:text-copper-300 transition-colors"
+          >
+            View timeline →
+          </Link>
+        ) : (
+          <Link
+            to="/schedules"
+            data-testid="observer-timeline-link"
+            className="mt-1 font-mono text-[11px] text-ink-500 hover:text-copper-300 transition-colors"
+          >
+            Create a schedule →
+          </Link>
+        )}
       </div>
     </div>
   );

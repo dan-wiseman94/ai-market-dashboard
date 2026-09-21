@@ -66,6 +66,8 @@ export interface Thesis {
   opened_at: string;
   closed_at: string | null;
   close_note: string;
+  /** Set by DELETE (archive), cleared by restore. Null means the thesis is live. */
+  archived_at: string | null;
   created_at: string;
   updated_at: string;
   postmortems: PostMortem[];
@@ -92,7 +94,17 @@ export interface CloseThesisBody {
   close_note?: string;
 }
 
-export const listTheses = () => apiGet<Thesis[]>("/api/theses/");
+/** Which slice of the ledger the list endpoint should return. */
+export type ThesisListFilter = "live" | "archived" | "all";
+
+const ARCHIVED_PARAM: Record<ThesisListFilter, string> = {
+  live: "0",
+  archived: "1",
+  all: "all",
+};
+
+export const listTheses = (filter: ThesisListFilter = "live") =>
+  apiGet<Thesis[]>(`/api/theses/?archived=${ARCHIVED_PARAM[filter]}`);
 export const getThesis = (id: number) => apiGet<Thesis>(`/api/theses/${id}/`);
 export const createThesis = (body: CreateThesisBody) =>
   apiPost<Thesis>("/api/theses/", body);
@@ -100,6 +112,22 @@ export const updateThesis = (id: number, body: Partial<Thesis>) =>
   apiPatch<Thesis>(`/api/theses/${id}/`, body);
 export const closeThesis = (id: number, body: CloseThesisBody) =>
   apiPost<Thesis>(`/api/theses/${id}/close/`, body);
-export const deleteThesis = (id: number) => apiDelete(`/api/theses/${id}/`);
+/**
+ * DELETE archives: the thesis leaves the list, its price guard is disarmed, and
+ * every post-mortem it feeds survives. It is the reversible option.
+ */
+export const archiveThesis = (id: number) => apiDelete(`/api/theses/${id}/`);
+
+/** Un-archive. The price guard stays off — re-arm it deliberately. */
+export const restoreThesis = (id: number) =>
+  apiPost<Thesis>(`/api/theses/${id}/restore/`);
+
+/**
+ * Drop the row for real. Answers 409 (`postmortem_history`) when a completed
+ * post-mortem exists, because deleting would cascade away the calibration it
+ * feeds; the caller must surface that and offer archiving instead.
+ */
+export const purgeThesis = (id: number) =>
+  apiDelete(`/api/theses/${id}/?purge=true`);
 export const runPostmortem = (id: number) =>
   apiPost<{ postmortem_id?: number }>(`/api/theses/${id}/run-postmortem/`);

@@ -13,6 +13,7 @@ class _Cfg:
     supports_tools = True
 
 
+@pytest.mark.django_db  # the iteration cap resolves through SystemSettings
 def test_apply_investigation_mode_forces_tools_cap_and_directive(settings):
     settings.AI_INVESTIGATION_MAX_ITERATIONS = 5
     req = RunRequest(model="m", system="Base.", messages=[], tools=[])
@@ -54,6 +55,7 @@ def test_investigation_gated_by_autonomous_cap(settings, monkeypatch):
     assert isinstance(out, dict) and out["error"] == "cost_capped"
 
 
+@pytest.mark.django_db  # the iteration cap resolves through SystemSettings
 def test_investigation_mode_includes_tradingview_tools_when_available(settings):
     from apps.ai.tools import Toolset, ToolSpec
 

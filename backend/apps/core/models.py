@@ -31,9 +31,23 @@ class SystemSettings(models.Model):
 
     # AI failover — apps.threads.tasks. (provider "" = explicit none; NULL = inherit.)
     ai_failover_enabled = models.BooleanField(null=True, blank=True)
+    # Mirrors apps.secrets.ProviderConfig.PROVIDER_CHOICES plus the explicit "none".
+    # Declared here rather than imported: apps.core must not import another app at
+    # module load (apps/core/tests/test_layering.py). The API edge enforces this list
+    # via views._check_column_limits, which reads the field's own choices — a provider
+    # name added to ProviderConfig belongs here too, and in the apps.core.features row
+    # for `ai.failover_provider` that renders the Settings → Features dropdown.
+    FAILOVER_PROVIDER_CHOICES: ClassVar[list[tuple[str, str]]] = [
+        ("", "None"),
+        ("claude", "Anthropic Claude"),
+        ("openai", "OpenAI"),
+        ("local", "Local (OpenAI-compatible)"),
+    ]
     # null=True is intentional: NULL means "inherit the setting"; "" is an explicit
     # "no failover provider". blank="" alone can't express that distinction.
-    ai_failover_provider = models.CharField(max_length=32, null=True, blank=True)  # noqa: DJ001
+    ai_failover_provider = models.CharField(  # noqa: DJ001
+        max_length=32, null=True, blank=True, choices=FAILOVER_PROVIDER_CHOICES
+    )
 
     # Observer response cache — apps.observer.services.run.
     observer_response_cache_enabled = models.BooleanField(null=True, blank=True)
@@ -48,6 +62,33 @@ class SystemSettings(models.Model):
 
     # TradingView MCP tools for the in-app AI — apps.ai.tools.tradingview.
     tradingview_tools_enabled = models.BooleanField(null=True, blank=True)
+
+    # Calibration-weighted routing fallback tier — apps.ai.router / apps.ai.structured.
+    ai_calibration_routing_enabled = models.BooleanField(null=True, blank=True)
+    # Daily calibration-drift notifier — apps.analytics.tasks.calibration_drift_sentinel.
+    calibration_drift_sentinel_enabled = models.BooleanField(null=True, blank=True)
+    # Beat-scheduled Desk anomaly sweep — apps.strategy.tasks.sweep.
+    anomaly_sweep_enabled = models.BooleanField(null=True, blank=True)
+    # Total-return (dividend-adjusted) forward-return math — apps.market.returns.
+    returns_adjust_dividends = models.BooleanField(null=True, blank=True)
+
+    # Autonomous investigation bounds — apps.threads.tasks.
+    ai_investigation_max_iterations = models.IntegerField(null=True, blank=True)
+    ai_autonomous_daily_cap_usd = models.FloatField(null=True, blank=True)
+
+    # Calibration-routing eligibility floors — apps.ai.router.
+    ai_calibration_routing_min_scored = models.IntegerField(null=True, blank=True)
+    ai_calibration_routing_max_age_days = models.IntegerField(null=True, blank=True)
+
+    # Restore-from-backup as a UI action — apps.backups.
+    restore_from_ui_enabled = models.BooleanField(null=True, blank=True)
+    # Chat tool-loop ceiling (non-investigation runs) — apps.threads.tasks.
+    ai_chat_max_tool_iterations = models.IntegerField(null=True, blank=True)
+
+    # AI prose layered on the deterministic daily readings. Off leaves the numbers
+    # intact and drops only the paragraph — apps.strategy.regime / apps.book.
+    regime_narrative_enabled = models.BooleanField(null=True, blank=True)
+    book_narrative_enabled = models.BooleanField(null=True, blank=True)
 
     updated_at = models.DateTimeField(auto_now=True)
 

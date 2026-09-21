@@ -31,8 +31,8 @@ def test_resolve_capabilities_merges_tradingview_schemas(provider, key):
     prof = TradingProfile.objects.create(name="p", style="x", enable_tools=True)
     thread = Thread.objects.create(kind="chat", profile=prof)
     with patch("apps.ai.tools.tradingview.tradingview_toolset", return_value=_tv_toolset()):
-        tools, _, _ = _resolve_capabilities(thread, provider_name=provider, supports_tools=True)
-    names = {t["name"] if key else t["function"]["name"] for t in tools}
+        caps = _resolve_capabilities(thread, provider_name=provider, supports_tools=True)
+    names = {t["name"] if key else t["function"]["name"] for t in caps.tools}
     assert {"get_quote", "tv_get_news"} <= names
 
 
@@ -41,6 +41,6 @@ def test_resolve_capabilities_without_enable_tools_has_no_tools():
     prof = TradingProfile.objects.create(name="p", style="x", enable_tools=False)
     thread = Thread.objects.create(kind="chat", profile=prof)
     with patch("apps.ai.tools.tradingview.tradingview_toolset") as tv:
-        tools, _, _ = _resolve_capabilities(thread, provider_name="claude", supports_tools=True)
-    assert tools == []
+        caps = _resolve_capabilities(thread, provider_name="claude", supports_tools=True)
+    assert caps.tools == []
     tv.assert_not_called()

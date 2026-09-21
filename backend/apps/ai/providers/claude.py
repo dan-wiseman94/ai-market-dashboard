@@ -9,8 +9,16 @@ from collections.abc import AsyncIterator
 from anthropic import AsyncAnthropic
 from asgiref.sync import sync_to_async
 
+from apps.ai.catalog import (
+    THINKING_ADAPTIVE,
+    THINKING_BUDGET,
+    get_model,
+    resolve_effort,
+    thinking_style,
+)
 from apps.ai.providers._config import client_kwargs
 from apps.ai.types import (
+    CitationEvent,
     DoneEvent,
     ErrorEvent,
     RunEvent,
@@ -69,11 +77,7 @@ class ClaudeProvider:
                 )
                 if tools_list:
                     stream_kwargs["tools"] = tools_list
-                if req.thinking_budget > 0:
-                    stream_kwargs["thinking"] = {
-                        "type": "enabled",
-                        "budget_tokens": req.thinking_budget,
-                    }
+                _apply_thinking(stream_kwargs, req)
 
                 stream_ctx = (
                     self._client.beta.messages.stream(
@@ -90,6 +94,8 @@ class ClaudeProvider:
                             yield TextDelta(text=getattr(event, "text", ""))
                         elif etype == "thinking":
                             yield ThinkingDeltaEvent(text=getattr(event, "thinking", ""))
+                        elif etype == "citation":
+                            yield _citation_event(getattr(event, "citation", None))
                     final = await stream.get_final_message()
 
                 u = final.usage
@@ -186,6 +192,59 @@ class ClaudeProvider:
             # "succeeds" — log here or the traceback is lost server-side.
             log.exception("provider stream failed")
             yield ErrorEvent(message=f"{type(exc).__name__}: {exc}")
+
+
+def _apply_thinking(kwargs: dict, req: RunRequest) -> None:
+    """Attach thinking / effort in the shape ``req.model`` accepts.
+
+    The adaptive rows take ``{"type": "adaptive"}`` plus ``output_config.effort``
+    and 400 on ``budget_tokens``; the budget rows take only ``budget_tokens`` and
+    400 on both adaptive and effort. ``display`` is pinned to "summarized" because
+    the API default is "omitted", which streams thinking blocks whose text is
+    empty — a blank thinking panel in the UI.
+
+    Turning thinking OFF on an adaptive row has to be explicit: those models think
+    by default, so omitting the parameter leaves it on and still bills for it. The
+    off switch sends ``{"type": "disabled"}`` and drops the effort hint with it,
+    because that pairing is rejected above effort "high" and effort only shapes
+    thinking depth anyway. Where the row cannot disable thinking at all, the
+    parameter is omitted and the run thinks — the honest outcome, not a 400.
+    """
+    style = thinking_style("claude", req.model)
+    info = get_model("claude", req.model)
+    if req.enable_thinking:
+        if style == THINKING_ADAPTIVE:
+            kwargs["thinking"] = {"type": "adaptive", "display": "summarized"}
+        elif style == THINKING_BUDGET and req.thinking_budget > 0:
+            # budget_tokens must be >= 1024 AND strictly below max_tokens. When
+            # max_tokens leaves no room for the floor, drop thinking rather than
+            # send a request the API rejects outright.
+            budget = min(req.thinking_budget, req.max_tokens - 1)
+            if budget >= 1024:
+                kwargs["thinking"] = {"type": "enabled", "budget_tokens": budget}
+    elif style == THINKING_ADAPTIVE and (info is None or info.thinking_can_disable):
+        kwargs["thinking"] = {"type": "disabled"}
+        return
+    effort = resolve_effort("claude", req.model, req.effort)
+    if effort:
+        kwargs["output_config"] = {"effort": effort}
+
+
+def _citation_event(citation: object) -> CitationEvent:
+    """Normalize one Anthropic citation into a CitationEvent.
+
+    Every attribute is read with a default: a document citation
+    (char/page/content-block location) carries `document_title` and NO
+    `source`/`title`, so a direct attribute read would raise inside the stream
+    loop — where the exception is swallowed into an ErrorEvent.
+    """
+    return CitationEvent(
+        location=str(getattr(citation, "type", "") or ""),
+        # search_result → source; web search → url; document → neither.
+        source=str(getattr(citation, "source", "") or getattr(citation, "url", "") or ""),
+        title=str(getattr(citation, "title", "") or getattr(citation, "document_title", "") or ""),
+        cited_text=str(getattr(citation, "cited_text", "") or ""),
+    )
 
 
 def _resolve_toolset():

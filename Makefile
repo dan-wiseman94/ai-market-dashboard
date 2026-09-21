@@ -222,8 +222,14 @@ e2e-api: ## E2E API lane (httpx contract)
 
 .PHONY: e2e-schemathesis
 e2e-schemathesis: ## Fuzz every endpoint for 5xx crashes (schemathesis, under MOCK_EXTERNAL)
+	# --exclude-path mirrors .github/workflows/e2e.yml — keep the two lists identical.
+	# /api/dashboard/ + /api/analytics/observer-timeline/ crash schemathesis's own
+	# parameter generator; the rest queue destructive or heavyweight background work a
+	# fuzzer must never call at all — a restore overwrites the live DB, an eval run
+	# appends an EvalRun the coach and the calibration router read as measurement, and
+	# a recall backfill walks and re-indexes every source.
 	$(E2E_COMPOSE) up -d
-	$(E2E_RUN) web sh -c 'uv run schemathesis run http://localhost:8000/api/schema/ -u http://localhost:8000 -c not_a_server_error -n 6'
+	$(E2E_RUN) web sh -c 'uv run schemathesis run http://localhost:8000/api/schema/ -u http://localhost:8000 -c not_a_server_error -n 6 --exclude-path /api/dashboard/ --exclude-path /api/analytics/observer-timeline/ --exclude-path "/api/backups/{id}/restore/" --exclude-path /api/aieval/runs/ --exclude-path /api/recall/backfill/'
 
 .PHONY: e2e-ws
 e2e-ws: ## E2E WebSocket lane

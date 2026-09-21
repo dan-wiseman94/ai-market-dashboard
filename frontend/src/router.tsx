@@ -2,6 +2,7 @@ import { createBrowserRouter } from "react-router-dom";
 import AppLayout from "./components/layout/AppLayout";
 import Dashboard from "./pages/Dashboard";
 import SettingsLayout from "./pages/settings/SettingsLayout";
+import FeaturesSettings from "./pages/settings/FeaturesSettings";
 import ProvidersSettings from "./pages/settings/ProvidersSettings";
 import ConnectionsSettings from "./pages/settings/ConnectionsSettings";
 import SystemSettings from "./pages/settings/SystemSettings";
@@ -25,7 +26,10 @@ import ExportPage from "./pages/ExportPage";
 import AnalyticsPage from "./pages/AnalyticsPage";
 import ScorecardPage from "./pages/ScorecardPage";
 import MirrorPage from "./pages/MirrorPage";
+import CoverageIndexPage from "./pages/CoverageIndexPage";
 import CoveragePage from "./pages/CoveragePage";
+import PredictionsPage from "./pages/PredictionsPage";
+import LessonsPage from "./pages/LessonsPage";
 import ThesesPage from "./pages/ThesesPage";
 import NewThesisPage from "./pages/NewThesisPage";
 import ThesisDetailPage from "./pages/ThesisDetailPage";
@@ -56,6 +60,10 @@ export const router = createBrowserRouter([
         element: <SettingsLayout />,
         handle: { crumb: "Settings" },
         children: [
+          // First in the rail, but deliberately NOT the index: /settings keeps
+          // resolving to ProvidersSettings (the visual lane's settings_general
+          // baseline is keyed to that).
+          { path: "features", element: <FeaturesSettings />, handle: { crumb: "Features" } },
           { index: true, element: <ProvidersSettings />, handle: { crumb: "AI Providers" } },
           { path: "connections", element: <ConnectionsSettings />, handle: { crumb: "Connections" } },
           { path: "system", element: <SystemSettings />, handle: { crumb: "System" } },
@@ -97,6 +105,9 @@ export const router = createBrowserRouter([
       { path: "warroom/:id", element: <WarRoomDetailPage />, handle: { crumb: "Debate" } },
       { path: "desk", element: <DeskPage />, handle: { crumb: "Desk" } },
       { path: "portfolio", element: <PortfolioPage />, handle: { crumb: "Portfolio" } },
+      { path: "predictions", element: <PredictionsPage />, handle: { crumb: "Predictions" } },
+      { path: "lessons", element: <LessonsPage />, handle: { crumb: "Lessons" } },
+      { path: "coverage", element: <CoverageIndexPage />, handle: { crumb: "Coverage" } },
       { path: "coverage/:ticker", element: <CoveragePage />,
         handle: { crumb: ({ params }: { params: { ticker?: string } }) => params.ticker?.toUpperCase() ?? "Coverage" } },
       { path: "theses", element: <ThesesPage />, handle: { crumb: "Theses" } },

@@ -61,9 +61,11 @@ class ObserverSchedule(models.Model):
         "signal instead of a single structured report. ~Nx cost; opt-in only.",
     )
     investigate = models.BooleanField(
-        default=False,
+        default=True,
         help_text="When True (plain mode only), the fire runs a bounded tool-using "
-        "investigation instead of a single observation.",
+        "investigation instead of a single observation. Bounded by "
+        "AI_INVESTIGATION_MAX_ITERATIONS tool rounds and the separate "
+        "AI_AUTONOMOUS_DAILY_CAP_USD daily ceiling.",
     )
     last_batch_id = models.CharField(max_length=64, blank=True, default="")
     fire_mode = models.CharField(max_length=20, choices=FIRE_MODE_CHOICES, default="cron")
@@ -216,9 +218,10 @@ class EventTrigger(models.Model):
     cooldown_seconds = models.PositiveIntegerField(default=1800)
     enabled = models.BooleanField(default=True)
     investigate = models.BooleanField(
-        default=False,
+        default=True,
         help_text="When True, a fire runs a bounded tool-using investigation "
-        "instead of a single observation.",
+        "instead of a single observation. Bounded by AI_INVESTIGATION_MAX_ITERATIONS "
+        "tool rounds and the separate AI_AUTONOMOUS_DAILY_CAP_USD daily ceiling.",
     )
     source_thesis = models.ForeignKey(
         "thesis.Thesis",
@@ -285,7 +288,17 @@ class TriggerFiring(models.Model):
 class BriefingConfig(models.Model):
     """Singleton config for the daily Morning Briefing. Use load()."""
 
-    enabled = models.BooleanField(default=True)
+    enabled = models.BooleanField(
+        default=True,
+        help_text="When True, observer.briefing_run_scheduled assembles and posts one "
+        "briefing per local day once send_at_local has passed.",
+    )
+    synthesis_enabled = models.BooleanField(
+        default=True,
+        help_text="When True, a ready briefing also pays for one AI synthesis pass over "
+        "the assembled data. When False the deterministic sections still render; only "
+        "the AI call is skipped.",
+    )
     send_at_local = models.TimeField(default=time(8, 30))
     profile = models.ForeignKey(
         "profiles.TradingProfile",

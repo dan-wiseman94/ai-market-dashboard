@@ -37,7 +37,23 @@ paths:
       - {}
       responses:
         '202':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EvalRunQueued'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EvalRunError'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EvalRunError'
+          description: ''
   /api/aieval/runs/latest/:
     get:
       operationId: aieval_runs_latest_retrieve
@@ -286,20 +302,35 @@ paths:
       responses:
         '200':
           content:
-            application/json:
+            application/octet-stream:
               schema:
-                $ref: '#/components/schemas/BackupRecord'
+                type: string
+                format: binary
           description: ''
-  /api/backups/run/:
+        '404':
+          description: No response body
+  /api/backups/{id}/restore/:
     post:
-      operationId: backups_run_create
+      operationId: backups_restore_create
+      description: |-
+        Restore the database from this backup, replacing its entire contents.
+
+        Requires `{"confirm": "<exact backup filename>"}` in the body.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this backup record.
+        required: true
       tags:
       - backups
       requestBody:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/BackupRecord'
+              $ref: '#/components/schemas/RestoreRequest'
+        required: true
       security:
       - {}
       responses:
@@ -307,7 +338,51 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/BackupRecord'
+                $ref: '#/components/schemas/RestoreResponse'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RestoreError'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RestoreError'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RestoreError'
+          description: ''
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RestoreError'
+          description: ''
+        '504':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RestoreError'
+          description: ''
+  /api/backups/run/:
+    post:
+      operationId: backups_run_create
+      tags:
+      - backups
+      security:
+      - {}
+      responses:
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Queued'
           description: ''
   /api/book/:
     get:
@@ -323,7 +398,7 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/BookSnapshot'
+                  $ref: '#/components/schemas/BookSnapshotTrend'
           description: ''
   /api/book/{id}/:
     get:
@@ -382,6 +457,21 @@ paths:
   /api/briefings/:
     get:
       operationId: briefings_list
+      description: Paginated briefing history, newest first ({count, next, previous,
+        results}).
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
       tags:
       - briefings
       security:
@@ -391,9 +481,7 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/BriefingRun'
+                $ref: '#/components/schemas/PaginatedBriefingRunList'
           description: ''
   /api/briefings/config/:
     get:
@@ -462,12 +550,20 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/CoverageNote'
+                  $ref: '#/components/schemas/CoverageNoteList'
           description: ''
   /api/coverage/{ticker}/:
     get:
       operationId: coverage_retrieve
-      description: Read the per-ticker house views; trigger a manual revision.
+      description: |-
+        The note for a ticker, or 204 when nothing has opened coverage there yet.
+
+        An uncovered ticker is the ordinary case, not an error: the market page
+        renders a house-view strip for every symbol and most have no note. A 404
+        would put a console error on each of those page loads, which both drowns
+        real failures and fails the e2e console guard. 204 is the shape the API
+        client already coalesces to null for the other "latest, maybe absent"
+        reads.
       parameters:
       - in: path
         name: ticker
@@ -485,6 +581,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/CoverageNoteDetail'
           description: ''
+        '204':
+          description: No response body
   /api/coverage/{ticker}/revise/:
     post:
       operationId: coverage_revise_create
@@ -783,6 +881,23 @@ paths:
       responses:
         '200':
           description: No response body
+  /api/features/:
+    get:
+      operationId: features_retrieve
+      description: 'Read-only inventory of every user-switchable capability: copy,
+        grouping, effective value, provenance and per-object rollups. Writes go to
+        the endpoint named by each row''s write_path.'
+      tags:
+      - features
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeatureRegistry'
+          description: ''
   /api/files/:
     get:
       operationId: files_list
@@ -902,7 +1017,28 @@ paths:
   /api/lessons/:
     get:
       operationId: lessons_list
-      description: Read + prune/mute the distilled lessons — the lessons hygiene surface.
+      description: |-
+        Author, review, mute/pin and prune the lessons the Coach draws on.
+
+        List filters (all optional): ``?muted=``, ``?pinned=``, ``?visible=`` (the
+        resolved coach-visibility rule). Ordering is pinned first, then best-supported.
+      parameters:
+      - in: query
+        name: muted
+        schema:
+          type: boolean
+        description: Only muted lessons, or only unmuted ones.
+      - in: query
+        name: pinned
+        schema:
+          type: boolean
+        description: Only pinned lessons, or only unpinned ones.
+      - in: query
+        name: visible
+        schema:
+          type: boolean
+        description: Filter on the resolved coach-visibility rule (the same rule the
+          ``visible_to_coach`` field reports), not on a stored column.
       tags:
       - lessons
       security:
@@ -916,10 +1052,63 @@ paths:
                 items:
                   $ref: '#/components/schemas/Lesson'
           description: ''
+    post:
+      operationId: lessons_create
+      description: |-
+        Author, review, mute/pin and prune the lessons the Coach draws on.
+
+        List filters (all optional): ``?muted=``, ``?pinned=``, ``?visible=`` (the
+        resolved coach-visibility rule). Ordering is pinned first, then best-supported.
+      tags:
+      - lessons
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Lesson'
+        required: true
+      security:
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Lesson'
+          description: ''
   /api/lessons/{id}/:
+    get:
+      operationId: lessons_retrieve
+      description: |-
+        Author, review, mute/pin and prune the lessons the Coach draws on.
+
+        List filters (all optional): ``?muted=``, ``?pinned=``, ``?visible=`` (the
+        resolved coach-visibility rule). Ordering is pinned first, then best-supported.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this lesson.
+        required: true
+      tags:
+      - lessons
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Lesson'
+          description: ''
     put:
       operationId: lessons_update
-      description: Read + prune/mute the distilled lessons — the lessons hygiene surface.
+      description: |-
+        Author, review, mute/pin and prune the lessons the Coach draws on.
+
+        List filters (all optional): ``?muted=``, ``?pinned=``, ``?visible=`` (the
+        resolved coach-visibility rule). Ordering is pinned first, then best-supported.
       parameters:
       - in: path
         name: id
@@ -934,6 +1123,7 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/Lesson'
+        required: true
       security:
       - {}
       responses:
@@ -945,7 +1135,11 @@ paths:
           description: ''
     patch:
       operationId: lessons_partial_update
-      description: Read + prune/mute the distilled lessons — the lessons hygiene surface.
+      description: |-
+        Author, review, mute/pin and prune the lessons the Coach draws on.
+
+        List filters (all optional): ``?muted=``, ``?pinned=``, ``?visible=`` (the
+        resolved coach-visibility rule). Ordering is pinned first, then best-supported.
       parameters:
       - in: path
         name: id
@@ -971,7 +1165,11 @@ paths:
           description: ''
     delete:
       operationId: lessons_destroy
-      description: Read + prune/mute the distilled lessons — the lessons hygiene surface.
+      description: |-
+        Author, review, mute/pin and prune the lessons the Coach draws on.
+
+        List filters (all optional): ``?muted=``, ``?pinned=``, ``?visible=`` (the
+        resolved coach-visibility rule). Ordering is pinned first, then best-supported.
       parameters:
       - in: path
         name: id
@@ -1544,6 +1742,79 @@ paths:
               schema:
                 $ref: '#/components/schemas/Position'
           description: ''
+  /api/predictions/:
+    get:
+      operationId: predictions_list
+      description: |-
+        Browse the ledger: ``?ticker=``, ``?status=`` (open/resolving/resolved/
+        invalidated), ``?horizon=`` (days). Newest call first. An unknown status or a
+        non-numeric horizon is ignored rather than 400ing — these are URL-driven UI
+        filters, not a contract.
+      parameters:
+      - in: query
+        name: horizon
+        schema:
+          type: integer
+        description: Horizon in days (matches horizon_days). A non-numeric value is
+          ignored.
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum:
+          - invalidated
+          - open
+          - resolved
+          - resolving
+        description: Ledger status. An unrecognized value is ignored, not rejected.
+      - in: query
+        name: ticker
+        schema:
+          type: string
+        description: Exact ticker, case-insensitive. Ignored when blank.
+      tags:
+      - predictions
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedAIPredictionList'
+          description: ''
+  /api/predictions/{id}/:
+    get:
+      operationId: predictions_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - predictions
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AIPrediction'
+          description: ''
   /api/predictions/ai-view/:
     get:
       operationId: predictions_ai_view_retrieve
@@ -1570,6 +1841,46 @@ paths:
       responses:
         '200':
           description: No response body
+  /api/predictions/stats/:
+    get:
+      operationId: predictions_stats_retrieve
+      description: |-
+        Ledger rollup: overall counts + per-ticker hit rate, under the same
+        ``ticker``/``status``/``horizon`` filters as the list. Two aggregate queries
+        total — no per-ticker fan-out.
+      parameters:
+      - in: query
+        name: horizon
+        schema:
+          type: integer
+        description: Horizon in days (matches horizon_days). A non-numeric value is
+          ignored.
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum:
+          - invalidated
+          - open
+          - resolved
+          - resolving
+        description: Ledger status. An unrecognized value is ignored, not rejected.
+      - in: query
+        name: ticker
+        schema:
+          type: string
+        description: Exact ticker, case-insensitive. Ignored when blank.
+      tags:
+      - predictions
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PredictionStats'
+          description: ''
   /api/presets/:
     get:
       operationId: presets_list
@@ -1816,6 +2127,66 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/profiles/{id}/memory/:
+    get:
+      operationId: profiles_memory_retrieve
+      description: 'Lists every file Claude''s Memory tool wrote under this profile,
+        with a truncated preview of each so injected content is visible. A profile
+        that has never run has no directory: that is a 200 with an empty list.'
+      summary: Read this profile's memory store
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this trading profile.
+        required: true
+      tags:
+      - profiles
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileMemory'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileMemoryError'
+          description: ''
+    delete:
+      operationId: profiles_memory_destroy
+      description: Deletes everything the model stored for this profile and reports
+        what went. The context is gone for good; later runs start from an empty store.
+      summary: Clear this profile's memory store
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this trading profile.
+        required: true
+      tags:
+      - profiles
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileMemoryCleared'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileMemoryError'
+          description: ''
   /api/recall/:
     get:
       operationId: recall_retrieve
@@ -1826,6 +2197,26 @@ paths:
       responses:
         '200':
           description: No response body
+  /api/recall/backfill/:
+    post:
+      operationId: recall_backfill_create
+      description: |-
+        Queue an index catch-up over every un-indexed source.
+
+        Safe to press repeatedly: the backfill is idempotent and embeddings are computed
+        locally, so it costs CPU, never provider spend. Poll /api/recall/status/ for the
+        per-kind counts as they fill in.
+      tags:
+      - recall
+      security:
+      - {}
+      responses:
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BackfillQueued'
+          description: ''
   /api/recall/related/:
     get:
       operationId: recall_related_retrieve
@@ -2422,6 +2813,17 @@ paths:
   /api/theses/:
     get:
       operationId: theses_list
+      parameters:
+      - in: query
+        name: archived
+        schema:
+          type: string
+          enum:
+          - '0'
+          - '1'
+          - all
+        description: 'Which theses to list: omitted or falsy for live ones only (the
+          default), truthy for archived only, ''all'' for both.'
       tags:
       - theses
       security:
@@ -2528,6 +2930,19 @@ paths:
           description: ''
     delete:
       operationId: theses_destroy
+      description: |-
+        Archive the thesis (204). It leaves the list, the coach and the guard, and
+        keeps its history.
+
+        PostMortem cascades off Thesis, so dropping the row would take every
+        completed post-mortem with it — and with them the conviction calibration,
+        Brier score and cohort base rates the scorecard, Mirror and Coach compute
+        from decisive post-mortems. It would also leave the review thread and the
+        recall documents pointing at a thesis that no longer exists.
+
+        ``?purge=true`` drops the row for real, and only while there is nothing to
+        destroy: a thesis with a completed post-mortem answers 409 and must be
+        archived instead.
       parameters:
       - in: path
         name: id
@@ -2535,6 +2950,13 @@ paths:
           type: integer
         description: A unique integer value identifying this thesis.
         required: true
+      - in: query
+        name: purge
+        schema:
+          type: boolean
+        description: true to delete the row outright instead of archiving it. Answers
+          409 when a completed post-mortem exists, because dropping the thesis would
+          cascade away the calibration it feeds.
       tags:
       - theses
       security:
@@ -2542,6 +2964,12 @@ paths:
       responses:
         '204':
           description: No response body
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          description: ''
   /api/theses/{id}/close/:
     post:
       operationId: theses_close_create
@@ -2565,6 +2993,30 @@ paths:
             schema:
               $ref: '#/components/schemas/Thesis'
         required: true
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Thesis'
+          description: ''
+  /api/theses/{id}/restore/:
+    post:
+      operationId: theses_restore_create
+      description: |-
+        Bring an archived thesis back to the list. The price guard stays off —
+        re-arm it deliberately.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this thesis.
+        required: true
+      tags:
+      - theses
       security:
       - {}
       responses:
@@ -3344,6 +3796,144 @@ paths:
           description: No response body
 components:
   schemas:
+    AIPrediction:
+      type: object
+      description: |-
+        One ledger row, read-only: predictions are written by the extractor and
+        scored by the resolver, never by a client.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        ticker:
+          type: string
+          readOnly: true
+        direction:
+          allOf:
+          - $ref: '#/components/schemas/DirectionalCallEnum'
+          readOnly: true
+        horizon_days:
+          type: integer
+          readOnly: true
+        confidence:
+          type: number
+          format: double
+          readOnly: true
+        expected_move_pct:
+          type: number
+          format: double
+          readOnly: true
+          nullable: true
+        rationale:
+          type: string
+          readOnly: true
+        invalidation_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,4})?$
+          readOnly: true
+          nullable: true
+        invalidation_note:
+          type: string
+          readOnly: true
+        provider:
+          type: string
+          readOnly: true
+        model:
+          type: string
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/AIPredictionStatusEnum'
+          readOnly: true
+        predicted_at:
+          type: string
+          format: date-time
+          readOnly: true
+        resolve_at:
+          type: string
+          format: date-time
+          readOnly: true
+        resolved_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        invalidated_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        forward_return_pct:
+          type: number
+          format: double
+          readOnly: true
+          nullable: true
+        verdict:
+          allOf:
+          - $ref: '#/components/schemas/VerdictEnum'
+          readOnly: true
+        source_message_id:
+          type: integer
+          readOnly: true
+          nullable: true
+        source_snapshot_id:
+          type: integer
+          readOnly: true
+          nullable: true
+        profile_id:
+          type: integer
+          readOnly: true
+          nullable: true
+        profile_name:
+          type: string
+          readOnly: true
+          default: ''
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - confidence
+      - created_at
+      - direction
+      - expected_move_pct
+      - forward_return_pct
+      - horizon_days
+      - id
+      - invalidated_at
+      - invalidation_note
+      - invalidation_price
+      - model
+      - predicted_at
+      - profile_id
+      - profile_name
+      - provider
+      - rationale
+      - resolve_at
+      - resolved_at
+      - source_message_id
+      - source_snapshot_id
+      - status
+      - ticker
+      - updated_at
+      - verdict
+    AIPredictionStatusEnum:
+      enum:
+      - open
+      - resolving
+      - resolved
+      - invalidated
+      type: string
+      description: |-
+        * `open` - open
+        * `resolving` - resolving
+        * `resolved` - resolved
+        * `invalidated` - invalidated
     AIRun:
       type: object
       properties:
@@ -3438,6 +4028,18 @@ components:
       - name
       - objective_template
       - updated_at
+    BackfillQueued:
+      type: object
+      description: 202 body of POST /api/recall/backfill/.
+      properties:
+        task_id:
+          type: string
+        status:
+          type: string
+          description: Always "queued".
+      required:
+      - status
+      - task_id
     BackupRecord:
       type: object
       properties:
@@ -3459,7 +4061,7 @@ components:
           readOnly: true
         kind:
           allOf:
-          - $ref: '#/components/schemas/KindC68Enum'
+          - $ref: '#/components/schemas/ManualOrScheduledEnum'
           readOnly: true
         status:
           allOf:
@@ -3534,11 +4136,126 @@ components:
       - near_invalidation
       - regime_fit
       - var_beta
+    BookSnapshotTrend:
+      type: object
+      description: |-
+        One point on the book's history curve.
+
+        The detail serializer's per-position arrays (exposures, clusters, VaR
+        positions) are what make a row heavy and none of them plot, so this flattens
+        the scalars a trend/sparkline reads and leaves the arrays to
+        ``GET /api/book/<id>/``. Every metric is nullable: a day with no priceable
+        position has no VaR, and plotting a zero there would invent a reading.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        as_of_date:
+          type: string
+          format: date
+          readOnly: true
+        hhi:
+          type: number
+          format: double
+          readOnly: true
+          nullable: true
+        top_n_share:
+          type: number
+          format: double
+          readOnly: true
+          nullable: true
+        total_abs:
+          type: number
+          format: double
+          readOnly: true
+          nullable: true
+        net_long:
+          type: number
+          format: double
+          readOnly: true
+          nullable: true
+        net_short:
+          type: number
+          format: double
+          readOnly: true
+          nullable: true
+        gross_dollar:
+          type: number
+          format: double
+          readOnly: true
+          nullable: true
+        net_dollar:
+          type: number
+          format: double
+          readOnly: true
+          nullable: true
+        diversified_var_usd:
+          type: number
+          format: double
+          readOnly: true
+          nullable: true
+        undiversified_var_usd:
+          type: number
+          format: double
+          readOnly: true
+          nullable: true
+        beta_adjusted_net_exposure_usd:
+          type: number
+          format: double
+          readOnly: true
+          nullable: true
+        regime:
+          type: string
+          readOnly: true
+          nullable: true
+        alignment:
+          type: string
+          readOnly: true
+          nullable: true
+        position_count:
+          type: integer
+          readOnly: true
+        cluster_count:
+          type: integer
+          readOnly: true
+        near_invalidation_count:
+          type: integer
+          readOnly: true
+      required:
+      - alignment
+      - as_of_date
+      - beta_adjusted_net_exposure_usd
+      - cluster_count
+      - created_at
+      - diversified_var_usd
+      - gross_dollar
+      - hhi
+      - id
+      - near_invalidation_count
+      - net_dollar
+      - net_long
+      - net_short
+      - position_count
+      - regime
+      - top_n_share
+      - total_abs
+      - undiversified_var_usd
     BriefingConfig:
       type: object
       properties:
         enabled:
           type: boolean
+          description: When True, observer.briefing_run_scheduled assembles and posts
+            one briefing per local day once send_at_local has passed.
+        synthesis_enabled:
+          type: boolean
+          description: When True, a ready briefing also pays for one AI synthesis
+            pass over the assembled data. When False the deterministic sections still
+            render; only the AI call is skipped.
         send_at_local:
           type: string
           format: time
@@ -3628,6 +4345,16 @@ components:
       - market_key
       - ticker
       - updated_at
+    Choice:
+      type: object
+      properties:
+        value:
+          type: string
+        label:
+          type: string
+      required:
+      - label
+      - value
     CoverageNote:
       type: object
       properties:
@@ -3702,6 +4429,47 @@ components:
       - created_at
       - id
       - revisions
+      - ticker
+      - updated_at
+    CoverageNoteList:
+      type: object
+      description: |-
+        Index row: enough to rank and route on, without the case text. The two
+        counters are annotated on the queryset, not resolved per row.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        ticker:
+          type: string
+          maxLength: 16
+        stance:
+          $ref: '#/components/schemas/StanceEnum'
+        conviction:
+          type: integer
+          maximum: 32767
+          minimum: 0
+        revision_count:
+          type: integer
+          readOnly: true
+        last_revised_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - last_revised_at
+      - revision_count
       - ticker
       - updated_at
     CoverageRevision:
@@ -3800,6 +4568,45 @@ components:
         * `new` - New
         * `acted` - Acted
         * `dismissed` - Dismissed
+    DirectionalCallEnum:
+      enum:
+      - bullish
+      - bearish
+      - neutral
+      type: string
+      description: |-
+        * `bullish` - Bullish
+        * `bearish` - Bearish
+        * `neutral` - Neutral
+    EffortEnum:
+      enum:
+      - low
+      - medium
+      - high
+      - xhigh
+      - max
+      type: string
+      description: |-
+        * `low` - Low
+        * `medium` - Medium
+        * `high` - High
+        * `xhigh` - Extra high
+        * `max` - Max
+    ErrorEnvelope:
+      type: object
+      description: |-
+        The shape both helpers below emit. Declared here so a view documenting one of
+        its refusals points at the envelope itself rather than re-describing it.
+      properties:
+        code:
+          type: string
+          description: Machine-readable reason.
+        message:
+          type: string
+          description: Human-readable detail.
+      required:
+      - code
+      - message
     EvalRun:
       type: object
       properties:
@@ -3812,7 +4619,7 @@ components:
           readOnly: true
         source:
           allOf:
-          - $ref: '#/components/schemas/SourceC68Enum'
+          - $ref: '#/components/schemas/ManualOrScheduledEnum'
           readOnly: true
         label:
           type: string
@@ -3877,10 +4684,63 @@ components:
       - scored
       - skipped
       - source
+    EvalRunError:
+      type: object
+      description: |-
+        The reason a run was not queued. One error shape for the endpoint, so the UI
+        always has a message to show: 400 for a body or provider that cannot resolve to a
+        usable target, 409 for a breached cost cap or for MOCK_EXTERNAL (a mocked run
+        would persist a fabricated EvalRun that the coach and the calibration-weighted
+        router then read as measurement).
+      properties:
+        code:
+          type: string
+          description: invalid_request | foreign_model | undecryptable_key | no_provider
+            | cost_cap | mock_mode
+        message:
+          type: string
+      required:
+      - code
+      - message
+    EvalRunQueued:
+      type: object
+      description: |-
+        202 body of ``POST /api/aieval/runs/``: the fully resolved parameters the task
+        was queued with (omissions filled from ``runtime_config()``, the model resolved
+        through the provider's own config), so the caller sees what will be scored.
+      properties:
+        queued:
+          type: boolean
+          description: Always true.
+        provider:
+          type: string
+        model:
+          type: string
+        horizon:
+          type: integer
+          nullable: true
+          description: null means every horizon.
+        limit:
+          type: integer
+        label:
+          type: string
+      required:
+      - horizon
+      - label
+      - limit
+      - model
+      - provider
+      - queued
     EvalRunRequest:
       type: object
-      description: Body of ``POST /api/aieval/runs/`` — one manual, bounded, billed
-        eval run.
+      description: |-
+        Body of ``POST /api/aieval/runs/`` — one manual, bounded, billed eval run.
+
+        Every field is optional so the UI can fire a run with an empty body; the view
+        fills the omissions from ``runtime_config()`` and resolves the target through
+        the provider's own config. ``limit`` is bounded because the endpoint bills one
+        model call per replayed row — the unbounded replay stays on ``manage.py
+        aieval``, where the operator sees the row count first.
       properties:
         provider:
           allOf:
@@ -3891,15 +4751,19 @@ components:
           default: ''
         horizon:
           type: integer
+          nullable: true
         limit:
           type: integer
           maximum: 100
           minimum: 1
-          default: 25
         label:
           type: string
           default: manual
           maxLength: 64
+        system:
+          type: string
+          description: System-prompt override for A/B-ing a prompt; omit for the default.
+          maxLength: 8000
     EvalRunRequestProviderEnum:
       enum:
       - claude
@@ -3928,6 +4792,11 @@ components:
           minimum: 0
         enabled:
           type: boolean
+        investigate:
+          type: boolean
+          description: When True, a fire runs a bounded tool-using investigation instead
+            of a single observation. Bounded by AI_INVESTIGATION_MAX_ITERATIONS tool
+            rounds and the separate AI_AUTONOMOUS_DAILY_CAP_USD daily ceiling.
         last_fired_at:
           type: string
           format: date-time
@@ -4023,6 +4892,353 @@ components:
         * `failed` - Failed
         * `deleted` - Deleted
         * `missing` - Missing
+    FeatureGroup:
+      type: object
+      description: A rendered section of the Features page.
+      properties:
+        key:
+          type: string
+        label:
+          type: string
+        blurb:
+          type: string
+        order:
+          type: integer
+      required:
+      - blurb
+      - key
+      - label
+      - order
+    FeatureNumber:
+      type: object
+      description: Fields every row carries, whatever its control.
+      properties:
+        key:
+          type: string
+        label:
+          type: string
+        summary:
+          type: string
+        help:
+          type: string
+        group:
+          type: string
+        order:
+          type: integer
+        scope:
+          type: string
+        backing:
+          type: string
+        value_type:
+          type: string
+        editable:
+          type: boolean
+        write_path:
+          type: string
+        field:
+          type: string
+        env_var:
+          type: string
+        env_only_reason:
+          type: string
+        costs_money:
+          type: boolean
+        cost_note:
+          type: string
+        retroactive:
+          type: boolean
+        requires:
+          type: array
+          items:
+            type: string
+        requirement:
+          allOf:
+          - $ref: '#/components/schemas/Requirement'
+          nullable: true
+        provider_only:
+          type: string
+        deep_link:
+          type: string
+        value:
+          type: number
+          format: double
+        default_value:
+          type: number
+          format: double
+        shipped_default:
+          type: number
+          format: double
+          nullable: true
+        override:
+          type: number
+          format: double
+          nullable: true
+        source:
+          type: string
+        min_value:
+          type: number
+          format: double
+          nullable: true
+        max_value:
+          type: number
+          format: double
+          nullable: true
+        unit:
+          type: string
+        is_float:
+          type: boolean
+      required:
+      - backing
+      - cost_note
+      - costs_money
+      - deep_link
+      - default_value
+      - editable
+      - env_only_reason
+      - env_var
+      - field
+      - group
+      - help
+      - is_float
+      - key
+      - label
+      - max_value
+      - min_value
+      - order
+      - override
+      - provider_only
+      - requirement
+      - requires
+      - retroactive
+      - scope
+      - shipped_default
+      - source
+      - summary
+      - unit
+      - value
+      - value_type
+      - write_path
+    FeatureRegistry:
+      type: object
+      properties:
+        groups:
+          type: array
+          items:
+            $ref: '#/components/schemas/FeatureGroup'
+        toggles:
+          type: array
+          items:
+            $ref: '#/components/schemas/FeatureToggle'
+        numbers:
+          type: array
+          items:
+            $ref: '#/components/schemas/FeatureNumber'
+        texts:
+          type: array
+          items:
+            $ref: '#/components/schemas/FeatureText'
+        per_object:
+          type: array
+          items:
+            $ref: '#/components/schemas/PerObjectFeature'
+      required:
+      - groups
+      - numbers
+      - per_object
+      - texts
+      - toggles
+    FeatureText:
+      type: object
+      description: Fields every row carries, whatever its control.
+      properties:
+        key:
+          type: string
+        label:
+          type: string
+        summary:
+          type: string
+        help:
+          type: string
+        group:
+          type: string
+        order:
+          type: integer
+        scope:
+          type: string
+        backing:
+          type: string
+        value_type:
+          type: string
+        editable:
+          type: boolean
+        write_path:
+          type: string
+        field:
+          type: string
+        env_var:
+          type: string
+        env_only_reason:
+          type: string
+        costs_money:
+          type: boolean
+        cost_note:
+          type: string
+        retroactive:
+          type: boolean
+        requires:
+          type: array
+          items:
+            type: string
+        requirement:
+          allOf:
+          - $ref: '#/components/schemas/Requirement'
+          nullable: true
+        provider_only:
+          type: string
+        deep_link:
+          type: string
+        value:
+          type: string
+        default_value:
+          type: string
+        shipped_default:
+          type: string
+          nullable: true
+        override:
+          type: string
+          nullable: true
+        source:
+          type: string
+        choices:
+          type: array
+          items:
+            $ref: '#/components/schemas/Choice'
+        max_length:
+          type: integer
+      required:
+      - backing
+      - choices
+      - cost_note
+      - costs_money
+      - deep_link
+      - default_value
+      - editable
+      - env_only_reason
+      - env_var
+      - field
+      - group
+      - help
+      - key
+      - label
+      - max_length
+      - order
+      - override
+      - provider_only
+      - requirement
+      - requires
+      - retroactive
+      - scope
+      - shipped_default
+      - source
+      - summary
+      - value
+      - value_type
+      - write_path
+    FeatureToggle:
+      type: object
+      description: |-
+        A boolean row.
+
+        ``source`` is the provenance tri-state made visible: "override" when the singleton
+        column holds an explicit value, "env" when the environment names it, "default"
+        otherwise. ``default_value`` is what "Reset to default" actually restores (the
+        env-or-shipped value), which is why it can differ from ``shipped_default``.
+      properties:
+        key:
+          type: string
+        label:
+          type: string
+        summary:
+          type: string
+        help:
+          type: string
+        group:
+          type: string
+        order:
+          type: integer
+        scope:
+          type: string
+        backing:
+          type: string
+        value_type:
+          type: string
+        editable:
+          type: boolean
+        write_path:
+          type: string
+        field:
+          type: string
+        env_var:
+          type: string
+        env_only_reason:
+          type: string
+        costs_money:
+          type: boolean
+        cost_note:
+          type: string
+        retroactive:
+          type: boolean
+        requires:
+          type: array
+          items:
+            type: string
+        requirement:
+          allOf:
+          - $ref: '#/components/schemas/Requirement'
+          nullable: true
+        provider_only:
+          type: string
+        deep_link:
+          type: string
+        value:
+          type: boolean
+        default_value:
+          type: boolean
+        shipped_default:
+          type: boolean
+          nullable: true
+        override:
+          type: boolean
+          nullable: true
+        source:
+          type: string
+      required:
+      - backing
+      - cost_note
+      - costs_money
+      - deep_link
+      - default_value
+      - editable
+      - env_only_reason
+      - env_var
+      - field
+      - group
+      - help
+      - key
+      - label
+      - order
+      - override
+      - provider_only
+      - requirement
+      - requires
+      - retroactive
+      - scope
+      - shipped_default
+      - source
+      - summary
+      - value
+      - value_type
+      - write_path
     FireModeEnum:
       enum:
       - cron
@@ -4063,14 +5279,6 @@ components:
       - decision
       - id
       - thread_id
-    KindC68Enum:
-      enum:
-      - scheduled
-      - manual
-      type: string
-      description: |-
-        * `scheduled` - Scheduled
-        * `manual` - Manual
     Lesson:
       type: object
       properties:
@@ -4079,10 +5287,8 @@ components:
           readOnly: true
         text:
           type: string
-          readOnly: true
           description: Representative bullet of the cluster.
-        tags:
-          readOnly: true
+        tags: {}
         support_n:
           type: integer
           readOnly: true
@@ -4090,6 +5296,13 @@ components:
         muted:
           type: boolean
           description: Hidden from the coach when True.
+        pinned:
+          type: boolean
+          description: Reaches the coach regardless of support_n. Hand-written lessons
+            carry no post-mortem evidence, so this is what makes them visible.
+        visible_to_coach:
+          type: boolean
+          readOnly: true
         last_seen:
           type: string
           format: date-time
@@ -4099,13 +5312,26 @@ components:
           type: string
           format: date-time
           readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
       required:
       - created_at
       - id
       - last_seen
       - support_n
-      - tags
       - text
+      - updated_at
+      - visible_to_coach
+    ManualOrScheduledEnum:
+      enum:
+      - scheduled
+      - manual
+      type: string
+      description: |-
+        * `scheduled` - Scheduled
+        * `manual` - Manual
     MarketKeyEnum:
       enum:
       - us_equity
@@ -4124,6 +5350,30 @@ components:
         * `crypto` - Crypto (24/7)
         * `lse` - London (LSE)
         * `jpx` - Tokyo (JPX)
+    MemoryEntry:
+      type: object
+      description: One file the model wrote into this profile's memory store.
+      properties:
+        path:
+          type: string
+          description: Path relative to the profile's memory directory.
+        size_bytes:
+          type: integer
+        modified_at:
+          type: string
+          format: date-time
+        preview:
+          type: string
+          description: The first characters of the file, so injected content is visible.
+        preview_truncated:
+          type: boolean
+          description: True when the file is longer than the preview.
+      required:
+      - modified_at
+      - path
+      - preview
+      - preview_truncated
+      - size_bytes
     Message:
       type: object
       properties:
@@ -4240,6 +5490,9 @@ components:
         * `contra` - Consistency conflict
         * `pred_invalid` - Prediction invalidated
         * `eval_done` - Eval run finished
+    NullEnum:
+      enum:
+      - null
     ObserverSchedule:
       type: object
       properties:
@@ -4289,7 +5542,8 @@ components:
         investigate:
           type: boolean
           description: When True (plain mode only), the fire runs a bounded tool-using
-            investigation instead of a single observation.
+            investigation instead of a single observation. Bounded by AI_INVESTIGATION_MAX_ITERATIONS
+            tool rounds and the separate AI_AUTONOMOUS_DAILY_CAP_USD daily ceiling.
         last_batch_id:
           type: string
           readOnly: true
@@ -4328,6 +5582,29 @@ components:
       - name
       - profile
       - updated_at
+    PaginatedAIPredictionList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/AIPrediction'
     PaginatedBackupRecordList:
       type: object
       required:
@@ -4351,6 +5628,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/BackupRecord'
+    PaginatedBriefingRunList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/BriefingRun'
     PaginatedExportJobList:
       type: object
       required:
@@ -4458,6 +5758,13 @@ components:
       properties:
         enabled:
           type: boolean
+          description: When True, observer.briefing_run_scheduled assembles and posts
+            one briefing per local day once send_at_local has passed.
+        synthesis_enabled:
+          type: boolean
+          description: When True, a ready briefing also pays for one AI synthesis
+            pass over the assembled data. When False the deterministic sections still
+            render; only the AI call is skipped.
         send_at_local:
           type: string
           format: time
@@ -4516,6 +5823,11 @@ components:
           minimum: 0
         enabled:
           type: boolean
+        investigate:
+          type: boolean
+          description: When True, a fire runs a bounded tool-using investigation instead
+            of a single observation. Bounded by AI_INVESTIGATION_MAX_ITERATIONS tool
+            rounds and the separate AI_AUTONOMOUS_DAILY_CAP_USD daily ceiling.
         last_fired_at:
           type: string
           format: date-time
@@ -4545,10 +5857,8 @@ components:
           readOnly: true
         text:
           type: string
-          readOnly: true
           description: Representative bullet of the cluster.
-        tags:
-          readOnly: true
+        tags: {}
         support_n:
           type: integer
           readOnly: true
@@ -4556,12 +5866,23 @@ components:
         muted:
           type: boolean
           description: Hidden from the coach when True.
+        pinned:
+          type: boolean
+          description: Reaches the coach regardless of support_n. Hand-written lessons
+            carry no post-mortem evidence, so this is what makes them visible.
+        visible_to_coach:
+          type: boolean
+          readOnly: true
         last_seen:
           type: string
           format: date-time
           readOnly: true
           nullable: true
         created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
           type: string
           format: date-time
           readOnly: true
@@ -4614,7 +5935,8 @@ components:
         investigate:
           type: boolean
           description: When True (plain mode only), the fire runs a bounded tool-using
-            investigation instead of a single observation.
+            investigation instead of a single observation. Bounded by AI_INVESTIGATION_MAX_ITERATIONS
+            tool rounds and the separate AI_AUTONOMOUS_DAILY_CAP_USD daily ceiling.
         last_batch_id:
           type: string
           readOnly: true
@@ -4778,7 +6100,7 @@ components:
           type: string
           maxLength: 16
         direction:
-          $ref: '#/components/schemas/ThesisDirectionEnum'
+          $ref: '#/components/schemas/DirectionalCallEnum'
         rationale:
           type: string
         conviction:
@@ -4844,6 +6166,11 @@ components:
           nullable: true
         close_note:
           type: string
+        archived_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
         created_at:
           type: string
           format: date-time
@@ -4919,6 +6246,17 @@ components:
           minimum: 0
           description: Thinking token budget when enable_thinking=True. Billed as
             output.
+        effort:
+          allOf:
+          - $ref: '#/components/schemas/EffortEnum'
+          description: |-
+            Reasoning effort applied to this profile's runs.
+
+            * `low` - Low
+            * `medium` - Medium
+            * `high` - High
+            * `xhigh` - Extra high
+            * `max` - Max
         enable_memory:
           type: boolean
           description: Expose the Memory tool with a per-profile namespace under /data/memory/<profile_id>/.
@@ -4955,6 +6293,101 @@ components:
           items:
             $ref: '#/components/schemas/WatchlistSymbol'
           readOnly: true
+    PerObjectFeature:
+      type: object
+      description: |-
+        A setting that lives on individual rows, never globally.
+
+        The page renders a rollup and a deep link rather than a switch: a disabled switch
+        reports ``aria-checked="false"``, which states "this is off" — factually wrong when
+        four of thirteen profiles have it on.
+
+        ``on``/``total`` are nullable and paired with ``degraded``. A failed aggregate must
+        not fall back to ``0 of 0``: that renders as a confident lie the user would act on.
+        ``on`` is also null for non-boolean fields, where "how many are on" is meaningless.
+      properties:
+        key:
+          type: string
+        label:
+          type: string
+        summary:
+          type: string
+        help:
+          type: string
+        group:
+          type: string
+        order:
+          type: integer
+        scope:
+          type: string
+        backing:
+          type: string
+        value_type:
+          type: string
+        editable:
+          type: boolean
+        write_path:
+          type: string
+        field:
+          type: string
+        env_var:
+          type: string
+        env_only_reason:
+          type: string
+        costs_money:
+          type: boolean
+        cost_note:
+          type: string
+        retroactive:
+          type: boolean
+        requires:
+          type: array
+          items:
+            type: string
+        requirement:
+          allOf:
+          - $ref: '#/components/schemas/Requirement'
+          nullable: true
+        provider_only:
+          type: string
+        deep_link:
+          type: string
+        'on':
+          type: integer
+          nullable: true
+        total:
+          type: integer
+          nullable: true
+        degraded:
+          type: boolean
+        noun:
+          type: string
+      required:
+      - backing
+      - cost_note
+      - costs_money
+      - deep_link
+      - degraded
+      - editable
+      - env_only_reason
+      - env_var
+      - field
+      - group
+      - help
+      - key
+      - label
+      - noun
+      - 'on'
+      - order
+      - provider_only
+      - requirement
+      - requires
+      - retroactive
+      - scope
+      - summary
+      - total
+      - value_type
+      - write_path
     Position:
       type: object
       properties:
@@ -5101,6 +6534,134 @@ components:
         * `done` - Done
         * `failed` - Failed
         * `skipped` - Skipped
+    PredictionCounts:
+      type: object
+      description: |-
+        Counts over one cohort of ledger rows. ``hit_rate`` and
+        ``avg_forward_return_pct`` are null rather than 0.0 when nothing is decisive —
+        ``mixed`` and ``inconclusive`` are not scored either way.
+      properties:
+        open:
+          type: integer
+        resolving:
+          type: integer
+        resolved:
+          type: integer
+        invalidated:
+          type: integer
+        correct:
+          type: integer
+        incorrect:
+          type: integer
+        mixed:
+          type: integer
+        inconclusive:
+          type: integer
+        total:
+          type: integer
+        avg_forward_return_pct:
+          type: number
+          format: double
+          nullable: true
+        hit_rate:
+          type: number
+          format: double
+          nullable: true
+      required:
+      - avg_forward_return_pct
+      - correct
+      - hit_rate
+      - inconclusive
+      - incorrect
+      - invalidated
+      - mixed
+      - open
+      - resolved
+      - resolving
+      - total
+    PredictionFilters:
+      type: object
+      description: |-
+        The ledger filters as actually applied — not as sent. An unknown status or a
+        non-numeric horizon is dropped rather than rejected, so each key is null when
+        the corresponding filter was absent or ignored.
+      properties:
+        ticker:
+          type: string
+          nullable: true
+        status:
+          nullable: true
+          oneOf:
+          - $ref: '#/components/schemas/AIPredictionStatusEnum'
+          - $ref: '#/components/schemas/NullEnum'
+        horizon:
+          type: integer
+          nullable: true
+      required:
+      - horizon
+      - status
+      - ticker
+    PredictionStats:
+      type: object
+      description: Body of GET /api/predictions/stats/.
+      properties:
+        filters:
+          $ref: '#/components/schemas/PredictionFilters'
+        totals:
+          $ref: '#/components/schemas/PredictionCounts'
+        by_ticker:
+          type: array
+          items:
+            $ref: '#/components/schemas/PredictionTickerStats'
+      required:
+      - by_ticker
+      - filters
+      - totals
+    PredictionTickerStats:
+      type: object
+      description: One per-ticker row of the rollup, busiest ticker first.
+      properties:
+        open:
+          type: integer
+        resolving:
+          type: integer
+        resolved:
+          type: integer
+        invalidated:
+          type: integer
+        correct:
+          type: integer
+        incorrect:
+          type: integer
+        mixed:
+          type: integer
+        inconclusive:
+          type: integer
+        total:
+          type: integer
+        avg_forward_return_pct:
+          type: number
+          format: double
+          nullable: true
+        hit_rate:
+          type: number
+          format: double
+          nullable: true
+        ticker:
+          type: string
+      required:
+      - avg_forward_return_pct
+      - correct
+      - hit_rate
+      - inconclusive
+      - incorrect
+      - invalidated
+      - mixed
+      - open
+      - resolved
+      - resolving
+      - ticker
+      - total
     ProfileInline:
       type: object
       properties:
@@ -5119,6 +6680,60 @@ components:
       required:
       - id
       - name
+    ProfileMemory:
+      type: object
+      description: Everything stored under `<AI_MEMORY_ROOT>/<profile_id>/`.
+      properties:
+        profile:
+          type: integer
+        exists:
+          type: boolean
+          description: False when the profile has never run with memory on (no directory
+            yet).
+        entries:
+          type: array
+          items:
+            $ref: '#/components/schemas/MemoryEntry'
+        total_files:
+          type: integer
+        total_bytes:
+          type: integer
+        preview_chars:
+          type: integer
+          description: Preview length each entry was truncated to.
+      required:
+      - entries
+      - exists
+      - preview_chars
+      - profile
+      - total_bytes
+      - total_files
+    ProfileMemoryCleared:
+      type: object
+      description: What a clear removed.
+      properties:
+        profile:
+          type: integer
+        removed_files:
+          type: integer
+        removed_bytes:
+          type: integer
+      required:
+      - profile
+      - removed_bytes
+      - removed_files
+    ProfileMemoryError:
+      type: object
+      description: Refusal envelope — the requested id did not resolve inside the
+        memory root.
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+      required:
+      - code
+      - message
     ProviderConfig:
       type: object
       properties:
@@ -5173,6 +6788,15 @@ components:
         * `claude` - Anthropic Claude
         * `openai` - OpenAI
         * `local` - Local (OpenAI-compatible)
+    Queued:
+      type: object
+      description: 'The 202 body of a fire-and-forget action: the work is queued,
+        not done.'
+      properties:
+        queued:
+          type: boolean
+      required:
+      - queued
     RegimeReading:
       type: object
       properties:
@@ -5203,6 +6827,92 @@ components:
       - drivers
       - id
       - narrative
+    Requirement:
+      type: object
+      description: |-
+        An external precondition (today: a connected data source).
+
+        ``satisfied`` is nullable on purpose: the probe touches Redis and the provider
+        health marker, so a failure degrades to "unknown" rather than claiming "not
+        connected" and inviting the user to re-authorise something that is fine.
+      properties:
+        id:
+          type: string
+        label:
+          type: string
+        satisfied:
+          type: boolean
+          nullable: true
+        manage_path:
+          type: string
+      required:
+      - id
+      - label
+      - manage_path
+      - satisfied
+    RestoreError:
+      type: object
+      description: |-
+        The restore endpoint's refusal envelope. ``code`` is the machine-readable
+        reason; the optional keys are present only for the codes that carry them.
+      properties:
+        code:
+          type: string
+        detail:
+          type: string
+        expected:
+          type: string
+          description: 'confirmation_mismatch only: the filename the client had to
+            type.'
+        exit_code:
+          type: integer
+          description: 'restore_failed only: pg_restore''s exit status.'
+        stderr:
+          type: string
+          description: 'restore_failed only: the last 4000 bytes of credential-scrubbed
+            pg_restore stderr.'
+      required:
+      - code
+      - detail
+    RestoreRequest:
+      type: object
+      description: |-
+        Body of ``POST /api/backups/{id}/restore/``.
+
+        The confirmation is a deliberate-action guard, not a secret: it must equal the
+        backup's own ``filename``, which the list endpoint already hands out.
+      properties:
+        confirm:
+          type: string
+          description: The backup's exact filename. Anything else answers 400.
+      required:
+      - confirm
+    RestoreResponse:
+      type: object
+      description: |-
+        A completed restore. ``workers_quiesced`` is always false — this endpoint
+        cannot stop worker/beat (no Docker socket in the container), so ``warning``
+        says to restart them.
+      properties:
+        restored:
+          type: boolean
+        backup_id:
+          type: integer
+        filename:
+          type: string
+        duration_ms:
+          type: integer
+        workers_quiesced:
+          type: boolean
+        warning:
+          type: string
+      required:
+      - backup_id
+      - duration_ms
+      - filename
+      - restored
+      - warning
+      - workers_quiesced
     RoleEnum:
       enum:
       - user
@@ -5232,11 +6942,11 @@ components:
           type: string
         status:
           allOf:
-          - $ref: '#/components/schemas/Status95aEnum'
+          - $ref: '#/components/schemas/SnapshotStatusEnum'
           readOnly: true
         includes: {}
         source:
-          $ref: '#/components/schemas/Source7c9Enum'
+          $ref: '#/components/schemas/SnapshotSourceEnum'
         captured_at:
           type: string
           format: date-time
@@ -5277,9 +6987,9 @@ components:
         notes:
           type: string
         status:
-          $ref: '#/components/schemas/Status95aEnum'
+          $ref: '#/components/schemas/SnapshotStatusEnum'
         source:
-          $ref: '#/components/schemas/Source7c9Enum'
+          $ref: '#/components/schemas/SnapshotSourceEnum'
         primary_ticker:
           type: string
           nullable: true
@@ -5369,7 +7079,7 @@ components:
         * `pending` - Pending
         * `done` - Done
         * `failed` - Failed
-    Source7c9Enum:
+    SnapshotSourceEnum:
       enum:
       - manual
       - observer
@@ -5381,14 +7091,16 @@ components:
         * `observer` - Observer
         * `trigger` - Trigger
         * `briefing` - Briefing
-    SourceC68Enum:
+    SnapshotStatusEnum:
       enum:
-      - manual
-      - scheduled
+      - pending
+      - ready
+      - failed
       type: string
       description: |-
-        * `manual` - Manual
-        * `scheduled` - Scheduled
+        * `pending` - Pending
+        * `ready` - Ready
+        * `failed` - Failed
     StanceEnum:
       enum:
       - bull
@@ -5399,16 +7111,6 @@ components:
         * `bull` - Bull
         * `bear` - Bear
         * `neutral` - Neutral
-    Status95aEnum:
-      enum:
-      - pending
-      - ready
-      - failed
-      type: string
-      description: |-
-        * `pending` - Pending
-        * `ready` - Ready
-        * `failed` - Failed
     Theme:
       type: object
       properties:
@@ -5447,7 +7149,7 @@ components:
           type: string
           maxLength: 16
         direction:
-          $ref: '#/components/schemas/ThesisDirectionEnum'
+          $ref: '#/components/schemas/DirectionalCallEnum'
         rationale:
           type: string
         conviction:
@@ -5513,6 +7215,11 @@ components:
           nullable: true
         close_note:
           type: string
+        archived_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
         created_at:
           type: string
           format: date-time
@@ -5527,6 +7234,7 @@ components:
             $ref: '#/components/schemas/PostMortem'
           readOnly: true
       required:
+      - archived_at
       - closed_at
       - created_at
       - direction
@@ -5541,16 +7249,6 @@ components:
       - ticker
       - title
       - updated_at
-    ThesisDirectionEnum:
-      enum:
-      - bullish
-      - bearish
-      - neutral
-      type: string
-      description: |-
-        * `bullish` - Bullish
-        * `bearish` - Bearish
-        * `neutral` - Neutral
     ThesisStatusEnum:
       enum:
       - open
@@ -5691,6 +7389,17 @@ components:
           minimum: 0
           description: Thinking token budget when enable_thinking=True. Billed as
             output.
+        effort:
+          allOf:
+          - $ref: '#/components/schemas/EffortEnum'
+          description: |-
+            Reasoning effort applied to this profile's runs.
+
+            * `low` - Low
+            * `medium` - Medium
+            * `high` - High
+            * `xhigh` - Extra high
+            * `max` - Max
         enable_memory:
           type: boolean
           description: Expose the Memory tool with a per-profile namespace under /data/memory/<profile_id>/.

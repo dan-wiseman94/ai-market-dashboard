@@ -1,4 +1,4 @@
-"""Profiles gold + documented UI gaps."""
+"""Profiles gold: the capability controls and the row-level activate control."""
 
 from __future__ import annotations
 
@@ -25,18 +25,24 @@ def test_profile_create_persists(page, frontend_base_url, minimal) -> None:
 @pytest.mark.integration
 @pytest.mark.ui
 def test_profile_flags_editable_in_ui(page, frontend_base_url, minimal) -> None:
-    """The per-profile capability flags drive real AI behavior, so they are settable."""
+    """The per-profile capability controls are settable from /profiles.
+
+    These gate tool use, extended thinking, reasoning effort, memory and the
+    Decision Coach on every run the profile drives. Exact matching matters here:
+    "Memory" is a prefix of the memory store's own label and "Active" is a
+    substring of the "Inactive" row pill, and the controls sit in one fieldset.
+    """
     p = ProfilesPage(page, frontend_base_url)
     p.go()
     p.expect_error_boundary_absent()
-    expect(page.get_by_label("Enable tools")).to_be_visible(timeout=5_000)
-    expect(page.get_by_label("Extended thinking")).to_be_visible()
-    expect(page.get_by_label("Memory")).to_be_visible()
-    expect(page.get_by_label("Decision Coach")).to_be_visible()
-    # The budget appears only once extended thinking is on.
-    expect(page.get_by_label("Thinking budget")).to_have_count(0)
-    page.get_by_label("Extended thinking").click()
-    expect(page.get_by_label("Thinking budget")).to_be_visible(timeout=5_000)
+    labels = ("Enable tools", "Extended thinking", "Effort", "Memory", "Decision Coach", "Active")
+    for label in labels:
+        expect(page.get_by_label(label, exact=True)).to_be_visible(timeout=5_000)
+    # A new profile inherits the model defaults, which have thinking ON, so the
+    # budget starts visible and goes away with the switch.
+    expect(page.get_by_label("Thinking budget", exact=True)).to_be_visible()
+    page.get_by_label("Extended thinking", exact=True).click()
+    expect(page.get_by_label("Thinking budget", exact=True)).to_have_count(0)
 
 
 @pytest.mark.integration

@@ -60,6 +60,28 @@ def test_run_briefing_manual_creates_run_and_dispatches_ai(cfg):
 
 
 @pytest.mark.django_db
+def test_run_briefing_skips_ai_when_synthesis_disabled(cfg):
+    """The deterministic sections are free; the synthesis is the only paid part of
+    a briefing, so turning it off must skip the AI dispatch and still ship data."""
+    cfg.synthesis_enabled = False
+    cfg.save(update_fields=["synthesis_enabled"])
+    with (
+        patch(
+            "apps.observer.briefing.services.run.assemble",
+            return_value=({"theses": [], "since": "x"}, None),
+        ),
+        patch("apps.observer.briefing.services.run.run_ai_on_message.delay") as delay,
+        patch("apps.observer.briefing.services.run.notify") as notify,
+    ):
+        run = R.run_briefing(scheduled=False)
+    assert run.status == "ready"
+    assert run.data == {"theses": [], "since": "x"}
+    assert run.synthesis_message is None
+    delay.assert_not_called()
+    notify.assert_called_once()
+
+
+@pytest.mark.django_db
 def test_run_briefing_scheduled_is_idempotent_per_day(cfg):
     with (
         patch("apps.observer.briefing.services.run.assemble", return_value=({"since": "x"}, None)),

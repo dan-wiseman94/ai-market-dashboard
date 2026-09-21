@@ -9,6 +9,11 @@ vi.mock("@/hooks/useWatchlist", () => ({
   useWatchlist: vi.fn(),
   useAddSymbol: vi.fn(),
   useRemoveSymbol: vi.fn(),
+  useReorderSymbols: vi.fn(),
+}));
+
+vi.mock("@/hooks/useWatchlists", () => ({
+  useRenameWatchlist: vi.fn(),
 }));
 
 vi.mock("@/hooks/useQuotes", () => ({
@@ -19,11 +24,15 @@ import {
   useWatchlist,
   useAddSymbol,
   useRemoveSymbol,
+  useReorderSymbols,
 } from "@/hooks/useWatchlist";
+import { useRenameWatchlist } from "@/hooks/useWatchlists";
 
 const mockUseWatchlist = vi.mocked(useWatchlist);
 const mockUseAddSymbol = vi.mocked(useAddSymbol);
 const mockUseRemoveSymbol = vi.mocked(useRemoveSymbol);
+const mockUseReorderSymbols = vi.mocked(useReorderSymbols);
+const mockUseRenameWatchlist = vi.mocked(useRenameWatchlist);
 
 const WATCHLIST: Watchlist = {
   id: 42,
@@ -48,11 +57,30 @@ function makeRemove() {
   return mockMutate;
 }
 
+function makeReorder() {
+  const mockMutate = vi.fn();
+  mockUseReorderSymbols.mockReturnValue({
+    mutate: mockMutate,
+    isPending: false,
+    isError: false,
+    error: null,
+  } as never);
+  return mockMutate;
+}
+
+function makeRename() {
+  const mockMutate = vi.fn();
+  mockUseRenameWatchlist.mockReturnValue({ mutate: mockMutate, isPending: false } as never);
+  return mockMutate;
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   mockUseWatchlist.mockReturnValue({ data: WATCHLIST, isLoading: false } as never);
   makeAdd();
   makeRemove();
+  makeReorder();
+  makeRename();
 });
 
 function renderDetail(id = "42") {
@@ -150,5 +178,54 @@ describe("WatchlistDetail", () => {
     fireEvent.click(screen.getByRole("button", { name: /add/i }));
 
     await waitFor(() => expect(tickerInput).toHaveValue(""));
+  });
+
+  it("inline rename: Save sends {id, name} for this watchlist", async () => {
+    const renameMutate = makeRename();
+    const user = userEvent.setup();
+    renderDetail();
+
+    await user.click(screen.getByRole("button", { name: "Rename Tech Watchlist" }));
+    const input = screen.getByRole("textbox", { name: "New name for Tech Watchlist" });
+    await user.clear(input);
+    await user.type(input, "Renamed");
+    await user.click(screen.getByRole("button", { name: "Save name for Tech Watchlist" }));
+
+    expect(renameMutate).toHaveBeenCalledWith({ id: 42, name: "Renamed" });
+  });
+
+  it("move down sends the swapped symbol-id order", async () => {
+    const reorderMutate = makeReorder();
+    const user = userEvent.setup();
+    renderDetail();
+
+    await user.click(screen.getByRole("button", { name: "Move AAPL down" }));
+    expect(reorderMutate).toHaveBeenCalledWith([2, 1]);
+  });
+
+  it("move up sends the swapped symbol-id order", async () => {
+    const reorderMutate = makeReorder();
+    const user = userEvent.setup();
+    renderDetail();
+
+    await user.click(screen.getByRole("button", { name: "Move MSFT up" }));
+    expect(reorderMutate).toHaveBeenCalledWith([2, 1]);
+  });
+
+  it("the end-of-list move buttons are disabled", () => {
+    renderDetail();
+    expect(screen.getByRole("button", { name: "Move AAPL up" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Move MSFT down" })).toBeDisabled();
+  });
+
+  it("surfaces a reorder failure", () => {
+    mockUseReorderSymbols.mockReturnValue({
+      mutate: vi.fn(),
+      isPending: false,
+      isError: true,
+      error: new Error("Reorder rejected"),
+    } as never);
+    renderDetail();
+    expect(screen.getByRole("alert")).toHaveTextContent("Reorder rejected");
   });
 });

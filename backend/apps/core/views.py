@@ -187,39 +187,119 @@ def _coerce_setting(key: str, value: object, typ: type) -> tuple[object, str | N
     """Coerce/validate a single PATCH value. None clears the override (inherit default)."""
     if value is None:
         return None, None
+    coerced, err = _coerce_type(key, value, typ)
+    if err is not None:
+        return None, err
+    for check in (
+        _check_non_negative,
+        _check_column_limits,
+        _check_provider_value,
+        _check_retention_floor,
+        _check_loop_ceiling_floor,
+    ):
+        err = check(key, coerced)
+        if err is not None:
+            return None, err
+    return coerced, None
+
+
+def _coerce_type(key: str, value: object, typ: type) -> tuple[object, str | None]:
+    """Cast to the field's Python type. Booleans are strict — bool("false") is True,
+    so a loose cast would store the opposite of what the caller sent."""
     try:
         if typ is bool:
             if not isinstance(value, bool):
                 return None, f"{key} must be a boolean"
             return value, None
         if typ is int:
-            coerced: object = int(value)  # type: ignore[call-overload]
-        elif typ is float:
-            coerced = float(value)  # type: ignore[arg-type]
-        else:
-            coerced = str(value)
+            return int(value), None  # type: ignore[call-overload]
+        if typ is float:
+            return float(value), None  # type: ignore[arg-type]
+        return str(value), None
     except (TypeError, ValueError):
         return None, f"{key} must be {typ.__name__}"
-    if typ in (int, float) and coerced < 0:  # type: ignore[operator]
-        return None, f"{key} must be >= 0"
-    if key in _PROVIDER_KNOBS and coerced not in _PROVIDER_VALUES:
-        # A free-text provider name silently disables the knob it configures: the
-        # failover lookup and the eval preflight both resolve a ProviderConfig by name.
-        return None, f"{key} must be one of claude, openai, local (or blank)"
-    if key.startswith("retention_") and typ is int:
-        # 0 days would make the next prune delete EVERY row of that model; use
-        # null to disable pruning instead. OHLC is read by date by post-mortems,
-        # so its floor must clear the longest post-mortem horizon.
-        if coerced < 1:  # type: ignore[operator]
-            return None, f"{key} must be >= 1 (use null to disable pruning)"
-        if key == "retention_ohlc_days":
-            floor = max(settings.THESIS_POSTMORTEM_HORIZONS) + 7
-            if coerced < floor:  # type: ignore[operator]
-                return None, (
-                    f"retention_ohlc_days must be >= {floor}: post-mortems resolve "
-                    "against OHLC bars by date up to the longest horizon"
-                )
-    return coerced, None
+
+
+def _check_non_negative(key: str, coerced: object) -> str | None:
+    if isinstance(coerced, bool) or not isinstance(coerced, int | float):
+        return None
+    return f"{key} must be >= 0" if coerced < 0 else None
+
+
+# Both consumers read these as "0 means unlimited", so a 0 saved from the UI would
+# silently restore the unbounded tool loop the bound exists to prevent. Clearing the
+# override (null) is the way to fall back to the default.
+_LOOP_CEILINGS = ("ai_chat_max_tool_iterations", "ai_investigation_max_iterations")
+
+
+def _check_loop_ceiling_floor(key: str, coerced: object) -> str | None:
+    if key not in _LOOP_CEILINGS or isinstance(coerced, bool) or not isinstance(coerced, int):
+        return None
+    if coerced < 1:
+        return f"{key} must be >= 1 (use null to inherit the default; 0 would be unbounded)"
+    return None
+
+
+def _settings_field(key: str) -> object | None:
+    """The SystemSettings column backing an editable key, or None if it has no column."""
+    from django.core.exceptions import FieldDoesNotExist
+
+    from apps.core.models import SystemSettings
+
+    try:
+        return SystemSettings._meta.get_field(key)
+    except FieldDoesNotExist:
+        return None
+
+
+def _check_column_limits(key: str, coerced: object) -> str | None:
+    """Enforce the column's own constraints at the API edge. Without this an over-long
+    string or an off-choices value reaches the DB and surfaces as a 500 DataError
+    instead of a 400 the UI can render next to the field."""
+    field = _settings_field(key)
+    if field is None:
+        return None
+    max_length = getattr(field, "max_length", None)
+    if isinstance(coerced, str) and max_length and len(coerced) > max_length:
+        return f"{key} must be at most {max_length} characters"
+    choices = getattr(field, "choices", None)
+    if choices:
+        allowed = [c[0] for c in choices]
+        if coerced not in allowed:
+            # "" is a real choice on some columns (an explicit "none"); rendered bare it
+            # reads as a stray comma, so quote it.
+            rendered = ", ".join(str(a) if a != "" else '""' for a in allowed)
+            return f"{key} must be one of: {rendered}"
+    return None
+
+
+def _check_retention_floor(key: str, coerced: object) -> str | None:
+    """0 days would make the next prune delete EVERY row of that model; use null to
+    disable pruning instead. OHLC is read by date by post-mortems, so its floor must
+    clear the longest post-mortem horizon."""
+    if (
+        not key.startswith("retention_")
+        or not isinstance(coerced, int)
+        or isinstance(coerced, bool)
+    ):
+        return None
+    if coerced < 1:
+        return f"{key} must be >= 1 (use null to disable pruning)"
+    floor = max(settings.THESIS_POSTMORTEM_HORIZONS) + 7
+    if key == "retention_ohlc_days" and coerced < floor:
+        return (
+            f"retention_ohlc_days must be >= {floor}: post-mortems resolve "
+            "against OHLC bars by date up to the longest horizon"
+        )
+    return None
+
+
+def _check_provider_value(key: str, coerced: object) -> str | None:
+    """A free-text provider name silently disables the knob it configures: the failover
+    lookup and the eval preflight both resolve a ProviderConfig by name."""
+    if key not in _PROVIDER_KNOBS or coerced in _PROVIDER_VALUES:
+        return None
+    return f"{key} must be one of claude, openai, local (or blank)"
 
 
 @csrf_exempt

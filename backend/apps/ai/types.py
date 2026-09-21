@@ -21,14 +21,23 @@ class RunRequest:
     model: str
     system: str
     messages: list[ChatMessage]
-    max_tokens: int = 4096
+    # A reasoning model needs room to answer: 16k clears any observation-length
+    # response, keeps a legacy `budget_tokens` (<= 8k) strictly below it as the API
+    # requires, and stays modest enough for a local OpenAI-compatible endpoint.
+    max_tokens: int = 16_000
     temperature: float = 1.0
     cache_system: bool = True
     cache_last_message: bool = False
     tools: list[dict] = field(default_factory=list)
-    thinking_budget: int = 0  # 0 disables extended thinking
+    enable_thinking: bool = False
+    # Reasoning depth: "low"/"medium"/"high"/"xhigh"/"max". "" omits the parameter
+    # and takes the API default. Clamped per model by `catalog.resolve_effort`.
+    effort: str = ""
+    # Thinking token ceiling for the models that still take the budget shape; the
+    # adaptive rows reject it. Ignored unless `enable_thinking` is set.
+    thinking_budget: int = 0
     memory_dir: str = ""  # "" disables Memory tool
-    max_tool_iterations: int = 0  # 0 = unlimited (chat default); >0 bounds autonomous runs
+    max_tool_iterations: int = 0  # 0 = unlimited; >0 bounds the tool loop
 
 
 @dataclass
@@ -89,6 +98,24 @@ class ThinkingDeltaEvent:
     text: str = ""
 
 
+@dataclass
+class CitationEvent:
+    """One citation the model attached to the text it just streamed.
+
+    The Anthropic location variants are NOT uniform: a `search_result` citation
+    carries `source`+`title`, a web-search one `url`+`title`, and a document one
+    (char/page/content-block, from a Files-API attach) neither — only
+    `document_title`. `source` is "" for a document citation; `location` keeps the
+    raw variant so a consumer can tell them apart.
+    """
+
+    type: Literal["citation"] = "citation"
+    location: str = ""
+    source: str = ""
+    title: str = ""
+    cited_text: str = ""
+
+
 RunEvent = (
     TextDelta
     | UsageEvent
@@ -97,4 +124,5 @@ RunEvent = (
     | ToolCallEvent
     | ToolResultEvent
     | ThinkingDeltaEvent
+    | CitationEvent
 )

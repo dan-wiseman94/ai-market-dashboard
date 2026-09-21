@@ -18,6 +18,25 @@ beforeEach(() => {
     if (url.includes("/api/market/news/")) {
       return { ok: true, json: () => Promise.resolve({ items: [] }) };
     }
+    if (url.includes("/api/coverage/")) {
+      return {
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            id: 1,
+            ticker: "SPY",
+            stance: "bull",
+            conviction: 4,
+            bull_case: "",
+            bear_case: "",
+            key_levels: {},
+            watching_for: "",
+            created_at: "2026-05-01T00:00:00Z",
+            updated_at: "2026-06-01T00:00:00Z",
+            revisions: [],
+          }),
+      };
+    }
     return {
       ok: true,
       json: () => Promise.resolve({ ticker: "SPY", timeframe: "5m", bars: [] }),
@@ -34,5 +53,15 @@ describe("MarketTickerPage", () => {
     await waitFor(() => {
       expect(screen.getByText(/SPY/)).toBeInTheDocument();
     });
+  });
+
+  it("surfaces the house view and links to the coverage note", async () => {
+    renderWithProviders(<MarketTickerPage />, {
+      initialEntries: ["/market/SPY"],
+      routePath: "/market/:ticker",
+    });
+    const link = await screen.findByRole("link", { name: /read the note/i });
+    expect(link).toHaveAttribute("href", "/coverage/SPY");
+    expect(screen.getByText(/Bullish, conviction 4\/5/)).toBeInTheDocument();
   });
 });

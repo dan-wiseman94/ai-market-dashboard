@@ -2,6 +2,7 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import {
   useAttachFileToThread,
+  useDeleteFile,
   useFiles,
   useUploadFile,
   type UserFile,
@@ -121,6 +122,36 @@ describe("useAttachFileToThread", () => {
     expect(err).toBeInstanceOf(ApiError);
     expect(err.status).toBe(404);
     expect(err.code).toBe("not_found");
+    expect(err.message).toBe("File not found");
+  });
+});
+
+describe("useDeleteFile", () => {
+  it("DELETEs the file and invalidates the cached list", async () => {
+    const qc = newQueryClient();
+    qc.setQueryData(["files", ""], [FILE]);
+    const invalidateSpy = vi.spyOn(qc, "invalidateQueries");
+    const { calls } = mockApi({ "DELETE /api/files/1/": undefined });
+
+    const { result } = renderHook(() => useDeleteFile(), { wrapper: hookWrapper(qc) });
+    await act(async () => {
+      await result.current.mutateAsync(1);
+    });
+
+    expect(calls[0].method).toBe("DELETE");
+    expect(calls[0].url).toBe("/api/files/1/");
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["files"] });
+  });
+
+  it("surfaces a failed delete instead of silently dropping the row", async () => {
+    mockApiError("DELETE /api/files/1/", 404, "not_found", "File not found");
+    const { result } = renderHook(() => useDeleteFile(), { wrapper: hookWrapper() });
+    await act(async () => {
+      await result.current.mutateAsync(1).catch(() => {});
+    });
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    const err = result.current.error as ApiError;
+    expect(err.status).toBe(404);
     expect(err.message).toBe("File not found");
   });
 });

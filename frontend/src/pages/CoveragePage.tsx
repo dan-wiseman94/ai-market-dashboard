@@ -1,26 +1,15 @@
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 
 import { ConveneWarRoomButton } from "@/components/ConveneWarRoomButton";
 import { EmptyState } from "@/components/EmptyState";
 import { SkeletonRows } from "@/components/Skeleton";
 import {
   type CoverageRevision,
-  type Stance,
   useCoverage,
   useReviseCoverage,
 } from "@/hooks/useCoverage";
-
-const STANCE_LABEL: Record<Stance, string> = {
-  bull: "Bullish",
-  bear: "Bearish",
-  neutral: "Neutral",
-};
-
-const STANCE_TONE: Record<Stance, string> = {
-  bull: "text-copper-300",
-  bear: "text-ink-200",
-  neutral: "text-ink-400",
-};
+import { useToast } from "@/hooks/useToast";
+import { convictionLabel, STANCE_LABEL, STANCE_TONE } from "@/lib/coverageStance";
 
 function fmtDate(iso: string): string {
   return new Date(iso).toLocaleString(undefined, {
@@ -44,7 +33,21 @@ function transition(rev: CoverageRevision): string | null {
 export default function CoveragePage() {
   const { ticker = "" } = useParams();
   const { data: note, isLoading, isError } = useCoverage(ticker);
+  const { push } = useToast();
   const revise = useReviseCoverage(ticker);
+
+  function onRevise() {
+    revise.mutate(undefined, {
+      onSuccess: (res) =>
+        push({
+          kind: res.revised ? "success" : "info",
+          text: res.revised
+            ? "House view revised."
+            : "Reaffirmed — nothing material changed, so no revision was written.",
+        }),
+      onError: (e) => push({ kind: "error", text: (e as Error).message }),
+    });
+  }
 
   return (
     <div className="px-8 py-8 max-w-5xl mx-auto space-y-8 ledger-fade-in">
@@ -55,6 +58,12 @@ export default function CoveragePage() {
             The house view — a standing research note the desk revises with a
             reason, not one it re-derives from scratch each snapshot.
           </p>
+          <Link
+            to="/coverage"
+            className="mt-2 inline-block text-xs text-ink-500 hover:text-copper-300"
+          >
+            ← All coverage
+          </Link>
         </div>
         <div className="flex shrink-0 gap-2">
           {note && (
@@ -64,7 +73,7 @@ export default function CoveragePage() {
             />
           )}
           <button
-            onClick={() => revise.mutate()}
+            onClick={onRevise}
             disabled={revise.isPending}
             className="rounded border border-rule px-3 py-1 text-sm text-ink-300 transition-colors hover:text-copper-300 disabled:opacity-50"
           >
@@ -78,7 +87,28 @@ export default function CoveragePage() {
       ) : isError || !note ? (
         <EmptyState
           title={`No coverage yet for ${ticker}`}
-          body="Capture a snapshot for this ticker, then “Revise now” to establish the house view. Observer fires keep it current after that."
+          body={
+            `Nothing has opened a house view on ${ticker} yet. An observer fire opens one ` +
+            "automatically off a snapshot's primary ticker; to start it by hand, capture a " +
+            "snapshot for this ticker and then “Revise now”."
+          }
+          action={
+            <div className="flex flex-wrap justify-center gap-2">
+              <button
+                onClick={onRevise}
+                disabled={revise.isPending}
+                className="rounded border border-rule px-3 py-1 text-sm text-ink-300 transition-colors hover:text-copper-300 disabled:opacity-50"
+              >
+                {revise.isPending ? "Opening…" : "Open the house view"}
+              </button>
+              <Link
+                to="/coverage"
+                className="rounded border border-rule px-3 py-1 text-sm text-ink-400 transition-colors hover:text-copper-300"
+              >
+                All coverage
+              </Link>
+            </div>
+          }
         />
       ) : (
         <>
@@ -87,7 +117,7 @@ export default function CoveragePage() {
               {STANCE_LABEL[note.stance]}
             </span>
             <span className="text-sm text-ink-400">
-              conviction {note.conviction}/5
+              conviction {convictionLabel(note.conviction)}
             </span>
             <span className="text-xs text-ink-500">
               updated {fmtDate(note.updated_at)}

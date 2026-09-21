@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from cryptography.fernet import InvalidToken
-from django.conf import settings
 from drf_spectacular.utils import extend_schema
 from rest_framework import generics
 from rest_framework import status as drf_status
@@ -11,9 +10,16 @@ from rest_framework.views import APIView
 from apps.ai.catalog import default_model_for, foreign_model_error
 from apps.ai.cost import CostCapExceededError
 from apps.ai.structured import ensure_within_caps, resolve_structured_target
-from apps.analytics.aieval_serializers import EvalRunRequestSerializer, EvalRunSerializer
+from apps.analytics.aieval_serializers import (
+    EvalRunErrorSerializer,
+    EvalRunQueuedSerializer,
+    EvalRunRequestSerializer,
+    EvalRunSerializer,
+)
 from apps.analytics.models import EvalRun
 from apps.analytics.tasks import aieval_run
+from apps.core.mocks import is_mock_mode
+from apps.core.runtime_config import runtime_config
 
 
 def _err(code: str, message: str, status: int) -> Response:
@@ -31,7 +37,15 @@ class EvalRunListCreateView(generics.ListAPIView):
     # The view's serializer_class describes the GET rows; the POST takes a request
     # body of its own and answers 202, so spell both out rather than let the schema
     # advertise the read serializer as the request contract.
-    @extend_schema(request=EvalRunRequestSerializer, responses={202: None}, methods=["POST"])
+    @extend_schema(
+        request=EvalRunRequestSerializer,
+        responses={
+            202: EvalRunQueuedSerializer,
+            400: EvalRunErrorSerializer,
+            409: EvalRunErrorSerializer,
+        },
+        methods=["POST"],
+    )
     def post(self, request):
         ser = EvalRunRequestSerializer(data=request.data)
         if not ser.is_valid():
@@ -40,9 +54,21 @@ class EvalRunListCreateView(generics.ListAPIView):
             field, messages = next(iter(ser.errors.items()))
             return _err("invalid_request", f"{field}: {messages[0]}", 400)
         d = ser.validated_data
+
+        # The harness reaches the provider through run_structured, which has NO
+        # MOCK_EXTERNAL short-circuit — a run queued under the e2e overlay would
+        # persist a fabricated EvalRun that the coach and the calibration-weighted
+        # router then read as measurement.
+        if is_mock_mode():
+            return _err("mock_mode", "Eval runs are unavailable in MOCK_EXTERNAL mode.", 409)
+
+        rc = runtime_config()
         provider: str = d["provider"]
         model: str = d["model"] or default_model_for(provider)
-        horizon: int = d.get("horizon") or settings.AIEVAL_SCHEDULED_HORIZON
+        # An explicit null means "every horizon"; an omitted key inherits the
+        # UI-configurable default (SystemSettings ?? AIEVAL_SCHEDULED_HORIZON).
+        horizon: int | None = d.get("horizon", rc.aieval_scheduled_horizon)
+        limit: int = d.get("limit") or rc.aieval_scheduled_limit
 
         err = foreign_model_error(provider, model)
         if err:
@@ -74,24 +100,17 @@ class EvalRunListCreateView(generics.ListAPIView):
         # Queue the RESOLVED target, not the requested one: `default_model_for("local")`
         # is "" by design, and the resolver is what chains in the ProviderConfig's own
         # default. Queueing the request's blank id would run the eval against no model.
-        aieval_run.delay(
-            provider=target.provider,
-            model=target.model,
-            horizon=horizon,
-            limit=d["limit"],
-            label=d["label"],
-        )
-        return Response(
-            {
-                "queued": True,
-                "provider": target.provider,
-                "model": target.model,
-                "horizon": horizon,
-                "limit": d["limit"],
-                "label": d["label"],
-            },
-            status=drf_status.HTTP_202_ACCEPTED,
-        )
+        params = {
+            "provider": target.provider,
+            "model": target.model,
+            "horizon": horizon,
+            "limit": limit,
+            "label": d["label"],
+        }
+        # Only passed when asked for, so the task keeps its documented default prompt.
+        system = d.get("system")
+        aieval_run.delay(**params, **({"system": system} if system else {}))
+        return Response({"queued": True, **params}, status=drf_status.HTTP_202_ACCEPTED)
 
 
 class EvalRunLatestView(APIView):

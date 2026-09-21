@@ -129,7 +129,7 @@ describe("SchedulesPage — AI target and mode", () => {
     expect(screen.getByLabelText(/^Investigate/)).toBeDisabled();
   });
 
-  it("edits a row's AI settings and PATCHes them", async () => {
+  it("edits a row's AI settings through the one edit form and PATCHes them", async () => {
     const mock = mockApi({
       ...BASE,
       "GET /api/observer/schedules/": [OVERRIDDEN],
@@ -138,9 +138,13 @@ describe("SchedulesPage — AI target and mode", () => {
     renderWithProviders(<SchedulesPage />);
     await waitFor(() => expect(screen.getByText("Hourly")).toBeInTheDocument());
 
-    fireEvent.click(screen.getByRole("button", { name: /^ai$/i }));
+    fireEvent.click(screen.getByRole("button", { name: /edit hourly/i }));
+    // Seeded from the saved row, so an unrelated edit can't reset the AI target.
+    expect(screen.getByTestId("sched-1-effective-target").textContent).toBe(
+      "Runs on OpenAI · gpt-5.6-sol (override)",
+    );
     fireEvent.click(screen.getByLabelText(/^Cross-model consensus/));
-    fireEvent.click(screen.getByRole("button", { name: /save ai settings/i }));
+    fireEvent.click(screen.getByRole("button", { name: /save schedule/i }));
 
     await waitFor(() => expect(mock.calls.some((c) => c.method === "PATCH")).toBe(true));
     const body = mock.calls.find((c) => c.method === "PATCH")!.body as Record<string, unknown>;

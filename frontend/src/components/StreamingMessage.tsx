@@ -12,6 +12,7 @@ import {
   isConsensusReport, isPostMortemReport,
   type StructuredKind, type StructuredReport, type WarRoomVerdictContent,
 } from "@/api/observation";
+import { CitationText, type CitationRef } from "@/components/CitationText";
 
 /** Kinds with no card of their own still need a word of their own: a cached
  * observation is not a fresh call, and a capability warning is not an answer. */
@@ -39,6 +40,8 @@ type Props = {
   report?: StructuredReport;
   /** War-room verdicts spread their fields into the message content, not `report`. */
   verdict?: WarRoomVerdictContent;
+  /** Citations the model attached to this message, in the order they streamed. */
+  citations?: CitationRef[];
 };
 
 /** Split the snapshot turn at the first `## ` heading: preamble (objective /
@@ -185,6 +188,7 @@ function AssistantBody({
   verdict,
   text,
   isStreaming,
+  citations = [],
 }: {
   status?: "done" | "streaming" | "failed";
   error?: string;
@@ -193,6 +197,7 @@ function AssistantBody({
   verdict?: WarRoomVerdictContent;
   text: string;
   isStreaming: boolean;
+  citations?: CitationRef[];
 }) {
   if (status === "failed") {
     return (
@@ -203,28 +208,33 @@ function AssistantBody({
     );
   }
 
+  // A card is rendered from its own structured payload, which carries no
+  // citations — only the streamed markdown body has text to cite.
   const card = structuredCard(kind, report, verdict);
   if (card) return card;
 
   return (
-    <div className="ledger-prose">
-      <ReactMarkdown remarkPlugins={[remarkGfm]}>
-        {text || (isStreaming ? "…" : "")}
-      </ReactMarkdown>
-      {isStreaming && text && (
-        <span
-          aria-hidden
-          className="inline-block w-2 h-4 ml-0.5 align-text-bottom bg-copper-400 ledger-pulse"
-          style={{ color: "var(--copper-400)" }}
-        />
-      )}
-    </div>
+    <>
+      <div className="ledger-prose">
+        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+          {text || (isStreaming ? "…" : "")}
+        </ReactMarkdown>
+        {isStreaming && text && (
+          <span
+            aria-hidden
+            className="inline-block w-2 h-4 ml-0.5 align-text-bottom bg-copper-400 ledger-pulse"
+            style={{ color: "var(--copper-400)" }}
+          />
+        )}
+      </div>
+      <CitationText citations={citations} />
+    </>
   );
 }
 
 function Message({
   role, text, status, error, cost, model, provider,
-  bare = false, snapshotId, kind, report, verdict,
+  bare = false, snapshotId, kind, report, verdict, citations,
 }: Props) {
   const isUser = role === "user";
   const isStreaming = status === "streaming";
@@ -260,6 +270,7 @@ function Message({
           verdict={verdict}
           text={text}
           isStreaming={isStreaming}
+          citations={citations}
         />
       </div>
     </article>

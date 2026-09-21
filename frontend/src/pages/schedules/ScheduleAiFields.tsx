@@ -1,5 +1,6 @@
 import { providerLabel } from "@/api/ai";
 import AiTargetPicker from "@/components/ai/AiTargetPicker";
+import InvestigateToggle from "@/components/schedule/InvestigateToggle";
 import type { ObserverMode } from "@/api/observer";
 import type { TradingProfile } from "@/api/profiles";
 import { useCatalog } from "@/hooks/useCatalog";
@@ -16,6 +17,8 @@ export type AiFieldsValue = {
   investigate: boolean;
 };
 
+/** A new schedule's defaults. `investigate` starts on, matching the model
+ * default the observer writes for rows created outside the UI. */
 export const BLANK_AI_FIELDS: AiFieldsValue = {
   override_provider: "",
   override_model: "",
@@ -23,7 +26,7 @@ export const BLANK_AI_FIELDS: AiFieldsValue = {
   structured: false,
   use_batch: false,
   consensus: false,
-  investigate: false,
+  investigate: true,
 };
 
 /** Read a schedule row into the editor's shape, tolerating rows fetched before a
@@ -179,15 +182,17 @@ export default function ScheduleAiFields({
           disabled={!isClaude}
           hint={isClaude ? undefined : "Claude only — Messages Batches"}
         />
-        <Check
-          id={`${idPrefix}-investigate`}
-          label="Investigate (bounded tool loop under the autonomous cap)"
-          checked={value.investigate}
-          onToggle={(v) => set({ investigate: v })}
-          disabled={value.structured}
-          hint={value.structured ? "Plain mode only" : undefined}
-        />
       </div>
+
+      {/* Investigate spends real money per fire, so it ships with its cost note
+          rather than as a bare checkbox. */}
+      <InvestigateToggle
+        idPrefix={idPrefix}
+        checked={value.investigate}
+        disabled={value.structured}
+        onChange={(investigate) => set({ investigate })}
+        note={value.structured ? "Plain fires only — structured fires ignore it." : undefined}
+      />
 
       <p data-testid={`${idPrefix}-effective-target`} className="text-[12px] text-ink-300">
         {`Runs on ${providerLabel(eff.provider)} · ${eff.model} (${eff.qualifier})`}

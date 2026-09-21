@@ -112,3 +112,35 @@ def test_delete_removes_row_and_calls_api(db, claude_cfg) -> None:
     assert resp.status_code == 204
     assert UserFile.objects.count() == 0
     ac.return_value.beta.files.delete.assert_called_once_with("f1")
+
+
+def test_oversize_upload_is_rejected_with_413(db, claude_cfg, settings) -> None:
+    """DATA_UPLOAD_MAX_MEMORY_SIZE accumulates multipart FIELD parts only, never
+    FILE parts — without an explicit check the whole file streams to Anthropic."""
+    from apps.threads.models import UserFile
+
+    settings.AI_FILE_UPLOAD_MAX_BYTES = 16
+    with (
+        patch("apps.threads.files_views.MAX_UPLOAD_BYTES", 16),
+        patch("apps.threads.files_service._anthropic_client") as ac,
+    ):
+        upload = SimpleUploadedFile("big.pdf", b"x" * 64, content_type="application/pdf")
+        resp = APIClient().post("/api/files/", data={"file": upload}, format="multipart")
+
+    assert resp.status_code == 413, resp.content
+    assert resp.json()["code"] == "file_too_large"
+    ac.assert_not_called()  # never reached the Files API
+    assert UserFile.objects.count() == 0
+
+
+def test_upload_at_the_limit_is_accepted(db, claude_cfg) -> None:
+    fake_file = MagicMock(id="file_ok", size_bytes=16)
+    with (
+        patch("apps.threads.files_views.MAX_UPLOAD_BYTES", 16),
+        patch("apps.threads.files_service._anthropic_client") as ac,
+    ):
+        ac.return_value.beta.files.upload.return_value = fake_file
+        upload = SimpleUploadedFile("ok.pdf", b"x" * 16, content_type="application/pdf")
+        resp = APIClient().post("/api/files/", data={"file": upload}, format="multipart")
+
+    assert resp.status_code == 201, resp.content
