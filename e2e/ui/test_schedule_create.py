@@ -24,7 +24,9 @@ def test_create_schedule_via_form(page, frontend_base_url, minimal) -> None:
 
     page.get_by_role("button", name="New schedule").click()
     page.get_by_label("Name").fill("E2E created schedule")
-    page.get_by_label("Profile").select_option(index=0)  # first profile (no placeholder option)
+    # exact: the overrides fieldset adds a checkbox labelled "Override the
+    # profile's provider / model", so a substring match is ambiguous.
+    page.get_by_label("Profile", exact=True).select_option(index=0)
     create = page.get_by_role("button", name="Create", exact=True)
     expect(create).to_be_enabled(timeout=10_000)
     create.click()

@@ -1,9 +1,8 @@
 """Profiles page — /profiles.
 
-The /profiles create form exposes only name, trading style, and default
-provider. The per-profile capability flags (enable_tools / enable_memory /
-thinking_budget) exist on the model but are NOT editable here — see the xfail
-test in test_profiles.py.
+The create form takes name, trading style, and default provider. The
+per-profile capability flags (enable_tools / enable_thinking / enable_memory)
+are editable on this page.
 """
 
 from __future__ import annotations
