@@ -335,6 +335,7 @@ def persist_eval_run(result: dict[str, Any], *, source: str = "manual") -> EvalR
     return EvalRun.objects.create(
         source=source,
         label=result.get("label", "baseline"),
+        provider=result.get("provider", "claude"),
         model=result.get("model", ""),
         horizon=result.get("horizon"),
         n=result.get("n", 0),

@@ -2,14 +2,46 @@
 
 from __future__ import annotations
 
+from datetime import timedelta
 from decimal import Decimal
 from unittest.mock import patch
 
 import pytest
+from django.utils import timezone
 
-from apps.observer.models import BriefingRun, EventTrigger, ObserverSchedule, TriggerFiring
+from apps.observer.models import (
+    AIPrediction,
+    BriefingRun,
+    EventTrigger,
+    ObserverSchedule,
+    TriggerFiring,
+)
 from apps.profiles.models import TradingProfile
 from apps.thesis.models import Thesis
+
+_PREDICTIONS_EMPTY = {
+    "open_count": 0,
+    "resolved_30d": 0,
+    "invalidated_30d": 0,
+    "hit_rate_30d": None,
+}
+
+
+def _pred(ticker, *, status, verdict="", age_days=1, **kw):
+    predicted_at = timezone.now() - timedelta(days=age_days)
+    return AIPrediction.objects.create(
+        ticker=ticker,
+        direction="bullish",
+        horizon_days=7,
+        confidence=0.7,
+        provider="claude",
+        model="claude-opus-5",
+        predicted_at=predicted_at,
+        resolve_at=predicted_at + timedelta(days=7),
+        status=status,
+        verdict=verdict,
+        **kw,
+    )
 
 
 @pytest.mark.django_db
@@ -17,12 +49,20 @@ def test_empty_db_returns_200_with_all_keys(api):
     r = api.get("/api/dashboard/")
     assert r.status_code == 200
     body = r.json()
-    assert set(body.keys()) >= {"theses", "events", "observer", "triggers", "briefing"}
+    assert set(body.keys()) >= {
+        "theses",
+        "events",
+        "observer",
+        "triggers",
+        "briefing",
+        "predictions",
+    }
     assert isinstance(body["theses"], list)
     assert isinstance(body["events"], dict)
     assert isinstance(body["observer"], dict)
     assert isinstance(body["triggers"], dict)
     assert body["briefing"] is None
+    assert body["predictions"] == _PREDICTIONS_EMPTY
 
 
 @pytest.mark.django_db
@@ -126,3 +166,39 @@ def test_never_raise_swallows_triggers_error(api):
     assert r.status_code == 200
     body = r.json()
     assert body["triggers"] == {"armed_count": 0, "latest_firings": []}
+
+
+@pytest.mark.django_db
+def test_predictions_section_rolls_up_the_ledger(api):
+    _pred("SPY", status="open")
+    _pred("NVDA", status="resolved", verdict="correct", resolved_at=timezone.now())
+    _pred("AAPL", status="resolved", verdict="incorrect", resolved_at=timezone.now())
+    _pred("TSLA", status="invalidated", invalidated_at=timezone.now())
+    # Outside the 30d window: counted nowhere.
+    _pred(
+        "META",
+        status="resolved",
+        verdict="correct",
+        age_days=90,
+        resolved_at=timezone.now() - timedelta(days=60),
+    )
+
+    preds = api.get("/api/dashboard/").json()["predictions"]
+    assert preds["open_count"] == 1
+    assert preds["resolved_30d"] == 2
+    assert preds["invalidated_30d"] == 1
+    assert preds["hit_rate_30d"] == 0.5
+
+
+@pytest.mark.django_db
+def test_never_raise_swallows_predictions_error(api):
+    """The predictions default must be the full tile shape, not a bare {} — the SPA
+    reads every key straight off it."""
+    with patch(
+        "apps.analytics.dashboard._predictions_section",
+        side_effect=RuntimeError("ledger exploded"),
+    ):
+        r = api.get("/api/dashboard/")
+
+    assert r.status_code == 200
+    assert r.json()["predictions"] == _PREDICTIONS_EMPTY

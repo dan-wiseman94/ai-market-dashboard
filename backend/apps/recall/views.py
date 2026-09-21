@@ -3,12 +3,23 @@
 from __future__ import annotations
 
 from django.db.models import Count
+from drf_spectacular.utils import extend_schema
+from rest_framework import serializers
+from rest_framework import status as drf_status
 from rest_framework.decorators import api_view
 from rest_framework.request import Request
 from rest_framework.response import Response
 
 from apps.recall.models import RecallDocument
 from apps.recall.services import search as S
+from apps.recall.tasks import backfill
+
+
+class BackfillQueuedSerializer(serializers.Serializer):
+    """202 body of POST /api/recall/backfill/."""
+
+    task_id = serializers.CharField()
+    status = serializers.CharField(help_text='Always "queued".')
 
 
 @api_view(["GET"])
@@ -60,3 +71,20 @@ def recall_status(request: Request) -> Response:
     counts: dict[str, int] = {kind: by_kind.get(kind, 0) for kind, _ in RecallDocument.KIND_CHOICES}
     counts["total"] = sum(by_kind.values())
     return Response({"counts": counts, "mode": S.mode()})
+
+
+# A function view has no serializer for drf-spectacular to guess from, and the
+# backfill takes no body — say both explicitly rather than ship "no response body".
+@extend_schema(request=None, responses={202: BackfillQueuedSerializer})
+@api_view(["POST"])
+def recall_backfill(request: Request) -> Response:
+    """Queue an index catch-up over every un-indexed source.
+
+    Safe to press repeatedly: the backfill is idempotent and embeddings are computed
+    locally, so it costs CPU, never provider spend. Poll /api/recall/status/ for the
+    per-kind counts as they fill in.
+    """
+    task = backfill.delay()
+    return Response(
+        {"task_id": str(task.id), "status": "queued"}, status=drf_status.HTTP_202_ACCEPTED
+    )
