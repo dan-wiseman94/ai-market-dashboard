@@ -7,12 +7,13 @@ import/patch sites resolve there.
 
 from __future__ import annotations
 
-from typing import cast
+from typing import NamedTuple, cast
 
 from django.utils import timezone
 
 from apps.ai.citations import news_to_search_result_blocks
 from apps.ai.types import ChatMessage, RoleType, RunRequest
+from apps.core.runtime_config import runtime_config
 from apps.snapshots.models import SnapshotSection
 from apps.snapshots.serializer import build_image_blocks
 from apps.threads.coach import assemble_coach_context_for_message, build_system_prompt
@@ -67,14 +68,85 @@ def _snapshot_news_items(snapshot_id: int) -> list[dict]:
     return list(payload.get("items") or [])
 
 
+# The serializer renders news as a prose section under this heading. When the same
+# items also ship as citable `search_result` blocks, sending both doubles the news
+# input tokens and buries the citable copy — so the prose copy is dropped.
+_NEWS_HEADING_PREFIX = "## News"
+# Line prefixes that end a rendered section: the next section heading, or the
+# serializer's trailing token-budget note.
+_SECTION_BREAKS = ("## ", "_(pruned")
+
+
+def _strip_news_prose(text: str) -> str:
+    """Remove the rendered news section from a serialized snapshot blob.
+
+    No-op when the heading isn't present — news may have been pruned for the token
+    budget, or the snapshot may carry no news section at all.
+    """
+    lines = text.split("\n")
+    start = next((i for i, ln in enumerate(lines) if ln.startswith(_NEWS_HEADING_PREFIX)), None)
+    if start is None:
+        return text
+    end = start + 1
+    while end < len(lines) and not lines[end].startswith(_SECTION_BREAKS):
+        end += 1
+    return "\n".join(lines[:start] + lines[end:]).strip()
+
+
+def _latest_snapshot_ref_id(thread: Thread) -> int | None:
+    """The newest done turn's snapshot on this thread, or None."""
+    return (
+        Message.objects.filter(thread=thread, status="done", snapshot_ref__isnull=False)
+        .order_by("-created_at", "-id")
+        .values_list("snapshot_ref_id", flat=True)
+        .first()
+    )
+
+
+def claude_only_content_kinds(thread: Thread, user_msg: Message) -> list[str]:
+    """Names of content on this turn that only Claude can be sent.
+
+    ``_message_content`` strips Files-API document blocks and news
+    ``search_result`` blocks for every other provider; naming them here lets the
+    capability warning report the drop instead of leaving it silent.
+    """
+    kinds: list[str] = []
+    content = user_msg.content or {}
+    blocks = content.get("blocks") if isinstance(content, dict) else None
+    if isinstance(blocks, list) and any(
+        isinstance(b, dict) and b.get("type") == "document" for b in blocks
+    ):
+        kinds.append("file attachments")
+    snap_id = getattr(user_msg, "snapshot_ref_id", None) or _latest_snapshot_ref_id(thread)
+    if snap_id and _snapshot_news_items(snap_id):
+        kinds.append("news citations")
+    return kinds
+
+
+def run_carries_images(thread: Thread, user_msg: Message) -> bool:
+    """True when this run would attach a snapshot's chart images.
+
+    Same reach as ``claude_only_content_kinds``: the turn's own snapshot, else the
+    newest snapshot the thread has answered. Callers use it only to decide whether
+    a ``supports_vision=False`` provider is losing something worth naming, so it
+    costs a query only on that path.
+    """
+    snap_id = getattr(user_msg, "snapshot_ref_id", None) or _latest_snapshot_ref_id(thread)
+    if not snap_id:
+        return False
+    return bool(_snapshot_image_ids(snap_id))
+
+
 def _message_content(
     m: Message,
     *,
     provider_name: str,
+    supports_vision: bool = True,
 ) -> str | list[dict]:
     """Return the ChatMessage content for a Message — string, or blocks if the
-    message references a Snapshot with image sections. Images are attached to
-    the message regardless of provider; the serializer handles provider shape.
+    message references a Snapshot with image sections. Images attach for any
+    provider whose ProviderConfig declares a vision head; the serializer handles
+    the provider shape.
     """
     c = m.content or {}
     # Explicit provider content blocks (a Files-API document attach). Claude gets
@@ -95,10 +167,17 @@ def _message_content(
         news_items = _snapshot_news_items(snap_id)
         if news_items:
             blocks.extend(news_to_search_result_blocks(news_items))
-    # Chart images attach for every provider; build_image_blocks picks the shape.
-    image_ids = _snapshot_image_ids(snap_id)
-    if image_ids:
-        blocks.extend(build_image_blocks(image_ids, provider_name=provider_name))
+            # The same headlines are already prose inside `text`; keep one copy.
+            text = _strip_news_prose(text)
+    # Chart images attach wherever the endpoint declares a vision head
+    # (ProviderConfig.supports_vision); build_image_blocks picks the shape. An
+    # endpoint without one rejects the whole call rather than ignoring the block,
+    # so dropping them here is what keeps the run alive — the capability warning
+    # names the drop.
+    if supports_vision:
+        image_ids = _snapshot_image_ids(snap_id)
+        if image_ids:
+            blocks.extend(build_image_blocks(image_ids, provider_name=provider_name))
     if not blocks:
         return text
     blocks.append({"type": "text", "text": text})
@@ -163,19 +242,27 @@ def _snapshot_free_coach_suffix(thread: Thread, history: list[Message], user_msg
     return f"\n\n{block.rstrip()}" if block else ""
 
 
+class _Capabilities(NamedTuple):
+    tools: list[dict]
+    enable_thinking: bool
+    thinking_budget: int
+    effort: str
+    memory_dir: str
+
+
 def _resolve_capabilities(
     thread: Thread,
     *,
     provider_name: str,
     supports_tools: bool,
-) -> tuple[list[dict], int, str]:
-    """Resolve opt-in tools / thinking budget / memory dir for the run.
+) -> _Capabilities:
+    """Resolve opt-in tools / thinking / effort / memory dir for the run.
 
     Tools: Claude always (anthropic shape); OpenAI/local when the endpoint opts
-    in (openai shape). Thinking + memory remain Claude-only.
+    in (openai shape). Thinking, effort and memory remain Claude-only.
     """
     if thread.profile is None:
-        return [], 0, ""
+        return _Capabilities([], False, 0, "", "")
 
     profile = thread.profile
     tools: list[dict] = []
@@ -189,17 +276,19 @@ def _resolve_capabilities(
         tools = toolset.anthropic_tools() if provider_name == "claude" else toolset.openai_tools()
 
     if provider_name != "claude":
-        return tools, 0, ""
+        return _Capabilities(tools, False, 0, "", "")
 
-    thinking_budget = 0
-    if getattr(profile, "enable_thinking", False):
-        thinking_budget = int(getattr(profile, "thinking_budget", 0) or 0)
+    enable_thinking = bool(getattr(profile, "enable_thinking", False))
+    # thinking_budget only reaches the models that still take the budget shape;
+    # the adaptive rows are steered by `effort` instead.
+    thinking_budget = int(getattr(profile, "thinking_budget", 0) or 0) if enable_thinking else 0
+    effort = str(getattr(profile, "effort", "") or "")
     memory_dir = ""
     if getattr(profile, "enable_memory", False):
         from apps.ai.memory import memory_dir_for_profile
 
         memory_dir = memory_dir_for_profile(profile_id=profile.id)
-    return tools, thinking_budget, memory_dir
+    return _Capabilities(tools, enable_thinking, thinking_budget, effort, memory_dir)
 
 
 def _build_request(
@@ -208,6 +297,7 @@ def _build_request(
     *,
     provider_name: str = "claude",
     supports_tools: bool = False,
+    supports_vision: bool = True,
 ) -> RunRequest:
     system = build_system_prompt(thread.profile, now=timezone.now())
     history = _history_messages(thread)
@@ -215,7 +305,9 @@ def _build_request(
     chat_messages: list[ChatMessage] = [
         ChatMessage(
             role=cast(RoleType, m.role),
-            content=_message_content(m, provider_name=provider_name),
+            content=_message_content(
+                m, provider_name=provider_name, supports_vision=supports_vision
+            ),
         )
         for m in history
     ]
@@ -223,19 +315,26 @@ def _build_request(
         chat_messages.append(
             ChatMessage(
                 role="user",
-                content=_message_content(user_msg, provider_name=provider_name),
+                content=_message_content(
+                    user_msg, provider_name=provider_name, supports_vision=supports_vision
+                ),
             )
         )
-    tools, thinking_budget, memory_dir = _resolve_capabilities(
-        thread, provider_name=provider_name, supports_tools=supports_tools
-    )
+    caps = _resolve_capabilities(thread, provider_name=provider_name, supports_tools=supports_tools)
     return RunRequest(
         model="",
         system=system,
         messages=chat_messages,
         cache_system=True,
         cache_last_message=len(chat_messages) > 1,
-        tools=tools,
-        thinking_budget=thinking_budget,
-        memory_dir=memory_dir,
+        tools=caps.tools,
+        enable_thinking=caps.enable_thinking,
+        effort=caps.effort,
+        thinking_budget=caps.thinking_budget,
+        memory_dir=caps.memory_dir,
+        # Every tool round re-sends the whole prompt and the cost caps are only
+        # checked before the stream opens, so the chat path needs a ceiling too —
+        # an unbounded loop bills a ~30k-token prompt per round with nothing to
+        # stop it. Investigate mode narrows this further.
+        max_tool_iterations=max(0, int(runtime_config().ai_chat_max_tool_iterations or 0)),
     )
