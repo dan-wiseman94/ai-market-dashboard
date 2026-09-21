@@ -293,13 +293,16 @@ def fetch_quotes(tickers: list[str]) -> dict[str, dict]:
             row = by_symbol.get(symbol or "")
             if row is None:
                 continue
+            # Price-like fields only. `change` is already a ratio and `volume` is a
+            # count, so scaling either would corrupt it.
+            scale = _QUOTE_SCALE.get(symbol or "", 1.0)
             out[ticker] = {
-                "last": _float(row.get("close")),
+                "last": _scaled(row.get("close"), scale),
                 "bid": None,
                 "ask": None,
                 "volume": _int(row.get("volume")),
-                "high": _float(row.get("high")),
-                "low": _float(row.get("low")),
+                "high": _scaled(row.get("high"), scale),
+                "low": _scaled(row.get("low"), scale),
                 "pct_change": _float(row.get("change")),
             }
         return out

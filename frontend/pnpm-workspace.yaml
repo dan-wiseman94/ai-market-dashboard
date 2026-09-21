@@ -11,7 +11,7 @@ overrides:
   "undici@<7.29.0": "^7.29.0" # via jsdom@29 + @storybook/addon-mcp (in-range)
   "ws@>=8.0.0 <8.21.0": "^8.21.0"
   "vite@>=8.0.0 <=8.0.15": "^8.0.16"
-  "js-yaml@>=4.0.0 <4.3.1": "^4.3.1" # via @redocly/openapi-core (in-range)
+  "js-yaml@>=4.0.0 <4.3.2": "^4.3.2" # via @redocly/openapi-core (in-range)
   "@babel/core@<=7.29.0": "^7.29.1"
   "@vitest/browser@>=4.0.0 <4.1.10": "^4.1.10" # via @storybook/addon-vitest; vitest family moves with it
   "brace-expansion@>=2.0.0 <2.1.4": "^2.1.4" # via minimatch consumers (in-range)
@@ -22,3 +22,8 @@ overrides:
   "nanoid@<3.3.18": "^3.3.18" # stay on the 3.x line — 4+/5+ are ESM-only
   "postcss@<8.5.23": "^8.5.23"
   "valibot@<=1.4.1": "^1.4.2" # via @storybook/mcp (in-range)
+  "browserslist@<=4.28.6": "^4.28.7" # via @babel/helper-compilation-targets (in-range)
+  # Transitive of browserslist; pinned explicitly so the floor holds even if a
+  # consumer resolves browserslist from a different path.
+  "baseline-browser-mapping@>=2.0.0 <2.11.0": "^2.11.0"
+  "smol-toml@<=1.7.0": "^1.7.1" # via knip (in-range)
