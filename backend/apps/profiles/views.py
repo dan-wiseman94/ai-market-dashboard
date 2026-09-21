@@ -121,8 +121,14 @@ class TradingProfileViewSet(viewsets.ModelViewSet):
                 return Response({"profile": profile.id, **removed})
             entries = list_memory_entries(profile_id=profile.id)
             exists = memory_store_exists(profile_id=profile.id)
-        except MemoryPathError as exc:
-            return Response({"code": "invalid_path", "message": str(exc)}, status=400)
+        except MemoryPathError:
+            return Response(
+                {
+                    "code": "invalid_path",
+                    "message": "Invalid memory path for this profile.",
+                },
+                status=400,
+            )
         return Response(
             {
                 "profile": profile.id,
