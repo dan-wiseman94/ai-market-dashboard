@@ -6,6 +6,7 @@ restore a real database.
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -169,27 +170,42 @@ def test_lock_is_released_when_the_restore_fails(backup, _lock_is_free) -> None:
     body = resp.json()
     assert body["code"] == "restore_failed"
     assert body["exit_code"] == 1
-    assert 'connection to "db" failed' in body["stderr"]
+    # stderr stays out of the body; the exit code is the only detail a caller gets.
+    assert "stderr" not in body
     rel.assert_called_once()
 
 
 @override_settings(RESTORE_FROM_UI_ENABLED=True)
-def test_failure_body_never_carries_the_password(backup, monkeypatch) -> None:
+def test_failure_body_never_carries_the_password(backup, monkeypatch, caplog) -> None:
+    """Two guarantees, because the body and the log carry different amounts.
+
+    The response withholds stderr entirely, so a password cannot reach a caller.
+    The log does carry it — that is what makes the body's "check server logs"
+    true — so it has to arrive scrubbed.
+    """
     monkeypatch.setenv("POSTGRES_PASSWORD", "hunter2-super-secret")
     stderr = (
         "pg_restore: error: connection to server at db failed: "
         "FATAL: password authentication failed\n"
         "connection string: postgresql://ai_dashboard:hunter2-super-secret@db:5432/app"
     )
-    with patch(
-        "apps.backups.services.subprocess.run",
-        return_value=MagicMock(returncode=1, stderr=stderr, stdout=""),
+    with (
+        patch(
+            "apps.backups.services.subprocess.run",
+            return_value=MagicMock(returncode=1, stderr=stderr, stdout=""),
+        ),
+        caplog.at_level(logging.ERROR, logger="apps.backups.views"),
     ):
         resp = _post(backup, {"confirm": backup.filename})
 
     assert resp.status_code == 500
     assert "hunter2-super-secret" not in resp.content.decode()
-    assert "***" in resp.json()["stderr"]
+    assert "stderr" not in resp.json()
+
+    logged = caplog.text
+    assert "backups.restore_failed" in logged
+    assert "hunter2-super-secret" not in logged
+    assert "***" in logged
 
 
 @override_settings(RESTORE_FROM_UI_ENABLED=True)
