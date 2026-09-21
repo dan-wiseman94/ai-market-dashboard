@@ -12,6 +12,12 @@ from rest_framework.generics import get_object_or_404
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.response import Response
 
+from apps.market.services.ohlc import (
+    DEFAULT_BARS,
+    MAX_BARS,
+    MIN_BARS,
+    SUPPORTED_TIMEFRAMES,
+)
 from apps.profiles.models import TradingProfile
 from apps.snapshots.diff import diff_sections
 from apps.snapshots.image_store import read_image_bytes
@@ -35,6 +41,44 @@ from apps.threads.tasks import run_ai_on_message
 class _SnapshotPagination(LimitOffsetPagination):
     default_limit = 50
     max_limit = 200
+
+
+class _InvalidCaptureOption(ValueError):
+    """A client-supplied capture option outside what the fetchers serve."""
+
+    def __init__(self, code: str, message: str) -> None:
+        super().__init__(message)
+        self.code = code
+        self.message = message
+
+
+def _ohlc_capture_options(data) -> tuple[str, int]:
+    """``(ohlc_timeframe, ohlc_bars)`` validated against what the OHLC fetchers serve.
+
+    The composer chooses these, so they are client input: an unsupported timeframe
+    would otherwise reach ``fetch_ohlc`` and fail the section mid-capture (a snapshot
+    that looks captured but is missing its price path), and an unbounded bar count
+    would pull history the payload budget only throws away. Both are rejected here,
+    before the Snapshot row exists.
+    """
+    timeframe = data.get("ohlc_timeframe") or "1m"
+    if timeframe not in SUPPORTED_TIMEFRAMES:
+        raise _InvalidCaptureOption(
+            "invalid_timeframe",
+            f"ohlc_timeframe must be one of: {', '.join(SUPPORTED_TIMEFRAMES)}",
+        )
+    raw = data.get("ohlc_bars")
+    if raw is None or raw == "":
+        return timeframe, DEFAULT_BARS
+    try:
+        bars = int(raw)
+    except (TypeError, ValueError):
+        raise _InvalidCaptureOption("invalid_bars", "ohlc_bars must be an integer") from None
+    if not MIN_BARS <= bars <= MAX_BARS:
+        raise _InvalidCaptureOption(
+            "invalid_bars", f"ohlc_bars must be between {MIN_BARS} and {MAX_BARS}"
+        )
+    return timeframe, bars
 
 
 class SnapshotViewSet(
@@ -71,6 +115,11 @@ class SnapshotViewSet(
         except TradingProfile.DoesNotExist:
             return Response({"code": "invalid_profile", "message": "No such profile"}, status=400)
 
+        try:
+            ohlc_timeframe, ohlc_bars = _ohlc_capture_options(data)
+        except _InvalidCaptureOption as e:
+            return Response({"code": e.code, "message": e.message}, status=400)
+
         snap = Snapshot.objects.create(
             profile=profile,
             objective=data.get("objective", ""),
@@ -92,8 +141,8 @@ class SnapshotViewSet(
             snapshot_id=snap.id,
             watchlist_tickers=data.get("watchlist_tickers") or [],
             ohlc_ticker=data.get("ohlc_ticker"),
-            ohlc_timeframe=data.get("ohlc_timeframe", "1m"),
-            ohlc_bars=data.get("ohlc_bars", 60),
+            ohlc_timeframe=ohlc_timeframe,
+            ohlc_bars=ohlc_bars,
             scenario=current_scenario() if is_mock_mode() else None,
         )
         return Response(SnapshotSerializer(snap).data, status=202)

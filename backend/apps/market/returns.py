@@ -10,10 +10,25 @@ from __future__ import annotations
 from collections.abc import Iterable
 from datetime import date, datetime, timedelta
 
-from django.conf import settings
 from django.db.models import Count, Max, Min
 
 from apps.market.models import OHLCBar
+
+
+def _resolve_adjust_dividends(value: bool | None) -> bool:
+    """``value`` when a caller pinned it, else the runtime knob.
+
+    Resolving costs one SystemSettings row fetch, so every public entry point takes
+    ``adjust_dividends`` and resolves it ONCE; batch callers in a loop pass the
+    resolved bool down rather than re-reading per item. Call sites also gate the
+    resolution on a dividend actually falling in the window, so a window with no
+    dividend (the common case) never touches the DB for the knob at all.
+    """
+    if value is not None:
+        return value
+    from apps.core.runtime_config import runtime_config
+
+    return runtime_config().returns_adjust_dividends
 
 
 def _pct_change(start_close: float | None, end_close: float | None) -> float | None:
@@ -80,24 +95,30 @@ def _split_product(actions: list, *, on_or_before: date | None = None) -> float:
 
 
 def _adjusted_end_value(
-    ticker: str, start: datetime, end: datetime, end_close: float | None
+    ticker: str,
+    start: datetime,
+    end: datetime,
+    end_close: float | None,
+    *,
+    adjust_dividends: bool | None = None,
 ) -> tuple[float | None, float]:
     """``(adjusted_end_value, split_factor)`` for ``end_close`` on the start-share basis.
 
     Splits are always applied (a split is a non-event for the holder). Dividends
-    are added back — converting price-return to total-return — only when
-    ``RETURNS_ADJUST_DIVIDENDS`` is on; each is scaled onto the start-share basis
-    by the split ratios that precede its ex-date.
+    are added back — converting price-return to total-return — only when the
+    ``returns_adjust_dividends`` knob is on; each is scaled onto the start-share
+    basis by the split ratios that precede its ex-date. ``adjust_dividends`` pins
+    that decision; ``None`` resolves it from the runtime config, and only when the
+    window actually contains a dividend.
     """
     actions = _corporate_actions(ticker, start, end)
     factor = _split_product(actions)
     if end_close is None:
         return None, factor
     value = end_close * factor
-    if getattr(settings, "RETURNS_ADJUST_DIVIDENDS", False):
-        for a in actions:
-            if a.kind != "dividend" or a.amount is None:
-                continue
+    dividends = [a for a in actions if a.kind == "dividend" and a.amount is not None]
+    if dividends and _resolve_adjust_dividends(adjust_dividends):
+        for a in dividends:
             value += float(a.amount) * _split_product(actions, on_or_before=a.ex_date)
     return value, factor
 
@@ -142,7 +163,9 @@ def latest_closes(tickers: Iterable[str], at: datetime) -> dict[str, float | Non
     return result
 
 
-def forward_return_pct(ticker: str, start: datetime, end: datetime) -> float | None:
+def forward_return_pct(
+    ticker: str, start: datetime, end: datetime, *, adjust_dividends: bool | None = None
+) -> float | None:
     """Percent change in *ticker*'s close price from *start* to *end*, corrected
     for corporate actions in the window.
 
@@ -150,13 +173,20 @@ def forward_return_pct(ticker: str, start: datetime, end: datetime) -> float | N
     and *end* would otherwise read as a crash (the end close is on a divided-price
     basis); the end close is restored to the start basis via :func:`_adjusted_end_value`.
     Returns ``None`` if either endpoint has no bar or if the start close is zero.
+
+    ``adjust_dividends`` pins the total-return knob; a caller looping over many
+    tickers resolves it once and passes the bool.
     """
     start_close = nearest_bar_close(ticker, start)
-    adjusted_end, _factor = _adjusted_end_value(ticker, start, end, nearest_bar_close(ticker, end))
+    adjusted_end, _factor = _adjusted_end_value(
+        ticker, start, end, nearest_bar_close(ticker, end), adjust_dividends=adjust_dividends
+    )
     return _pct_change(start_close, adjusted_end)
 
 
-def price_path_summary(ticker: str, start: datetime, end: datetime) -> dict:
+def price_path_summary(
+    ticker: str, start: datetime, end: datetime, *, adjust_dividends: bool | None = None
+) -> dict:
     """Aggregate price-action summary for *ticker* over [*start*, *end*].
 
     Returns a dict with:
@@ -197,7 +227,9 @@ def price_path_summary(ticker: str, start: datetime, end: datetime) -> dict:
 
     start_close = nearest_bar_close(ticker, start)
     end_close = nearest_bar_close(ticker, end)
-    adjusted_end, factor = _adjusted_end_value(ticker, start, end, end_close)
+    adjusted_end, factor = _adjusted_end_value(
+        ticker, start, end, end_close, adjust_dividends=adjust_dividends
+    )
 
     return {
         "start_close": start_close,
@@ -230,12 +262,18 @@ def nearest_bar_close_within(ticker: str, at: datetime, *, tolerance_hours: floa
     return float(bar.close)
 
 
-def trading_day_forward_return_pct(ticker: str, at: datetime, forward_hours: int) -> float | None:
+def trading_day_forward_return_pct(
+    ticker: str, at: datetime, forward_hours: int, *, adjust_dividends: bool | None = None
+) -> float | None:
     """% change of ``ticker`` from ``at`` to +N trading sessions on its calendar.
 
     ``forward_hours`` is reinterpreted as trading sessions (24h -> 1 session).
     Returns ``None`` (coverage gap) when a real bar is missing within 12h of
     either endpoint — never a stale fill.
+
+    ``adjust_dividends`` pins the total-return knob; a caller looping over many
+    ``(ticker, at)`` pairs resolves it once and passes the bool (or uses
+    :func:`trading_day_forward_returns`, which resolves once for the batch).
     """
     from apps.market.calendar import add_trading_days, calendar_for, session_close_on
 
@@ -245,7 +283,9 @@ def trading_day_forward_return_pct(ticker: str, at: datetime, forward_hours: int
     target_close = session_close_on(market, target_day.date()) or target_day
     t0 = nearest_bar_close_within(ticker, at, tolerance_hours=12)
     t1 = nearest_bar_close_within(ticker, target_close, tolerance_hours=12)
-    adjusted_t1, _factor = _adjusted_end_value(ticker, at, target_close, t1)
+    adjusted_t1, _factor = _adjusted_end_value(
+        ticker, at, target_close, t1, adjust_dividends=adjust_dividends
+    )
     return _pct_change(t0, adjusted_t1)
 
 
@@ -266,20 +306,27 @@ def _nearest_close_within_inmem(
 
 
 def _adjust_end_value_inmem(
-    actions: list, start: datetime, end: datetime, end_close: float | None
+    actions: list,
+    start: datetime,
+    end: datetime,
+    end_close: float | None,
+    *,
+    adjust_dividends: bool,
 ) -> float | None:
     """In-memory twin of :func:`_adjusted_end_value` (returns just the adjusted value).
 
     ``actions`` is the ticker's full corporate-action list; only ex-dates in
     ``(start.date(), end.date()]`` are applied — the same window as
     :func:`apps.market.services.corporate_actions.corporate_actions_for`.
+    ``adjust_dividends`` is already resolved — this runs inside a per-request loop,
+    so it must not read the runtime config itself.
     """
     if end_close is None:
         return None
     window = [a for a in actions if start.date() < a.ex_date <= end.date()]
     factor = _split_product(window)
     value = end_close * factor
-    if getattr(settings, "RETURNS_ADJUST_DIVIDENDS", False):
+    if adjust_dividends:
         for a in window:
             if a.kind != "dividend" or a.amount is None:
                 continue
@@ -288,7 +335,10 @@ def _adjust_end_value_inmem(
 
 
 def trading_day_forward_returns(
-    requests: list[tuple[str, datetime]], forward_hours: int
+    requests: list[tuple[str, datetime]],
+    forward_hours: int,
+    *,
+    adjust_dividends: bool | None = None,
 ) -> list[float | None]:
     """Batched twin of :func:`trading_day_forward_return_pct` over many ``(ticker, at)``
     requests — O(1) DB queries instead of O(n).
@@ -323,8 +373,15 @@ def trading_day_forward_returns(
         bars_by_ticker.setdefault(tk, []).append((ts, float(close)))
 
     actions_by_ticker: dict[str, list] = {}
+    has_dividend = False
     for a in CorporateAction.objects.filter(ticker__in=tickers).order_by("ex_date"):
         actions_by_ticker.setdefault(a.ticker, []).append(a)
+        has_dividend = has_dividend or a.kind == "dividend"
+
+    # Resolved ONCE for the whole batch, and only when a dividend exists at all —
+    # the knob is irrelevant otherwise, and a row fetch per request would blow the
+    # pinned query budget of the callers that use this path.
+    adjust = _resolve_adjust_dividends(adjust_dividends) if has_dividend else False
 
     out: list[float | None] = []
     for ticker, at in requests:
@@ -335,7 +392,11 @@ def trading_day_forward_returns(
         t0 = _nearest_close_within_inmem(bars, at, tolerance_hours=12)
         t1 = _nearest_close_within_inmem(bars, target_close, tolerance_hours=12)
         adjusted_t1 = _adjust_end_value_inmem(
-            actions_by_ticker.get(ticker, []), at, target_close, t1
+            actions_by_ticker.get(ticker, []),
+            at,
+            target_close,
+            t1,
+            adjust_dividends=adjust,
         )
         out.append(_pct_change(t0, adjusted_t1))
     return out
