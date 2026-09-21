@@ -14,8 +14,8 @@ from __future__ import annotations
 import logging
 
 from celery import shared_task
-from django.conf import settings
 
+from apps.core.runtime_config import runtime_config
 from apps.observer.services.market_hours import is_market_open
 from apps.strategy.coverage.services.revise import revise_coverage
 from apps.strategy.desk.services.sweep import run_sweep
@@ -126,16 +126,25 @@ def run_debate(run_id: int) -> None:
 
 @shared_task(name="strategy.sweep")
 def sweep() -> int | None:
-    """Opt-in (ANOMALY_SWEEP_ENABLED, default OFF — autonomy that spends money)."""
-    if not getattr(settings, "ANOMALY_SWEEP_ENABLED", False):
-        log.info("desk.sweep: disabled (ANOMALY_SWEEP_ENABLED off)")
+    """Autonomous sweep, gated by the ``anomaly_sweep_enabled`` runtime knob."""
+    from apps.core.mocks import is_mock_mode
+
+    # run_sweep()'s investigations reach the provider through run_structured, which has
+    # NO MOCK_EXTERNAL short-circuit — so under the e2e overlay an armed schedule would
+    # bill real model calls. Refuse before any provider work. sweep_now (the manual
+    # click) is deliberately NOT gated.
+    if is_mock_mode():
+        log.info("strategy.sweep: skipped — MOCK_EXTERNAL")
+        return None
+    if not runtime_config().anomaly_sweep_enabled:
+        log.info("strategy.sweep: disabled (anomaly_sweep_enabled off)")
         return None
     return run_sweep()
 
 
 @shared_task(name="strategy.sweep_now")
 def sweep_now() -> int | None:
-    """User-initiated sweep — runs regardless of ANOMALY_SWEEP_ENABLED (that flag
+    """User-initiated sweep — runs regardless of ``anomaly_sweep_enabled`` (that knob
     gates only the autonomous beat sweep; a manual click is explicit intent). Runs
     off the request thread so the N AI investigations don't block the HTTP call;
     cost caps still apply inside investigate()."""
