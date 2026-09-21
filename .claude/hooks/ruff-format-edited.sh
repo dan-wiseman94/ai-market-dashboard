@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # PostToolUse(Edit|Write|MultiEdit) — format the just-edited Python file INSIDE the
 # `web` container. The host has no Python deps by design (see CLAUDE.md), so a host-level
-# `ruff` would be wrong; this mirrors lefthook's container invocation but runs per-edit.
+# `ruff` would be wrong; this formats inside the container, per-edit.
 #
 # No-op (exit 0) unless: the file is *.py, lives in this repo, and the `web` service is up.
 # Never blocks.
