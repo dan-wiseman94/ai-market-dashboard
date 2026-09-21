@@ -25,11 +25,19 @@ const MODELS = {
       context_window: 200000, supports_vision: true,
     },
   ],
+  defaults: { claude: "claude-sonnet-4-6", openai: "gpt-5.6-sol", local: "" },
+};
+
+// The schedule form's AI fieldset reads the catalog and the provider configs.
+const BASE = {
+  "GET /api/schwab/models/": MODELS,
+  "GET /api/schwab/providers/": [],
 };
 
 describe("SchedulesPage", () => {
   it("renders schedules list", async () => {
     mockApi({
+      ...BASE,
       "GET /api/observer/schedules/": SCHEDULES,
       "GET /api/profiles/": PROFILES,
     });
@@ -40,6 +48,7 @@ describe("SchedulesPage", () => {
 
   it("renders empty state when no schedules", async () => {
     mockApi({
+      ...BASE,
       "GET /api/observer/schedules/": [],
       "GET /api/profiles/": [],
     });
@@ -49,6 +58,7 @@ describe("SchedulesPage", () => {
 
   it("submits selected preset cron via create form", async () => {
     const mock = mockApi({
+      ...BASE,
       "GET /api/observer/schedules/": [],
       "GET /api/profiles/": PROFILES,
       "POST /api/observer/schedules/": {},
@@ -70,6 +80,7 @@ describe("SchedulesPage", () => {
 
   it("opening the sections editor with empty default_includes shows the inherit hint", async () => {
     mockApi({
+      ...BASE,
       "GET /api/observer/schedules/": SCHEDULES,
       "GET /api/profiles/": PROFILES,
     });
@@ -81,6 +92,7 @@ describe("SchedulesPage", () => {
 
   it("saving the sections editor PATCHes default_includes on the schedule", async () => {
     const mock = mockApi({
+      ...BASE,
       "GET /api/observer/schedules/": SCHEDULES,
       "GET /api/profiles/": PROFILES,
       "PATCH /api/observer/schedules/1/": {},
@@ -101,9 +113,9 @@ describe("SchedulesPage", () => {
 
   it("create posts the previously-unreachable fields: investigate, watchlist override, model override", async () => {
     const mock = mockApi({
+      ...BASE,
       "GET /api/observer/schedules/": [],
       "GET /api/profiles/": PROFILES,
-      "GET /api/schwab/models/": MODELS,
       "POST /api/observer/schedules/": {},
     });
 
@@ -116,9 +128,13 @@ describe("SchedulesPage", () => {
     fireEvent.change(tickers, { target: { value: "TSLA" } });
     fireEvent.keyDown(tickers, { key: "Enter" });
 
-    fireEvent.click(screen.getByLabelText(/override the profile's provider/i));
+    // Wait for the catalog: the picker resolves a provider's model from it, and
+    // choosing a provider before it lands would leave the model blank.
     await waitFor(() =>
-      expect(screen.getByRole("option", { name: "Sonnet 4.6" })).toBeInTheDocument());
+      expect(screen.getByTestId("sched-new-effective-target").textContent)
+        .toContain("claude-sonnet-4-6"));
+    fireEvent.change(screen.getByLabelText("Override provider"), { target: { value: "claude" } });
+    expect(screen.getByRole("option", { name: "Sonnet 4.6" })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: /^create$/i }));
     await waitFor(() => expect(mock.calls.some((c) => c.method === "POST")).toBe(true));
@@ -131,8 +147,9 @@ describe("SchedulesPage", () => {
     expect(body.investigate).toBe(true);
   });
 
-  it("leaves the provider/model override empty when the box is unchecked", async () => {
+  it("leaves the provider/model override empty when the target is inherited", async () => {
     const mock = mockApi({
+      ...BASE,
       "GET /api/observer/schedules/": [],
       "GET /api/profiles/": PROFILES,
       "POST /api/observer/schedules/": {},
@@ -151,6 +168,7 @@ describe("SchedulesPage", () => {
 
   it("the investigate control carries the spend warning, not just a checkbox", async () => {
     mockApi({
+      ...BASE,
       "GET /api/observer/schedules/": [],
       "GET /api/profiles/": PROFILES,
     });
@@ -167,6 +185,7 @@ describe("SchedulesPage", () => {
 
   it("the edit expander seeds from the schedule and PATCHes the create-only fields", async () => {
     const mock = mockApi({
+      ...BASE,
       "GET /api/observer/schedules/": SCHEDULES,
       "GET /api/profiles/": PROFILES,
       "PATCH /api/observer/schedules/1/": {},
@@ -197,12 +216,15 @@ describe("SchedulesPage", () => {
       fire_mode: "cron",
       // The saved cron round-trips through the preset list untouched.
       cron: "0 * * * *",
-      investigate: true,
+      // Turning Structured on clears Investigate: a structured fire never runs
+      // the tool loop, so sending both would bill for a mode the backend ignores.
+      investigate: false,
     });
   });
 
   it("switching a saved cron schedule to relative-to-close PATCHes the offset", async () => {
     const mock = mockApi({
+      ...BASE,
       "GET /api/observer/schedules/": SCHEDULES,
       "GET /api/profiles/": PROFILES,
       "PATCH /api/observer/schedules/1/": {},
@@ -223,6 +245,7 @@ describe("SchedulesPage", () => {
 
   it("each row links to its own profile's observer timeline", async () => {
     mockApi({
+      ...BASE,
       "GET /api/observer/schedules/": SCHEDULES,
       "GET /api/profiles/": PROFILES,
     });

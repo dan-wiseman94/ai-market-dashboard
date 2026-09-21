@@ -264,3 +264,38 @@ def ceiling_for_provider(provider: str) -> ModelInfo | None:
     if not entries:
         return None
     return max(entries, key=lambda m: m.output_per_mtok)
+
+
+def catalog_owner(model_id: str) -> str | None:
+    """The provider whose catalog row has ``model_id``; None for ids the catalog does not know."""
+    for m in _CATALOG:
+        if m.id == model_id:
+            return m.provider
+    return None
+
+
+def is_foreign_model(provider: str, model: str) -> bool:
+    """True when ``model`` is a catalog row for a provider other than ``provider``.
+
+    An id unknown to the catalog (a local model name, a brand-new vendor id) is not
+    foreign — it is accepted verbatim. Any name in ``CLAUDE_FAMILY_PROVIDERS`` owns
+    the ``claude`` rows.
+    """
+    if not model:
+        return False
+    owner = catalog_owner(model)
+    if owner is None:
+        return False
+    family = "claude" if provider in CLAUDE_FAMILY_PROVIDERS else provider
+    return owner != family
+
+
+def foreign_model_error(provider: str, model: str) -> str | None:
+    """A field-error message when ``model`` belongs to another provider's catalog, else None."""
+    if not is_foreign_model(provider, model):
+        return None
+    owner = catalog_owner(model)
+    article = "an" if owner and owner[0] in "aeiou" else "a"
+    return (
+        f"{model} is {article} {owner} catalog model; pick a {provider} model or clear the field."
+    )

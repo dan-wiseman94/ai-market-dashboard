@@ -32,7 +32,17 @@ class WarRoomRunSerializer(serializers.ModelSerializer):
         return (obj.verdict or {}).get("confidence")
 
     def get_messages(self, obj) -> list[dict]:
-        return [
-            {"role": m.role, "content": m.content}
-            for m in obj.thread.messages.all().order_by("created_at")
-        ]
+        """Each argument with the model that made it; null for a message with no run
+        (the verdict, whose one-shot AIRun carries no Message)."""
+        out: list[dict] = []
+        for m in obj.thread.messages.select_related("ai_run").order_by("created_at"):
+            run = getattr(m, "ai_run", None)
+            out.append(
+                {
+                    "role": m.role,
+                    "content": m.content,
+                    "provider": run.provider if run is not None else None,
+                    "model": run.model if run is not None else None,
+                }
+            )
+        return out

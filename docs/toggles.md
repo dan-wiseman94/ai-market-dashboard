@@ -1,8 +1,8 @@
 # What can be toggled, and where
 
-91 switches. 39 are app-wide. The other 52 are the value one new profile, provider, preset, schedule, trigger, thesis or lesson starts with, so the same row reads differently for every object you own.
+92 switches. 40 are app-wide. The other 52 are the value one new profile, provider, preset, schedule, trigger, thesis or lesson starts with, so the same row reads differently for every object you own.
 
-**App-wide capabilities: 12 of the 13 that are simply on or off ship on.** Dividend-adjusted return math is the single exception, and the [reason](#the-one-app-wide-capability-that-ships-off) is that it rewrites numbers already recorded. The remaining 26 app-wide rows are not on/off at all: they hold a value — a retention window, a spend ceiling, a model id — or state a constant.
+**App-wide capabilities: 12 of the 13 that are simply on or off ship on.** Dividend-adjusted return math is the single exception, and the [reason](#the-one-app-wide-capability-that-ships-off) is that it rewrites numbers already recorded. The remaining 27 app-wide rows are not on/off at all: they hold a value — a retention window, a spend ceiling, a model id — or state a constant.
 
 **Per-object defaults: 22 ship on and 15 ship off.** An off here is a starting value, not a capability held back from you:
 
@@ -104,7 +104,8 @@ Background work that bills a provider, and the ceilings that bound it.
 | **Investigation tool rounds** — Ceiling on tool calls inside one autonomous investigation. | Settings → Features | 8 rounds | No |
 | **Scheduled anomaly sweep** — Scan watched tickers on a schedule and open Desk investigations unasked. | Settings → Features | On | Yes |
 | **Scheduled calibration eval** — Replay decided theses against a model on a schedule to score it. | Settings → Features | On | Yes |
-| **Eval model** — Which model the scheduled eval scores. _(needs Scheduled calibration eval)_ | Settings → Features | `claude-sonnet-4-6` | No |
+| **Eval model** — Which model the scheduled eval scores. _(needs Scheduled calibration eval)_ | Settings → Features | `claude-opus-5` | No |
+| **Eval provider** — Which vendor runs the scheduled eval. _(needs Scheduled calibration eval)_ | Settings → Features | `claude` | No |
 | **Eval horizon** — Which post-mortem horizon the eval scores against. _(needs Scheduled calibration eval)_ | Settings → Features | 30 days | No |
 | **Eval row limit** — How many theses one scheduled eval replays. _(needs Scheduled calibration eval)_ | Settings → Features | 25 rows | No |
 | **Provider daily cap** — Hard daily spend ceiling per provider. | Settings → AI Providers page, per provider | $10.00 | No |
@@ -212,6 +213,7 @@ Every global switch also has an environment variable, which sets the default a c
 | Eval horizon | `AIEVAL_SCHEDULED_HORIZON` | `SystemSettings` override, or the environment default |
 | Eval row limit | `AIEVAL_SCHEDULED_LIMIT` | `SystemSettings` override, or the environment default |
 | Eval model | `AIEVAL_SCHEDULED_MODEL` | `SystemSettings` override, or the environment default |
+| Eval provider | `AIEVAL_SCHEDULED_PROVIDER` | `SystemSettings` override, or the environment default |
 | Autonomous daily cap | `AI_AUTONOMOUS_DAILY_CAP_USD` | `SystemSettings` override, or the environment default |
 | Route by measured calibration | `AI_CALIBRATION_ROUTING_ENABLED` | `SystemSettings` override, or the environment default |
 | Maximum eval age | `AI_CALIBRATION_ROUTING_MAX_AGE_DAYS` | `SystemSettings` override, or the environment default |

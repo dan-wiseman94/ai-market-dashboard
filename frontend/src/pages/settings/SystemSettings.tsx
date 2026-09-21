@@ -4,6 +4,10 @@ import { useSystemSettings } from "@/hooks/useSystemSettings";
 import { updateSystemSettings, type SystemSettings as Settings } from "@/api/settings";
 import SettingsSection from "@/components/settings/SettingsSection";
 import { SkeletonRows } from "@/components/Skeleton";
+import ProviderSelect from "@/components/ai/ProviderSelect";
+import ModelSelect from "@/components/settings/ModelSelect";
+import { useCatalog } from "@/hooks/useCatalog";
+import { FALLBACK_HORIZONS } from "@/lib/horizons";
 import { useToast } from "@/hooks/useToast";
 
 // The numeric-valued keys of Settings, derived from the interface so it can't drift.
@@ -39,7 +43,7 @@ const RETENTION_FIELDS: ReadonlyArray<{ key: NumericKey; label: string }> = [
 ];
 
 function purgeConfirm(cuts: ReadonlyArray<{ label: string; from: number; to: number }>): string {
-  const lines = cuts.map((c) => `\u2022 ${c.label}: ${c.from} \u2192 ${c.to} days`).join("\n");
+  const lines = cuts.map((c) => `• ${c.label}: ${c.from} → ${c.to} days`).join("\n");
   return (
     `Shortening a retention window deletes the rows that fall outside it at the next ` +
     `nightly purge, permanently:\n\n${lines}\n\n` +
@@ -50,6 +54,7 @@ function purgeConfirm(cuts: ReadonlyArray<{ label: string; from: number; to: num
 
 export default function SystemSettings() {
   const { data, isLoading } = useSystemSettings();
+  const { defaultFor } = useCatalog();
   const { push } = useToast();
   const qc = useQueryClient();
   // Draft overlay on top of the server data — derive effective values in render so we never
@@ -213,13 +218,13 @@ export default function SystemSettings() {
             <label htmlFor={fieldId("ai_failover_provider")} className="text-[12px] text-ink-300">
               Failover provider
             </label>
-            <input
+            {/* A list, not free text: a typo'd provider id silently disables failover. */}
+            <ProviderSelect
               id={fieldId("ai_failover_provider")}
-              type="text"
+              emptyOption="None"
               value={eff.ai_failover_provider}
-              onChange={(e) => set("ai_failover_provider", e.target.value)}
-              placeholder="e.g. openai"
-              className="ledger-input w-56 py-2 font-mono text-[12px]"
+              onChange={(p) => set("ai_failover_provider", p)}
+              className="w-56"
             />
           </div>
         </div>
@@ -289,7 +294,7 @@ export default function SystemSettings() {
 
       <div className="ledger-surface p-5">
         <h3 className="font-display text-[1.05rem] text-ink-50">Scheduled eval <span className="text-ink-500 text-[12px]">· advanced</span></h3>
-        <p className="mt-1 mb-3 text-[12px] text-ink-400">Offline calibration replay. Enabling it makes real (billed) model calls on a schedule.</p>
+        <p className="mt-1 mb-3 text-[12px] text-ink-400">Replays frozen snapshots of decisive theses through the chosen provider and scores its directional calls. Enabling it makes real (billed) model calls on a schedule.</p>
         <div className="grid gap-3">
           {boolConfirm(
             "aieval_scheduled_enabled",
@@ -299,20 +304,60 @@ export default function SystemSettings() {
               "There is no mocked path — it reaches the real model even on a mock-mode stack.",
           )}
           <div className="grid gap-1">
+            <label htmlFor={fieldId("aieval_scheduled_provider")} className="text-[12px] text-ink-300">
+              Eval provider
+            </label>
+            <ProviderSelect
+              id={fieldId("aieval_scheduled_provider")}
+              value={eff.aieval_scheduled_provider}
+              onChange={(p) => {
+                // A model id belongs to one vendor, so a provider change must carry the
+                // model with it — the backend would otherwise repair it silently.
+                set("aieval_scheduled_provider", p);
+                set("aieval_scheduled_model", defaultFor(p));
+              }}
+              className="w-56"
+            />
+          </div>
+          <div className="grid gap-1">
             <label htmlFor={fieldId("aieval_scheduled_model")} className="text-[12px] text-ink-300">
               Eval model
             </label>
-            <input
-              id={fieldId("aieval_scheduled_model")}
-              type="text"
-              value={eff.aieval_scheduled_model}
-              onChange={(e) => set("aieval_scheduled_model", e.target.value)}
-              className="ledger-input w-56 py-2 font-mono text-[12px]"
-            />
+            <div className="w-full max-w-sm">
+              <ModelSelect
+                id={fieldId("aieval_scheduled_model")}
+                provider={eff.aieval_scheduled_provider}
+                value={eff.aieval_scheduled_model}
+                onChange={(m) => set("aieval_scheduled_model", m)}
+                facts
+              />
+            </div>
           </div>
           <div className="grid grid-cols-2 gap-4 max-sm:grid-cols-1">
-            {num("aieval_scheduled_horizon", "Horizon (days)")}
-            {num("aieval_scheduled_limit", "Row limit")}
+            <div className="grid gap-1">
+              <label htmlFor={fieldId("aieval_scheduled_horizon")} className="text-[12px] text-ink-300">
+                Horizon (days)
+              </label>
+              <select
+                id={fieldId("aieval_scheduled_horizon")}
+                aria-describedby={hintId("aieval_scheduled_horizon")}
+                value={String(eff.aieval_scheduled_horizon)}
+                onChange={(e) => set("aieval_scheduled_horizon", Number(e.target.value))}
+                className="ledger-input w-40 py-2 tabular-nums"
+              >
+                {FALLBACK_HORIZONS.map((h) => (
+                  <option key={h} value={h}>{h}</option>
+                ))}
+              </select>
+              <span id={hintId("aieval_scheduled_horizon")} className="text-[11px] text-ink-500">
+                Matches the post-mortem horizons.
+              </span>
+            </div>
+            {num(
+              "aieval_scheduled_limit",
+              "Row limit",
+              "Theses replayed per run — each one is a billed call.",
+            )}
           </div>
         </div>
       </div>

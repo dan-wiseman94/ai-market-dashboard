@@ -1,6 +1,7 @@
 import { useRef } from "react";
 import { VerdictBadge } from "@/components/thesis/ThesisBadges";
 import { SaveCardButton } from "@/components/SaveCardButton";
+import AiAttribution from "@/components/ai/AiAttribution";
 import type { PostMortem, PostMortemReport } from "@/api/thesis";
 
 function formatReturn(pct: number | null): string {
@@ -27,7 +28,7 @@ function ForwardReturn({ pm }: { pm: PostMortem }) {
   return (
     <span
       className={`font-mono text-[13px] font-medium ${
-        pm.forward_return_pct >= 0 ? "text-emerald-700 dark:text-emerald-300" : "text-rose-700 dark:text-rose-300"
+        pm.forward_return_pct >= 0 ? "text-gain-400" : "text-loss-400"
       }`}
       data-testid={testid}
     >
@@ -82,8 +83,8 @@ function PostMortemBody({ pm }: { pm: PostMortem }) {
           {report.summary}
         </p>
         <ReportList title="Lessons" items={report.lessons} itemClassName="text-ink-300 text-[12px]" />
-        <ReportList title="What worked" items={report.what_worked} itemClassName="text-emerald-700 dark:text-emerald-400 text-[12px]" />
-        <ReportList title="What missed" items={report.what_missed} itemClassName="text-rose-700 dark:text-rose-400 text-[12px]" />
+        <ReportList title="What worked" items={report.what_worked} itemClassName="text-gain-400 text-[12px]" />
+        <ReportList title="What missed" items={report.what_missed} itemClassName="text-loss-400 text-[12px]" />
       </div>
     );
   }
@@ -117,6 +118,9 @@ export function PostMortemCard({ pm }: { pm: PostMortem }) {
         </span>
         {!isScheduled && <VerdictBadge verdict={pm.verdict} />}
         {!isScheduled && <ForwardReturn pm={pm} />}
+        {!isScheduled && isPopulatedReport(pm.report) && pm.report.ai && (
+          <AiAttribution provider={pm.report.ai.provider} model={pm.report.ai.model} />
+        )}
         <span className="flex-1" />
         <SaveCardButton targetRef={cardRef} filename={filename} />
       </div>

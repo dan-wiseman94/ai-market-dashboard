@@ -32,11 +32,11 @@ describe("StreamingMessage", () => {
     expect(screen.getByText("Market looks bullish")).toBeInTheDocument();
   });
 
-  it("assistant role with provider shows capitalized provider name", () => {
+  it("assistant role shows the provider display name", () => {
     render(
       <StreamingMessage role="assistant" text="Hello" provider="openai" />,
     );
-    expect(screen.getByText(/Openai/)).toBeInTheDocument();
+    expect(screen.getByText(/OpenAI/)).toBeInTheDocument();
   });
 
   it("assistant with no provider shows Assistant placeholder", () => {

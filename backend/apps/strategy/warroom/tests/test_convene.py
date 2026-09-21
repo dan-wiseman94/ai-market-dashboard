@@ -51,6 +51,8 @@ def test_convene_creates_run_and_dispatches_to_done(monkeypatch):
     run.refresh_from_db()  # CELERY eager -> run_debate already executed
     assert run.status == "done"
     assert run.verdict["verdict"] == "balanced"
+    # The synthesizer's provider/model: the one-shot AIRun has no Message to read them from.
+    assert run.verdict["ai"] == {"provider": "openai", "model": "gpt-5.6-sol"}
     assert Message.objects.filter(thread=run.thread, content__kind="warroom_verdict").exists()
 
 

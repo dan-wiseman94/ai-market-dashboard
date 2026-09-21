@@ -105,6 +105,7 @@ class Notification(models.Model):
         ("cal_drift", "Calibration drift"),
         ("contra", "Consistency conflict"),
         ("pred_invalid", "Prediction invalidated"),
+        ("eval_done", "Eval run finished"),
     ]
 
     # Nullable (no user-auth surface yet). When auth lands, backfill or
@@ -185,14 +186,17 @@ class AIPrediction(DirectionalCall, Resolution):
         ]
         constraints: ClassVar = [
             # Enforce the calibration-honesty invariant at the DB level: at most one
-            # ``open`` prediction per (ticker, horizon_days, profile). The check-then-act
-            # in extract.py races under worker concurrency; this partial unique index is
-            # the real guard (extract.py catches the IntegrityError as the race-loser
-            # no-op). nulls_distinct=False so a NULL profile still collides (PG15+).
+            # ``open`` prediction per target = (ticker, horizon_days, profile, provider,
+            # model). Provider and model are part of the key so two providers watching one
+            # profile each keep their own call — a cross-provider A/B would otherwise
+            # collapse into a single row. The check-then-act in extract.py races under
+            # worker concurrency; this partial unique index is the real guard (extract.py
+            # catches the IntegrityError as the race-loser no-op). nulls_distinct=False so
+            # a NULL profile still collides (PG15+).
             models.UniqueConstraint(
-                fields=["ticker", "horizon_days", "profile"],
+                fields=["ticker", "horizon_days", "profile", "provider", "model"],
                 condition=models.Q(status="open"),
-                name="uniq_open_prediction_per_ticker_horizon_profile",
+                name="uniq_open_prediction_per_target",
                 nulls_distinct=False,
             ),
         ]

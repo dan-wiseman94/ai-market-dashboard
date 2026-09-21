@@ -18,10 +18,10 @@ class EvalRun(models.Model):
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     source = models.CharField(max_length=12, choices=SOURCE, default="manual")
     label = models.CharField(max_length=64, default="baseline")
-    # provider + model together identify what was scored: a model id alone is
-    # ambiguous once a local endpoint serves an arbitrary name.
-    provider = models.CharField(max_length=32, default="claude", db_index=True)
     model = models.CharField(max_length=128, db_index=True)
+    # provider + model together identify what was scored: a local endpoint serves
+    # an arbitrary model name, so the model alone can't attribute a run.
+    provider = models.CharField(max_length=32, default="claude", blank=True)
     horizon = models.PositiveIntegerField(null=True, blank=True)
 
     n = models.PositiveIntegerField(default=0)

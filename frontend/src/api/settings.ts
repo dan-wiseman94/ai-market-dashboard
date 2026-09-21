@@ -13,6 +13,7 @@ export interface SystemSettings {
   observer_response_cache_enabled: boolean;
   observer_response_cache_ttl_seconds: number;
   aieval_scheduled_enabled: boolean;
+  aieval_scheduled_provider: string;
   aieval_scheduled_model: string;
   aieval_scheduled_horizon: number;
   aieval_scheduled_limit: number;

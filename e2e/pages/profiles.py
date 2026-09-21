@@ -1,8 +1,12 @@
 """Profiles page — /profiles.
 
-The create form takes name, trading style, and default provider. The
-per-profile capability flags (enable_tools / enable_thinking / enable_memory)
-are editable on this page.
+The create form exposes name, trading style, default sections, the default AI
+target (provider + model) and the per-profile capability controls (Enable tools /
+Extended thinking + its budget / Effort / Memory + its store / Decision Coach /
+Active). Each row carries Edit, Activate-or-Deactivate and Delete.
+
+Match capability labels with ``exact=True``: "Memory" is a prefix of the memory
+store's own label, and "Active" is a substring of the "Inactive" row pill.
 """
 
 from __future__ import annotations

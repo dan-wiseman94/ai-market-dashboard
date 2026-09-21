@@ -1,6 +1,8 @@
 /** Shared types for the ThreadDetailPage subtree. */
+import type {
+  StructuredKind, StructuredReport, WarRoomVerdictContent,
+} from "@/api/observation";
 import type { CitationRef } from "@/components/CitationText";
-import type { ObservationReport } from "@/components/ObservationReportCard";
 import type { ThreadWsMsg } from "@/realtime/threadEvents";
 
 export type LiveMessage = {
@@ -15,9 +17,11 @@ export type LiveMessage = {
   parent_message_id?: number | null;
   // Present only on the synthetic snapshot turn; drives the collapsible payload box.
   snapshot_id?: number | null;
-  // Present on structured observation messages (observer fires with structured=True).
-  kind?: "structured_observation";
-  report?: ObservationReport;
+  // Present on the typed messages the backend writes (observer cards, post-mortems,
+  // war-room verdicts, cached/warning/investigation notices).
+  kind?: StructuredKind;
+  report?: StructuredReport;
+  verdict?: WarRoomVerdictContent;
   // Citations the model attached while streaming. Accumulated from the WS
   // `citation` frames — the persisted Message row does not carry them, so a
   // reseed preserves whatever the live stream collected.

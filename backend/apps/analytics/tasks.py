@@ -1,10 +1,10 @@
 """Analytics Celery tasks: the calibration-drift sentinel and the eval harness.
 
 The harness runs two ways — ``analytics.aieval_run_scheduled`` on beat and
-``analytics.aieval_run_manual`` queued from POST /api/aieval/runs/. Both replay
-labeled theses through the real model, score calibration, and persist an EvalRun
-the live coach and the calibration-weighted router read, so both sit behind the
-same cost-cap pre-flight as ``manage.py aieval``.
+``analytics.aieval_run`` queued from POST /api/aieval/runs/. Both replay labeled
+theses through the real model, score calibration, and persist an EvalRun the live
+coach and the calibration-weighted router read, so both sit behind the same
+cost-cap pre-flight as ``manage.py aieval``.
 """
 
 from __future__ import annotations
@@ -69,9 +69,86 @@ def calibration_drift_sentinel() -> dict:
     return {"checked": len(result["models"]), "fired": fired}
 
 
-# acks_late=False: evaluate() bills one model call per labeled row and
-# persist_eval_run() appends unconditionally, so a redelivery after a worker loss
-# would re-bill the whole replay and store a duplicate EvalRun. At-most-once turns
+@shared_task(name="analytics.aieval_run", acks_late=False, reject_on_worker_lost=False)
+def aieval_run(
+    *,
+    provider: str,
+    model: str,
+    horizon: int | None,
+    limit: int,
+    label: str = "manual",
+    system: str | None = None,
+) -> dict:
+    """One manual eval run queued by ``POST /api/aieval/runs/``.
+
+    At-most-once: it bills a provider and is not idempotent, so a worker crash must
+    not redeliver it. Every exit notifies, because the UI has no other signal that a
+    queued run finished. The request path resolves every parameter and refuses up
+    front on mock mode or a breached cap; the cap is re-checked here because spend
+    can cross the line between enqueue and execution.
+    """
+    from apps.market.services.safe_log import scrub_secret_params
+    from apps.observer.services.notifications import notify
+
+    try:
+        preflight_cost_cap(provider)
+    except CostCapExceededError as exc:
+        log.warning("analytics.aieval_run skipped — cost cap: %s", exc)
+        notify(
+            user_id=None,
+            kind="eval_done",
+            title="Eval run skipped",
+            body=str(exc),
+            link="/scorecard",
+        )
+        return {"skipped": "cost_cap"}
+
+    try:
+        res = evaluate(
+            system=system or DEFAULT_EVAL_SYSTEM,
+            model=model,
+            label=label,
+            horizon=horizon,
+            limit=limit,
+            provider=provider,
+        )
+    except Exception as exc:
+        notify(
+            user_id=None,
+            kind="error",
+            title="Eval run failed",
+            body=scrub_secret_params(str(exc))[:500],
+            link="/scorecard",
+        )
+        raise
+
+    if not res["n"]:
+        span = f"{horizon}d" if horizon is not None else "any horizon"
+        notify(
+            user_id=None,
+            kind="eval_done",
+            title="Eval run: nothing to replay",
+            body=f"No decisive post-mortems with a frozen snapshot at {span}.",
+            link="/scorecard",
+        )
+        return {"skipped": "no_data"}
+
+    run = persist_eval_run(res, source="manual")
+    hit = res.get("hit_rate")
+    hit_txt = f"hit-rate {hit:.0%}" if hit is not None else "no scored rows"
+    notify(
+        user_id=None,
+        kind="eval_done",
+        title=f"Eval run #{run.id} finished",
+        body=f"{provider} · {model}: {hit_txt} over {res['scored']} scored ({label}).",
+        link="/scorecard",
+    )
+    return {"ran": run.id, "n": res["n"], "hit_rate": hit}
+
+
+# acks_late=False for the same reason as the manual twin: one billed model call per
+# labeled row plus an unconditional EvalRun append, so a redelivery after a worker
+# loss would re-bill the whole replay and store a duplicate run. At-most-once turns
 # a lost run into a missing result the user can re-trigger.
 @shared_task(name="analytics.aieval_run_scheduled", acks_late=False, reject_on_worker_lost=False)
 def run_scheduled() -> dict:
@@ -93,12 +170,32 @@ def run_scheduled() -> dict:
     # SystemSettings (UI) values override the base.py / env defaults; the resolver's
     # fallbacks keep this a BOUNDED run (25 rows / 30d horizon), never an unbounded —
     # and costly — replay.
-    model = rc.aieval_scheduled_model
+    from cryptography.fernet import InvalidToken
+
+    from apps.ai.structured import resolve_structured_target
+
+    provider = rc.aieval_scheduled_provider or "claude"
+    # Resolve through the provider's own config: it repairs a model id carried over
+    # from another vendor AND supplies the model for `local`, which has no catalog
+    # default. A blank model would otherwise make every replay fail and report "no data".
+    try:
+        target = resolve_structured_target(
+            override_provider=provider, override_model=rc.aieval_scheduled_model
+        )
+    except InvalidToken:
+        log.warning("analytics.aieval_run_scheduled skipped — %s key is undecryptable", provider)
+        return {"skipped": "undecryptable_key"}
+    if target is None:
+        log.warning(
+            "analytics.aieval_run_scheduled skipped — no usable %s provider/model", provider
+        )
+        return {"skipped": "no_provider"}
+    model = target.model
     horizon = rc.aieval_scheduled_horizon
     limit = rc.aieval_scheduled_limit
 
     try:
-        preflight_cost_cap("claude")
+        preflight_cost_cap(provider)
     except CostCapExceededError as exc:
         log.warning("analytics.aieval_run_scheduled skipped — cost cap: %s", exc)
         return {"skipped": "cost_cap"}
@@ -109,7 +206,7 @@ def run_scheduled() -> dict:
         label="scheduled",
         horizon=horizon,
         limit=limit,
-        provider="claude",
+        provider=provider,
     )
     if not res["n"]:
         return {"skipped": "no_data"}
@@ -117,51 +214,6 @@ def run_scheduled() -> dict:
     run = persist_eval_run(res, source="scheduled")
     log.info(
         "analytics.aieval_run_scheduled persisted EvalRun #%s (n=%s, hit_rate=%s)",
-        run.id,
-        res["n"],
-        res["hit_rate"],
-    )
-    return {"ran": run.id, "n": res["n"], "hit_rate": res["hit_rate"]}
-
-
-# acks_late=False for the same reason as the scheduled twin: one billed model call
-# per labeled row plus an unconditional EvalRun append.
-@shared_task(name="analytics.aieval_run_manual", acks_late=False, reject_on_worker_lost=False)
-def run_manual(
-    *,
-    model: str,
-    provider: str,
-    label: str,
-    horizon: int | None = None,
-    limit: int | None = None,
-    system: str | None = None,
-) -> dict:
-    """On-demand eval queued from POST /api/aieval/runs/.
-
-    The request path resolves every parameter and refuses up front on mock mode or a
-    breached cap, so the caller sees the reason. The cap is re-checked here because
-    spend can cross the line between enqueue and execution.
-    """
-    try:
-        preflight_cost_cap(provider)
-    except CostCapExceededError as exc:
-        log.warning("analytics.aieval_run_manual skipped — cost cap: %s", exc)
-        return {"skipped": "cost_cap"}
-
-    res = evaluate(
-        system=system or DEFAULT_EVAL_SYSTEM,
-        model=model,
-        label=label,
-        horizon=horizon,
-        limit=limit,
-        provider=provider,
-    )
-    if not res["n"]:
-        return {"skipped": "no_data"}
-
-    run = persist_eval_run(res, source="manual")
-    log.info(
-        "analytics.aieval_run_manual persisted EvalRun #%s (n=%s, hit_rate=%s)",
         run.id,
         res["n"],
         res["hit_rate"],

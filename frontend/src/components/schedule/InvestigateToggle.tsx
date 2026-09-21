@@ -13,18 +13,26 @@ type Props = {
   idPrefix: string;
   /** Extra caveat appended under the cost note (e.g. "plain mode only"). */
   note?: string;
+  /** Greyed out when the mode ignores it (structured fires never investigate). */
+  disabled?: boolean;
 };
 
-export default function InvestigateToggle({ checked, onChange, idPrefix, note }: Props) {
+export default function InvestigateToggle({
+  checked, onChange, idPrefix, note, disabled,
+}: Props) {
   const inputId = `${idPrefix}-investigate`;
   const descId = `${idPrefix}-investigate-desc`;
   return (
     <div className="space-y-1">
-      <label className="flex items-center gap-2 text-sm" htmlFor={inputId}>
+      <label
+        className={`flex items-center gap-2 text-sm ${disabled ? "text-ink-500" : ""}`}
+        htmlFor={inputId}
+      >
         <input
           id={inputId}
           type="checkbox"
           checked={checked}
+          disabled={disabled}
           aria-describedby={descId}
           onChange={(e) => onChange(e.target.checked)}
         />

@@ -112,6 +112,9 @@ def run_debate(run_id: int) -> None:
         "strongest_bull": v.strongest_bull,
         "strongest_bear": v.strongest_bear,
         "what_would_change_my_mind": v.what_would_change_my_mind,
+        # The synthesizer's one-shot AIRun has no Message; stamp it here so the
+        # verdict names the provider that reached it.
+        "ai": {"provider": target.provider, "model": target.model},
     }
     Message.objects.create(
         thread=run.thread,

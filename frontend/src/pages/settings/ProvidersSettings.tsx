@@ -1,12 +1,16 @@
 import SettingsSection from "@/components/settings/SettingsSection";
 import ProviderCard from "@/components/settings/ProviderCard";
-
-const PROVIDERS = ["claude", "openai", "local"] as const;
+import ModelCatalogPanel from "@/components/settings/ModelCatalogPanel";
+import { PROVIDER_IDS } from "@/api/ai";
 
 export default function ProvidersSettings() {
   return (
-    <SettingsSection title="AI Providers" description="Keys, default models, and spend caps per provider.">
-      {PROVIDERS.map((p) => <ProviderCard key={p} provider={p} />)}
+    <SettingsSection
+      title="AI Providers"
+      description="Keys, endpoints, capabilities, default models and spend caps per provider."
+    >
+      {PROVIDER_IDS.map((p) => <ProviderCard key={p} provider={p} />)}
+      <ModelCatalogPanel />
     </SettingsSection>
   );
 }

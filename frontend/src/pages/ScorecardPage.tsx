@@ -12,12 +12,12 @@ import {
   type AICalibration,
   type Calibration,
   type CalibrationDrilldown,
-  type EvalRunSummary,
+
 } from "@/hooks/useAnalytics";
-import { EvalRunPanel } from "@/components/analytics/EvalRunPanel";
 import { SkeletonRows } from "@/components/Skeleton";
 import { EmptyState } from "@/components/EmptyState";
 import { horizonsFrom } from "@/lib/horizons";
+import EvalSection from "./scorecard/EvalSection";
 import { pctSigned, plClass400 } from "@/utils/format";
 
 function pct(v: number | null): string {
@@ -201,50 +201,6 @@ function ProviderCalibration({ data }: { data: Calibration }) {
   );
 }
 
-/* Measured model calibration from the offline eval harness — independent
-   of thesis post-mortems, so it renders whenever an eval run exists. */
-function EvalCalibration({ evalRun }: { evalRun: EvalRunSummary }) {
-  return (
-    <section>
-      <h2 className="mb-2 font-semibold">Model eval calibration</h2>
-      <p className="mb-2 text-sm text-ink-400">
-        How often {evalRun.model}'s directional call was right on replayed past snapshots, vs how
-        confident it claimed to be.
-      </p>
-      <p className="mb-3 text-sm text-ink-400">
-        Hit-rate {pct(evalRun.hit_rate)} · Brier {evalRun.brier ?? "—"} · {evalRun.scored} scored
-        · avg confidence {pct(evalRun.avg_confidence)}
-      </p>
-      {evalRun.calibration.filter((b) => b.n > 0).length > 0 && (
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="text-ink-400">
-              <th className="text-left">Stated confidence</th>
-              <th>n</th>
-              <th>Observed</th>
-              <th>Stated</th>
-            </tr>
-          </thead>
-          <tbody>
-            {evalRun.calibration
-              .filter((b) => b.n > 0)
-              .map((b) => (
-                <tr key={`${b.bin_low}-${b.bin_high}`} className="border-t border-rule">
-                  <td>
-                    {(b.bin_low * 100).toFixed(0)}–{(b.bin_high * 100).toFixed(0)}%
-                  </td>
-                  <td className="text-center">{b.n}</td>
-                  <td className="text-center">{pct(b.observed_hit_rate)}</td>
-                  <td className="text-center">{pct(b.mean_confidence)}</td>
-                </tr>
-              ))}
-          </tbody>
-        </table>
-      )}
-    </section>
-  );
-}
-
 /* The AI's OWN live track record — resolved predictions it actually made,
    independent of theses and of the offline eval, so it renders on its own data. */
 function AICalibrationSection({ aiCal }: { aiCal: AICalibration }) {
@@ -409,9 +365,7 @@ export default function ScorecardPage() {
         drillLoading={drillLoading}
       />
 
-      {evalRun && evalRun.scored > 0 && <EvalCalibration evalRun={evalRun} />}
-
-      <EvalRunPanel />
+      <EvalSection latest={evalRun ?? undefined} />
 
       {aiCal && aiCal.overall.scored > 0 && <AICalibrationSection aiCal={aiCal} />}
 

@@ -1,19 +1,36 @@
 type ToggleProps = {
   checked: boolean;
   onChange: (next: boolean) => void;
+  /** Accessible name. Used as `aria-label` unless `labelledBy` names visible text. */
   label: string;
   disabled?: boolean;
   id?: string;
+  /** Id of visible text that names the switch; wins over `label`. */
+  labelledBy?: string;
+  /** Id of the hint that describes the switch, announced after its name. */
+  describedBy?: string;
 };
 
-export default function Toggle({ checked, onChange, label, disabled, id }: ToggleProps) {
+export default function Toggle({
+  checked,
+  onChange,
+  label,
+  disabled,
+  id,
+  labelledBy,
+  describedBy,
+}: ToggleProps) {
   return (
     <button
       type="button"
       role="switch"
       id={id}
       aria-checked={checked}
-      aria-label={label}
+      // A visible label is the better name when there is one; `label` stays the
+      // fallback so every caller that passes only a label is unaffected.
+      aria-labelledby={labelledBy}
+      aria-label={labelledBy ? undefined : label}
+      aria-describedby={describedBy}
       disabled={disabled}
       onClick={() => onChange(!checked)}
       className={[

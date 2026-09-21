@@ -7,9 +7,8 @@ paths:
   /api/aieval/runs/:
     get:
       operationId: aieval_runs_list
-      description: |-
-        GET: the recent eval runs. POST: queue one against a candidate (provider,
-        model, system prompt) and return the Celery task id.
+      description: 'GET: the 50 newest runs. POST: queue one bounded, billed eval
+        run on a provider.'
       tags:
       - aieval
       security:
@@ -25,9 +24,8 @@ paths:
           description: ''
     post:
       operationId: aieval_runs_create
-      description: |-
-        GET: the recent eval runs. POST: queue one against a candidate (provider,
-        model, system prompt) and return the Celery task id.
+      description: 'GET: the 50 newest runs. POST: queue one bounded, billed eval
+        run on a provider.'
       tags:
       - aieval
       requestBody:
@@ -44,17 +42,17 @@ paths:
               schema:
                 $ref: '#/components/schemas/EvalRunQueued'
           description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EvalRunError'
+          description: ''
         '409':
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/EvalRunRefusal'
-          description: ''
-        '429':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/EvalRunRefusal'
+                $ref: '#/components/schemas/EvalRunError'
           description: ''
   /api/aieval/runs/latest/:
     get:
@@ -4686,18 +4684,34 @@ components:
       - scored
       - skipped
       - source
+    EvalRunError:
+      type: object
+      description: |-
+        The reason a run was not queued. One error shape for the endpoint, so the UI
+        always has a message to show: 400 for a body or provider that cannot resolve to a
+        usable target, 409 for a breached cost cap or for MOCK_EXTERNAL (a mocked run
+        would persist a fabricated EvalRun that the coach and the calibration-weighted
+        router then read as measurement).
+      properties:
+        code:
+          type: string
+          description: invalid_request | foreign_model | undecryptable_key | no_provider
+            | cost_cap | mock_mode
+        message:
+          type: string
+      required:
+      - code
+      - message
     EvalRunQueued:
       type: object
       description: |-
-        202 body of POST /api/aieval/runs/: the Celery task id plus the fully
-        resolved parameters the task was queued with (omissions already filled from
-        ``runtime_config()``), so the caller sees what will actually be scored.
+        202 body of ``POST /api/aieval/runs/``: the fully resolved parameters the task
+        was queued with (omissions filled from ``runtime_config()``, the model resolved
+        through the provider's own config), so the caller sees what will be scored.
       properties:
-        task_id:
-          type: string
-        status:
-          type: string
-          description: Always "queued".
+        queued:
+          type: boolean
+          description: Always true.
         provider:
           type: string
         model:
@@ -4710,59 +4724,45 @@ components:
           type: integer
         label:
           type: string
-        system:
-          type: string
-          nullable: true
-          description: System-prompt override, or null for the default.
       required:
       - horizon
       - label
       - limit
       - model
       - provider
-      - status
-      - system
-      - task_id
-    EvalRunRefusal:
-      type: object
-      description: |-
-        The reason a run was not queued: 409 under MOCK_EXTERNAL (a mocked run would
-        persist a fabricated EvalRun that the coach and router then read as
-        measurement), 429 when the provider's monthly cost cap is already hit.
-      properties:
-        detail:
-          type: string
-      required:
-      - detail
+      - queued
     EvalRunRequest:
       type: object
       description: |-
-        Body of POST /api/aieval/runs/.
+        Body of ``POST /api/aieval/runs/`` — one manual, bounded, billed eval run.
 
         Every field is optional so the UI can fire a run with an empty body; the view
-        fills omissions from ``runtime_config()``. ``limit`` is bounded because the
-        endpoint bills one model call per replayed row — the unbounded replay stays on
-        ``manage.py aieval``, where the operator sees the row count first.
+        fills the omissions from ``runtime_config()`` and resolves the target through
+        the provider's own config. ``limit`` is bounded because the endpoint bills one
+        model call per replayed row — the unbounded replay stays on ``manage.py
+        aieval``, where the operator sees the row count first.
       properties:
         provider:
-          $ref: '#/components/schemas/EvalRunRequestProviderEnum'
+          allOf:
+          - $ref: '#/components/schemas/EvalRunRequestProviderEnum'
+          default: claude
         model:
           type: string
-          maxLength: 128
+          default: ''
         horizon:
+          type: integer
           nullable: true
-          oneOf:
-          - $ref: '#/components/schemas/HorizonEnum'
-          - $ref: '#/components/schemas/NullEnum'
         limit:
           type: integer
-          maximum: 200
+          maximum: 100
           minimum: 1
         label:
           type: string
+          default: manual
           maxLength: 64
         system:
           type: string
+          description: System-prompt override for A/B-ing a prompt; omit for the default.
           maxLength: 8000
     EvalRunRequestProviderEnum:
       enum:
@@ -5252,16 +5252,6 @@ components:
       - zip
       type: string
       description: '* `zip` - zip'
-    HorizonEnum:
-      enum:
-      - 7
-      - 30
-      - 90
-      type: integer
-      description: |-
-        * `7` - 7
-        * `30` - 30
-        * `90` - 90
     JournalEntry:
       type: object
       properties:
@@ -5483,6 +5473,7 @@ components:
       - cal_drift
       - contra
       - pred_invalid
+      - eval_done
       type: string
       description: |-
         * `trigger` - Trigger
@@ -5498,6 +5489,7 @@ components:
         * `cal_drift` - Calibration drift
         * `contra` - Consistency conflict
         * `pred_invalid` - Prediction invalidated
+        * `eval_done` - Eval run finished
     NullEnum:
       enum:
       - null
@@ -7531,6 +7523,9 @@ components:
           items:
             type: object
             additionalProperties: {}
+          description: |-
+            Each argument with the model that made it; null for a message with no run
+            (the verdict, whose one-shot AIRun carries no Message).
           readOnly: true
       required:
       - confidence

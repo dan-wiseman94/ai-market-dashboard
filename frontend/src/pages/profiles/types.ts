@@ -32,7 +32,9 @@ export type Draft = {
 // Mirrors TradingProfile.DEFAULT_INCLUDES (backend/apps/profiles/models.py) — the
 // backend only seeds an EMPTY default_includes, so a UI-created profile that
 // disagrees with this list silently ships without the rich defaults.
-// The capability defaults mirror the model field defaults in the same file.
+// The capability values mirror the TradingProfile field defaults in the same
+// file, which are ON: a form that shipped them off would quietly create
+// profiles weaker than the ones the backend makes.
 export const BLANK_DRAFT: Draft = {
   name: "", style: "",
   default_includes: ["quotes", "positions", "breadth", "ohlc", "chain", "news", "events", "macro"],

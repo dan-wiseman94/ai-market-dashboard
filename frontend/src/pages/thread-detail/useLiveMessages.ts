@@ -4,6 +4,28 @@ import type { Message, Thread } from "@/api/threads";
 import type { ToolCallRecord } from "@/components/ToolCallTrace";
 import type { LiveMessage, WsMsg } from "./types";
 
+/** The five verdict fields the backend spreads into a warroom_verdict message. */
+function pickVerdict(c: Message["content"]) {
+  return {
+    verdict: c.verdict,
+    confidence: c.confidence,
+    strongest_bull: c.strongest_bull,
+    strongest_bear: c.strongest_bear,
+    what_would_change_my_mind: c.what_would_change_my_mind,
+    ai: c.ai,
+  };
+}
+
+/** A one-shot structured run records its AIRun without a Message, so the attribution
+ * it stamped into the content is the only source for those cards. */
+function attribution(m: Message) {
+  return {
+    cost: m.ai_run?.cost_usd,
+    model: m.ai_run?.model ?? m.content?.model,
+    provider: m.ai_run?.provider ?? m.content?.provider,
+  };
+}
+
 function toLiveMessage(m: Message): LiveMessage {
   return {
     id: m.id,
@@ -11,13 +33,12 @@ function toLiveMessage(m: Message): LiveMessage {
     text: m.content?.text ?? "",
     status: m.status,
     error: m.error,
-    cost: m.ai_run?.cost_usd,
-    model: m.ai_run?.model,
-    provider: m.ai_run?.provider,
+    ...attribution(m),
     parent_message_id: m.parent_message_id ?? null,
     snapshot_id: m.snapshot_id ?? null,
     kind: m.content?.kind,
     report: m.content?.report,
+    verdict: m.content?.kind === "warroom_verdict" ? pickVerdict(m.content) : undefined,
   };
 }
 

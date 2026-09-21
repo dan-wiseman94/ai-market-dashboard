@@ -179,6 +179,10 @@ class SystemSettingsView(APIView):
         return Response(asdict(runtime_config()))
 
 
+_PROVIDER_KNOBS = frozenset({"ai_failover_provider", "aieval_scheduled_provider"})
+_PROVIDER_VALUES = ("", "claude", "openai", "local")
+
+
 def _coerce_setting(key: str, value: object, typ: type) -> tuple[object, str | None]:
     """Coerce/validate a single PATCH value. None clears the override (inherit default)."""
     if value is None:
@@ -189,6 +193,7 @@ def _coerce_setting(key: str, value: object, typ: type) -> tuple[object, str | N
     for check in (
         _check_non_negative,
         _check_column_limits,
+        _check_provider_value,
         _check_retention_floor,
         _check_loop_ceiling_floor,
     ):
@@ -287,6 +292,14 @@ def _check_retention_floor(key: str, coerced: object) -> str | None:
             "against OHLC bars by date up to the longest horizon"
         )
     return None
+
+
+def _check_provider_value(key: str, coerced: object) -> str | None:
+    """A free-text provider name silently disables the knob it configures: the failover
+    lookup and the eval preflight both resolve a ProviderConfig by name."""
+    if key not in _PROVIDER_KNOBS or coerced in _PROVIDER_VALUES:
+        return None
+    return f"{key} must be one of claude, openai, local (or blank)"
 
 
 @csrf_exempt

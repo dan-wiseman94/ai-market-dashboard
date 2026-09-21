@@ -27,7 +27,7 @@ from typing import TYPE_CHECKING, NamedTuple
 from cryptography.fernet import InvalidToken
 from pydantic import BaseModel
 
-from apps.ai.catalog import CLAUDE_FAMILY_PROVIDERS, default_model_for, get_model, list_models
+from apps.ai.catalog import CLAUDE_FAMILY_PROVIDERS, default_model_for, is_foreign_model
 from apps.ai.providers import claude_structured, openai_structured
 from apps.ai.providers.claude_structured import StructuredParseError, token_usage_from_anthropic
 from apps.ai.providers.openai_structured import token_usage_from_openai
@@ -113,16 +113,6 @@ class StructuredTarget(NamedTuple):
     monthly_cap: Decimal | None
 
 
-def _foreign_catalog_model(provider: str, model: str) -> bool:
-    """True when ``model`` is a catalog row for some provider other than ``provider``.
-
-    A model id unknown to the catalog entirely (a local model name, or a
-    brand-new vendor id) is not foreign — it is accepted verbatim."""
-    if not model or get_model(provider, model) is not None:
-        return False
-    return any(m.id == model for m in list_models() if m.provider != provider)
-
-
 def _target_from_config(cfg, *, model: str = "") -> StructuredTarget | None:
     """Build a target from ``cfg`` or return None when it is missing, disabled, or
     lacks a credential/model. Reads the encrypted key, so ``InvalidToken`` can raise.
@@ -141,7 +131,7 @@ def _target_from_config(cfg, *, model: str = "") -> StructuredTarget | None:
             return None
     elif not key:
         return None
-    if model and _foreign_catalog_model(cfg.provider, model):
+    if is_foreign_model(cfg.provider, model):
         log.warning(
             "structured: model %r belongs to a different provider's catalog than %s; "
             "using the provider default instead",

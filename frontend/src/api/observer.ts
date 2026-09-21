@@ -65,7 +65,7 @@ export const runScheduleNow = (id: number) =>
 
 export interface NotificationDTO {
   id: number;
-  kind: "trigger" | "observer_done" | "error" | "cost_limit" | "backup";
+  kind: "trigger" | "observer_done" | "error" | "cost_limit" | "backup" | "eval_done";
   title: string;
   body: string;
   link: string;

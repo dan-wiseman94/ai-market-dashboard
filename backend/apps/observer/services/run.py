@@ -10,7 +10,7 @@ from decimal import Decimal
 from cryptography.fernet import InvalidToken
 from django.utils import timezone
 
-from apps.ai.catalog import default_model_for
+from apps.ai.catalog import default_model_for, is_foreign_model
 from apps.ai.cost import CostCapExceededError, check_daily_cap, check_monthly_cap
 from apps.ai.structured import run_structured
 from apps.core.runtime_config import runtime_config
@@ -29,6 +29,28 @@ from apps.threads.models import Message
 from apps.threads.tasks import run_ai_on_message
 
 log = logging.getLogger(__name__)
+
+
+def _observer_model(sched: ObserverSchedule, cfg: ProviderConfig | None, provider_name: str) -> str:
+    """The model this fire runs on.
+
+    Candidates in order: the schedule's override, the profile's model when the fire
+    runs on the profile's own provider, the ProviderConfig default, the catalog
+    default. A catalog id owned by another provider is skipped, never sent — and the
+    same id feeds the prompt hash, the structured call and the ledger stamp.
+    """
+    same_provider = (
+        not sched.override_provider or sched.override_provider == sched.profile.default_provider
+    )
+    candidates = [
+        sched.override_model,
+        sched.profile.default_model if same_provider else "",
+        cfg.default_model if cfg is not None else "",
+    ]
+    for candidate in candidates:
+        if candidate and not is_foreign_model(provider_name, candidate):
+            return candidate
+    return default_model_for(provider_name)
 
 
 def _stamp_fired(sched: ObserverSchedule) -> None:
@@ -50,7 +72,6 @@ def fire_observer(schedule_id: int) -> int | None:
 
     thread = get_or_create_observer_thread(sched.profile)
     provider_name = sched.override_provider or sched.profile.default_provider
-    model_name = sched.override_model or sched.profile.default_model
 
     # Resolve caps — Infinity daily / None monthly when no ProviderConfig row exists.
     # defer the encrypted key: the cap fields are read here without decrypting, so a
@@ -70,6 +91,8 @@ def fire_observer(schedule_id: int) -> int | None:
     else:
         cap_usd = cfg.daily_cost_cap_usd
         monthly_cap = cfg.monthly_cost_cap_usd
+
+    model_name = _observer_model(sched, cfg, provider_name)
 
     try:
         check_daily_cap(provider_name, cap_usd=cap_usd)
@@ -132,9 +155,11 @@ def fire_observer(schedule_id: int) -> int | None:
     if sched.consensus:
         # Consensus is itself a structured operation (fans ObservationReport), so
         # it takes precedence over the plain structured path. Opt-in, ~Nx cost.
-        _run_consensus_and_record(sched, thread, user_text)
+        _run_consensus_and_record(sched, thread, user_text, snap=snap)
     elif sched.structured:
-        _run_structured_and_record(sched, thread, user_text, provider_name, cfg, snap=snap)
+        _run_structured_and_record(
+            sched, thread, user_text, provider_name, cfg, model_id=model_name, snap=snap
+        )
     else:
         rc = runtime_config()  # one row fetch; reused for the gate and the TTL below
         cached = (
@@ -157,11 +182,11 @@ def fire_observer(schedule_id: int) -> int | None:
                 status="done",
             )
         else:
-            override: dict = {}
-            if sched.override_provider:
-                override["provider"] = sched.override_provider
-            if sched.override_model:
-                override["model"] = sched.override_model
+            # The already-resolved pair, not the raw columns: the router honours an
+            # override only when BOTH are present, so a provider set without a model
+            # would otherwise silently run on the profile's provider — and on a model
+            # that disagrees with the one that sized the payload and the prompt hash.
+            override = {"provider": provider_name, "model": model_name}
             run_ai_on_message.delay(
                 thread_id=thread.id,
                 user_message_id=msg.id,
@@ -254,7 +279,9 @@ def _cached_observer_response(
     return (asst.content or {}).get("text", "") or None
 
 
-def _extract_prediction(report, *, snap, message, provider: str, model: str, profile) -> None:
+def _extract_prediction(
+    report, *, snap, message, provider: str, model: str, profile, flag_contradictions: bool = True
+) -> None:
     """Best-effort: promote the structured call into an AIPrediction.
 
     Isolated + suppressed — a failure here (or the model carrying no directional
@@ -264,7 +291,13 @@ def _extract_prediction(report, *, snap, message, provider: str, model: str, pro
         from apps.observer.predictions.services.extract import extract_from_observation
 
         extract_from_observation(
-            report, snapshot=snap, message=message, provider=provider, model=model, profile=profile
+            report,
+            snapshot=snap,
+            message=message,
+            provider=provider,
+            model=model,
+            profile=profile,
+            flag_contradictions=flag_contradictions,
         )
     except Exception as exc:
         log.warning(
@@ -279,6 +312,7 @@ def _run_structured_and_record(
     provider_name: str,
     cfg: ProviderConfig | None,
     *,
+    model_id: str = "",
     snap=None,
 ) -> None:
     """Run the structured ObservationReport call on the schedule's provider and
@@ -319,7 +353,7 @@ def _run_structured_and_record(
             error="no_key",
         )
         return
-    model_id = sched.override_model or cfg.default_model or default_model_for(provider_name)
+    model_id = model_id or _observer_model(sched, cfg, provider_name)
     try:
         report = run_structured(
             provider=provider_name,
@@ -343,7 +377,12 @@ def _run_structured_and_record(
     msg = Message.objects.create(
         thread=thread,
         role="assistant",
-        content={"kind": "structured_observation", "report": report.model_dump()},
+        content={
+            "kind": "structured_observation",
+            "report": report.model_dump(),
+            "provider": provider_name,
+            "model": model_id,
+        },
         status="done",
     )
     _extract_prediction(
@@ -356,7 +395,9 @@ def _run_structured_and_record(
     )
 
 
-def _run_consensus_and_record(sched: ObserverSchedule, thread, payload_text: str) -> None:
+def _run_consensus_and_record(
+    sched: ObserverSchedule, thread, payload_text: str, *, snap=None
+) -> None:
     """Fan ObservationReport across structured-capable providers; record the signal.
 
     Always records an assistant ``consensus_report`` Message — even the honest
@@ -364,6 +405,10 @@ def _run_consensus_and_record(sched: ObserverSchedule, thread, payload_text: str
     a valid, truthful result, not a failure. ``consensus_report`` never raises
     (a provider that errors or is over its cap is skipped + counted out), so this
     needs no extra crash guard.
+
+    Each take's own directional call also enters the ledger under that take's
+    provider and model, which makes one consensus schedule a complete provider A/B:
+    identical prompt, every provider, per-provider calibration.
     """
     from apps.observer.services.consensus import consensus_report
 
@@ -371,9 +416,23 @@ def _run_consensus_and_record(sched: ObserverSchedule, thread, payload_text: str
         system=build_system_prompt(sched.profile, now=timezone.now()),
         user=payload_text,
     )
-    Message.objects.create(
+    msg = Message.objects.create(
         thread=thread,
         role="assistant",
         content={"kind": "consensus_report", "report": report.model_dump()},
         status="done",
     )
+    for take in report.takes:
+        if take.report is not None:
+            # No contradiction sentinel here: the takes are one another's "conflicting
+            # open call", and cross-provider disagreement is already the report's own
+            # `divergent` signal. The sentinel is for the AI contradicting itself over time.
+            _extract_prediction(
+                take.report,
+                snap=snap,
+                message=msg,
+                provider=take.provider,
+                model=take.model,
+                profile=sched.profile,
+                flag_contradictions=False,
+            )
