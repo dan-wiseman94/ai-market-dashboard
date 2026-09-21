@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import subprocess
 import time
 from typing import ClassVar
@@ -29,6 +30,8 @@ from apps.backups.services import (
 )
 from apps.backups.tasks import run_backup
 from apps.core.runtime_config import runtime_config
+
+logger = logging.getLogger(__name__)
 
 # The CLI (`make restore`) stops beat + worker around the restore so nothing writes to a
 # database whose tables are being dropped and recreated. No compose file mounts
@@ -168,7 +171,7 @@ class BackupViewSet(viewsets.ModelViewSet):
         started = time.monotonic()
         try:
             perform_restore(filename)
-        except FileNotFoundError as exc:
+        except FileNotFoundError:
             return Response(
                 {
                     "code": "backup_file_missing",
@@ -177,12 +180,20 @@ class BackupViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_409_CONFLICT,
             )
         except RestoreFailed as exc:
+            # The body withholds stderr on purpose; log it so the pointer to the
+            # server logs is true. RestoreFailed.stderr is already scrubbed of
+            # credentials, which is what makes it safe to write down at all.
+            logger.error(
+                "backups.restore_failed: backup=%s exit=%s stderr=%s",
+                backup_id,
+                exc.returncode,
+                exc.stderr,
+            )
             return Response(
                 {
                     "code": "restore_failed",
                     "detail": (
-                        "Restore failed due to a server-side error. "
-                        "Check server logs for details."
+                        "Restore failed due to a server-side error. Check server logs for details."
                     ),
                     "exit_code": exc.returncode,
                 },
