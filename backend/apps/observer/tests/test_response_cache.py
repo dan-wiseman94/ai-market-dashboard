@@ -65,7 +65,8 @@ def test_reuses_cached_response_for_identical_prompt(profile):
 
 
 @pytest.mark.django_db
-def test_cache_off_by_default_always_dispatches(profile):
+@override_settings(OBSERVER_RESPONSE_CACHE_ENABLED=False)
+def test_cache_disabled_always_dispatches(profile):
     p = profile
     s = ObserverSchedule.objects.create(
         name="x", profile=p, market_hours_only=False, default_includes=["quotes"]
@@ -79,5 +80,5 @@ def test_cache_off_by_default_always_dispatches(profile):
     Message.objects.create(
         thread=thread, role="assistant", content={"text": "PRIOR"}, status="done"
     )
-    # Cache disabled (default) -> the second identical fire still dispatches the AI.
+    # Cache switched off -> the second identical fire still dispatches the AI.
     _fire(s, snap).delay.assert_called_once()
