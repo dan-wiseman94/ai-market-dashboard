@@ -143,6 +143,21 @@ knip: ## Unused frontend files / exports / types / deps. Advisory.
 .PHONY: check
 check: lint test ## What CI runs
 
+.PHONY: hooks
+hooks: ## Install the pre-commit guard (credentials + ruff + baseline size) for this repo and all worktrees
+	@dir="$$(git rev-parse --git-common-dir)/hooks"; mkdir -p "$$dir"; \
+	{ echo '#!/bin/sh'; \
+	  echo 'root="$$(git rev-parse --show-toplevel)"'; \
+	  echo '[ -x "$$root/tools/hooks/pre-commit.sh" ] || exit 0'; \
+	  echo 'exec "$$root/tools/hooks/pre-commit.sh"'; } > "$$dir/pre-commit"; \
+	chmod +x "$$dir/pre-commit"; \
+	echo "installed $$dir/pre-commit — covers the main checkout and every worktree"
+
+.PHONY: hooks-uninstall
+hooks-uninstall: ## Remove the pre-commit guard
+	@dir="$$(git rev-parse --git-common-dir)/hooks"; rm -f "$$dir/pre-commit"; \
+	echo "removed $$dir/pre-commit"
+
 .PHONY: logs
 logs: ## Tail logs: make logs s=worker
 	$(COMPOSE) logs -f $(or $(s),)
