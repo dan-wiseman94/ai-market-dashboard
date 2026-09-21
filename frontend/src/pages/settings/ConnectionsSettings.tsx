@@ -6,6 +6,7 @@ import { fetchSchwabAuthorizeUrl, updateSchwabAppConfig } from "@/api/schwab";
 import { RelativeTime } from "@/components/RelativeTime";
 import SettingsSection from "@/components/settings/SettingsSection";
 import DataSourcesPanel from "@/components/settings/DataSourcesPanel";
+import IntegrationsPanel from "@/components/settings/IntegrationsPanel";
 import SymbolCalendarOverridesCard from "@/components/SymbolCalendarOverridesCard";
 import { useToast } from "@/hooks/useToast";
 
@@ -220,6 +221,9 @@ export default function ConnectionsSettings() {
       </div>
       <div className="mt-6">
         <DataSourcesPanel />
+      </div>
+      <div className="mt-4">
+        <IntegrationsPanel />
       </div>
       <div className="mt-4">
         <SymbolCalendarOverridesCard />

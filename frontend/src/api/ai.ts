@@ -12,6 +12,10 @@ export type ProviderConfig = {
   default_model: string;
   enabled: boolean;
   supports_vision: boolean;
+  /** Gates tool use for openai/local runs — a profile's `enable_tools` is inert
+   *  without it (Claude is never gated on this). Optional: older stored rows and
+   *  fixtures predate the field; the backend default is true. */
+  supports_tools?: boolean;
   daily_cost_cap_usd: string;
   monthly_cost_cap_usd: string | null;
   api_key_present: boolean;

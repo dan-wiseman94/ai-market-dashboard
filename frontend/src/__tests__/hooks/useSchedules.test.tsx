@@ -6,6 +6,7 @@ import {
   useRunSchedule,
   useSchedules,
   useToggleSchedule,
+  useUpdateSchedule,
   useUpdateScheduleIncludes,
 } from "@/hooks/useSchedules";
 import { hookWrapper, mockApi, mockApiError, newQueryClient } from "../testUtils";
@@ -24,6 +25,8 @@ const scheduleFixture = {
   mode: "full",
   structured: false,
   use_batch: false,
+  consensus: false,
+  investigate: true,
   last_batch_id: "",
   last_fired_at: null,
   cron_display: "0 9 * * 1-5",
@@ -124,5 +127,41 @@ describe("useRunSchedule", () => {
       await result.current.mutateAsync(3);
     });
     expect(invalidateSpy).not.toHaveBeenCalled();
+  });
+});
+
+describe("useUpdateSchedule", () => {
+  it("PATCHes the full body (incl. the create-only fields) and invalidates ['schedules']", async () => {
+    const client = newQueryClient();
+    const invalidateSpy = vi.spyOn(client, "invalidateQueries");
+    const { calls } = mockApi({ "PATCH /api/observer/schedules/3/": scheduleFixture });
+    const { result } = renderHook(() => useUpdateSchedule(), {
+      wrapper: hookWrapper(client),
+    });
+    await act(async () => {
+      await result.current.mutateAsync({
+        id: 3,
+        body: {
+          market_hours_only: false,
+          mode: "diff",
+          structured: true,
+          use_batch: false,
+          consensus: false,
+          investigate: false,
+          fire_mode: "relative_to_close",
+          close_offset_minutes: 10,
+        },
+      });
+    });
+    expect(calls[0].url).toContain("/api/observer/schedules/3/");
+    expect(calls[0].body).toMatchObject({
+      market_hours_only: false,
+      mode: "diff",
+      structured: true,
+      investigate: false,
+      fire_mode: "relative_to_close",
+      close_offset_minutes: 10,
+    });
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["schedules"] });
   });
 });

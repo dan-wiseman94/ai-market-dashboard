@@ -19,6 +19,8 @@ type Draft = {
   daily_cost_cap_usd?: string;
   monthly_cost_cap_usd?: string;
   base_url?: string;
+  supports_tools?: boolean;
+  supports_vision?: boolean;
 };
 
 type ProbeMsg = { ok: boolean; text: string } | null;
@@ -38,6 +40,8 @@ type DerivedState = {
   baseUrl: string;
   apiKey: string;
   discovered: string[];
+  supportsTools: boolean;
+  supportsVision: boolean;
   dailyInvalid: boolean;
   monthlyInvalid: boolean;
   modelInvalid: boolean;
@@ -53,6 +57,8 @@ type ResolvedFields = {
   baseUrl: string;
   apiKey: string;
   discovered: string[];
+  supportsTools: boolean;
+  supportsVision: boolean;
 };
 
 function resolveCaps(draft: Draft, cfg: ProviderConfig | undefined): { daily: string; monthly: string } {
@@ -62,12 +68,25 @@ function resolveCaps(draft: Draft, cfg: ProviderConfig | undefined): { daily: st
   };
 }
 
+/** Backend default is true for both; a stored row that predates the field reads as
+ *  undefined, which must not flip the switch off in the UI. */
+function resolveCapabilities(
+  draft: Draft,
+  cfg: ProviderConfig | undefined,
+): { supportsTools: boolean; supportsVision: boolean } {
+  return {
+    supportsTools: draft.supports_tools ?? cfg?.supports_tools ?? true,
+    supportsVision: draft.supports_vision ?? cfg?.supports_vision ?? true,
+  };
+}
+
 function resolveFields(provider: ProviderId, draft: Draft, cfg: ProviderConfig | undefined): ResolvedFields {
   return {
     model: draft.default_model ?? cfg?.default_model ?? DEFAULT_MODEL_BY_PROVIDER[provider],
     baseUrl: draft.base_url ?? cfg?.base_url ?? "",
     apiKey: draft.api_key_write ?? "",
     discovered: cfg?.discovered_models ?? [],
+    ...resolveCapabilities(draft, cfg),
     ...resolveCaps(draft, cfg),
   };
 }
@@ -263,12 +282,59 @@ function CostCapFields({
         )}
       </Field>
 
-      <Field label="Monthly cap (USD)" hint="Blank = no monthly limit."
+      {/* A blank box reads as "zero" — say out loud that blank means uncapped. */}
+      <Field label="Monthly cap (USD)"
+             hint={monthly === ""
+               ? "No monthly cap — only the daily cap stops a run. Enter a number to add one."
+               : "Hard stop across a rolling 30 days. Clear the box for no monthly cap."}
              error={monthlyInvalid ? "Enter a non-negative number or leave blank." : undefined}>
         {({ id, describedBy }) => (
-          <input id={id} aria-describedby={describedBy} inputMode="decimal" value={monthly} placeholder="none"
+          <input id={id} aria-describedby={describedBy} inputMode="decimal" value={monthly}
+            placeholder="no cap"
             onChange={(e) => setDraft({ monthly_cost_cap_usd: e.target.value })}
             className="ledger-input w-full py-2 tabular-nums" />
+        )}
+      </Field>
+    </>
+  );
+}
+
+function CapabilityFields({
+  provider, supportsTools, supportsVision, setDraft,
+}: {
+  provider: ProviderId;
+  supportsTools: boolean;
+  supportsVision: boolean;
+  setDraft: SetDraft;
+}) {
+  const isClaude = provider === "claude";
+  return (
+    <>
+      <Field
+        label="Tool use"
+        hint={isClaude
+          ? "Claude is never gated on this flag — its tool use follows the profile's Tools switch alone."
+          : `Off strips every tool from ${LABEL[provider]} runs, so a profile's Tools switch does nothing. Turn it off only if this endpoint rejects tool calls.`}
+      >
+        {({ id, describedBy }) => (
+          <input
+            id={id} type="checkbox" checked={supportsTools} aria-describedby={describedBy}
+            onChange={(e) => setDraft({ supports_tools: e.target.checked })}
+            className="h-4 w-4"
+          />
+        )}
+      </Field>
+
+      <Field
+        label="Vision"
+        hint="Declares that this endpoint accepts image blocks. Mainly for local servers, which the model catalog can't inspect. Off leaves a capture's chart images out of the run and posts a notice in the thread."
+      >
+        {({ id, describedBy }) => (
+          <input
+            id={id} type="checkbox" checked={supportsVision} aria-describedby={describedBy}
+            onChange={(e) => setDraft({ supports_vision: e.target.checked })}
+            className="h-4 w-4"
+          />
         )}
       </Field>
     </>
@@ -287,8 +353,10 @@ function CardFooter({ isLocal, capRow }: { isLocal: boolean; capRow: CapRow | un
   return (
     <div className="mt-5 space-y-2 border-t border-rule-soft pt-4">
       <CapMeter label="Daily" cap={capRow.daily.cap} spent={capRow.daily.spent} pct={capRow.daily.pct} />
-      {capRow.monthly && (
+      {capRow.monthly ? (
         <CapMeter label="Monthly" cap={capRow.monthly.cap} spent={capRow.monthly.spent} pct={capRow.monthly.pct} />
+      ) : (
+        <p className="text-[11px] text-ink-400">Monthly — no cap set.</p>
       )}
     </div>
   );
@@ -347,12 +415,14 @@ export default function ProviderCard({ provider }: { provider: ProviderId }) {
 
   const save = () => {
     if (d.invalid) return;
+    const capabilities = { supports_tools: d.supportsTools, supports_vision: d.supportsVision };
     const body: Partial<ProviderConfig> & { api_key_write?: string } = d.isLocal
-      ? { default_model: d.model, base_url: d.baseUrl }
+      ? { default_model: d.model, base_url: d.baseUrl, ...capabilities }
       : {
           default_model: d.model,
           daily_cost_cap_usd: d.daily,
           monthly_cost_cap_usd: d.monthly === "" ? null : d.monthly,
+          ...capabilities,
         };
     if (d.apiKey) body.api_key_write = d.apiKey; // omit when blank → serializer keeps the stored key
     upsert.mutate(
@@ -392,6 +462,11 @@ export default function ProviderCard({ provider }: { provider: ProviderId }) {
             monthlyInvalid={d.monthlyInvalid} setDraft={set}
           />
         )}
+
+        <CapabilityFields
+          provider={provider} supportsTools={d.supportsTools}
+          supportsVision={d.supportsVision} setDraft={set}
+        />
       </div>
 
       <CardFooter isLocal={d.isLocal} capRow={d.capRow} />

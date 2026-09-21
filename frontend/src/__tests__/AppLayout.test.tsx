@@ -47,6 +47,42 @@ test("TopNav renders primary route links", () => {
   expect(screen.getByRole("link", { name: /costs/i })).toHaveAttribute("href", "/costs");
 });
 
+// Every SideNav destination that used to be reachable only from the command
+// palette (or from nowhere at all). If one of these drops out of the rail the
+// page silently becomes undiscoverable again, which is what this asserts.
+const SIDENAV_DESTINATIONS: Array<[string, string]> = [
+  ["Book", "/book"],
+  ["Coverage", "/coverage"],
+  ["Regime", "/regime"],
+  ["Desk", "/desk"],
+  ["War Room", "/warroom"],
+  ["Predictions", "/predictions"],
+  ["The Mirror", "/mirror"],
+  ["Lessons", "/lessons"],
+];
+
+test("SideNav links every formerly palette-only destination", () => {
+  const router = createMemoryRouter(
+    [{ path: "/", element: <AppLayout />, children: [{ index: true, element: <div>x</div> }] }],
+    { initialEntries: ["/"] },
+  );
+  renderLayout(router);
+  for (const [label, href] of SIDENAV_DESTINATIONS) {
+    expect(screen.getByRole("link", { name: label })).toHaveAttribute("href", href);
+  }
+});
+
+test("SideNav groups the rail rather than listing 22 links flat", () => {
+  const router = createMemoryRouter(
+    [{ path: "/", element: <AppLayout />, children: [{ index: true, element: <div>x</div> }] }],
+    { initialEntries: ["/"] },
+  );
+  renderLayout(router);
+  for (const group of ["Trading", "Market", "Agents", "Review", "System"]) {
+    expect(screen.getByText(group)).toBeVisible();
+  }
+});
+
 beforeEach(() => {
   localStorage.clear();
   // Stub network deps needed by NotificationBell (now mounted in TopNav)

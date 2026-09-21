@@ -4,9 +4,11 @@ import { fetchBookHistory, fetchCurrentBook, recomputeBook } from "@/api/book";
 
 export const useCurrentBook = () =>
   useQuery({ queryKey: ["book", "current"], queryFn: fetchCurrentBook });
-/** @public — book-history query hook (parallels useCurrentBook); awaits a history view. */
-export const useBookHistory = () =>
-  useQuery({ queryKey: ["book", "history"], queryFn: fetchBookHistory });
+
+/** Newest-first trend rows for the history table. `limit` is part of the key so a
+ *  window change refetches rather than serving the previous window from cache. */
+export const useBookHistory = (limit = 30) =>
+  useQuery({ queryKey: ["book", "history", limit], queryFn: () => fetchBookHistory(limit) });
 
 /** Recompute the book X-ray on demand, then refresh the cached current/history reads. */
 export const useRecomputeBook = () => {

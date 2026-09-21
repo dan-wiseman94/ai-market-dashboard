@@ -1,6 +1,7 @@
 import { NavLink, Outlet } from "react-router-dom";
 
 const SECTIONS: Array<[string, string, string]> = [
+  ["/settings/features", "Features", "FT"],
   ["/settings", "AI Providers", "AI"],
   ["/settings/connections", "Connections", "CX"],
   ["/settings/system", "System", "SY"],

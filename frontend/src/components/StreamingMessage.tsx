@@ -3,6 +3,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { usd } from "@/utils/format";
 import ObservationReportCard, { type ObservationReport } from "@/components/ObservationReportCard";
+import { CitationText, type CitationRef } from "@/components/CitationText";
 
 type Props = {
   role: "user" | "assistant" | "system";
@@ -19,6 +20,8 @@ type Props = {
   /** Set on structured observation messages produced by the observer. */
   kind?: "structured_observation";
   report?: ObservationReport;
+  /** Citations the model attached to this message, in the order they streamed. */
+  citations?: CitationRef[];
 };
 
 /** Split the snapshot turn at the first `## ` heading: preamble (objective /
@@ -137,6 +140,7 @@ function AssistantBody({
   report,
   text,
   isStreaming,
+  citations = [],
 }: {
   status?: "done" | "streaming" | "failed";
   error?: string;
@@ -144,6 +148,7 @@ function AssistantBody({
   report?: ObservationReport;
   text: string;
   isStreaming: boolean;
+  citations?: CitationRef[];
 }) {
   if (status === "failed") {
     return (
@@ -159,22 +164,28 @@ function AssistantBody({
   }
 
   return (
-    <div className="ledger-prose">
-      <ReactMarkdown remarkPlugins={[remarkGfm]}>
-        {text || (isStreaming ? "…" : "")}
-      </ReactMarkdown>
-      {isStreaming && text && (
-        <span
-          aria-hidden
-          className="inline-block w-2 h-4 ml-0.5 align-text-bottom bg-copper-400 ledger-pulse"
-          style={{ color: "var(--copper-400)" }}
-        />
-      )}
-    </div>
+    <>
+      <div className="ledger-prose">
+        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+          {text || (isStreaming ? "…" : "")}
+        </ReactMarkdown>
+        {isStreaming && text && (
+          <span
+            aria-hidden
+            className="inline-block w-2 h-4 ml-0.5 align-text-bottom bg-copper-400 ledger-pulse"
+            style={{ color: "var(--copper-400)" }}
+          />
+        )}
+      </div>
+      <CitationText citations={citations} />
+    </>
   );
 }
 
-function Message({ role, text, status, error, cost, model, provider, bare = false, snapshotId, kind, report }: Props) {
+function Message({
+  role, text, status, error, cost, model, provider, bare = false, snapshotId, kind, report,
+  citations,
+}: Props) {
   const isUser = role === "user";
   const isStreaming = status === "streaming";
 
@@ -203,6 +214,7 @@ function Message({ role, text, status, error, cost, model, provider, bare = fals
           report={report}
           text={text}
           isStreaming={isStreaming}
+          citations={citations}
         />
       </div>
     </article>

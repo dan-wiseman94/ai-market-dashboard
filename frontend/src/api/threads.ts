@@ -1,4 +1,4 @@
-import { apiGet, apiPatch, apiPost } from "./client";
+import { apiDelete, apiGet, apiPatch, apiPost, apiPostForm } from "./client";
 import type { Schemas } from "./generated";
 import type { ObservationReport } from "./observation";
 
@@ -101,3 +101,54 @@ export const stopMessage = (threadId: number, messageId: number) =>
 
 export const renameThread = (threadId: number, title: string) =>
   apiPatch<Thread>(`/api/threads/${threadId}/`, { title });
+
+// ---------------------------------------------------------------------------
+// Files — apps.threads.UserFile, a thin proxy over the Anthropic Files API.
+// The bytes never live locally: upload streams straight through and a delete
+// removes the upstream object too. Claude-only (documents are stripped from a
+// non-Claude request, which warns via the capability_warning path).
+// ---------------------------------------------------------------------------
+
+export type UserFile = {
+  id: number;
+  anthropic_id?: string;
+  kind: string;
+  ticker: string;
+  mime: string;
+  size: number;
+  filename: string;
+};
+
+export type FileKind = Schemas["UserFileKindEnum"];
+
+/** The upload kinds the backend accepts. `satisfies` pins the list to the
+ * generated enum, so a backend rename reds type-check instead of silently
+ * offering a kind the serializer rejects. */
+export const FILE_KINDS = [
+  "filing",
+  "transcript",
+  "ohlc_csv",
+  "research",
+  "other",
+] as const satisfies readonly FileKind[];
+
+/** Error code the upload endpoint returns with HTTP 413 when the file exceeds
+ * the server's per-upload ceiling (AI_FILE_UPLOAD_MAX_BYTES, 32MB default). */
+export const FILE_TOO_LARGE_CODE = "file_too_large";
+
+// The list endpoint wraps its rows in {results: [...]}; unwrap to the rows.
+export const fetchFiles = (kind?: string) => {
+  const params = kind ? `?kind=${encodeURIComponent(kind)}` : "";
+  return apiGet<{ results?: UserFile[] } | null>(`/api/files/${params}`).then(
+    (body) => body?.results ?? [],
+  );
+};
+
+// Multipart: `file` plus the optional `kind`/`ticker` fields.
+export const uploadFile = (form: FormData) => apiPostForm<UserFile>("/api/files/", form);
+
+// Also deletes the upstream object at the provider (Anthropic Files API).
+export const deleteFile = (id: number) => apiDelete(`/api/files/${id}/`);
+
+export const attachFileToThread = (threadId: number, body: { file_id: number; prompt: string }) =>
+  apiPost<{ message_id: number }>(`/api/threads/${threadId}/attach-file/`, body);

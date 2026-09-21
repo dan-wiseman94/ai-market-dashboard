@@ -3,7 +3,14 @@ import { useParams } from "react-router-dom";
 import WatchlistTable from "@/components/WatchlistTable";
 import { SkeletonRows } from "@/components/Skeleton";
 import { TickerChanges } from "./watchlist/TickerChanges";
-import { useAddSymbol, useRemoveSymbol, useWatchlist } from "@/hooks/useWatchlist";
+import { RenameWatchlist } from "./watchlist/RenameWatchlist";
+import {
+  useAddSymbol,
+  useRemoveSymbol,
+  useReorderSymbols,
+  useWatchlist,
+} from "@/hooks/useWatchlist";
+import { useRenameWatchlist } from "@/hooks/useWatchlists";
 
 export default function WatchlistDetail() {
   const { id } = useParams<{ id: string }>();
@@ -11,6 +18,8 @@ export default function WatchlistDetail() {
   const { data: wl, isLoading } = useWatchlist(wid);
   const add = useAddSymbol(wid ?? 0);
   const remove = useRemoveSymbol(wid ?? 0);
+  const reorder = useReorderSymbols(wid ?? 0);
+  const rename = useRenameWatchlist();
   const [ticker, setTicker] = useState("");
 
   if (!wid) return <main className="p-6">Invalid watchlist</main>;
@@ -24,7 +33,13 @@ export default function WatchlistDetail() {
 
   return (
     <main className="p-6 max-w-4xl mx-auto space-y-4">
-      <h1 className="text-2xl font-semibold">{wl.name}</h1>
+      <RenameWatchlist
+        name={wl.name}
+        pending={rename.isPending}
+        onSave={(next) => rename.mutate({ id: wid, name: next })}
+      >
+        <h1 className="text-2xl font-semibold">{wl.name}</h1>
+      </RenameWatchlist>
 
       <form
         className="flex gap-2"
@@ -40,6 +55,7 @@ export default function WatchlistDetail() {
           value={ticker}
           onChange={(e) => setTicker(e.target.value.toUpperCase())}
           placeholder="Add ticker (e.g. SPY)"
+          aria-label="Add ticker"
           className="flex-1 px-3 py-1.5 rounded bg-ink-900 border border-rule"
         />
         <button className="px-3 py-1.5 rounded bg-gain-500 hover:bg-gain-400">Add</button>
@@ -47,8 +63,24 @@ export default function WatchlistDetail() {
       {add.isError && (
         <p className="text-loss-400 text-sm">{(add.error as Error).message}</p>
       )}
+      {reorder.isError && (
+        <p role="alert" className="text-loss-400 text-sm">
+          {(reorder.error as Error).message}
+        </p>
+      )}
 
-      <WatchlistTable tickers={wl.tickers} onRemove={(sid) => remove.mutate(sid)} />
+      <WatchlistTable
+        tickers={wl.tickers}
+        onRemove={(sid) => remove.mutate(sid)}
+        onReorder={(order) => reorder.mutate(order)}
+        reorderPending={reorder.isPending}
+      />
+      {wl.tickers.length > 1 && (
+        <p className="text-xs text-ink-500">
+          Order carries through to snapshots — the first symbol is what the option
+          chain and price history default to.
+        </p>
+      )}
 
       {wl.tickers.length > 0 && (
         <section>

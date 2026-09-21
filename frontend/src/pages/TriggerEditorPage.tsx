@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   createTrigger, evaluateTrigger, fetchTriggers, updateTrigger,
-  backtestTrigger, type BacktestMatch,
+  backtestTrigger, type BacktestMatch, type EventTrigger,
 } from "@/api/triggers";
 import FiringsTable from "@/components/triggers/FiringsTable";
 import { useProfiles } from "@/hooks/useProfiles";
@@ -15,9 +15,26 @@ const EMPTY: TriggerForm = {
   condition: { all: [{ metric: "price", ticker: "SPY", op: ">", value: 0 }] },
   cooldown_seconds: 1800,
   enabled: true,
+  // Matches the model default; the toggle carries the cost note.
+  investigate: true,
 };
 
 type Tab = "condition" | "firings" | "backtest";
+
+/**
+ * Seed the editor from a saved trigger. Every field the form edits must be
+ * listed here — one the form edits but the seed omits is silently reset to the
+ * EMPTY default the next time the trigger is saved.
+ */
+function formFromTrigger(t: EventTrigger): TriggerForm {
+  return {
+    name: t.name,
+    condition: t.condition,
+    cooldown_seconds: t.cooldown_seconds,
+    enabled: t.enabled,
+    investigate: t.investigate ?? true,
+  };
+}
 
 function TabButton({
   active, label, onClick,
@@ -87,12 +104,7 @@ export default function TriggerEditorPage() {
   const [seededExisting, setSeededExisting] = useState(existing);
   if (existing && existing !== seededExisting) {
     setSeededExisting(existing);
-    setForm({
-      name: existing.name,
-      condition: existing.condition,
-      cooldown_seconds: existing.cooldown_seconds,
-      enabled: existing.enabled,
-    });
+    setForm(formFromTrigger(existing));
     setProfileId(existing.profile);
   }
   if (profilesQ.data && profileId === null && profilesQ.data.length > 0) {

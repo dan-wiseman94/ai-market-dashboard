@@ -1,11 +1,12 @@
 import ModelSelect from "@/components/settings/ModelSelect";
 import { useAiModels } from "@/hooks/useAiModels";
 import { SECTION_LABELS, VIX_LABEL } from "@/lib/snapshotSections";
+import { AiCapabilities } from "./AiCapabilities";
 import { SECTION_OPTIONS } from "./types";
 import type { useProfileForm } from "./useProfileForm";
 
 export function ProfileForm({ form }: { form: ReturnType<typeof useProfileForm> }) {
-  const { editing, draft, setDraft, submit, toggleSection, reset } = form;
+  const { editing, draft, setDraft, setProvider, submit, toggleSection, reset } = form;
   const { data: aiModels } = useAiModels();
 
   return (
@@ -50,7 +51,7 @@ export function ProfileForm({ form }: { form: ReturnType<typeof useProfileForm> 
             const provider = e.target.value;
             const firstModel =
               aiModels?.models?.find((m) => m.provider === provider)?.id ?? "";
-            setDraft({ ...draft, default_provider: provider, default_model: firstModel });
+            setProvider(provider, firstModel);
           }}
           className="px-3 py-1.5 rounded bg-slate-900 border border-slate-700"
         >
@@ -66,6 +67,7 @@ export function ProfileForm({ form }: { form: ReturnType<typeof useProfileForm> 
           />
         </div>
       </div>
+      <AiCapabilities draft={draft} setDraft={setDraft} profileId={editing?.id ?? null} />
       <div className="flex gap-2">
         <button className="px-3 py-1.5 rounded bg-emerald-600 hover:bg-emerald-500">
           {editing ? "Save" : "Create"}

@@ -1,5 +1,9 @@
+import { useState } from "react";
+
 import { useLatestBriefing, useRunBriefing } from "@/hooks/useBriefing";
 import type { Briefing, BriefingData, BriefingThesis } from "@/api/briefing";
+import BriefingHistoryList from "@/components/briefing/BriefingHistoryList";
+import BriefingSettingsPanel from "@/components/briefing/BriefingSettingsPanel";
 import { SkeletonRows } from "@/components/Skeleton";
 import { EmptyState } from "@/components/EmptyState";
 
@@ -203,10 +207,46 @@ function MarketSection({ market }: { market: Record<string, unknown> }) {
   );
 }
 
+function ArchiveBanner({ briefing, onBack }: { briefing: Briefing; onBack: () => void }) {
+  return (
+    <div
+      role="status"
+      className="flex items-center justify-between gap-3 rounded border border-copper-500/40 px-3 py-2 text-sm"
+    >
+      <span className="text-ink-200">
+        Viewing the briefing from {briefing.scheduled_date ?? briefing.created_at.slice(0, 10)}.
+      </span>
+      <button
+        type="button"
+        className="rounded border border-rule px-2 py-0.5 text-xs text-ink-300 hover:text-copper-300"
+        onClick={onBack}
+      >
+        Back to latest
+      </button>
+    </div>
+  );
+}
+
+function BriefingBody({ briefing }: { briefing: Briefing }) {
+  const d = briefing.data ?? ({} as Partial<BriefingData>);
+  return (
+    <>
+      <SynthesisSection text={briefing.synthesis_text} />
+      <ThesesSection theses={d.theses ?? []} />
+      <EventsSection events={d.events ?? { earnings: [], macro: [] }} />
+      <TriggersSection triggers={d.triggers ?? []} />
+      <NewsSection news={d.news ?? []} />
+      <MarketSection market={d.market ?? {}} />
+    </>
+  );
+}
+
 export default function BriefingPage() {
-  const { data: briefing, isLoading } = useLatestBriefing();
+  const { data: latest, isLoading } = useLatestBriefing();
   const run = useRunBriefing();
+  const [selected, setSelected] = useState<Briefing | null>(null);
   const onRun = () => run.mutate();
+  const briefing = selected ?? latest ?? null;
 
   if (isLoading) {
     return (
@@ -216,9 +256,15 @@ export default function BriefingPage() {
     );
   }
 
-  if (!briefing) {
-    return (
-      <main className="max-w-4xl mx-auto p-6">
+  return (
+    <main className="max-w-4xl mx-auto p-6 space-y-8 ledger-fade-in">
+      {briefing ? (
+        <>
+          <BriefingHeader briefing={briefing} isPending={run.isPending} onRun={onRun} />
+          {selected && <ArchiveBanner briefing={selected} onBack={() => setSelected(null)} />}
+          <BriefingBody briefing={briefing} />
+        </>
+      ) : (
         <EmptyState
           title="No briefing yet"
           body="Run your first briefing to see open theses, upcoming events, and overnight activity."
@@ -230,26 +276,14 @@ export default function BriefingPage() {
             />
           }
         />
-      </main>
-    );
-  }
+      )}
 
-  const d = briefing.data ?? ({} as Partial<typeof briefing.data>);
-  const theses = d.theses ?? [];
-  const events = d.events ?? { earnings: [], macro: [] };
-  const triggers = d.triggers ?? [];
-  const news = d.news ?? [];
-  const market = d.market ?? {};
+      <section>
+        <SectionHeading title="Past briefings" />
+        <BriefingHistoryList selectedId={selected?.id ?? null} onSelect={setSelected} />
+      </section>
 
-  return (
-    <main className="max-w-4xl mx-auto p-6 space-y-8 ledger-fade-in">
-      <BriefingHeader briefing={briefing} isPending={run.isPending} onRun={onRun} />
-      <SynthesisSection text={briefing.synthesis_text} />
-      <ThesesSection theses={theses} />
-      <EventsSection events={events} />
-      <TriggersSection triggers={triggers} />
-      <NewsSection news={news} />
-      <MarketSection market={market} />
+      <BriefingSettingsPanel />
     </main>
   );
 }

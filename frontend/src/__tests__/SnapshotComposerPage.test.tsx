@@ -388,6 +388,109 @@ describe("SnapshotComposerPage", () => {
   });
 });
 
+describe("SnapshotComposerPage – OHLC capture options", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    localStorage.clear();
+    mockUseAgentPresets.mockReturnValue({ data: [] } as never);
+  });
+
+  afterEach(() => {
+    localStorage.clear();
+  });
+
+  it("defaults to the first effective ticker, 1-minute bars and 60 bars", async () => {
+    renderComposer();
+    await waitFor(() => {
+      expect((screen.getByLabelText("Ticker") as HTMLSelectElement).value).toBe("AAPL");
+    });
+    expect((screen.getByLabelText("Timeframe") as HTMLSelectElement).value).toBe("1m");
+    expect((screen.getByLabelText("Bars") as HTMLSelectElement).value).toBe("60");
+  });
+
+  it("offers only the timeframes the backend accepts", () => {
+    renderComposer();
+    const options = Array.from(
+      (screen.getByLabelText("Timeframe") as HTMLSelectElement).options,
+    ).map((o) => o.value);
+    expect(options).toEqual(["1m", "5m", "15m", "1h", "1d"]);
+  });
+
+  it("offers only bar counts inside the server's 10–400 bound", () => {
+    renderComposer();
+    const values = Array.from(
+      (screen.getByLabelText("Bars") as HTMLSelectElement).options,
+    ).map((o) => Number(o.value));
+    expect(Math.min(...values)).toBeGreaterThanOrEqual(10);
+    expect(Math.max(...values)).toBeLessThanOrEqual(400);
+  });
+
+  it("disables the bar count on intraday timeframes and explains why", async () => {
+    const user = userEvent.setup();
+    renderComposer();
+    const bars = screen.getByLabelText("Bars");
+    expect(bars).toBeDisabled();
+    expect(screen.getByText(/rolling 24-hour window/i)).toBeInTheDocument();
+
+    await user.selectOptions(screen.getByLabelText("Timeframe"), "1d");
+    expect(bars).toBeEnabled();
+    expect(screen.queryByText(/rolling 24-hour window/i)).not.toBeInTheDocument();
+  });
+
+  it("submits the chosen ticker, timeframe and bar count", async () => {
+    const user = userEvent.setup();
+    mockCreateSnap.mockResolvedValue({ id: 100, status: "ready", includes: [] });
+    mockCreateThread.mockResolvedValue({ id: 200, title: "Consult" });
+    renderComposer();
+
+    await waitFor(() => {
+      expect((screen.getByLabelText("Ticker") as HTMLSelectElement).value).toBe("AAPL");
+    });
+    await user.selectOptions(screen.getByLabelText("Ticker"), "GOOGL");
+    await user.selectOptions(screen.getByLabelText("Timeframe"), "1d");
+    await user.selectOptions(screen.getByLabelText("Bars"), "252");
+
+    await user.click(screen.getByTestId("capture-btn"));
+
+    await waitFor(() => {
+      expect(mockCreateSnap).toHaveBeenCalledWith(
+        expect.objectContaining({
+          ohlc_ticker: "GOOGL",
+          ohlc_timeframe: "1d",
+          ohlc_bars: 252,
+        }),
+      );
+    });
+  });
+
+  it("falls back to the first ticker when the chosen one leaves the set", async () => {
+    const user = userEvent.setup();
+    mockCreateSnap.mockResolvedValue({ id: 100, status: "ready", includes: [] });
+    mockCreateThread.mockResolvedValue({ id: 200, title: "Consult" });
+    renderComposer();
+
+    await waitFor(() => {
+      expect((screen.getByLabelText("Ticker") as HTMLSelectElement).value).toBe("AAPL");
+    });
+    await user.selectOptions(screen.getByLabelText("Ticker"), "GOOGL");
+
+    // Switching to a watchlist that does not hold GOOGL must not strand it.
+    const selects = screen.getAllByRole("combobox");
+    await user.selectOptions(selects[1], "11");
+
+    await waitFor(() => {
+      expect((screen.getByLabelText("Ticker") as HTMLSelectElement).value).toBe("XOM");
+    });
+
+    await user.click(screen.getByTestId("capture-btn"));
+    await waitFor(() => {
+      expect(mockCreateSnap).toHaveBeenCalledWith(
+        expect.objectContaining({ ohlc_ticker: "XOM" }),
+      );
+    });
+  });
+});
+
 const PRESET_A: AgentPreset = {
   id: 10,
   name: "Morning Scan",

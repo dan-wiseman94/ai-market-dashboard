@@ -1,31 +1,37 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiGet, apiPost, apiPostForm } from "@/api/client";
+import {
+  attachFileToThread,
+  deleteFile,
+  fetchFiles,
+  uploadFile,
+} from "@/api/threads";
 
-export interface UserFile {
-  id: number;
-  anthropic_id?: string;
-  kind: string;
-  ticker: string;
-  mime: string;
-  size: number;
-  filename: string;
-}
+export type { UserFile } from "@/api/threads";
 
 export function useFiles(kind?: string) {
   return useQuery({
     queryKey: ["files", kind ?? ""],
-    queryFn: async (): Promise<UserFile[]> => {
-      const params = kind ? `?kind=${encodeURIComponent(kind)}` : "";
-      const body = await apiGet<{ results?: UserFile[] } | null>(`/api/files/${params}`);
-      return body?.results ?? [];
-    },
+    queryFn: () => fetchFiles(kind),
   });
 }
 
 export function useUploadFile() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (form: FormData) => apiPostForm<UserFile>("/api/files/", form),
+    mutationFn: (form: FormData) => uploadFile(form),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["files"] }),
+  });
+}
+
+/**
+ * Delete a file. The backend also deletes the upstream object at the provider
+ * (Anthropic Files API) — the row and the remote file go together, so the
+ * caller must confirm before invoking this.
+ */
+export function useDeleteFile() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (fileId: number) => deleteFile(fileId),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["files"] }),
   });
 }
@@ -33,9 +39,6 @@ export function useUploadFile() {
 export function useAttachFileToThread(threadId: number) {
   return useMutation({
     mutationFn: ({ fileId, prompt }: { fileId: number; prompt: string }) =>
-      apiPost<{ message_id: number }>(`/api/threads/${threadId}/attach-file/`, {
-        file_id: fileId,
-        prompt,
-      }),
+      attachFileToThread(threadId, { file_id: fileId, prompt }),
   });
 }
