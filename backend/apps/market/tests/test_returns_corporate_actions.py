@@ -158,3 +158,69 @@ class TestDividendOptIn:
         _split("NVDA", date(2026, 2, 1), 3.0)
         _div("NVDA", date(2026, 2, 15), 3.0)
         assert forward_return_pct("NVDA", START, END) == pytest.approx(3.0)
+
+
+def _knob_queries(ctx) -> int:
+    """Queries in *ctx* that touch the SystemSettings singleton."""
+    return sum("core_systemsettings" in q["sql"] for q in ctx.captured_queries)
+
+
+class TestDividendKnobWiring:
+    """The UI switch (SystemSettings.returns_adjust_dividends) must actually reach
+    the math, and resolving it must not cost a row fetch per loop item."""
+
+    def test_system_settings_override_reaches_the_math(self, db, mk_bar) -> None:
+        from apps.core.models import SystemSettings
+
+        mk_bar("AAPL", START, 100.0)
+        mk_bar("AAPL", END, 100.0)
+        _div("AAPL", date(2026, 2, 1), 5.0)
+        assert forward_return_pct("AAPL", START, END) == pytest.approx(0.0)
+
+        cfg = SystemSettings.load()
+        cfg.returns_adjust_dividends = True
+        cfg.save(update_fields=["returns_adjust_dividends"])
+        assert forward_return_pct("AAPL", START, END) == pytest.approx(5.0)
+
+    def test_explicit_argument_beats_the_stored_knob(self, db, mk_bar) -> None:
+        from apps.core.models import SystemSettings
+
+        mk_bar("AAPL", START, 100.0)
+        mk_bar("AAPL", END, 100.0)
+        _div("AAPL", date(2026, 2, 1), 5.0)
+        cfg = SystemSettings.load()
+        cfg.returns_adjust_dividends = True
+        cfg.save(update_fields=["returns_adjust_dividends"])
+        assert forward_return_pct("AAPL", START, END, adjust_dividends=False) == pytest.approx(0.0)
+
+    def test_batch_resolves_the_knob_once_for_the_whole_batch(self, db, mk_bar) -> None:
+        """Query count is flat in the number of requests — the knob is resolved for
+        the batch, not per item (the leaderboard pins a max-query budget over this)."""
+        from django.db import connection
+        from django.test.utils import CaptureQueriesContext
+
+        from apps.core.models import SystemSettings
+        from apps.market.returns import trading_day_forward_returns
+
+        for t in ("AAPL", "MSFT", "NVDA"):
+            mk_bar(t, START, 100.0)
+            mk_bar(t, END, 100.0)
+            _div(t, date(2026, 2, 1), 5.0)
+
+        SystemSettings.load()  # created up front so only the read is measured
+
+        with CaptureQueriesContext(connection) as ctx:
+            trading_day_forward_returns([("AAPL", START), ("MSFT", START), ("NVDA", START)], 24)
+        assert _knob_queries(ctx) == 1
+
+    def test_dividend_free_window_never_reads_the_knob(self, db, mk_bar) -> None:
+        from django.db import connection
+        from django.test.utils import CaptureQueriesContext
+
+        mk_bar("AAPL", START, 100.0)
+        mk_bar("AAPL", END, 120.0)
+        with CaptureQueriesContext(connection) as ctx:
+            forward_return_pct("AAPL", START, END)
+        # No dividend in the window: the knob cannot change the answer, so it is
+        # never fetched.
+        assert _knob_queries(ctx) == 0
