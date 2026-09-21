@@ -33,11 +33,21 @@ TV_NEWS_BASE = "https://www.tradingview.com"
 # App spelling -> TradingView symbol. None = no TradingView equivalent (breadth internals).
 INDEX_SYMBOLS: dict[str, str | None] = {
     "$VIX": "TVC:VIX",
+    "$VVIX": "TVC:VVIX",
+    "$SKEW": "CBOE:SKEW",
+    "$DXY": "TVC:DXY",
     "$SPX": "SP:SPX",
     "$NDX": "NASDAQ:NDX",
     "$DJI": "DJ:DJI",
     "$RUT": "TVC:RUT",
-    "$TNX": "TVC:TNX",
+    # Treasury tenors ride the TVC:US##Y family, which publishes in PERCENT.
+    # _QUOTE_SCALE below restores the app's x10 convention at this boundary.
+    # $US2Y has no Schwab/CBOE index — it is TradingView-only (see yields.py).
+    "$IRX": "TVC:US03MY",
+    "$FVX": "TVC:US05Y",
+    "$TNX": "TVC:US10Y",
+    "$TYX": "TVC:US30Y",
+    "$US2Y": "TVC:US02Y",
     "$COMPX": "NASDAQ:IXIC",
     "$OEX": "SP:OEX",
     "$ADVN": None,
@@ -59,7 +69,21 @@ FUTURE_SYMBOLS: dict[str, str] = {
     "/NG": "NYMEX:NG1!",
     "/HG": "COMEX:HG1!",
     "/VX": "CFE:VX1!",
+    "/VX2": "CFE:VX2!",
+    "/ZQ": "CBOT:ZQ1!",
     "/6E": "CME:6E1!",
+}
+# TradingView symbol -> multiplier that restores the APP's unit for that ticker.
+# The app's $-prefixed Treasury-yield tickers follow the Schwab/CBOE convention
+# (yield x 10: $TNX 47.1 == 4.71%); TVC:US##Y publishes percent. Normalizing here
+# rather than in yields.py keeps one unit across every consumer of $TNX — the
+# macro render, the breadth MACRO row, and a plain watchlist quote.
+_QUOTE_SCALE: dict[str, float] = {
+    "TVC:US03MY": 10.0,
+    "TVC:US02Y": 10.0,
+    "TVC:US05Y": 10.0,
+    "TVC:US10Y": 10.0,
+    "TVC:US30Y": 10.0,
 }
 _US_EXCHANGES = ("NASDAQ", "NYSE", "AMEX", "CBOE", "ARCA", "BATS")
 _INTERVALS = {"1m": "1", "5m": "5", "15m": "15", "1h": "60", "1d": "1D"}
@@ -107,6 +131,11 @@ def _float(value: Any) -> float | None:
         return float(value)
     except (TypeError, ValueError):
         return None
+
+
+def _scaled(value: Any, scale: float) -> float | None:
+    v = _float(value)
+    return v if v is None or scale == 1.0 else round(v * scale, 6)
 
 
 def _int(value: Any) -> int | None:

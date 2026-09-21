@@ -459,3 +459,53 @@ def test_calendar_failures_return_empty():
     ):
         assert tv.fetch_earnings(["NVDA"]) == []
         assert tv.fetch_economic_calendar() == []
+
+
+@pytest.mark.parametrize(
+    ("ticker", "expected"),
+    [
+        ("$VVIX", "TVC:VVIX"),
+        ("$DXY", "TVC:DXY"),
+        ("$SKEW", "CBOE:SKEW"),
+        ("$IRX", "TVC:US03MY"),
+        ("$FVX", "TVC:US05Y"),
+        ("$TNX", "TVC:US10Y"),
+        ("$TYX", "TVC:US30Y"),
+        ("$US2Y", "TVC:US02Y"),
+        ("/ZQ", "CBOT:ZQ1!"),
+        ("/VX2", "CFE:VX2!"),
+    ],
+)
+def test_macro_desk_symbol_rows(ticker, expected):
+    assert tv.to_tv_symbol(ticker) == expected
+
+
+@pytest.mark.django_db
+def test_yield_quotes_are_scaled_to_the_app_times_ten_convention():
+    """TradingView publishes US##Y in percent; the app's $-yield tickers are x10.
+
+    Scaling here (not in yields.py) is what keeps $TNX the same unit for the
+    breadth MACRO row and a watchlist quote, not just for live_yields.
+    """
+    batch = {
+        "data": [
+            {"symbol": "TVC:US10Y", "close": 4.71, "high": 4.75, "low": 4.68, "change": 0.4},
+            {"symbol": "NASDAQ:AAPL", "close": 190.0, "high": 191.0, "low": 189.0, "change": 0.5},
+        ]
+    }
+    with _tools(
+        {
+            "get_symbol_data_batch": batch,
+            "search_symbols": {
+                "symbols": [{"symbol": "NASDAQ:AAPL", "ticker": "AAPL", "exchange": "NASDAQ"}]
+            },
+        }
+    ):
+        out = tv.fetch_quotes(["$TNX", "AAPL"])
+    assert out["$TNX"]["last"] == 47.1
+    assert out["$TNX"]["high"] == 47.5
+    assert out["$TNX"]["low"] == 46.8
+    # pct_change is a ratio, never scaled.
+    assert out["$TNX"]["pct_change"] == 0.4
+    # An unscaled symbol passes through untouched.
+    assert out["AAPL"]["last"] == 190.0
