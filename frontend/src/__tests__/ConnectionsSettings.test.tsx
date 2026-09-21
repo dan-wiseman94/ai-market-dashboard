@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import ConnectionsSettings from "@/pages/settings/ConnectionsSettings";
 import { fetchSchwabAuthorizeUrl, updateSchwabAppConfig } from "@/api/schwab";
-import { renderWithProviders, LocationProbe } from "./testUtils";
+import { renderWithProviders, LocationProbe, mockApi } from "./testUtils";
 
 const mockUseSchwabStatus = vi.fn();
 const mockUseSchwabAppConfig = vi.fn();
@@ -39,6 +39,9 @@ beforeEach(() => {
   mockUseSchwabAppConfig.mockReturnValue({
     data: { client_id: "", client_secret_present: false, configured: true },
   });
+  // The page now embeds the IntegrationsPanel, which probes the MCP endpoint for
+  // its token boolean. Answer it so no test hits the real network.
+  mockApi({ "POST /api/mcp/": { jsonrpc: "2.0", id: 1, result: { tools: [] } } });
 });
 
 describe("ConnectionsSettings", () => {
@@ -123,6 +126,13 @@ describe("ConnectionsSettings", () => {
     renderPage();
     await userEvent.click(screen.getByRole("button", { name: /connect schwab/i }));
     expect(await screen.findByText(/schwab is not configured/i)).toBeInTheDocument();
+  });
+
+  it("surfaces the MCP server as an Integrations card", async () => {
+    mockUseSchwabStatus.mockReturnValue({ data: { connected: false }, isLoading: false });
+    renderPage();
+    expect(await screen.findByText(/MCP server/i)).toBeInTheDocument();
+    expect(screen.getByTestId("mcp-card")).toBeInTheDocument();
   });
 
   it("toasts and strips the query when returning from TradingView consent", async () => {

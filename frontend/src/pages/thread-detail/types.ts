@@ -1,4 +1,5 @@
 /** Shared types for the ThreadDetailPage subtree. */
+import type { CitationRef } from "@/components/CitationText";
 import type { ObservationReport } from "@/components/ObservationReportCard";
 import type { ThreadWsMsg } from "@/realtime/threadEvents";
 
@@ -17,6 +18,10 @@ export type LiveMessage = {
   // Present on structured observation messages (observer fires with structured=True).
   kind?: "structured_observation";
   report?: ObservationReport;
+  // Citations the model attached while streaming. Accumulated from the WS
+  // `citation` frames — the persisted Message row does not carry them, so a
+  // reseed preserves whatever the live stream collected.
+  citations?: CitationRef[];
 };
 
 // WebSocket messages on the thread channel: the normalized closed event union

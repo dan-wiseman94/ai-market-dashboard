@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   listSchedules, createSchedule, patchSchedule,
-  deleteSchedule, runScheduleNow, CreateScheduleBody,
+  deleteSchedule, runScheduleNow, CreateScheduleBody, UpdateScheduleBody,
 } from "@/api/observer";
 
 export function useSchedules() {
@@ -21,6 +21,20 @@ export function useToggleSchedule() {
   return useMutation({
     mutationFn: ({ id, enabled }: { id: number; enabled: boolean }) =>
       patchSchedule(id, { enabled }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["schedules"] }),
+  });
+}
+
+/**
+ * Full-schedule edit. `market_hours_only`, `mode`, `structured`, `use_batch`,
+ * `consensus`, `fire_mode` and `close_offset_minutes` are all writable after
+ * create — the ViewSet's `perform_update` re-syncs the PeriodicTask.
+ */
+export function useUpdateSchedule() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: number; body: UpdateScheduleBody }) =>
+      patchSchedule(id, body),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["schedules"] }),
   });
 }

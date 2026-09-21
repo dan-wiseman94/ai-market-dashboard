@@ -1,3 +1,5 @@
+import BookHistoryTable from "@/components/book/BookHistoryTable";
+import BookNarrativePanel from "@/components/book/BookNarrativePanel";
 import { ConveneWarRoomButton } from "@/components/ConveneWarRoomButton";
 import { EmptyState } from "@/components/EmptyState";
 import { Skeleton } from "@/components/Skeleton";
@@ -41,7 +43,7 @@ export default function BookPage() {
           <ConveneWarRoomButton subject={{ book_snapshot_id: book.id }} />
         </div>
       </div>
-      {book.narrative && <p className="mt-2 text-ink/80">{book.narrative}</p>}
+      <BookNarrativePanel narrative={book.narrative} />
 
       <h2 className="mt-6 text-lg font-medium">Concentration</h2>
       <p className="mt-1 text-sm text-ink/70">
@@ -111,6 +113,8 @@ export default function BookPage() {
           </li>
         ))}
       </ul>
+
+      <BookHistoryTable />
     </div>
   );
 }

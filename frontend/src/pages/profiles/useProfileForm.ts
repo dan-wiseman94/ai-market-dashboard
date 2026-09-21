@@ -22,8 +22,30 @@ export function useProfileForm() {
       default_includes: p.default_includes,
       default_provider: p.default_provider,
       default_model: p.default_model,
+      enable_tools: p.enable_tools,
+      enable_thinking: p.enable_thinking,
+      thinking_budget: p.thinking_budget,
+      effort: p.effort,
+      enable_memory: p.enable_memory,
+      enable_coach: p.enable_coach,
+      active: p.active,
     });
   };
+
+  /**
+   * Switch provider, re-seeding the model and dropping the Claude-only flags.
+   * Extended thinking and memory are honored by Claude alone
+   * (apps/ai/capabilities.py); leaving them on for OpenAI/local writes a
+   * capability-warning message into every single run instead of doing nothing.
+   */
+  const setProvider = (provider: string, model: string) =>
+    setDraft((d) => ({
+      ...d,
+      default_provider: provider,
+      default_model: model,
+      enable_thinking: provider === "claude" ? d.enable_thinking : false,
+      enable_memory: provider === "claude" ? d.enable_memory : false,
+    }));
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,5 +59,5 @@ export function useProfileForm() {
   const toggleSection = (sec: string) =>
     setDraft((d) => ({ ...d, default_includes: toggleInArray(d.default_includes, sec) }));
 
-  return { editing, draft, setDraft, submit, toggleSection, startEdit, reset };
+  return { editing, draft, setDraft, setProvider, submit, toggleSection, startEdit, reset };
 }

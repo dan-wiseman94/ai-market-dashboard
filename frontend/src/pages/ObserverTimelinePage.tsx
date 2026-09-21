@@ -1,10 +1,12 @@
 import { useState } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { apiGet } from "@/api/client";
 import ObservationReportCard, { type ObservationReport } from "@/components/ObservationReportCard";
 import { SkeletonRows } from "@/components/Skeleton";
 import { EmptyState } from "@/components/EmptyState";
+import { useProfiles } from "@/hooks/useProfiles";
+import type { TradingProfile } from "@/api/profiles";
 
 interface Message {
   id: number;
@@ -69,8 +71,41 @@ function TimelineRow({
   );
 }
 
+/**
+ * Every profile has its own observer thread, so the timeline needs a way to
+ * move between them — without this the only reachable timeline is whichever
+ * profile something happened to link to.
+ */
+function ProfileSwitcher({
+  profiles, profileId, onChange,
+}: {
+  profiles: TradingProfile[] | undefined;
+  profileId: string | undefined;
+  onChange: (id: number) => void;
+}) {
+  const rows = profiles ?? [];
+  if (rows.length === 0) return null;
+  return (
+    <label className="flex items-center gap-2 text-xs text-ink-500" htmlFor="observer-profile">
+      Profile
+      <select
+        id="observer-profile"
+        value={profileId ?? ""}
+        onChange={(e) => onChange(parseInt(e.target.value, 10))}
+        className="px-2 py-1 rounded bg-ink-850 border border-rule text-ink-100"
+      >
+        {rows.map((p) => (
+          <option key={p.id} value={String(p.id)}>{p.name}</option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
 export default function ObserverTimelinePage() {
   const { profileId } = useParams<{ profileId: string }>();
+  const navigate = useNavigate();
+  const { data: profiles } = useProfiles();
   const { data: thread, isLoading } = useQuery({
     queryKey: ["observer-thread", profileId],
     queryFn: () => apiGet<ObserverThread>(`/api/observer/threads/${profileId}/`),
@@ -88,9 +123,18 @@ export default function ObserverTimelinePage() {
       </main>
     );
   }
+  const switcher = (
+    <ProfileSwitcher
+      profiles={profiles}
+      profileId={profileId}
+      onChange={(id) => navigate(`/threads/observer/${id}`)}
+    />
+  );
+
   if (!thread) {
     return (
-      <main className="p-6 max-w-3xl mx-auto">
+      <main className="p-6 max-w-3xl mx-auto space-y-3">
+        {switcher}
         <EmptyState title="No thread" body="The observer thread hasn't been created yet." />
       </main>
     );
@@ -102,7 +146,10 @@ export default function ObserverTimelinePage() {
 
   return (
     <main className="p-6 max-w-3xl mx-auto space-y-3">
-      <h1 className="text-2xl font-semibold">{thread.title}</h1>
+      <div className="flex items-center justify-between gap-3">
+        <h1 className="text-2xl font-semibold">{thread.title}</h1>
+        {switcher}
+      </div>
 
       {sorted.length === 0 && (
         <EmptyState title="No observer activity yet" body="Fires will land here once the schedule runs." />

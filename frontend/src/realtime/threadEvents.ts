@@ -41,6 +41,14 @@ export type ThreadWsMsg =
   | ThreadEvent<"error", { error: string }>
   | ThreadEvent<"cost_capped", { error: string }>
   | ThreadEvent<"warning", { text: string }>
+  // Emitted between the text deltas it annotates, so it can be anchored against
+  // the text already streamed. `source` is a url, a `news://<feed-id>` pseudo-URI
+  // (NOT a NewsItem pk — nothing resolves it), or "" for a document citation;
+  // `location` names the Anthropic variant that decides which fields are set.
+  | ThreadEvent<
+      "citation",
+      { location: string; source: string; title: string; cited_text: string }
+    >
   | ThreadEvent<"tool_call", { tool_use_id: string; name: string; input: unknown }>
   | ThreadEvent<"tool_result", { tool_use_id: string; ok: boolean; latency_ms: number }>
   | { type: "replay_gap"; event?: undefined; message_id?: undefined; seq?: number };

@@ -58,6 +58,8 @@ vi.mock("@/hooks/useSnapshot", () => ({
 vi.mock("@/hooks/useFiles", () => ({
   useFiles: () => ({ data: [] }),
   useAttachFileToThread: () => ({ mutate: vi.fn() }),
+  useUploadFile: () => ({ mutate: vi.fn(), isPending: false }),
+  useDeleteFile: () => ({ mutate: vi.fn() }),
 }));
 
 vi.mock("@/hooks/useAiModels", () => ({

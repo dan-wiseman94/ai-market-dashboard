@@ -26,6 +26,8 @@ function makeRouter(entry = "/") {
       { index: true, element: <div data-testid="dashboard">d</div> },
       { path: "triggers", element: <div data-testid="triggers">t</div> },
       { path: "costs", element: <div data-testid="costs">c</div> },
+      { path: "predictions", element: <div data-testid="predictions">p</div> },
+      { path: "settings/features", element: <div data-testid="features">f</div> },
       { path: "snapshot", element: <div data-testid="snapshot"><input /></div> },
       { path: "combobox", element: (
         <div data-testid="combobox">
@@ -59,6 +61,20 @@ test("g c navigates to /costs", async () => {
   renderLayoutRouter(makeRouter("/"));
   await user.keyboard("gc");
   expect(await screen.findByTestId("costs")).toBeInTheDocument();
+});
+
+test("g p navigates to /predictions", async () => {
+  const user = userEvent.setup();
+  renderLayoutRouter(makeRouter("/"));
+  await user.keyboard("gp");
+  expect(await screen.findByTestId("predictions")).toBeInTheDocument();
+});
+
+test("g f navigates to the nested /settings/features route", async () => {
+  const user = userEvent.setup();
+  renderLayoutRouter(makeRouter("/"));
+  await user.keyboard("gf");
+  expect(await screen.findByTestId("features")).toBeInTheDocument();
 });
 
 test("shortcut ignored while typing in an input", async () => {

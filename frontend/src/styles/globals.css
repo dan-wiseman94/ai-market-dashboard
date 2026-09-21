@@ -18,7 +18,8 @@
   :root {
     color-scheme: dark;
 
-    /* Ink — backgrounds & surface hierarchy */
+    /* Ink — 600 and below are surfaces; 500 and above carry text and each
+       clears 4.5:1 on every surface below them. */
     --ink-void: #07080b;
     --ink-950:  #0b0d12;
     --ink-900:  #10131a;
@@ -26,8 +27,8 @@
     --ink-800:  #171a23;
     --ink-700:  #222632;
     --ink-600:  #2f3341;
-    --ink-500:  #3a3e4c;
-    --ink-400:  #6b7081;
+    --ink-500:  #7d849c;
+    --ink-400:  #9195a4;
     --ink-300:  #9ea3b3;
     --ink-200:  #c7ccd9;
     --ink-100:  #e8eaf2;
@@ -84,8 +85,8 @@
     --ink-800:  #eae4d8;  /* chips / pill bg */
     --ink-700:  #d6cfbf;
     --ink-600:  #bfb7a3;
-    --ink-500:  #a39a85;
-    --ink-400:  #857d6b;  /* muted / placeholder */
+    --ink-500:  #6c6452;  /* tertiary text */
+    --ink-400:  #625c4f;  /* muted / placeholder */
     --ink-300:  #5c5648;  /* secondary text */
     --ink-200:  #2e2a22;  /* prose body */
     --ink-100:  #1c1812;  /* body text */

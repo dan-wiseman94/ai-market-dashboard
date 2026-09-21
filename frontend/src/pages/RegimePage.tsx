@@ -55,12 +55,28 @@ export default function RegimePage() {
 
       <h2 className="mt-6 text-lg font-medium">Axes</h2>
       <dl className="mt-2 grid grid-cols-2 gap-2 md:grid-cols-5">
-        {Object.entries(current.axes).map(([axis, label]) => (
-          <div key={axis} className="rounded border border-rule p-3">
-            <dt className="text-xs uppercase tracking-wide text-ink/60">{axis}</dt>
-            <dd className="mt-1 font-medium">{label}</dd>
-          </div>
-        ))}
+        {Object.entries(current.axes).map(([axis, label]) => {
+          // `changed_axes` is what flipped versus the previous reading — the whole
+          // point of an append-only regime log. Mark it rather than dropping it.
+          const changed = current.changed_axes.includes(axis);
+          return (
+            <div
+              key={axis}
+              className={`rounded border p-3 ${changed ? "border-copper-500" : "border-rule"}`}
+            >
+              <dt className="text-xs uppercase tracking-wide text-ink/60">{axis}</dt>
+              <dd className="mt-1 font-medium">
+                {label}
+                {changed && (
+                  <span className="ml-2 font-mono text-[10px] uppercase tracking-wide text-copper-400">
+                    changed
+                    <span className="sr-only"> since the previous reading</span>
+                  </span>
+                )}
+              </dd>
+            </div>
+          );
+        })}
       </dl>
 
       <h2 className="mt-6 text-lg font-medium">Drivers</h2>

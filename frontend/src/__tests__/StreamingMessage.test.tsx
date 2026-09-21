@@ -98,3 +98,46 @@ describe("StreamingMessage", () => {
     expect(screen.queryByText("SPY holds 20-EMA on rising breadth")).not.toBeInTheDocument();
   });
 });
+
+describe("StreamingMessage — citations", () => {
+  it("renders the sources block under the markdown body", () => {
+    render(
+      <StreamingMessage
+        role="assistant"
+        text="The Fed **held** rates."
+        status="done"
+        citations={[
+          {
+            location: "web_search_result_location",
+            source: "https://example.com/fed",
+            title: "Fed holds rates steady",
+            cited_text: "The target range was left unchanged.",
+          },
+        ]}
+      />,
+    );
+    expect(screen.getByText(/The Fed/)).toBeInTheDocument();
+    expect(screen.getByTestId("citation-1")).toBeInTheDocument();
+    expect(screen.getByRole("link")).toHaveAttribute("href", "https://example.com/fed");
+  });
+
+  it("renders no sources block when the message carried no citations", () => {
+    render(<StreamingMessage role="assistant" text="No sources here." status="done" />);
+    expect(screen.queryByTestId("citations")).toBeNull();
+  });
+
+  it("does not render a sources block on a failed message", () => {
+    render(
+      <StreamingMessage
+        role="assistant"
+        text=""
+        status="failed"
+        error="boom"
+        citations={[
+          { location: "char_location", source: "", title: "doc.pdf", cited_text: "x" },
+        ]}
+      />,
+    );
+    expect(screen.queryByTestId("citations")).toBeNull();
+  });
+});

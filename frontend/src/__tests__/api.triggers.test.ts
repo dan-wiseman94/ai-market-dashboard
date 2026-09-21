@@ -22,7 +22,10 @@ describe("triggers api", () => {
 
   it("createTrigger POSTs the body", async () => {
     const cond: Condition = { metric: "price", ticker: "SPY", op: ">", value: 550 };
-    await createTrigger({ name: "r", profile: 1, condition: cond, cooldown_seconds: 1800, enabled: true });
+    await createTrigger({
+      name: "r", profile: 1, condition: cond, cooldown_seconds: 1800,
+      enabled: true, investigate: true,
+    });
     const call = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls[0];
     expect(call[1].method).toBe("POST");
     expect(JSON.parse(call[1].body).name).toBe("r");

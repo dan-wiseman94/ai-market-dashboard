@@ -14,6 +14,7 @@ import {
   type CalibrationDrilldown,
   type EvalRunSummary,
 } from "@/hooks/useAnalytics";
+import { EvalRunPanel } from "@/components/analytics/EvalRunPanel";
 import { SkeletonRows } from "@/components/Skeleton";
 import { EmptyState } from "@/components/EmptyState";
 import { horizonsFrom } from "@/lib/horizons";
@@ -409,6 +410,8 @@ export default function ScorecardPage() {
       />
 
       {evalRun && evalRun.scored > 0 && <EvalCalibration evalRun={evalRun} />}
+
+      <EvalRunPanel />
 
       {aiCal && aiCal.overall.scored > 0 && <AICalibrationSection aiCal={aiCal} />}
 

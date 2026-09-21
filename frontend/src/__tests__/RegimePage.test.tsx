@@ -26,6 +26,22 @@ describe("RegimePage", () => {
     expect(screen.getByText(/VIX 24/)).toBeInTheDocument();
   });
 
+  it("marks the axes that changed since the previous reading", async () => {
+    // `changed_axes` is served on every reading and was previously dropped by the
+    // page — the flip is the whole point of an append-only regime log.
+    vi.spyOn(client, "apiGet").mockImplementation(async (path: string) => {
+      const reading = {
+        ...READING,
+        axes: { volatility: "Elevated", trend: "Downtrend" },
+        changed_axes: ["volatility"],
+      };
+      return path.endsWith("/current/") ? reading : [reading];
+    });
+    renderWithProviders(<RegimePage />);
+    expect(await screen.findByText(/changed/i)).toBeInTheDocument();
+    expect(screen.getByText(/since the previous reading/i)).toBeInTheDocument();
+  });
+
   it("shows an empty state when there is no reading", async () => {
     vi.spyOn(client, "apiGet").mockImplementation(async (path: string) =>
       path.endsWith("/current/") ? null : [],

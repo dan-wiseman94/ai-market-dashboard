@@ -42,7 +42,10 @@ function reseed(
     const cur = prev[m.id];
     const keepLive =
       cur?.status === "streaming" && m.status === "streaming" && !resyncIds?.has(m.id);
-    seed[m.id] = keepLive ? cur : toLiveMessage(m);
+    // Citations live only on the WS stream — the persisted Message row has no
+    // field for them — so carry the accumulated list onto the server row or
+    // message_done's refetch would blank the sources block it just rendered.
+    seed[m.id] = keepLive ? cur : { ...toLiveMessage(m), citations: cur?.citations };
   }
   // A refetch snapshot can predate a just-started stream's row — don't drop
   // an in-flight bubble the server payload doesn't know about yet (unless its
@@ -61,7 +64,7 @@ function reseed(
  * traces, and the derived top-level / branch grouping.
  *
  * Subscribes to `thread.<id>` and applies the streaming event union
- * (message_started / text_delta / message_done / error|cost_capped /
+ * (message_started / text_delta / citation / message_done / error|cost_capped /
  * tool_call / tool_result) exactly as the consumer requires.
  */
 export function useLiveMessages(
@@ -143,6 +146,33 @@ export function useLiveMessages(
           id: msg.message_id, role: "assistant" as const, text: "", status: "streaming" as const,
         };
         return { ...prev, [msg.message_id]: { ...cur, text: cur.text + msg.text } };
+      });
+    } else if (msg.event === "citation") {
+      setLive((prev) => {
+        const cur = prev[msg.message_id] ?? {
+          id: msg.message_id, role: "assistant" as const, text: "", status: "streaming" as const,
+        };
+        const existing = cur.citations ?? [];
+        // The model cites the same source once per cited span, so dedupe on
+        // identity (source+title) — otherwise a single article renders as five
+        // separate numbered sources.
+        const key = `${msg.source}|${msg.title}`;
+        if (existing.some((c) => `${c.source}|${c.title}` === key)) return prev;
+        return {
+          ...prev,
+          [msg.message_id]: {
+            ...cur,
+            citations: [
+              ...existing,
+              {
+                location: msg.location,
+                source: msg.source,
+                title: msg.title,
+                cited_text: msg.cited_text,
+              },
+            ],
+          },
+        };
       });
     } else if (msg.event === "message_done") {
       setLive((prev) => ({

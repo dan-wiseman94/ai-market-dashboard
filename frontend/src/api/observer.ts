@@ -19,6 +19,7 @@ export interface ObserverSchedule {
   structured: boolean;
   use_batch: boolean;
   consensus: boolean;
+  investigate: boolean;
   last_batch_id: string;
   last_fired_at: string | null;
   cron_display: string;
@@ -43,14 +44,19 @@ export interface CreateScheduleBody {
   structured?: boolean;
   use_batch?: boolean;
   consensus?: boolean;
+  investigate?: boolean;
   fire_mode?: ObserverFireMode;
   close_offset_minutes?: number;
 }
 
+/** Every create field is editable after the fact — the ViewSet re-syncs the
+ *  PeriodicTask on update, so `cron` and `fire_mode` may be PATCHed too. */
+export type UpdateScheduleBody = Partial<CreateScheduleBody>;
+
 export const listSchedules = () => apiGet<ObserverSchedule[]>("/api/observer/schedules/");
 export const createSchedule = (body: CreateScheduleBody) =>
   apiPost<ObserverSchedule>("/api/observer/schedules/", body);
-export const patchSchedule = (id: number, body: Partial<CreateScheduleBody>) =>
+export const patchSchedule = (id: number, body: UpdateScheduleBody) =>
   apiPatch<ObserverSchedule>(`/api/observer/schedules/${id}/`, body);
 export const deleteSchedule = (id: number) =>
   apiDelete(`/api/observer/schedules/${id}/`);

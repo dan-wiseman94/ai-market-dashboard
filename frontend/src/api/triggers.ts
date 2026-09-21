@@ -39,6 +39,8 @@ export type EventTrigger = {
   condition: Condition;
   cooldown_seconds: number;
   enabled: boolean;
+  /** Bounded autonomous tool loop on every fire — costs more than one observation. */
+  investigate: boolean;
   last_fired_at: string | null;
   firings_count: number;
   source_thesis_id: number | null;
@@ -67,7 +69,10 @@ export const fetchTriggers = () =>
   apiGet<EventTrigger[]>("/api/triggers/");
 
 export const createTrigger = (
-  body: Pick<EventTrigger, "name" | "profile" | "condition" | "cooldown_seconds" | "enabled">,
+  body: Pick<
+    EventTrigger,
+    "name" | "profile" | "condition" | "cooldown_seconds" | "enabled" | "investigate"
+  >,
 ) => apiPost<EventTrigger>("/api/triggers/", body);
 
 export const updateTrigger = (id: number, body: Partial<EventTrigger>) =>
