@@ -10,10 +10,14 @@
 
 from __future__ import annotations
 
-from django.conf import settings
+from typing import TYPE_CHECKING
 
+from apps.core.runtime_config import runtime_config
 from apps.secrets.models import ProviderConfig
 from apps.threads.models import Message, Thread
+
+if TYPE_CHECKING:
+    from apps.core.runtime_config import RuntimeConfig
 
 
 class ResolutionError(RuntimeError):
@@ -46,8 +50,10 @@ def resolve_provider_and_model(
             if cfg and cfg.default_model:
                 return p, cfg.default_model
 
-    if getattr(settings, "AI_CALIBRATION_ROUTING_ENABLED", False):
-        choice = _calibration_choice()
+    # One resolve for the whole fallback tier — never one per candidate.
+    rc = runtime_config()
+    if rc.ai_calibration_routing_enabled:
+        choice = _calibration_choice(rc)
         if choice is not None:
             return choice
 
@@ -58,13 +64,16 @@ def resolve_provider_and_model(
     raise ResolutionError("No provider configured. Visit /settings to add one.")
 
 
-def _calibration_choice() -> tuple[str, str] | None:
+def _calibration_choice(rc: RuntimeConfig | None = None) -> tuple[str, str] | None:
     """Best-MEASURED (provider, model) among enabled providers, or None.
 
     Considers each enabled ProviderConfig's default_model, looks up its most
     recent EvalRun, and keeps those with >= MIN_SCORED decisive calls inside the
     recency window. Ranks by hit_rate desc, then calibration_error asc. Returns
     None when nothing qualifies, so the caller falls through to first-enabled.
+
+    ``rc`` is resolved here only when the caller has none to hand down — the
+    thresholds are read ONCE, above the candidate loop.
     """
     from datetime import timedelta
 
@@ -72,9 +81,10 @@ def _calibration_choice() -> tuple[str, str] | None:
 
     from apps.analytics.services.aieval import latest_eval_for_model
 
-    min_scored = int(getattr(settings, "AI_CALIBRATION_ROUTING_MIN_SCORED", 5))
-    max_age_days = int(getattr(settings, "AI_CALIBRATION_ROUTING_MAX_AGE_DAYS", 30))
-    cutoff = timezone.now() - timedelta(days=max_age_days)
+    if rc is None:
+        rc = runtime_config()
+    min_scored = int(rc.ai_calibration_routing_min_scored)
+    cutoff = timezone.now() - timedelta(days=int(rc.ai_calibration_routing_max_age_days))
 
     candidates: list[tuple[str, str, float, float]] = []
     # defer the encrypted key — we read only provider/default_model; decrypting would

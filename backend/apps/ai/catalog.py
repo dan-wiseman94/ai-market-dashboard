@@ -21,6 +21,25 @@ CLAUDE_FAMILY_PROVIDERS = ("claude", "anthropic")
 DEFAULT_CLAUDE_MODEL = "claude-opus-5"
 DEFAULT_OPENAI_MODEL = "gpt-5.6-sol"
 
+# How a model accepts extended thinking on the wire.
+#   THINKING_ADAPTIVE — `thinking={"type": "adaptive", "display": ...}` plus
+#     `output_config={"effort": ...}`; `budget_tokens` is rejected with a 400.
+#   THINKING_BUDGET   — `thinking={"type": "enabled", "budget_tokens": N}` (N >= 1024
+#     and strictly below max_tokens); adaptive and `effort` are both rejected.
+#   THINKING_NONE     — the provider has no extended-thinking surface.
+# Omitting `thinking` on an adaptive row does NOT disable it: those models think by
+# default, so an off switch has to send `{"type": "disabled"}` explicitly — and that
+# pairing is itself rejected above effort `high`, so the effort hint is dropped with it.
+THINKING_ADAPTIVE = "adaptive"
+THINKING_BUDGET = "budget"
+THINKING_NONE = "none"
+
+# The effort ladder, cheapest first. A model exposes a subset; `effort_levels=()`
+# means the model rejects `output_config.effort` outright.
+EFFORT_LEVELS: tuple[str, ...] = ("low", "medium", "high", "xhigh", "max")
+# The API's own default when `effort` is omitted.
+DEFAULT_EFFORT = "high"
+
 
 def default_model_for(provider: str) -> str:
     """The catalog fallback model for ``provider``; ``""`` for ``local`` (its models
@@ -43,6 +62,13 @@ class ModelInfo:
     context_window: int
     supports_vision: bool
     max_payload_tokens: int = 40_000
+    # Extended-thinking wire shape and the effort levels this row accepts. The
+    # Claude provider branches on these; sending the wrong shape is a 400.
+    thinking: str = THINKING_ADAPTIVE
+    effort_levels: tuple[str, ...] = EFFORT_LEVELS
+    # False where thinking is always on and `{"type": "disabled"}` is a 400. Turning
+    # thinking off on such a row is not expressible, so the run still thinks.
+    thinking_can_disable: bool = True
 
 
 _CATALOG: list[ModelInfo] = [
@@ -56,6 +82,8 @@ _CATALOG: list[ModelInfo] = [
         context_window=1_000_000,
         supports_vision=True,
         max_payload_tokens=150_000,
+        # Thinking is always on here; {"type": "disabled"} is rejected.
+        thinking_can_disable=False,
     ),
     ModelInfo(
         provider="claude",
@@ -100,6 +128,8 @@ _CATALOG: list[ModelInfo] = [
         context_window=1_000_000,
         supports_vision=True,
         max_payload_tokens=150_000,
+        # Takes adaptive thinking; the xhigh rung is not in its effort ladder.
+        effort_levels=("low", "medium", "high", "max"),
     ),
     ModelInfo(
         provider="claude",
@@ -111,6 +141,8 @@ _CATALOG: list[ModelInfo] = [
         context_window=200_000,
         supports_vision=True,
         max_payload_tokens=150_000,
+        thinking=THINKING_BUDGET,
+        effort_levels=(),
     ),
     ModelInfo(
         provider="openai",
@@ -122,6 +154,8 @@ _CATALOG: list[ModelInfo] = [
         context_window=1_050_000,
         supports_vision=True,
         max_payload_tokens=300_000,
+        thinking=THINKING_NONE,
+        effort_levels=(),
     ),
     ModelInfo(
         provider="openai",
@@ -133,6 +167,8 @@ _CATALOG: list[ModelInfo] = [
         context_window=1_050_000,
         supports_vision=True,
         max_payload_tokens=300_000,
+        thinking=THINKING_NONE,
+        effort_levels=(),
     ),
     ModelInfo(
         provider="openai",
@@ -144,6 +180,8 @@ _CATALOG: list[ModelInfo] = [
         context_window=400_000,
         supports_vision=True,
         max_payload_tokens=300_000,
+        thinking=THINKING_NONE,
+        effort_levels=(),
     ),
     ModelInfo(
         provider="openai",
@@ -155,6 +193,8 @@ _CATALOG: list[ModelInfo] = [
         context_window=400_000,
         supports_vision=True,
         max_payload_tokens=200_000,
+        thinking=THINKING_NONE,
+        effort_levels=(),
     ),
     ModelInfo(
         provider="openai",
@@ -166,6 +206,8 @@ _CATALOG: list[ModelInfo] = [
         context_window=400_000,
         supports_vision=False,
         max_payload_tokens=200_000,
+        thinking=THINKING_NONE,
+        effort_levels=(),
     ),
 ]
 
@@ -181,6 +223,40 @@ def get_model(provider: str, model_id: str) -> ModelInfo | None:
         if m.provider == provider and m.id == model_id:
             return m
     return None
+
+
+def thinking_style(provider: str, model_id: str) -> str:
+    """The extended-thinking wire shape ``model_id`` accepts.
+
+    An id the catalog doesn't carry resolves to ``THINKING_ADAPTIVE``: the adaptive
+    shape is what every current Claude row takes, so it is the safe read for an id
+    added upstream before the catalog caught up. Add the row here to override.
+    """
+    info = get_model(provider, model_id)
+    return info.thinking if info else THINKING_ADAPTIVE
+
+
+def resolve_effort(provider: str, model_id: str, effort: str) -> str:
+    """Clamp ``effort`` to a level ``model_id`` accepts; ``""`` to omit the param.
+
+    A level the model doesn't expose steps DOWN the ladder (``xhigh`` on a row that
+    stops at ``high``) — stepping up would spend more than the caller asked for.
+    An unrecognized string falls back to the API's own default.
+    """
+    if not effort:
+        return ""
+    info = get_model(provider, model_id)
+    levels = info.effort_levels if info else EFFORT_LEVELS
+    if not levels:
+        return ""
+    if effort in levels:
+        return effort
+    if effort not in EFFORT_LEVELS:
+        return DEFAULT_EFFORT if DEFAULT_EFFORT in levels else levels[-1]
+    for candidate in reversed(EFFORT_LEVELS[: EFFORT_LEVELS.index(effort)]):
+        if candidate in levels:
+            return candidate
+    return levels[0]
 
 
 def ceiling_for_provider(provider: str) -> ModelInfo | None:

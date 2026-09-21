@@ -30,7 +30,12 @@ from apps.ai.types import TokenUsage
 from apps.core.realtime import group_broadcast, group_broadcast_async
 from apps.secrets.models import ProviderConfig
 from apps.threads._persist import _persist_tool_calls
-from apps.threads._request import _build_request, _extract_text
+from apps.threads._request import (
+    _build_request,
+    _extract_text,
+    claude_only_content_kinds,
+    run_carries_images,
+)
 from apps.threads._stream import _build_stream_runner
 from apps.threads.models import AIRun, Message, Thread
 from apps.threads.stop import clear_stop, is_stop_requested
@@ -70,9 +75,9 @@ def _apply_investigation_mode(req, *, provider_name: str, cfg) -> None:
     """Turn a normal RunRequest into a bounded autonomous investigation: force the
     toolset on (when the provider can run tools), cap the tool rounds, and append
     the investigation directive to the system prompt. Mutates ``req`` in place."""
-    from django.conf import settings
+    from apps.core.runtime_config import runtime_config
 
-    req.max_tool_iterations = int(getattr(settings, "AI_INVESTIGATION_MAX_ITERATIONS", 8))
+    req.max_tool_iterations = int(runtime_config().ai_investigation_max_iterations)
     if provider_name == "claude" or getattr(cfg, "supports_tools", False):
         from apps.ai.tools.registry import request_toolset
 
@@ -120,9 +125,12 @@ def _emit_capability_warning(*, thread_id: int, features: list[str], provider_na
     provider can't honor enabled profile features. Deduped against the thread's
     most recent system message. Returns True if a message was written."""
     feature_list = ", ".join(features)
+    # Lead with the notice framing: the UI renders a system message in an assistant
+    # bubble, so the text itself has to say it is not the model speaking.
     text = (
-        f"Heads up: provider '{provider_name}' does not support "
-        f"{feature_list}. Those settings were ignored for this run."
+        "System notice (not part of the assistant's reply) — "
+        f"provider '{provider_name}' does not support {feature_list}. "
+        "Those were dropped from this run."
     )
     last_system = (
         Message.objects.filter(thread_id=thread_id, role="system").order_by("-created_at").first()
@@ -242,9 +250,9 @@ def _resolve_run_config(
             # background investigations can't drain the interactive budget.
             from decimal import Decimal as _D
 
-            from django.conf import settings as _s
+            from apps.core.runtime_config import runtime_config
 
-            auto_cap = float(getattr(_s, "AI_AUTONOMOUS_DAILY_CAP_USD", 0.0) or 0.0)
+            auto_cap = float(runtime_config().ai_autonomous_daily_cap_usd or 0.0)
             if auto_cap > 0:
                 check_daily_cap(provider_name, cap_usd=_D(str(auto_cap)))
     except CostCapExceededError as exc:
@@ -263,9 +271,11 @@ def _failover_target(primary_name: str) -> tuple[str, str, ProviderConfig] | Non
     """The secondary (provider, model, cfg) to retry on when the primary errors
     BEFORE emitting any token — or None when failover is unavailable.
 
-    Opt-in via the failover settings (default off; UI-tunable via SystemSettings). The
-    configured secondary must differ from the primary, have an enabled ProviderConfig with
-    a default_model, and be within its own cost caps.
+    Toggled by the failover settings (UI-tunable via SystemSettings). A configured
+    secondary must differ from the primary, have an enabled ProviderConfig with a
+    default_model, and be within its own cost caps. With no secondary configured the
+    first other usable provider is picked automatically — the toggle alone is enough
+    to make failover work.
     """
     from apps.core.runtime_config import runtime_config
 
@@ -273,21 +283,53 @@ def _failover_target(primary_name: str) -> tuple[str, str, ProviderConfig] | Non
     if not rc.ai_failover_enabled:
         return None
     name = (rc.ai_failover_provider or "").strip()
-    if not name or name == primary_name:
+    if not name:
+        return _auto_failover_target(primary_name)
+    if name == primary_name:
         return None
     try:
         cfg = ProviderConfig.objects.get(provider=name)
     except (ProviderConfig.DoesNotExist, InvalidToken):
         # No row, or a key that can't be decrypted → failover is simply unavailable.
         return None
+    return _usable_secondary(cfg)
+
+
+def _auto_failover_target(primary_name: str) -> tuple[str, str, ProviderConfig] | None:
+    """The first enabled provider other than the primary that can actually run.
+
+    ``.defer("_api_key")`` is load-bearing: materializing a row decrypts the key
+    eagerly, so one undecryptable credential (a key/salt rotation) would raise for
+    the whole loop instead of skipping that provider. Deferring pushes the decrypt
+    into the per-row read below, where it is caught.
+    """
+    qs = ProviderConfig.objects.filter(enabled=True).exclude(provider=primary_name)
+    for cfg in qs.order_by("id").defer("_api_key"):
+        try:
+            target = _usable_secondary(cfg)
+        except InvalidToken:
+            log.warning("ai failover: %s key could not be decrypted; skipping", cfg.provider)
+            continue
+        if target is not None:
+            return target
+    return None
+
+
+def _usable_secondary(cfg: ProviderConfig) -> tuple[str, str, ProviderConfig] | None:
+    """``(provider, model, cfg)`` when ``cfg`` is enabled, credentialed, has a model
+    and is inside its caps; otherwise None. Reads the encrypted key, so callers that
+    iterate must be ready for ``InvalidToken``."""
     if not cfg.enabled or not cfg.default_model:
         return None
+    # A local endpoint is addressed by base_url and needs no key; the others do.
+    if not (cfg.base_url if cfg.provider == "local" else cfg.api_key):
+        return None
     try:
-        check_daily_cap(name, cap_usd=cfg.daily_cost_cap_usd)
-        check_monthly_cap(name, cap_usd=cfg.monthly_cost_cap_usd)
+        check_daily_cap(cfg.provider, cap_usd=cfg.daily_cost_cap_usd)
+        check_monthly_cap(cfg.provider, cap_usd=cfg.monthly_cost_cap_usd)
     except CostCapExceededError:
         return None
-    return name, cfg.default_model, cfg
+    return cfg.provider, cfg.default_model, cfg
 
 
 def _make_should_stop(assistant_id: int) -> Callable[[], bool]:
@@ -410,7 +452,17 @@ def _run_ai_on_message(
         return resolved
     provider_name, model_id, cfg = resolved
 
-    gaps = unsupported_features(provider_name, thread.profile, supports_tools=cfg.supports_tools)
+    gaps = unsupported_features(
+        provider_name,
+        thread.profile,
+        supports_tools=cfg.supports_tools,
+        supports_vision=cfg.supports_vision,
+        # Only pay for the lookup when the answer can change the outcome.
+        carries_images=(not cfg.supports_vision) and run_carries_images(thread, user_msg),
+        content_kinds=claude_only_content_kinds(thread, user_msg)
+        if provider_name != "claude"
+        else (),
+    )
     if gaps:
         # Best-effort: a warning failure (DB/broadcast error) must never abort a valid run.
         with contextlib.suppress(Exception):
@@ -419,7 +471,11 @@ def _run_ai_on_message(
             )
 
     req = _build_request(
-        thread, user_msg, provider_name=provider_name, supports_tools=cfg.supports_tools
+        thread,
+        user_msg,
+        provider_name=provider_name,
+        supports_tools=cfg.supports_tools,
+        supports_vision=cfg.supports_vision,
     )
     req.model = model_id
     if investigate:
@@ -493,7 +549,11 @@ def _run_ai_on_message(
             err_container.clear()
             tool_events.clear()
             sec_req = _build_request(
-                thread, user_msg, provider_name=sec_name, supports_tools=sec_cfg.supports_tools
+                thread,
+                user_msg,
+                provider_name=sec_name,
+                supports_tools=sec_cfg.supports_tools,
+                supports_vision=sec_cfg.supports_vision,
             )
             sec_req.model = sec_model
             _run_attempt(sec_name, sec_cfg, sec_req)
