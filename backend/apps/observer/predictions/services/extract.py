@@ -4,11 +4,13 @@ Zero added AI cost — this reads the ``ObservationReport`` the observer already
 produced. Best-effort and side-effect-isolated: the observer wraps the call so a
 failure here never breaks a fire.
 
-Dedup rule: at most one ``open`` prediction per ``(ticker, horizon_days, profile)``.
-A same-direction re-fire is a **no-op** (the open call stands, frozen as-stated so
-calibration scores the call as it was made). A direction **flip** resolves the
-prior open call early as ``invalidated`` ("the AI changed its mind") and creates a
-fresh one.
+Dedup rule: at most one ``open`` prediction per target, where a target is
+``(ticker, horizon_days, profile, provider, model)``. Provider and model are part of
+the key so two providers watching one profile each keep their own call — that is what
+makes a cross-provider A/B measurable. A same-direction re-fire on the same target is
+a **no-op** (the open call stands, frozen as-stated so calibration scores the call as
+it was made). A direction **flip** on that target resolves its prior open call early
+as ``invalidated`` ("the AI changed its mind") and creates a fresh one.
 """
 
 from __future__ import annotations
@@ -102,6 +104,7 @@ def extract_from_observation(
     provider: str,
     model: str,
     profile=None,
+    flag_contradictions: bool = True,
 ) -> AIPrediction | None:
     """Create/update an ``AIPrediction`` from a structured ``ObservationReport``.
 
@@ -129,7 +132,12 @@ def extract_from_observation(
     inv_price = _invalidation_price_from_levels(report, direction, last_price(snapshot, ticker))
 
     existing = AIPrediction.objects.filter(
-        ticker=ticker, horizon_days=horizon, profile=profile, status="open"
+        ticker=ticker,
+        horizon_days=horizon,
+        profile=profile,
+        provider=provider,
+        model=model,
+        status="open",
     ).first()
     if existing is not None:
         if existing.direction == direction:
@@ -159,21 +167,30 @@ def extract_from_observation(
                 resolve_at=_resolve_at(ticker, predicted_at, horizon),
             )
     except IntegrityError:
-        # A concurrent fire opened a prediction for this (ticker, horizon, profile)
-        # between our .first() check above and this create — the partial unique
-        # constraint (status="open") rejected ours. We are the race-loser: treat it
-        # as the same-direction no-op and let the already-open call stand, frozen as
-        # stated so calibration scores it honestly.
+        # A concurrent fire opened a prediction for this target between our .first()
+        # check above and this create — the partial unique constraint (status="open")
+        # rejected ours. We are the race-loser: treat it as the same-direction no-op
+        # and let the already-open call stand, frozen as stated so calibration scores
+        # it honestly. The re-fetch must use the whole key, provider and model
+        # included, or it would hand back another provider's call.
         log.info(
-            "prediction dedup race: open %s %sd for %s already exists; keeping it",
+            "prediction dedup race: open %s %sd for %s on %s/%s already exists; keeping it",
             ticker,
             horizon,
             getattr(profile, "id", "?"),
+            provider,
+            model,
         )
         return AIPrediction.objects.filter(
-            ticker=ticker, horizon_days=horizon, profile=profile, status="open"
+            ticker=ticker,
+            horizon_days=horizon,
+            profile=profile,
+            provider=provider,
+            model=model,
+            status="open",
         ).first()
-    _flag_contradictions(ticker, direction)
+    if flag_contradictions:
+        _flag_contradictions(ticker, direction)
     return pred
 
 

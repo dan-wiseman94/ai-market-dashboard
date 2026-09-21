@@ -25,7 +25,9 @@ from apps.threads.models import Message
 pytestmark = pytest.mark.django_db
 
 
-def _report(bias: str, signals: dict[str, str] | None = None) -> ObservationReport:
+def _report(
+    bias: str, signals: dict[str, str] | None = None, call: str | None = None
+) -> ObservationReport:
     return ObservationReport(
         headline="h",
         bias=bias,  # type: ignore[arg-type]
@@ -41,13 +43,15 @@ def _report(bias: str, signals: dict[str, str] | None = None) -> ObservationRepo
             for t, b in (signals or {}).items()
         ],
         next_check_in="later",
+        predicted_direction=call,  # type: ignore[arg-type]
+        predicted_horizon_days=7 if call else None,
     )
 
 
-def _pair(model: str) -> StructuredPair:
-    """A structured-capable claude pair with no-op caps (Infinity daily / null monthly)."""
+def _pair(model: str, provider: str = "claude") -> StructuredPair:
+    """A structured-capable pair with no-op caps (Infinity daily / null monthly)."""
     return StructuredPair(
-        provider="claude",
+        provider=provider,
         model=model,
         api_key="sk-ant",
         base_url="",
@@ -133,6 +137,77 @@ def test_consensus_fire_persists_consensus_report_message():
     assert rep["divergent"] is True
     assert rep["per_ticker"]["SPY"]["modal"] == "bullish"
     assert rep["note"] == ""
+
+
+def test_consensus_fire_records_one_ledger_call_per_provider():
+    """Each take's own directional call enters the ledger under that take's provider
+    and model — one consensus schedule is a complete provider A/B. The stored Message
+    keeps only the agreement signal, never the per-take reports."""
+    from apps.observer.models import AIPrediction
+
+    p = _profile()
+    sched = _consensus_schedule(p)
+    snap = Snapshot.objects.create(
+        profile=p,
+        objective="watch",
+        includes=["quotes"],
+        source="observer",
+        status="pending",
+        primary_ticker="SPY",
+    )
+    pairs = [
+        _pair("claude-opus-5"),
+        _pair("gpt-5.6-sol", provider="openai"),
+    ]
+    reports = [
+        _report("bullish", {"SPY": "bullish"}, call="bullish"),
+        _report("bearish", {"SPY": "bearish"}, call="bearish"),
+    ]
+
+    with (
+        patch("apps.observer.services.run.any_market_open", return_value=True),
+        patch("apps.observer.services.run.check_daily_cap"),
+        patch("apps.observer.services.run.check_monthly_cap"),
+        patch("apps.observer.services.run.capture", return_value=snap),
+        patch("apps.observer.services.run.serialize_for_ai", return_value="## BODY"),
+        patch("apps.observer.services.run.assemble_coach_context", return_value=""),
+        patch("apps.observer.services.run.notify"),
+        patch.object(run_service.run_ai_on_message, "delay"),
+        patch(
+            "apps.observer.services.consensus.structured_capable_pairs",
+            return_value=pairs,
+        ),
+        patch("apps.observer.services.consensus.run_structured", side_effect=reports),
+        patch("apps.observer.services.consensus.check_daily_cap"),
+        patch("apps.observer.services.consensus.check_monthly_cap"),
+    ):
+        run_service.fire_observer(sched.id)
+
+    calls = AIPrediction.objects.filter(status="open").order_by("provider")
+    assert [(c.provider, c.model, c.direction) for c in calls] == [
+        ("claude", "claude-opus-5", "bullish"),
+        ("openai", "gpt-5.6-sol", "bearish"),
+    ]
+
+    thread = get_or_create_observer_thread(p)
+    msg = Message.objects.filter(thread=thread, role="assistant").order_by("-id").first()
+    assert msg is not None
+    assert msg.content["kind"] == "consensus_report"
+    # The full per-take reports stay in memory: the Message holds the signal only.
+    assert all("report" not in take for take in msg.content["report"]["takes"])
+    assert all(c.source_message_id == msg.id for c in calls)
+
+    # The takes ARE one another's opposing open call, and the report already reports
+    # that as `divergent` — the self-contradiction sentinel must stay quiet.
+    from apps.observer.models import Notification
+
+    assert not Notification.objects.filter(kind="contra").exists()
+
+    # One timestamp for every take, so the "current view" reads need a tie-breaker.
+    from apps.observer.predictions.services.reconcile import current_ai_view
+
+    assert len({c.predicted_at for c in calls}) == 1
+    assert current_ai_view("SPY").id == max(c.id for c in calls)
 
 
 def test_consensus_fire_degrades_with_single_provider():

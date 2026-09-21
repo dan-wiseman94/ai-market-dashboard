@@ -1,6 +1,7 @@
 import { useParams } from "react-router-dom";
 
 import type { WarRoomMessage, WarRoomVerdict } from "@/api/warroom";
+import AiAttribution from "@/components/ai/AiAttribution";
 import { Skeleton } from "@/components/Skeleton";
 import { useWarRoomLive, type WarRoomLiveMessage } from "@/hooks/useWarRoomLive";
 import { useWarRoomRun } from "@/hooks/useWarroom";
@@ -9,13 +10,18 @@ const PERSONA_LABEL: Record<string, string> = { bull: "Bull", bear: "Bear", skep
 
 const PERSONAS = ["bull", "bear", "skeptic"] as const;
 
-function groupByPersona(messages: WarRoomMessage[]): Record<string, string[]> {
+/** One persona's argument, with the model that made it. */
+type Argument = { text: string; provider?: string | null; model?: string | null };
+
+function groupByPersona(messages: WarRoomMessage[]): Record<string, Argument[]> {
   const personaMsgs = messages.filter((m) => (m.content as Record<string, unknown>)?.persona);
-  const byPersona: Record<string, string[]> = { bull: [], bear: [], skeptic: [] };
+  const byPersona: Record<string, Argument[]> = { bull: [], bear: [], skeptic: [] };
   for (const m of personaMsgs) {
     const c = m.content as Record<string, unknown>;
     const p = String(c.persona);
-    if (byPersona[p]) byPersona[p].push(String(c.text ?? ""));
+    if (byPersona[p]) {
+      byPersona[p].push({ text: String(c.text ?? ""), provider: m.provider, model: m.model });
+    }
   }
   return byPersona;
 }
@@ -40,7 +46,7 @@ function LiveDebate({ streaming, messages }: { streaming: boolean; messages: War
   );
 }
 
-function PersonaLanes({ byPersona }: { byPersona: Record<string, string[]> }) {
+function PersonaLanes({ byPersona }: { byPersona: Record<string, Argument[]> }) {
   return (
     <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3">
       {PERSONAS.map((p) => (
@@ -49,7 +55,12 @@ function PersonaLanes({ byPersona }: { byPersona: Record<string, string[]> }) {
           {byPersona[p].length === 0 ? (
             <div className="mt-1 text-sm text-ink/40">—</div>
           ) : (
-            byPersona[p].map((t, i) => <p key={i} className="mt-2 text-sm text-ink/80">{t}</p>)
+            byPersona[p].map((a, i) => (
+              <div key={i} className="mt-2">
+                <AiAttribution provider={a.provider} model={a.model} className="mb-1" />
+                <p className="text-sm text-ink/80">{a.text}</p>
+              </div>
+            ))
           )}
         </div>
       ))}
@@ -60,7 +71,10 @@ function PersonaLanes({ byPersona }: { byPersona: Record<string, string[]> }) {
 function Verdict({ v }: { v: WarRoomVerdict }) {
   return (
     <div className="mt-6 rounded border border-copper/40 bg-copper/5 p-4">
-      <div className="text-xs uppercase tracking-wide text-ink/60">Verdict</div>
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-xs uppercase tracking-wide text-ink/60">Verdict</span>
+        {v.ai && <AiAttribution provider={v.ai.provider} model={v.ai.model} />}
+      </div>
       <div className="mt-1 text-lg font-semibold">{v.verdict}{v.confidence != null && <span className="text-ink/50"> ({(v.confidence * 100).toFixed(0)}% conf)</span>}</div>
       {v.strongest_bull && <p className="mt-2 text-sm"><b>Strongest bull:</b> {v.strongest_bull}</p>}
       {v.strongest_bear && <p className="mt-1 text-sm"><b>Strongest bear:</b> {v.strongest_bear}</p>}

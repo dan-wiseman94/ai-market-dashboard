@@ -1,96 +1,116 @@
 from __future__ import annotations
 
+from cryptography.fernet import InvalidToken
 from drf_spectacular.utils import extend_schema
 from rest_framework import generics
 from rest_framework import status as drf_status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.ai.catalog import default_model_for, get_model
+from apps.ai.catalog import default_model_for, foreign_model_error
 from apps.ai.cost import CostCapExceededError
+from apps.ai.structured import ensure_within_caps, resolve_structured_target
 from apps.analytics.aieval_serializers import (
+    EvalRunErrorSerializer,
     EvalRunQueuedSerializer,
-    EvalRunRefusalSerializer,
     EvalRunRequestSerializer,
     EvalRunSerializer,
 )
 from apps.analytics.models import EvalRun
-from apps.analytics.services.aieval import preflight_cost_cap
-from apps.analytics.tasks import run_manual
-from apps.core.mocks.providers import is_mock_mode
+from apps.analytics.tasks import aieval_run
+from apps.core.mocks import is_mock_mode
 from apps.core.runtime_config import runtime_config
 
 
-def _model_for(provider: str, configured: str) -> str:
-    """``configured`` unless it is a catalog row of a different provider — then that
-    provider's own default. Mirrors run_structured's target resolution, so a Claude
-    model id left over from the scheduled harness is never sent to OpenAI."""
-    if configured and get_model(provider, configured) is not None:
-        return configured
-    return default_model_for(provider) or configured
+def _err(code: str, message: str, status: int) -> Response:
+    return Response({"code": code, "message": message}, status=status)
 
 
-class EvalRunListView(generics.ListAPIView):
-    """GET: the recent eval runs. POST: queue one against a candidate (provider,
-    model, system prompt) and return the Celery task id."""
+class EvalRunListCreateView(generics.ListAPIView):
+    """GET: the 50 newest runs. POST: queue one bounded, billed eval run on a provider."""
 
-    def get_serializer_class(self):
-        if self.request.method == "POST":
-            return EvalRunRequestSerializer
-        return EvalRunSerializer
+    serializer_class = EvalRunSerializer
 
     def get_queryset(self):
         return EvalRun.objects.order_by("-created_at")[:50]
 
-    # get_serializer_class() hands the request serializer to both directions, so
-    # without this the POST documents its own request body as the response. The run
-    # is queued, never awaited: 202, not 200.
+    # The view's serializer_class describes the GET rows; the POST takes a request
+    # body of its own and answers 202, so spell both out rather than let the schema
+    # advertise the read serializer as the request contract.
     @extend_schema(
         request=EvalRunRequestSerializer,
         responses={
             202: EvalRunQueuedSerializer,
-            409: EvalRunRefusalSerializer,
-            429: EvalRunRefusalSerializer,
+            400: EvalRunErrorSerializer,
+            409: EvalRunErrorSerializer,
         },
+        methods=["POST"],
     )
     def post(self, request):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        data = serializer.validated_data
+        ser = EvalRunRequestSerializer(data=request.data)
+        if not ser.is_valid():
+            # One error shape for this endpoint: the UI reads `code`/`message`, and a
+            # bare DRF field-error dict would surface as an empty toast.
+            field, messages = next(iter(ser.errors.items()))
+            return _err("invalid_request", f"{field}: {messages[0]}", 400)
+        d = ser.validated_data
 
-        # run_structured hands back a canned instance under MOCK_EXTERNAL, so a run
-        # queued here would persist a fabricated EvalRun that the coach and the
-        # calibration-weighted router then read as measurement.
+        # The harness reaches the provider through run_structured, which has NO
+        # MOCK_EXTERNAL short-circuit — a run queued under the e2e overlay would
+        # persist a fabricated EvalRun that the coach and the calibration-weighted
+        # router then read as measurement.
         if is_mock_mode():
-            return Response(
-                {"detail": "eval runs are unavailable in MOCK_EXTERNAL mode"},
-                status=drf_status.HTTP_409_CONFLICT,
-            )
+            return _err("mock_mode", "Eval runs are unavailable in MOCK_EXTERNAL mode.", 409)
 
         rc = runtime_config()
-        provider = data.get("provider") or "claude"
-        params = {
-            "provider": provider,
-            "model": data.get("model") or _model_for(provider, rc.aieval_scheduled_model),
-            # An explicit null means "every horizon"; an omitted key inherits.
-            "horizon": data.get("horizon", rc.aieval_scheduled_horizon),
-            "limit": data.get("limit") or rc.aieval_scheduled_limit,
-            "label": data.get("label") or "manual",
-            "system": data.get("system") or None,
-        }
+        provider: str = d["provider"]
+        model: str = d["model"] or default_model_for(provider)
+        # An explicit null means "every horizon"; an omitted key inherits the
+        # UI-configurable default (SystemSettings ?? AIEVAL_SCHEDULED_HORIZON).
+        horizon: int | None = d.get("horizon", rc.aieval_scheduled_horizon)
+        limit: int = d.get("limit") or rc.aieval_scheduled_limit
 
-        # Pre-flight on the request thread so a capped user gets the reason instead of
-        # a queued task that silently no-ops. The task re-checks before spending.
+        err = foreign_model_error(provider, model)
+        if err:
+            return _err("foreign_model", err, 400)
         try:
-            preflight_cost_cap(provider)
-        except CostCapExceededError as exc:
-            return Response({"detail": str(exc)}, status=drf_status.HTTP_429_TOO_MANY_REQUESTS)
+            target = resolve_structured_target(override_provider=provider, override_model=model)
+        except InvalidToken:
+            return _err(
+                "undecryptable_key",
+                f"The stored {provider} key cannot be decrypted; re-enter it in "
+                "Settings → AI Providers.",
+                400,
+            )
+        if target is None:
+            need = "a base URL" if provider == "local" else "an API key"
+            return _err(
+                "no_provider",
+                f"No usable {provider} target: add {need} and a default model, and enable "
+                "it in Settings → AI Providers.",
+                400,
+            )
+        # Preflight here as well as in the task: a capped provider should be refused
+        # at the click, not silently queued and dropped.
+        try:
+            ensure_within_caps(target)
+        except CostCapExceededError:
+            return _err("cost_cap", "Cost cap exceeded for the selected provider.", 409)
 
-        task = run_manual.delay(**params)
-        return Response(
-            {"task_id": str(task.id), "status": "queued", **params},
-            status=drf_status.HTTP_202_ACCEPTED,
-        )
+        # Queue the RESOLVED target, not the requested one: `default_model_for("local")`
+        # is "" by design, and the resolver is what chains in the ProviderConfig's own
+        # default. Queueing the request's blank id would run the eval against no model.
+        params = {
+            "provider": target.provider,
+            "model": target.model,
+            "horizon": horizon,
+            "limit": limit,
+            "label": d["label"],
+        }
+        # Only passed when asked for, so the task keeps its documented default prompt.
+        system = d.get("system")
+        aieval_run.delay(**params, **({"system": system} if system else {}))
+        return Response({"queued": True, **params}, status=drf_status.HTTP_202_ACCEPTED)
 
 
 class EvalRunLatestView(APIView):

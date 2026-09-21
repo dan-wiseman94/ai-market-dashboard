@@ -107,13 +107,33 @@ def market_status_view(_request: HttpRequest) -> JsonResponse:
 def observer_thread_view(_request: HttpRequest, profile_id: int) -> JsonResponse:
     profile = get_object_or_404(TradingProfile, id=profile_id)
     thread = get_or_create_observer_thread(profile)
-    messages = thread.messages.order_by("created_at").values("id", "role", "content", "created_at")
+    messages = thread.messages.select_related("ai_run").order_by("created_at")
     return JsonResponse(
         {
             "id": thread.id,
             "kind": thread.kind,
             "profile_id": thread.profile_id,
             "title": thread.title,
-            "messages": [{**m, "created_at": m["created_at"].isoformat()} for m in messages],
+            "messages": [_timeline_message(m) for m in messages],
         }
     )
+
+
+def _timeline_message(m) -> dict:
+    """One timeline row: the content plus the run that produced it and the terminal
+    state. Without `status`/`error` a failed fire reads as an ordinary response, and
+    one-shot structured runs carry no AIRun — their attribution lives in `content`."""
+    run = getattr(m, "ai_run", None)
+    return {
+        "id": m.id,
+        "role": m.role,
+        "content": m.content,
+        "status": m.status,
+        "error": m.error,
+        "created_at": m.created_at.isoformat(),
+        "ai_run": (
+            {"provider": run.provider, "model": run.model, "cost_usd": str(run.cost_usd)}
+            if run is not None
+            else None
+        ),
+    }

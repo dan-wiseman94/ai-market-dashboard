@@ -15,13 +15,13 @@ from __future__ import annotations
 
 import pytest
 
-from apps.analytics.tasks import run_manual, run_scheduled
+from apps.analytics.tasks import aieval_run, run_scheduled
 
 
 @pytest.mark.parametrize(
     "task",
-    [run_scheduled, run_manual],
-    ids=["analytics.aieval_run_scheduled", "analytics.aieval_run_manual"],
+    [run_scheduled, aieval_run],
+    ids=["analytics.aieval_run_scheduled", "analytics.aieval_run"],
 )
 def test_eval_tasks_are_at_most_once(task) -> None:
     assert task.acks_late is False, f"{task.name} must override the global acks_late=True"

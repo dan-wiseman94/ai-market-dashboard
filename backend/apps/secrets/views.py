@@ -18,6 +18,7 @@ from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
+from apps.ai.catalog import default_model_for
 from apps.ai.catalog import list_models as _list_catalog
 from apps.ai.cost import daily_spend_usd
 from apps.ai.providers import get_provider
@@ -211,13 +212,15 @@ class ProviderConfigViewSet(viewsets.ModelViewSet):
         if dirty:
             cfg.save()
 
-        if not cfg.base_url:
-            return Response({"ok": False, "error": "Base URL is required."}, status=400)
-
         if cfg.provider not in ("local", "openai"):
             return Response(
                 {"ok": False, "error": "Model discovery isn't supported for this provider."}
             )
+
+        # Only `local` has no endpoint of its own. OpenAI without a base_url probes the
+        # vendor's own API, which is how a plain key lists the models it can reach.
+        if cfg.provider == "local" and not cfg.base_url:
+            return Response({"ok": False, "error": "Base URL is required."}, status=400)
 
         try:
             # Client construction parses base_url and raises on malformed input
@@ -272,9 +275,11 @@ def ai_models(request: HttpRequest) -> JsonResponse:
                     "cached_per_mtok": m.cached_per_mtok,
                     "context_window": m.context_window,
                     "supports_vision": m.supports_vision,
+                    "max_payload_tokens": m.max_payload_tokens,
                 }
                 for m in models
             ],
+            "defaults": {p: default_model_for(p) for p in ("claude", "openai", "local")},
         }
     )
 

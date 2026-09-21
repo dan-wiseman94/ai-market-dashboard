@@ -1,23 +1,7 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 
-import {
-  fetchEvalRuns,
-  fetchLatestEvalRun,
-  queueEvalRun,
-  type EvalRunQueued,
-  type EvalRunRequest,
-} from "@/api/analytics";
 import { apiGet } from "@/api/client";
-
-// The eval-run shapes live in @/api/analytics next to their fetchers; re-exported
-// here so pages keep importing their analytics types from one place.
-export type {
-  EvalProvider,
-  EvalReliabilityBucket,
-  EvalRunQueued,
-  EvalRunRequest,
-  EvalRunSummary,
-} from "@/api/analytics";
+import { fetchLatestEvalRun, type EvalRun } from "@/api/aieval";
 
 export interface LeaderboardRow {
   provider: string;
@@ -293,51 +277,16 @@ export function useContradictions() {
   });
 }
 
-/** Latest persisted offline eval run. null when none has run yet (204). */
+// The eval-run shapes live in api/aieval.ts (the module that owns the endpoint);
+// re-exported here because the Scorecard reached for them through this hook first.
+export type { EvalReliabilityBucket, EvalRun } from "@/api/aieval";
+export type EvalRunSummary = EvalRun;
+
+/** Latest persisted offline eval run. undefined when none has run yet (204). */
 export function useLatestEvalRun() {
   return useQuery({
     queryKey: ["aieval/latest"],
     queryFn: fetchLatestEvalRun,
-  });
-}
-
-/**
- * Recent eval runs, newest first.
- *
- * `queuedAt` (epoch ms) turns on polling: a queued run emits no completion
- * event, so the only way progress becomes visible is to re-read the list.
- * Polling stops as soon as a run created at/after `queuedAt` lands, and gives
- * up after POLL_GIVE_UP_MS so a failed task never polls forever.
- */
-const POLL_EVERY_MS = 15_000;
-const POLL_GIVE_UP_MS = 10 * 60_000;
-
-export function useEvalRuns(queuedAt: number | null = null) {
-  return useQuery({
-    queryKey: ["aieval/runs"],
-    queryFn: fetchEvalRuns,
-    refetchInterval: (query) => {
-      if (queuedAt === null) return false;
-      if (Date.now() - queuedAt > POLL_GIVE_UP_MS) return false;
-      const rows = query.state.data ?? [];
-      return rows.some((r) => Date.parse(r.created_at) >= queuedAt) ? false : POLL_EVERY_MS;
-    },
-  });
-}
-
-/**
- * Queue a calibration eval run. This spends real provider money, so the caller
- * must confirm first; 409 (mock mode) and 429 (cost cap) come back as ApiError
- * and mean nothing was queued or billed.
- */
-export function useQueueEvalRun() {
-  const qc = useQueryClient();
-  return useMutation<EvalRunQueued, Error, EvalRunRequest>({
-    mutationFn: queueEvalRun,
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ["aieval/runs"] });
-      void qc.invalidateQueries({ queryKey: ["aieval/latest"] });
-    },
   });
 }
 

@@ -1,122 +1,62 @@
-import { useId } from "react";
-import type { Effort } from "@/api/profiles";
+import type { ReactNode } from "react";
+import { providerLabel } from "@/api/ai";
+import CapabilityHint from "@/components/ai/CapabilityHint";
+import Field from "@/components/settings/Field";
+import Toggle from "@/components/ui/Toggle";
+import { useProviderConfigs } from "@/hooks/useProviderConfigs";
 import { MemoryPanel } from "./MemoryPanel";
 import { EFFORT_OPTIONS, type Draft } from "./types";
 
-const PROVIDER_LABELS: Record<string, string> = {
-  claude: "Claude",
-  openai: "OpenAI",
-  local: "Local",
-};
-
-function providerLabel(provider: string): string {
-  return PROVIDER_LABELS[provider] ?? provider;
-}
-
-/** A labelled checkbox whose help text is always wired up via aria-describedby. */
-function CheckRow({
-  label, hint, checked, disabled, onChange,
+function FeatureToggle({
+  label, checked, disabled, onChange, hint,
 }: {
   label: string;
-  hint: string;
   checked: boolean;
   disabled?: boolean;
-  onChange: (next: boolean) => void;
+  onChange: (v: boolean) => void;
+  hint?: ReactNode;
 }) {
-  const id = useId();
-  const hintId = `${id}-hint`;
   return (
-    <div className="space-y-0.5">
-      <label htmlFor={id} className="flex items-center gap-2 text-sm">
-        <input
-          id={id} type="checkbox" checked={checked} disabled={disabled}
-          aria-describedby={hintId}
-          onChange={(e) => onChange(e.target.checked)}
-        />
-        <span className={disabled ? "text-slate-500" : undefined}>{label}</span>
-      </label>
-      <p id={hintId} className="pl-6 text-xs text-slate-500">{hint}</p>
+    <div className="flex flex-wrap items-center justify-between gap-2 py-1.5">
+      <div className="flex items-center gap-3">
+        <Toggle checked={checked} onChange={onChange} label={label} disabled={disabled} />
+        <span className={`text-[13px] ${disabled ? "text-ink-400" : "text-ink-200"}`}>{label}</span>
+      </div>
+      {hint}
     </div>
   );
 }
 
 /**
- * The reason a Claude-only switch is unavailable. When the stored profile has it
- * on anyway (an older profile later pointed at OpenAI/local) the control stays
- * operable so it can be switched OFF — every run it survives writes a
- * capability-warning message (apps/ai/capabilities.py).
+ * The warning a Claude-only switch earns when it is left ON under another
+ * provider — an older profile later pointed at OpenAI or local. The switch
+ * stays operable in that state so it can be turned OFF; every run it survives
+ * writes a capability-warning message (apps/ai/capabilities.py).
  */
-function claudeOnlyHint(feature: string, provider: string, on: boolean): string {
-  const name = providerLabel(provider);
-  return on
-    ? `Claude only — ${name} cannot honor ${feature}, so every run logs a capability warning. Switch it off, or put the profile back on Claude.`
-    : `Claude only — ${name} runs ignore ${feature}.`;
-}
-
-function ThinkingBudgetField({
-  value, onChange,
-}: {
-  value: number;
-  onChange: (next: number) => void;
-}) {
-  const id = useId();
-  const hintId = `${id}-hint`;
+function StrandedHint({ feature, provider }: { feature: string; provider: string }) {
   return (
-    <div className="space-y-0.5 pl-6">
-      <label htmlFor={id} className="block text-xs text-slate-400">
-        Thinking budget (tokens)
-      </label>
-      <input
-        id={id} type="number" min={1024} step={1} value={value}
-        aria-describedby={hintId}
-        onChange={(e) => onChange(Number(e.target.value))}
-        className="w-40 px-3 py-1.5 rounded bg-slate-900 border border-slate-700 tabular-nums"
-      />
-      <p id={hintId} className="text-xs text-slate-500">
-        Legacy — only the older budget-shaped Claude models (Haiku 4.5) read it. The current
-        models reject a raw budget and take Effort instead, so it is ignored there.
-      </p>
-    </div>
+    <span role="note" className="text-[11px] text-copper-300">
+      Claude only — {providerLabel(provider)} cannot honor {feature}, so every run logs a
+      capability warning. Switch it off, or put the profile back on Claude.
+    </span>
   );
 }
 
-function EffortField({
-  value, onChange,
-}: {
-  value: Effort;
-  onChange: (next: Effort) => void;
-}) {
-  const id = useId();
-  const hintId = `${id}-hint`;
-  return (
-    <div className="space-y-0.5">
-      <label htmlFor={id} className="block text-sm">Effort</label>
-      <select
-        id={id} value={value} aria-describedby={hintId}
-        onChange={(e) => {
-          // Look the level up rather than casting — the select can only ever
-          // hold one of these, and the lookup proves it to the type checker.
-          const picked = EFFORT_OPTIONS.find((o) => o.value === e.target.value);
-          if (picked) onChange(picked.value);
-        }}
-        className="px-3 py-1.5 rounded bg-slate-900 border border-slate-700"
-      >
-        {EFFORT_OPTIONS.map((o) => (
-          <option key={o.value} value={o.value}>{o.label}</option>
-        ))}
-      </select>
-      <p id={hintId} className="text-xs text-slate-500">
-        Trades cost against depth — higher effort spends more reasoning tokens on every run.
-        It replaced the raw thinking-token budget on the current models. Claude clamps it down
-        to whatever the chosen model accepts; OpenAI and local runs ignore it.
-      </p>
-    </div>
-  );
+/** The hint for a Claude-only feature: louder once the flag is stranded on another provider. */
+function claudeOnlyHint(
+  feature: "thinking" | "memory",
+  label: string,
+  provider: string,
+  on: boolean,
+): ReactNode {
+  if (provider !== "claude" && on) return <StrandedHint feature={label} provider={provider} />;
+  return <CapabilityHint feature={feature} provider={provider} />;
 }
 
 /**
  * The AI platform switches stored on the profile and applied to each of its runs.
  *
+ * Rendered inside the form's "AI features" fieldset, which owns the legend.
  * `profileId` is null while a new profile is being created (no row yet, so no
  * memory store to inspect).
  */
@@ -127,78 +67,123 @@ export function AiCapabilities({
   setDraft: (next: Draft) => void;
   profileId?: number | null;
 }) {
-  const isClaude = draft.default_provider === "claude";
+  const { data: configs } = useProviderConfigs();
+  const provider = draft.default_provider;
+  const isClaude = provider === "claude";
+  const supportsTools = configs?.find((c) => c.provider === provider)?.supports_tools;
 
   return (
-    <fieldset className="space-y-3 rounded border border-slate-800 p-3">
-      <legend className="px-1 text-xs uppercase tracking-wide text-slate-400">
-        AI capabilities
-      </legend>
-
-      <CheckRow
-        label="Tools"
+    <>
+      <FeatureToggle
+        label="Enable tools"
         checked={draft.enable_tools}
         onChange={(v) => setDraft({ ...draft, enable_tools: v })}
-        hint={
-          isClaude
-            ? "Exposes get_quote, fetch_ohlc, search_news, get_option_chain and compute_indicator to the model."
-            : `Exposes the read-only market tools. ${providerLabel(draft.default_provider)} also needs "Tool use" enabled on its provider card in Settings → Providers, or this stays inert.`
-        }
+        hint={<CapabilityHint feature="tools" provider={provider} supportsTools={supportsTools} />}
       />
 
-      <CheckRow
+      <FeatureToggle
         label="Extended thinking"
         checked={draft.enable_thinking}
+        // Operable while it is on, so a stranded flag can still be switched off.
         disabled={!isClaude && !draft.enable_thinking}
         onChange={(v) => setDraft({ ...draft, enable_thinking: v })}
-        hint={
-          isClaude
-            ? "The model reasons before it answers. Those tokens are billed as output."
-            : claudeOnlyHint("extended thinking", draft.default_provider, draft.enable_thinking)
-        }
+        hint={claudeOnlyHint("thinking", "extended thinking", provider, draft.enable_thinking)}
       />
 
       {isClaude && draft.enable_thinking && (
-        <ThinkingBudgetField
-          value={draft.thinking_budget}
-          onChange={(v) => setDraft({ ...draft, thinking_budget: v })}
-        />
+        <div className="pb-2 pl-12">
+          <Field
+            label="Thinking budget"
+            hint="Tokens, billed as output. Minimum 1024. Legacy — only the older
+              budget-shaped Claude models read it; the current models reject a raw budget
+              and take Effort instead."
+          >
+            {({ id, describedBy }) => (
+              <input
+                id={id}
+                aria-label="Thinking budget"
+                aria-describedby={describedBy}
+                inputMode="numeric"
+                value={draft.thinking_budget}
+                onChange={(e) =>
+                  setDraft({ ...draft, thinking_budget: Number(e.target.value.replace(/\D/g, "")) })
+                }
+                onBlur={(e) =>
+                  // Anthropic rejects a budget below 1024, and 0 silently disables
+                  // thinking — clamp rather than save a value that can't work.
+                  setDraft({
+                    ...draft,
+                    thinking_budget: Math.max(1024, Number(e.target.value.replace(/\D/g, ""))),
+                  })
+                }
+                className="ledger-input w-40 py-2 tabular-nums"
+              />
+            )}
+          </Field>
+        </div>
       )}
 
-      <EffortField
-        value={draft.effort}
-        onChange={(v) => setDraft({ ...draft, effort: v })}
-      />
+      <div className="py-1.5">
+        <Field
+          label="Effort"
+          hint="Trades cost against depth — higher effort spends more reasoning tokens on every
+            run. It replaced the raw thinking-token budget on the current models. Claude clamps
+            it down to whatever the chosen model accepts; OpenAI and local runs ignore it."
+        >
+          {({ id, describedBy }) => (
+            <select
+              id={id}
+              aria-describedby={describedBy}
+              value={draft.effort}
+              onChange={(e) => {
+                // Look the level up rather than casting — the select can only ever
+                // hold one of these, and the lookup proves it to the type checker.
+                const picked = EFFORT_OPTIONS.find((o) => o.value === e.target.value);
+                if (picked) setDraft({ ...draft, effort: picked.value });
+              }}
+              className="ledger-input w-40 py-2"
+            >
+              {EFFORT_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </select>
+          )}
+        </Field>
+      </div>
 
-      <CheckRow
+      <FeatureToggle
         label="Memory"
         checked={draft.enable_memory}
         disabled={!isClaude && !draft.enable_memory}
         onChange={(v) => setDraft({ ...draft, enable_memory: v })}
-        hint={
-          isClaude
-            ? "Gives the model a store scoped to this profile alone, kept between runs. It writes it itself, out of turns that carry untrusted data — read it below."
-            : claudeOnlyHint("memory", draft.default_provider, draft.enable_memory)
-        }
+        hint={claudeOnlyHint("memory", "memory", provider, draft.enable_memory)}
       />
 
       {/* Shown whether or not the switch is on: turning memory off does not
           erase what earlier runs already wrote. */}
       <MemoryPanel profileId={profileId} />
 
-      <CheckRow
+      <FeatureToggle
         label="Decision Coach"
         checked={draft.enable_coach}
         onChange={(v) => setDraft({ ...draft, enable_coach: v })}
-        hint="Injects prior theses, the diff against the last snapshot, your per-ticker track record and distilled lessons. Off leaves the system prompt as just the style text."
+        hint={
+          <span className="text-[11px] text-ink-400">
+            Calibration, base rates and lessons in the system prompt.
+          </span>
+        }
       />
 
-      <CheckRow
+      <FeatureToggle
         label="Active"
         checked={draft.active}
         onChange={(v) => setDraft({ ...draft, active: v })}
-        hint="Off keeps the profile but sorts it to the bottom of every profile list."
+        hint={
+          <span className="text-[11px] text-ink-400">
+            Off keeps the profile but sorts it to the bottom of every profile list.
+          </span>
+        }
       />
-    </fieldset>
+    </>
   );
 }

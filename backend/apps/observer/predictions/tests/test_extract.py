@@ -41,13 +41,13 @@ def _report(direction="bullish", horizon=7, confidence=0.7, ticker="NVDA") -> Ob
     )
 
 
-def _extract(report, snap, profile):
+def _extract(report, snap, profile, *, provider="claude", model="claude-opus-4-8"):
     return extract_from_observation(
         report,
         snapshot=snap,
         message=None,
-        provider="claude",
-        model="claude-opus-4-8",
+        provider=provider,
+        model=model,
         profile=profile,
     )
 
@@ -103,6 +103,37 @@ class TestExtract:
         assert a.id == b.id  # the open call stands, frozen
         assert AIPrediction.objects.filter(status="open").count() == 1
 
+    def test_two_providers_keep_two_open_calls_on_one_target(self, profile):
+        """A provider A/B on one profile must not collapse into a single call."""
+        snap = _snap(profile)
+        a = _extract(
+            _report(direction="bullish"), snap, profile, provider="claude", model="claude-opus-5"
+        )
+        b = _extract(
+            _report(direction="bearish"), snap, profile, provider="openai", model="gpt-5.6-sol"
+        )
+        a.refresh_from_db()
+        assert a.status == "open" and b.status == "open"
+        assert a.id != b.id
+        assert AIPrediction.objects.filter(status="open").count() == 2
+
+    def test_same_provider_and_model_still_dedups(self, profile):
+        snap = _snap(profile)
+        a = _extract(
+            _report(direction="bullish"), snap, profile, provider="openai", model="gpt-5.6-sol"
+        )
+        b = _extract(
+            _report(direction="bullish"), snap, profile, provider="openai", model="gpt-5.6-sol"
+        )
+        assert a.id == b.id
+        assert AIPrediction.objects.filter(status="open").count() == 1
+
+    def test_two_models_on_one_provider_keep_two_open_calls(self, profile):
+        snap = _snap(profile)
+        _extract(_report(), snap, profile, provider="claude", model="claude-opus-5")
+        _extract(_report(), snap, profile, provider="claude", model="claude-sonnet-5")
+        assert AIPrediction.objects.filter(status="open").count() == 2
+
     def test_direction_flip_invalidates_old_and_creates_new(self, profile):
         snap = _snap(profile)
         a = _extract(_report(direction="bullish"), snap, profile)
@@ -117,8 +148,8 @@ class TestExtract:
 
 # ---------------------------------------------------------------------------
 # Dedup invariant: a partial UNIQUE constraint (status="open") on
-# (ticker, horizon_days, profile) is the real guard behind the racy check-then-act;
-# extract catches the IntegrityError as the race-loser no-op.
+# (ticker, horizon_days, profile, provider, model) is the real guard behind the racy
+# check-then-act; extract catches the IntegrityError as the race-loser no-op.
 # ---------------------------------------------------------------------------
 
 
@@ -157,6 +188,16 @@ def test_null_profile_still_collides_on_open_constraint():
     AIPrediction.objects.create(direction="bullish", **_open_kwargs(None))
     with pytest.raises(IntegrityError), transaction.atomic():
         AIPrediction.objects.create(direction="bearish", **_open_kwargs(None))
+
+
+@pytest.mark.django_db
+def test_constraint_allows_a_second_provider_on_the_same_target(profile):
+    """The key carries provider+model so a cross-provider A/B keeps both calls open."""
+    AIPrediction.objects.create(direction="bullish", **_open_kwargs(profile))
+    AIPrediction.objects.create(
+        direction="bearish", **_open_kwargs(profile, provider="openai", model="gpt-5.6-sol")
+    )
+    assert AIPrediction.objects.filter(status="open").count() == 2
 
 
 @pytest.mark.django_db
@@ -209,6 +250,48 @@ def test_extract_race_loser_returns_the_concurrent_open(profile):
     assert result is not None
     assert result.id == winner.id
     assert AIPrediction.objects.filter(status="open").count() == 1
+
+
+@pytest.mark.django_db
+def test_extract_race_loser_refetch_is_scoped_to_its_own_target(profile):
+    """The re-fetch must use the whole key: another provider's open call on the same
+    ticker/horizon is a different target, not the race winner."""
+    from unittest.mock import patch
+
+    from apps.observer.predictions.services import extract as extract_mod
+
+    snap = _snap(profile, "NVDA")
+    other_provider = AIPrediction.objects.create(
+        direction="bearish", **_open_kwargs(profile, provider="openai", model="gpt-5.6-sol")
+    )
+    mine = AIPrediction.objects.create(direction="bullish", **_open_kwargs(profile))
+
+    real_filter = AIPrediction.objects.filter
+    state = {"n": 0}
+
+    class _MissQS:
+        def first(self):
+            return None
+
+    def fake_filter(*args, **kwargs):
+        if kwargs.get("status") == "open" and state["n"] == 0:
+            state["n"] += 1
+            return _MissQS()
+        return real_filter(*args, **kwargs)
+
+    with patch.object(AIPrediction.objects, "filter", side_effect=fake_filter):
+        result = extract_mod.extract_from_observation(
+            _report(direction="bullish"),
+            snapshot=snap,
+            message=None,
+            provider="claude",
+            model="m",
+            profile=profile,
+        )
+
+    assert result is not None
+    assert result.id == mine.id  # our own target's call, not the other provider's
+    assert result.id != other_provider.id
 
 
 # ---------------------------------------------------------------------------

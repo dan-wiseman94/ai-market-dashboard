@@ -1,33 +1,61 @@
-import ModelSelect from "@/components/settings/ModelSelect";
-import { useAiModels } from "@/hooks/useAiModels";
+import AiTargetPicker from "@/components/ai/AiTargetPicker";
+import Field from "@/components/settings/Field";
 import { SECTION_LABELS, VIX_LABEL } from "@/lib/snapshotSections";
 import { AiCapabilities } from "./AiCapabilities";
 import { SECTION_OPTIONS } from "./types";
 import type { useProfileForm } from "./useProfileForm";
 
+function Legend({ children }: { children: string }) {
+  return (
+    <legend className="mb-2 font-mono text-[10px] uppercase tracking-loose2 text-copper-400">
+      {children}
+    </legend>
+  );
+}
+
 export function ProfileForm({ form }: { form: ReturnType<typeof useProfileForm> }) {
-  const { editing, draft, setDraft, setProvider, submit, toggleSection, reset } = form;
-  const { data: aiModels } = useAiModels();
+  const { editing, draft, setDraft, setTarget, submit, toggleSection, reset } = form;
 
   return (
-    <form onSubmit={submit} className="space-y-3 p-4 border border-slate-800 rounded">
-      <input
-        value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })}
-        placeholder="Profile name" required
-        className="w-full px-3 py-1.5 rounded bg-slate-900 border border-slate-700"
-      />
-      <textarea
-        value={draft.style} onChange={(e) => setDraft({ ...draft, style: e.target.value })}
-        placeholder="Trading style (used as system prompt)" rows={5}
-        className="w-full px-3 py-1.5 rounded bg-slate-900 border border-slate-700"
-      />
-      <div>
-        <div className="text-xs text-slate-500 mb-1">Default sections</div>
-        <div className="flex flex-wrap gap-2">
+    <form onSubmit={submit} className="ledger-surface space-y-5 p-5">
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Name">
+          {({ id }) => (
+            <input
+              id={id}
+              value={draft.name}
+              onChange={(e) => setDraft({ ...draft, name: e.target.value })}
+              placeholder="Profile name"
+              required
+              className="ledger-input w-full py-2"
+            />
+          )}
+        </Field>
+        <div className="sm:col-span-2">
+          <Field label="Trading style" hint="Prepended as the system prompt on every run.">
+            {({ id, describedBy }) => (
+              <textarea
+                id={id}
+                aria-describedby={describedBy}
+                value={draft.style}
+                onChange={(e) => setDraft({ ...draft, style: e.target.value })}
+                placeholder="Trading style (used as system prompt)"
+                rows={5}
+                className="ledger-input w-full py-2"
+              />
+            )}
+          </Field>
+        </div>
+      </div>
+
+      <fieldset>
+        <Legend>Default sections</Legend>
+        <div className="flex flex-wrap gap-x-4 gap-y-2">
           {SECTION_OPTIONS.map((sec) => (
-            <label key={sec} className="flex items-center gap-1 text-sm">
+            <label key={sec} className="flex items-center gap-1.5 text-[13px] text-ink-200">
               <input
-                type="checkbox" checked={draft.default_includes.includes(sec)}
+                type="checkbox"
+                checked={draft.default_includes.includes(sec)}
                 onChange={() => toggleSection(sec)}
               />
               {SECTION_LABELS[sec]}
@@ -35,46 +63,32 @@ export function ProfileForm({ form }: { form: ReturnType<typeof useProfileForm> 
           ))}
         </div>
         <div className="mt-2">
-          <span
-            data-testid="vix-always-included-chip"
-            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-slate-700 bg-slate-800/60 text-xs text-slate-400"
-          >
+          <span data-testid="vix-always-included-chip" className="ledger-pill">
             {VIX_LABEL} — always included
           </span>
         </div>
-      </div>
-      <div className="flex gap-2 items-start">
-        <select
-          aria-label="Default provider"
-          value={draft.default_provider}
-          onChange={(e) => {
-            const provider = e.target.value;
-            const firstModel =
-              aiModels?.models?.find((m) => m.provider === provider)?.id ?? "";
-            setProvider(provider, firstModel);
-          }}
-          className="px-3 py-1.5 rounded bg-slate-900 border border-slate-700"
-        >
-          <option value="claude">Claude</option>
-          <option value="openai">OpenAI</option>
-          <option value="local">Local</option>
-        </select>
-        <div className="flex-1">
-          <ModelSelect
-            provider={draft.default_provider}
-            value={draft.default_model}
-            onChange={(model) => setDraft({ ...draft, default_model: model })}
-          />
-        </div>
-      </div>
-      <AiCapabilities draft={draft} setDraft={setDraft} profileId={editing?.id ?? null} />
+      </fieldset>
+
+      <fieldset>
+        <Legend>Default AI target</Legend>
+        <AiTargetPicker
+          value={{ provider: draft.default_provider, model: draft.default_model }}
+          onChange={setTarget}
+          providerLabel="Default provider"
+          modelLabel="Default model"
+          facts
+        />
+      </fieldset>
+
+      <fieldset className="border-t border-rule-soft pt-4">
+        <Legend>AI features</Legend>
+        <AiCapabilities draft={draft} setDraft={setDraft} profileId={editing?.id ?? null} />
+      </fieldset>
+
       <div className="flex gap-2">
-        <button className="px-3 py-1.5 rounded bg-emerald-600 hover:bg-emerald-500">
-          {editing ? "Save" : "Create"}
-        </button>
+        <button type="submit" className="ledger-cta">{editing ? "Save" : "Create"}</button>
         {editing && (
-          <button type="button" onClick={reset}
-                  className="px-3 py-1.5 rounded bg-slate-700 hover:bg-slate-600">Cancel</button>
+          <button type="button" onClick={reset} className="ledger-ghost">Cancel</button>
         )}
       </div>
     </form>

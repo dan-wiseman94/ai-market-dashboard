@@ -1262,12 +1262,38 @@ FEATURES: list[Feature] = [
         requires=("analytics.aieval_scheduled",),
     ),
     Feature(
+        key="analytics.aieval_provider",
+        label="Eval provider",
+        summary="Which vendor runs the scheduled eval.",
+        help=(
+            "The eval calls this provider's structured-output path. The model above must "
+            "be one of that provider's catalog rows: a model id belonging to a different "
+            "vendor is ignored and the provider's own default is used instead. The "
+            "provider needs a usable key (a local endpoint needs its base URL)."
+        ),
+        group="spend",
+        order=6,
+        scope="global",
+        backing="system_settings",
+        value_type="choice",
+        settings_field="aieval_scheduled_provider",
+        write_path="/api/settings/",
+        env_var="AIEVAL_SCHEDULED_PROVIDER",
+        choices=(
+            ("claude", "Anthropic Claude"),
+            ("openai", "OpenAI"),
+            ("local", "Local (OpenAI-compatible)"),
+        ),
+        max_length=32,
+        requires=("analytics.aieval_scheduled",),
+    ),
+    Feature(
         key="analytics.aieval_horizon",
         label="Eval horizon",
         summary="Which post-mortem horizon the eval scores against.",
         help="Matches the post-mortem horizons the app computes (7, 30 or 90 days).",
         group="spend",
-        order=6,
+        order=7,
         scope="global",
         backing="system_settings",
         value_type="int",
@@ -1284,7 +1310,7 @@ FEATURES: list[Feature] = [
         summary="How many theses one scheduled eval replays.",
         help="The direct cost lever on a scheduled eval: one model call per replayed row.",
         group="spend",
-        order=7,
+        order=8,
         scope="global",
         backing="system_settings",
         value_type="int",
@@ -1304,7 +1330,7 @@ FEATURES: list[Feature] = [
             "as skipped rather than failing silently."
         ),
         group="spend",
-        order=8,
+        order=9,
         scope="per_provider",
         backing="model_field",
         value_type="float",
@@ -1322,7 +1348,7 @@ FEATURES: list[Feature] = [
             "Sums the last 30 days of recorded run cost. An empty cap is a genuine no-op, not zero."
         ),
         group="spend",
-        order=9,
+        order=10,
         scope="per_provider",
         backing="model_field",
         value_type="float",

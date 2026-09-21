@@ -5,8 +5,8 @@ import ScorecardPage from "@/pages/ScorecardPage";
 import * as hooks from "@/hooks/useAnalytics";
 import { mockApi, renderWithProviders } from "./testUtils";
 
-// The eval-run panel (queue a run + recent runs) is a live child of this page,
-// so every render needs its two reads stubbed.
+// The eval section (run history + the queue form) is a live child of this page,
+// so every render needs its reads stubbed.
 const SETTINGS = {
   aieval_scheduled_model: "claude-sonnet-4-6",
   aieval_scheduled_horizon: 30,
@@ -16,6 +16,22 @@ const SETTINGS = {
 function render(ui: ReactElement) {
   return renderWithProviders(ui);
 }
+
+// The page renders inside the shared providers and spies on the analytics hooks,
+// so the eval section's own hooks are stubbed rather than fetched.
+//
+// `@/hooks/useToast` is deliberately NOT mocked: that module also exports
+// ToastProvider, which the shared Wrapper renders, so replacing the whole module
+// leaves the wrapper without a provider and every render in this file throws.
+const mockEvalRuns = vi.fn(() => ({ data: [] as unknown[], isLoading: false }));
+vi.mock("@/hooks/useAieval", () => ({
+  useEvalRuns: () => mockEvalRuns(),
+  useTriggerEvalRun: () => ({ mutateAsync: vi.fn(), isPending: false }),
+}));
+vi.mock("@/hooks/useAiModels", () => ({
+  useAiModels: () => ({ data: { models: [], defaults: {} }, isLoading: false }),
+}));
+vi.mock("@/hooks/useProviderConfigs", () => ({ useProviderConfigs: () => ({ data: [] }) }));
 
 function mock(data: unknown, isLoading = false) {
   vi.spyOn(hooks, "useCalibration").mockReturnValue({ data, isLoading } as never);

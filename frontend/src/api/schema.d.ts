@@ -11,16 +11,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * @description GET: the recent eval runs. POST: queue one against a candidate (provider,
-         *     model, system prompt) and return the Celery task id.
-         */
+        /** @description GET: the 50 newest runs. POST: queue one bounded, billed eval run on a provider. */
         get: operations["aieval_runs_list"];
         put?: never;
-        /**
-         * @description GET: the recent eval runs. POST: queue one against a candidate (provider,
-         *     model, system prompt) and return the Celery task id.
-         */
+        /** @description GET: the 50 newest runs. POST: queue one bounded, billed eval run on a provider. */
         post: operations["aieval_runs_create"];
         delete?: never;
         options?: never;
@@ -2510,45 +2504,51 @@ export interface components {
             readonly examples: unknown;
         };
         /**
-         * @description 202 body of POST /api/aieval/runs/: the Celery task id plus the fully
-         *     resolved parameters the task was queued with (omissions already filled from
-         *     ``runtime_config()``), so the caller sees what will actually be scored.
+         * @description The reason a run was not queued. One error shape for the endpoint, so the UI
+         *     always has a message to show: 400 for a body or provider that cannot resolve to a
+         *     usable target, 409 for a breached cost cap or for MOCK_EXTERNAL (a mocked run
+         *     would persist a fabricated EvalRun that the coach and the calibration-weighted
+         *     router then read as measurement).
+         */
+        EvalRunError: {
+            /** @description invalid_request | foreign_model | undecryptable_key | no_provider | cost_cap | mock_mode */
+            code: string;
+            message: string;
+        };
+        /**
+         * @description 202 body of ``POST /api/aieval/runs/``: the fully resolved parameters the task
+         *     was queued with (omissions filled from ``runtime_config()``, the model resolved
+         *     through the provider's own config), so the caller sees what will be scored.
          */
         EvalRunQueued: {
-            task_id: string;
-            /** @description Always "queued". */
-            status: string;
+            /** @description Always true. */
+            queued: boolean;
             provider: string;
             model: string;
             /** @description null means every horizon. */
             horizon: number | null;
             limit: number;
             label: string;
-            /** @description System-prompt override, or null for the default. */
-            system: string | null;
         };
         /**
-         * @description The reason a run was not queued: 409 under MOCK_EXTERNAL (a mocked run would
-         *     persist a fabricated EvalRun that the coach and router then read as
-         *     measurement), 429 when the provider's monthly cost cap is already hit.
-         */
-        EvalRunRefusal: {
-            detail: string;
-        };
-        /**
-         * @description Body of POST /api/aieval/runs/.
+         * @description Body of ``POST /api/aieval/runs/`` — one manual, bounded, billed eval run.
          *
          *     Every field is optional so the UI can fire a run with an empty body; the view
-         *     fills omissions from ``runtime_config()``. ``limit`` is bounded because the
-         *     endpoint bills one model call per replayed row — the unbounded replay stays on
-         *     ``manage.py aieval``, where the operator sees the row count first.
+         *     fills the omissions from ``runtime_config()`` and resolves the target through
+         *     the provider's own config. ``limit`` is bounded because the endpoint bills one
+         *     model call per replayed row — the unbounded replay stays on ``manage.py
+         *     aieval``, where the operator sees the row count first.
          */
         EvalRunRequest: {
-            provider?: components["schemas"]["EvalRunRequestProviderEnum"];
-            model?: string;
-            horizon?: (components["schemas"]["HorizonEnum"] | components["schemas"]["NullEnum"]) | null;
+            /** @default claude */
+            provider: components["schemas"]["EvalRunRequestProviderEnum"];
+            /** @default  */
+            model: string;
+            horizon?: number | null;
             limit?: number;
-            label?: string;
+            /** @default manual */
+            label: string;
+            /** @description System-prompt override for A/B-ing a prompt; omit for the default. */
             system?: string;
         };
         /**
@@ -2732,13 +2732,6 @@ export interface components {
          * @enum {string}
          */
         FormatEnum: "zip";
-        /**
-         * @description * `7` - 7
-         *     * `30` - 30
-         *     * `90` - 90
-         * @enum {integer}
-         */
-        HorizonEnum: 7 | 30 | 90;
         JournalEntry: {
             readonly id: number;
             thread_id: number;
@@ -2848,9 +2841,10 @@ export interface components {
          *     * `cal_drift` - Calibration drift
          *     * `contra` - Consistency conflict
          *     * `pred_invalid` - Prediction invalidated
+         *     * `eval_done` - Eval run finished
          * @enum {string}
          */
-        NotificationKindEnum: "trigger" | "observer_done" | "error" | "cost_limit" | "backup" | "postmortem" | "briefing" | "regime" | "book" | "desk" | "cal_drift" | "contra" | "pred_invalid";
+        NotificationKindEnum: "trigger" | "observer_done" | "error" | "cost_limit" | "backup" | "postmortem" | "briefing" | "regime" | "book" | "desk" | "cal_drift" | "contra" | "pred_invalid" | "eval_done";
         /** @enum {unknown} */
         NullEnum: null;
         ObserverSchedule: {
@@ -3781,6 +3775,10 @@ export interface components {
             readonly status: components["schemas"]["WarRoomRunStatusEnum"];
             readonly error: string;
             readonly thread_id: number;
+            /**
+             * @description Each argument with the model that made it; null for a message with no run
+             *     (the verdict, whose one-shot AIRun carries no Message).
+             */
             readonly messages: {
                 [key: string]: unknown;
             }[];
@@ -3853,20 +3851,20 @@ export interface operations {
                     "application/json": components["schemas"]["EvalRunQueued"];
                 };
             };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvalRunError"];
+                };
+            };
             409: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["EvalRunRefusal"];
-                };
-            };
-            429: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["EvalRunRefusal"];
+                    "application/json": components["schemas"]["EvalRunError"];
                 };
             };
         };

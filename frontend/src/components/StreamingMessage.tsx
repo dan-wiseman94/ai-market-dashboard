@@ -2,8 +2,25 @@ import { memo, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { usd } from "@/utils/format";
-import ObservationReportCard, { type ObservationReport } from "@/components/ObservationReportCard";
+import ObservationReportCard from "@/components/ObservationReportCard";
+import type { ObservationReport } from "@/api/observation";
+import { providerLabel } from "@/api/ai";
+import ConsensusReportCard from "@/components/ConsensusReportCard";
+import PostMortemReportBody from "@/components/PostMortemReportBody";
+import WarRoomVerdictBody from "@/components/WarRoomVerdictBody";
+import {
+  isConsensusReport, isPostMortemReport,
+  type StructuredKind, type StructuredReport, type WarRoomVerdictContent,
+} from "@/api/observation";
 import { CitationText, type CitationRef } from "@/components/CitationText";
+
+/** Kinds with no card of their own still need a word of their own: a cached
+ * observation is not a fresh call, and a capability warning is not an answer. */
+const KIND_CHIP: Partial<Record<StructuredKind, { text: string; tone?: string }>> = {
+  cached_observation: { text: "cached" },
+  capability_warning: { text: "warning", tone: "loss" },
+  investigation: { text: "investigation", tone: "copper" },
+};
 
 type Props = {
   role: "user" | "assistant" | "system";
@@ -17,9 +34,12 @@ type Props = {
   bare?: boolean;
   /** Set on the synthetic snapshot turn; collapses the data sections below the objective. */
   snapshotId?: number | null;
-  /** Set on structured observation messages produced by the observer. */
-  kind?: "structured_observation";
-  report?: ObservationReport;
+  /** Set on the typed messages the backend writes (observer cards, post-mortems,
+   * verdicts, cached/warning/investigation notices). */
+  kind?: StructuredKind;
+  report?: StructuredReport;
+  /** War-room verdicts spread their fields into the message content, not `report`. */
+  verdict?: WarRoomVerdictContent;
   /** Citations the model attached to this message, in the order they streamed. */
   citations?: CitationRef[];
 };
@@ -97,12 +117,15 @@ function AssistantHeader({
   model,
   isStreaming,
   cost,
+  kind,
 }: {
   label: string;
   model?: string;
   isStreaming: boolean;
   cost?: string;
+  kind?: StructuredKind;
 }) {
+  const chip = kind ? KIND_CHIP[kind] : undefined;
   return (
     <header className="flex items-center gap-3 mb-4 pb-3 border-b border-rule-soft">
       <span className="relative inline-flex items-center justify-center h-6 w-6 rounded-full bg-copper-500/15 border border-copper-500/40">
@@ -123,6 +146,7 @@ function AssistantHeader({
         )}
       </div>
       <div className="flex-1" />
+      {chip && <span className="ledger-pill" data-tone={chip.tone}>{chip.text}</span>}
       {cost && (
         <span className="ledger-pill" data-tone="copper">
           <span className="text-ink-500">cost</span>
@@ -133,19 +157,44 @@ function AssistantHeader({
   );
 }
 
+/** The card for a typed message, or null when the body is plain text. Each kind is
+ * paired with its own guard: a mismatched payload falls through to the text body
+ * rather than rendering a card against the wrong shape. */
+function structuredCard(
+  kind: StructuredKind | undefined,
+  report: StructuredReport | undefined,
+  verdict: WarRoomVerdictContent | undefined,
+) {
+  if (kind === "consensus_report" && isConsensusReport(report)) {
+    return <ConsensusReportCard report={report} />;
+  }
+  if (kind === "postmortem_report" && isPostMortemReport(report)) {
+    return <PostMortemReportBody report={report} />;
+  }
+  if (kind === "warroom_verdict" && verdict) {
+    return <WarRoomVerdictBody verdict={verdict} />;
+  }
+  if (kind === "structured_observation" && report && !isConsensusReport(report)) {
+    return <ObservationReportCard report={report as ObservationReport} />;
+  }
+  return null;
+}
+
 function AssistantBody({
   status,
   error,
   kind,
   report,
+  verdict,
   text,
   isStreaming,
   citations = [],
 }: {
   status?: "done" | "streaming" | "failed";
   error?: string;
-  kind?: "structured_observation";
-  report?: ObservationReport;
+  kind?: StructuredKind;
+  report?: StructuredReport;
+  verdict?: WarRoomVerdictContent;
   text: string;
   isStreaming: boolean;
   citations?: CitationRef[];
@@ -159,9 +208,10 @@ function AssistantBody({
     );
   }
 
-  if (kind === "structured_observation" && report) {
-    return <ObservationReportCard report={report} />;
-  }
+  // A card is rendered from its own structured payload, which carries no
+  // citations — only the streamed markdown body has text to cite.
+  const card = structuredCard(kind, report, verdict);
+  if (card) return card;
 
   return (
     <>
@@ -183,8 +233,8 @@ function AssistantBody({
 }
 
 function Message({
-  role, text, status, error, cost, model, provider, bare = false, snapshotId, kind, report,
-  citations,
+  role, text, status, error, cost, model, provider,
+  bare = false, snapshotId, kind, report, verdict, citations,
 }: Props) {
   const isUser = role === "user";
   const isStreaming = status === "streaming";
@@ -193,9 +243,8 @@ function Message({
     return <UserMessage text={text} snapshotId={snapshotId} />;
   }
 
-  const label = provider
-    ? provider.charAt(0).toUpperCase() + provider.slice(1)
-    : "Assistant";
+  // providerLabel, not hand-capitalisation: every other surface reads "OpenAI".
+  const label = provider ? providerLabel(provider) : "Assistant";
 
   const innerClass = bare ? "px-0 py-0" : "ledger-surface px-6 py-5";
 
@@ -206,12 +255,19 @@ function Message({
       data-status={status}
     >
       <div className={innerClass}>
-        <AssistantHeader label={label} model={model} isStreaming={isStreaming} cost={cost} />
+        <AssistantHeader
+          label={label}
+          model={model}
+          isStreaming={isStreaming}
+          cost={cost}
+          kind={kind}
+        />
         <AssistantBody
           status={status}
           error={error}
           kind={kind}
           report={report}
+          verdict={verdict}
           text={text}
           isStreaming={isStreaming}
           citations={citations}

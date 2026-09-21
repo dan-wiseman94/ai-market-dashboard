@@ -115,6 +115,30 @@ describe("useUpdateScheduleIncludes", () => {
   });
 });
 
+describe("useUpdateSchedule", () => {
+  it("PATCHes an arbitrary field set and invalidates the list", async () => {
+    const client = newQueryClient();
+    const invalidateSpy = vi.spyOn(client, "invalidateQueries");
+    const { calls } = mockApi({ "PATCH /api/observer/schedules/3/": {} });
+    const { result } = renderHook(() => useUpdateSchedule(), {
+      wrapper: hookWrapper(client),
+    });
+    await act(async () => {
+      await result.current.mutateAsync({
+        id: 3,
+        body: { consensus: true, override_provider: "openai", override_model: "gpt-5.6-sol" },
+      });
+    });
+    expect(calls[0].url).toContain("/api/observer/schedules/3/");
+    expect(calls[0].body).toMatchObject({
+      consensus: true,
+      override_provider: "openai",
+      override_model: "gpt-5.6-sol",
+    });
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["schedules"] });
+  });
+});
+
 describe("useRunSchedule", () => {
   it("POSTs to run-now endpoint and does NOT invalidate schedules", async () => {
     const client = newQueryClient();

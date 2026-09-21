@@ -24,7 +24,7 @@ vi.mock("@/hooks/useAgentPresets", () => ({
 
 const AI_MODELS = {
   models: [
-    { id: "claude-sonnet-4-6", name: "Claude Sonnet 4.6", provider: "claude",
+    { id: "claude-opus-5", name: "Claude Opus 5", provider: "claude",
       input_per_mtok: 3, output_per_mtok: 15, cached_per_mtok: 0.3, context_window: 200000, supports_vision: true },
     { id: "claude-opus-4-8", name: "Claude Opus 4.8", provider: "claude",
       input_per_mtok: 15, output_per_mtok: 75, cached_per_mtok: 1.5, context_window: 200000, supports_vision: true },
@@ -33,6 +33,17 @@ const AI_MODELS = {
   ],
 };
 vi.mock("@/hooks/useAiModels", () => ({ useAiModels: () => ({ data: AI_MODELS }) }));
+
+// OpenAI has tool use switched off, so the form must say so when it is selected.
+const PROVIDER_CONFIGS = [
+  { provider: "claude", base_url: "", default_model: "", enabled: true, supports_vision: true,
+    supports_tools: true, daily_cost_cap_usd: "10", monthly_cost_cap_usd: null, api_key_present: true },
+  { provider: "openai", base_url: "", default_model: "", enabled: true, supports_vision: true,
+    supports_tools: false, daily_cost_cap_usd: "10", monthly_cost_cap_usd: null, api_key_present: true },
+];
+vi.mock("@/hooks/useProviderConfigs", () => ({
+  useProviderConfigs: () => ({ data: PROVIDER_CONFIGS }),
+}));
 
 import {
   useProfiles,
@@ -67,14 +78,14 @@ const PROFILE_A: TradingProfile = {
   style: "Hold 2-5 days",
   default_includes: ["quotes", "ohlc"],
   default_provider: "claude",
-  default_model: "claude-sonnet-4-6",
+  default_model: "claude-opus-5",
+  active: true,
   enable_tools: true,
   enable_thinking: true,
   thinking_budget: 8000,
   effort: "high",
   enable_memory: true,
   enable_coach: true,
-  active: true,
 };
 
 function makeCreate(impl?: (body: unknown, opts?: { onSuccess?: () => void }) => void) {
@@ -123,9 +134,9 @@ const EMPTY_MEMORY = {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockUseProfiles.mockReturnValue({ data: [] } as never);
   mockUseProfileMemory.mockReturnValue({ data: EMPTY_MEMORY } as never);
   mockUseClearProfileMemory.mockReturnValue({ mutate: vi.fn(), isPending: false } as never);
-  mockUseProfiles.mockReturnValue({ data: [] } as never);
   mockUseAgentPresets.mockReturnValue({ data: [] } as never);
   makeCreate();
   makeUpdate();
@@ -294,10 +305,10 @@ describe("ProfilesPage", () => {
 
     renderWithProviders(<ProfilesPage />);
 
-    expect(screen.getByRole("option", { name: "Claude Sonnet 4.6" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Claude Opus 5" })).toBeInTheDocument();
     expect(screen.getByRole("option", { name: "Claude Opus 4.8" })).toBeInTheDocument();
 
-    const modelSelect = screen.getByDisplayValue("Claude Sonnet 4.6");
+    const modelSelect = screen.getByDisplayValue("Claude Opus 5");
     await user.selectOptions(modelSelect, "claude-opus-4-8");
     await user.type(screen.getByPlaceholderText("Profile name"), "Deep Diver");
     fireEvent.click(screen.getByRole("button", { name: /create/i }));
@@ -456,23 +467,23 @@ describe("ProfilesPage – preset management", () => {
   });
 });
 
-describe("ProfilesPage – AI capabilities fieldset", () => {
+describe("ProfilesPage – AI features fieldset", () => {
+  /** Field wires its hint to the control via aria-describedby; Toggle rows render a sibling note. */
   const hintOf = (el: HTMLElement) =>
     document.getElementById(el.getAttribute("aria-describedby") ?? "");
 
   it("groups the capability controls in a labelled fieldset", () => {
     renderWithProviders(<ProfilesPage />);
-    expect(screen.getByRole("group", { name: /ai capabilities/i })).toBeInTheDocument();
-    for (const name of ["Tools", "Extended thinking", "Memory", "Decision Coach", "Active"]) {
-      expect(screen.getByRole("checkbox", { name })).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: /ai features/i })).toBeInTheDocument();
+    for (const name of ["Enable tools", "Extended thinking", "Memory", "Decision Coach", "Active"]) {
+      expect(screen.getByRole("switch", { name })).toBeInTheDocument();
     }
     expect(screen.getByRole("combobox", { name: "Effort" })).toBeInTheDocument();
   });
 
   it("creates with the backend's capability defaults", async () => {
     const user = userEvent.setup();
-    const createMutate = vi.fn();
-    mockUseCreateProfile.mockReturnValue({ mutate: createMutate, isPending: false } as never);
+    const createMutate = makeCreate();
 
     renderWithProviders(<ProfilesPage />);
     await user.type(screen.getByPlaceholderText("Profile name"), "Defaults");
@@ -487,13 +498,12 @@ describe("ProfilesPage – AI capabilities fieldset", () => {
 
   it("sends the toggled capability values, not the defaults", async () => {
     const user = userEvent.setup();
-    const createMutate = vi.fn();
-    mockUseCreateProfile.mockReturnValue({ mutate: createMutate, isPending: false } as never);
+    const createMutate = makeCreate();
 
     renderWithProviders(<ProfilesPage />);
-    await user.click(screen.getByRole("checkbox", { name: "Tools" }));
-    await user.click(screen.getByRole("checkbox", { name: "Decision Coach" }));
-    await user.click(screen.getByRole("checkbox", { name: "Active" }));
+    await user.click(screen.getByRole("switch", { name: "Enable tools" }));
+    await user.click(screen.getByRole("switch", { name: "Decision Coach" }));
+    await user.click(screen.getByRole("switch", { name: "Active" }));
     await user.selectOptions(screen.getByRole("combobox", { name: "Effort" }), "max");
     await user.type(screen.getByPlaceholderText("Profile name"), "Lean");
     fireEvent.click(screen.getByRole("button", { name: /create/i }));
@@ -514,34 +524,43 @@ describe("ProfilesPage – AI capabilities fieldset", () => {
     const user = userEvent.setup();
     renderWithProviders(<ProfilesPage />);
 
-    const budget = screen.getByLabelText(/thinking budget/i);
-    expect(budget).toHaveValue(8000);
+    const budget = screen.getByLabelText("Thinking budget");
+    expect(budget).toHaveValue("8000");
     expect(hintOf(budget)).toHaveTextContent(/legacy/i);
 
-    await user.click(screen.getByRole("checkbox", { name: "Extended thinking" }));
-    expect(screen.queryByLabelText(/thinking budget/i)).not.toBeInTheDocument();
+    await user.click(screen.getByRole("switch", { name: "Extended thinking" }));
+    expect(screen.queryByLabelText("Thinking budget")).not.toBeInTheDocument();
   });
 
-  it("disables the Claude-only switches on OpenAI with the reason in aria-describedby", async () => {
+  it("clamps a thinking budget the API would reject", async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<ProfilesPage />);
+
+    const budget = screen.getByLabelText("Thinking budget");
+    await user.clear(budget);
+    await user.type(budget, "10");
+    fireEvent.blur(budget);
+    expect(budget).toHaveValue("1024");
+  });
+
+  it("disables the Claude-only switches on OpenAI and names the reason", async () => {
     const user = userEvent.setup();
     renderWithProviders(<ProfilesPage />);
     await user.selectOptions(screen.getByLabelText("Default provider"), "openai");
 
     for (const name of ["Extended thinking", "Memory"]) {
-      const box = screen.getByRole("checkbox", { name });
-      expect(box).toBeDisabled();
-      expect(box).not.toBeChecked();
-      expect(hintOf(box)).toHaveTextContent(/claude only/i);
-      expect(hintOf(box)).toHaveTextContent(/openai/i);
+      const sw = screen.getByRole("switch", { name });
+      expect(sw).toBeDisabled();
+      expect(sw).not.toBeChecked();
     }
+    expect(screen.getAllByText("Claude only — ignored on OpenAI")).toHaveLength(2);
     // No thinking => the legacy budget box goes away with it.
-    expect(screen.queryByLabelText(/thinking budget/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Thinking budget")).not.toBeInTheDocument();
   });
 
   it("clears the Claude-only flags in the saved body when the provider moves off Claude", async () => {
     const user = userEvent.setup();
-    const createMutate = vi.fn();
-    mockUseCreateProfile.mockReturnValue({ mutate: createMutate, isPending: false } as never);
+    const createMutate = makeCreate();
 
     renderWithProviders(<ProfilesPage />);
     await user.selectOptions(screen.getByLabelText("Default provider"), "openai");
@@ -558,8 +577,9 @@ describe("ProfilesPage – AI capabilities fieldset", () => {
     const user = userEvent.setup();
     renderWithProviders(<ProfilesPage />);
     await user.selectOptions(screen.getByLabelText("Default provider"), "openai");
-    expect(hintOf(screen.getByRole("checkbox", { name: "Tools" })))
-      .toHaveTextContent(/provider card/i);
+    expect(
+      screen.getByText("Tool use is off for OpenAI in Settings → AI Providers"),
+    ).toBeInTheDocument();
   });
 
   it("populates the capability controls from the edited profile", async () => {
@@ -570,9 +590,9 @@ describe("ProfilesPage – AI capabilities fieldset", () => {
     renderWithProviders(<ProfilesPage />);
 
     await user.click(screen.getByRole("button", { name: /edit/i }));
-    expect(screen.getByRole("checkbox", { name: "Tools" })).not.toBeChecked();
+    expect(screen.getByRole("switch", { name: "Enable tools" })).not.toBeChecked();
     expect(screen.getByRole("combobox", { name: "Effort" })).toHaveValue("low");
-    expect(screen.getByLabelText(/thinking budget/i)).toHaveValue(2048);
+    expect(screen.getByLabelText("Thinking budget")).toHaveValue("2048");
   });
 
   it("shows the memory store for the profile being edited, not for a new one", async () => {
@@ -615,10 +635,11 @@ describe("ProfilesPage – AI capabilities fieldset", () => {
     renderWithProviders(<ProfilesPage />);
 
     await user.click(screen.getByRole("button", { name: /edit/i }));
-    const memory = screen.getByRole("checkbox", { name: "Memory" });
+    const memory = screen.getByRole("switch", { name: "Memory" });
     expect(memory).toBeChecked();
     expect(memory).toBeEnabled();
-    expect(hintOf(memory)).toHaveTextContent(/capability warning/i);
+    expect(screen.getByText(/cannot honor memory/)).toHaveTextContent(/capability warning/);
+
     await user.click(memory);
     expect(memory).not.toBeChecked();
   });

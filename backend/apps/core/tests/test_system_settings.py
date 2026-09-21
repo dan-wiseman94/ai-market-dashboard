@@ -30,6 +30,34 @@ def test_runtime_config_prefers_db_override():
 
 
 @pytest.mark.django_db
+@override_settings(AIEVAL_SCHEDULED_PROVIDER="claude")
+def test_aieval_provider_defaults_to_setting_and_accepts_an_override():
+    assert runtime_config().aieval_scheduled_provider == "claude"
+    r = Client().patch(
+        "/api/settings/",
+        data=json.dumps({"aieval_scheduled_provider": "openai"}),
+        content_type="application/json",
+    )
+    assert r.status_code == 200
+    assert r.json()["aieval_scheduled_provider"] == "openai"
+    assert runtime_config().aieval_scheduled_provider == "openai"
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("key", ["aieval_scheduled_provider", "ai_failover_provider"])
+def test_provider_knobs_reject_an_unknown_provider(key):
+    """A free-text provider name silently disables the knob — reject it at write time."""
+    c = Client()
+    bad = c.patch(
+        "/api/settings/", data=json.dumps({key: "bogus"}), content_type="application/json"
+    )
+    assert bad.status_code == 400
+    assert bad.json()["code"] == "invalid_value"
+    blank = c.patch("/api/settings/", data=json.dumps({key: ""}), content_type="application/json")
+    assert blank.status_code == 200
+
+
+@pytest.mark.django_db
 @override_settings(AI_FAILOVER_ENABLED=True)
 def test_null_field_inherits_even_when_setting_is_truthy():
     # A SystemSettings row exists but the field is NULL → still inherits the setting.

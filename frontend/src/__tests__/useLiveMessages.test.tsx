@@ -2,6 +2,7 @@ import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, it, expect, vi } from "vitest";
 import type { Thread, Message } from "@/api/threads";
 import type { ObservationReport } from "@/components/ObservationReportCard";
+import { isConsensusReport } from "@/api/observation";
 
 // Mock useChannel to capture the WS handler so tests can feed thread events
 // without a real socket.
@@ -104,7 +105,83 @@ describe("useLiveMessages — seed mapping", () => {
     expect(msg).toBeDefined();
     expect(msg!.kind).toBe("structured_observation");
     expect(msg!.report).toEqual(REPORT);
-    expect(msg!.report!.headline).toBe("SPY consolidates near highs");
+    // `report` is the union of every structured shape, so narrow before reading.
+    expect(isConsensusReport(msg!.report)).toBe(false);
+    expect((msg!.report as ObservationReport).headline).toBe("SPY consolidates near highs");
+  });
+
+  it("falls back to the content's own attribution when the message has no AIRun", () => {
+    // A one-shot structured run records its AIRun without a Message, so the provider
+    // it stamped into the content is the only source the card can read.
+    const thread = makeThread([
+      {
+        id: 21,
+        role: "assistant",
+        content: {
+          kind: "structured_observation",
+          report: REPORT,
+          provider: "openai",
+          model: "gpt-5.6-sol",
+        },
+        status: "done",
+        error: "",
+        created_at: "2026-01-01T00:02:00Z",
+        parent_message_id: null,
+        snapshot_id: null,
+      },
+    ]);
+
+    const msg = renderHook(() => useLiveMessages(1, thread, vi.fn())).result.current.ordered.find(
+      (m) => m.id === 21,
+    );
+    expect(msg!.provider).toBe("openai");
+    expect(msg!.model).toBe("gpt-5.6-sol");
+  });
+
+  it("lifts a warroom_verdict's spread fields into `verdict`", () => {
+    const thread = makeThread([
+      {
+        id: 22,
+        role: "assistant",
+        content: {
+          kind: "warroom_verdict",
+          verdict: "bull case stronger",
+          confidence: 0.62,
+          strongest_bull: "capex",
+          strongest_bear: "valuation",
+          what_would_change_my_mind: "guidance cut",
+          ai: { provider: "claude", model: "claude-opus-5" },
+        },
+        status: "done",
+        error: "",
+        created_at: "2026-01-01T00:03:00Z",
+        parent_message_id: null,
+        snapshot_id: null,
+      },
+      {
+        id: 23,
+        role: "assistant",
+        content: { text: "plain" },
+        status: "done",
+        error: "",
+        created_at: "2026-01-01T00:04:00Z",
+        parent_message_id: null,
+        snapshot_id: null,
+      },
+    ]);
+
+    const { ordered } = renderHook(() => useLiveMessages(1, thread, vi.fn())).result.current;
+    const verdictMsg = ordered.find((m) => m.id === 22);
+    expect(verdictMsg!.verdict).toEqual({
+      verdict: "bull case stronger",
+      confidence: 0.62,
+      strongest_bull: "capex",
+      strongest_bear: "valuation",
+      what_would_change_my_mind: "guidance cut",
+      ai: { provider: "claude", model: "claude-opus-5" },
+    });
+    // A message of any other kind carries no verdict payload.
+    expect(ordered.find((m) => m.id === 23)!.verdict).toBeUndefined();
   });
 
   it("maps system role to assistant role in LiveMessage", () => {
