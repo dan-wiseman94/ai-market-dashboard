@@ -8,7 +8,7 @@ A single-user desktop dashboard that captures point-in-time **stock-market snaps
 - 🧠 **Bring your own AI:** Claude, OpenAI, or any local OpenAI-compatible model — compare them side-by-side, and *measure* which is actually right with a look-ahead-safe eval harness.
 - 🔒 **Local & private:** runs in Docker on `127.0.0.1`, encrypted keys, no telemetry, no broker write path.
 
-> 📋 **[Full feature tour →](FEATURES.md)** · Full design: [`docs/superpowers/specs/2026-04-16-ai-dashboard-design.md`](docs/superpowers/specs/2026-04-16-ai-dashboard-design.md) · Contributor guide: [`CLAUDE.md`](CLAUDE.md)
+> 📋 **[Full feature tour →](FEATURES.md)** · Every switch and where to change it: [`docs/toggles.md`](docs/toggles.md) · Full design: [`docs/superpowers/specs/2026-04-16-ai-dashboard-design.md`](docs/superpowers/specs/2026-04-16-ai-dashboard-design.md) · Contributor guide: [`CLAUDE.md`](CLAUDE.md)
 
 ## Screenshots
 
@@ -151,10 +151,10 @@ compose.e2e.yaml     E2E harness (MOCK_EXTERNAL=true)
 - **Stop** — aborts the upstream generation *and* billing (closes the provider stream), not just the final write.
 - **Pinned snapshots** — a captured snapshot is injected as the thread's first turn, so the model (and you) can see exactly what it was given.
 
-### Advanced AI capabilities (opt-in per profile)
+### Advanced AI capabilities (per profile, on by default)
 
 - **Tool use** — an agentic tool loop backed by a pluggable tool registry; every call is recorded and streamed (`tool_call` / `tool_result`). **Works on all three providers** — Claude always, and OpenAI/local when the credential opts in (`ProviderConfig.supports_tools`, on by default; turn it off for local endpoints without function-calling).
-- **Extended thinking** *(Claude)* — budgeted reasoning with `thinking_delta` events (billed as output tokens).
+- **Extended thinking** *(Claude)* — reasoning depth chosen per profile as an **effort** level (low → max, clamped to what each model accepts), streamed as `thinking_delta` events and billed as output tokens.
 - **Memory** *(Claude)* — the `memory_20250818` tool, scoped to a per-profile directory under `/data/memory/<profile_id>/`.
 - **Files** *(Claude)* — upload documents through the Anthropic Files API and attach them to a thread.
 - **Citations** *(Claude)* — news items are sent as Anthropic `search_result` blocks; the UI resolves citations back to their source.
@@ -183,7 +183,7 @@ The "decide → review" half of the loop: Ledger records what the market looked 
 - **Deterministic post-mortems** — at each configured horizon (`THESIS_POSTMORTEM_HORIZONS` = 7 / 30 / 90 days) a beat task computes the actual forward return from stored `OHLCBar` data and assigns an **objective verdict** — correct / incorrect / mixed / inconclusive — with **no AI required**. The scheduled→running claim is idempotent, so the Run-now button and the beat task can't double-bill.
 - **Best-effort AI narrative** — if a Claude key and cost caps allow, a structured report (what worked, what was missed, lessons, would-you-repeat) is posted into a per-thesis review thread. It degrades silently to an empty report on any non-Claude provider, missing key, cap hit, or error — the objective verdict always persists.
 - **Decision journal** (`/api/journal/?thread=<id>`) — log what you actually did on a thread (acted / passed / watching / hedged) and why, optionally linked to a thesis.
-- **Agent presets** — four seeded built-ins (`earnings-prep`, `devils-advocate`, `pre-trade-bias-check`, `triage-pass`) that pre-fill the snapshot composer's objective and section includes.
+- **Agent presets** — thirteen seeded built-ins (`earnings-prep`, `devils-advocate`, `pre-trade-bias-check`, `triage-pass`, `morning-gameplan`, `closing-wrap`, `risk-audit`, `income-setup`, `macro-read`, `catalyst-scan`, `breakout-scan`, `trade-postmortem`, `macro-fundamentals-brief`) that pre-fill the snapshot composer's objective and section includes.
 
 ### Prediction Ledger — the AI's own calls, on the record
 
@@ -198,8 +198,8 @@ Theses are *your* calls; predictions are the *AI's*. When the observer makes a s
 
 Five features that turn the AI from a one-shot snapshot reader into a resident analyst — one that investigates, routes itself by track record, learns recurring lessons, keeps a living view on each name, and grades *you*.
 
-- **Autonomous investigation** *(opt-in per trigger / schedule)* — instead of emitting a single observation, a fire can run a **bounded agentic tool loop**, pulling data and following leads to a grounded conclusion, capped by an iteration ceiling (`AI_INVESTIGATION_MAX_ITERATIONS`) and a dedicated autonomous spend sub-cap (`AI_AUTONOMOUS_DAILY_CAP_USD`). Off by default.
-- **Calibration-weighted routing** *(opt-in — `AI_CALIBRATION_ROUTING_ENABLED`)* — when no provider/model is pinned, the router's fallback tier picks the best-*measured* model from your eval history (hit-rate, calibration error) instead of the first one configured, so the model that has proven more accurate handles more of your runs over time.
+- **Autonomous investigation** *(switchable per trigger / schedule)* — instead of emitting a single observation, a fire can run a **bounded agentic tool loop**, pulling data and following leads to a grounded conclusion, capped by an iteration ceiling (`AI_INVESTIGATION_MAX_ITERATIONS`, 8 rounds) and a dedicated autonomous spend sub-cap (`AI_AUTONOMOUS_DAILY_CAP_USD`, $5/day). Armed by default on new schedules and triggers; both ceilings are editable at **Settings → Features**.
+- **Calibration-weighted routing** *(`AI_CALIBRATION_ROUTING_ENABLED`, on)* — when no provider/model is pinned, the router's fallback tier picks the best-*measured* model from your eval history (hit-rate, calibration error) instead of the first one configured, so the model that has proven more accurate handles more of your runs over time.
 - **Setup-cohort base rates + distilled lessons in the Coach** — the Coach injects the historical hit-rate of *past calls matching this setup* (same direction / sector — the outside view) and cross-ticker **distilled lessons** clustered from your post-mortems (in `apps.thesis`, the `thesis.distill` beat), so a pattern from one ticker informs a brand-new one. Both read only decisive, completed post-mortems (look-ahead-safe).
 - **The Mirror** (`/mirror`) — the calibration engine turned inward: it grades *your* decision-making from your journal, theses, and outcomes ("you pass on winners," "high conviction isn't actually more accurate"), each signal drillable and hard-gated on sample size so thin history reads "insufficient," not a verdict.
 - **COVERAGE — a living house view** (`/coverage/:ticker`) — each covered ticker gets one persistent, version-controlled research note (stance, conviction, bull / bear case, key levels, what it's watching for) that the AI **revises with a reason** — behind a hysteresis gate, so a quiet day reaffirms rather than churns — instead of re-deriving it every snapshot. Every revision is an append-only audit row you can read to see *why* the view moved, and the observer auto-revises a name once you've started covering it.
@@ -230,7 +230,7 @@ Where the Resident Analyst works one name at a time, the Strategist steps back t
 ### Cost tracking
 
 - **Aggregation** per provider, per model, and per thread.
-- **Daily + monthly caps** (opt-in) enforced across threads, observer, and triggers.
+- **Daily + monthly caps** per provider, enforced across threads, observer, and triggers. A new provider gets a $10 daily cap; the monthly cap is empty (no ceiling) until you set one.
 - **CSV export** and a **per-snapshot cost drill-down** that attributes token cost to each captured section.
 
 ### Analytics (on-demand)
@@ -240,7 +240,7 @@ Where the Resident Analyst works one name at a time, the Strategist steps back t
 - **Unusual-options detector** — flags chain lines on volume/OI or IV-z outliers, returning a per-line reason for *why* each was flagged.
 - **Calibration scorecard** — aggregates post-mortem'd theses into conviction calibration (hit-rate per conviction bucket + a Brier score over a documented conviction→probability map, by direction) and per-(provider, model) calibration. `GET /api/analytics/calibration/?horizon=` (7 / 30 / 90); on its own page at `/scorecard` (`g k`), separate from the `/analytics` card grid. The page also surfaces the AI's **live prediction calibration** (from the Prediction Ledger) and the latest offline **eval** result, so measured and replayed accuracy sit side by side.
 - **The Mirror** — trader self-calibration (`/mirror`): are *you* more right when more confident, and do you pass on winners? `GET /api/analytics/trader-calibration/?horizon=`, hard-gated on sample size.
-- **Calibration-drift sentinel** *(opt-in — `CALIBRATION_DRIFT_SENTINEL_ENABLED`)* — trends `EvalRun.calibration_error` (recent vs. prior window) and notifies once per drift episode when a model turns over- or under-confident, re-arming on recovery. `GET /api/analytics/calibration-drift/`, with a section on `/scorecard`; reads only, no AI spend.
+- **Calibration-drift sentinel** *(`CALIBRATION_DRIFT_SENTINEL_ENABLED`, on)* — trends `EvalRun.calibration_error` (recent vs. prior window) and notifies once per drift episode when a model turns over- or under-confident, re-arming on recovery. `GET /api/analytics/calibration-drift/`, with a section on `/scorecard`; reads only, no AI spend.
 - **Consistency sentinel** — flags a new directional call that contradicts the AI's own house view: `find_contradictions(ticker, direction)` checks it against the `CoverageNote` and any still-open opposite-direction prediction, notifies (`contra`) at extraction, and lists open contradictions at `GET /api/analytics/contradictions/` and on `/scorecard`.
 
 ### Operations & UX
@@ -248,8 +248,8 @@ Where the Resident Analyst works one name at a time, the Strategist steps back t
 - **Backups** — scheduled `pg_dump` with rotation; `make restore file=<name>` to roll back. A full restore needs the DB dump **and** the persistent `/data` volume: the Fernet encryption salt (`/data/secret.salt`, `apps.secrets.keys`) that decrypts stored Schwab/provider credentials, and offloaded `SnapshotImage` bytes (`/data/images`, `apps.snapshots.image_store`) both live on that volume, not in the downloadable `.sql.gz` alone.
 - **Export** — async zip bundles of threads, snapshots, observations, triggers, profiles, and watchlists.
 - **App shell** — shared layout with top/side nav, breadcrumbs, a notification bell, and a live connection-status dot.
-- **Command palette** (`Cmd`/`Ctrl`-K, with live semantic-recall results) and `g <x>` keyboard shortcuts to the top-level routes — `g d` dashboard, `g s` snapshot, `g n` snapshots, `g h` threads, `g t` triggers, `g o` schedules, `g c` costs, `g e` events, `g b` briefing, `g j` theses, `g r` recall, `g k` scorecard, `g a` analytics.
-- **UI-configurable runtime settings** — data-retention windows, AI failover, the observer response cache, and the scheduled-eval harness are tunable live at **Settings → System** (`/settings/system`); changes take effect at the next request/task without restarting `worker`/`beat`.
+- **Command palette** (`Cmd`/`Ctrl`-K, with live semantic-recall results) and `g <x>` keyboard shortcuts to the top-level routes — `g d` dashboard, `g s` snapshot, `g n` snapshots, `g h` threads, `g t` triggers, `g o` schedules, `g c` costs, `g e` events, `g b` briefing, `g j` theses, `g r` recall, `g k` scorecard, `g a` analytics, `g p` predictions, `g l` lessons, `g v` coverage, `g f` features.
+- **Every capability is switchable** — **Settings → Features** (`/settings/features`, `g f`) is one page listing all 91 switches with what each costs, grouped into AI capabilities, observation & automation, autonomous spend, data & retention, methodology and a danger zone. Global knobs (retention windows, failover, the response cache, the scheduled eval, narrative passes, spend ceilings) are editable in place and take effect at the next request or task with no restart; per-object switches link to the page that owns them. [`docs/toggles.md`](docs/toggles.md) is the same inventory in text form, generated from the registry the page renders.
 - **Encrypted secrets** — Schwab OAuth tokens, provider API keys, and free data-source keys are stored encrypted at rest.
 - **MCP server (out)** — exposes the second brain to external agents (Claude Desktop, this CLI) over dependency-free JSON-RPC 2.0 at `POST /api/mcp/` (`initialize` / `tools/list` / `tools/call`), with four read-only tools (`house_view`, `theses`, `predictions`, `recall_search`). Auth is an opt-in shared token (`MCP_AUTH_TOKEN`, sent as `Authorization: Bearer …`); unset keeps the `127.0.0.1`-only posture.
 

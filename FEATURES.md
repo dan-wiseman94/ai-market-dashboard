@@ -107,11 +107,11 @@ around a complete, closing feedback loop:
 - **Pinned snapshots** — the exact market picture the AI saw is recorded as the
   first turn, so you (and it) always have the full context.
 
-### 🧩 Advanced AI capabilities (opt-in per profile)
+### 🧩 Advanced AI capabilities (per profile, on by default)
 
 - **Tool use on all three providers** — an agentic tool loop with a pluggable
   registry; every tool call is recorded and streamed live.
-- **Extended thinking** *(Claude)* — budgeted step-by-step reasoning.
+- **Extended thinking** *(Claude)* — step-by-step reasoning at the effort level you pick per profile, from low to max.
 - **Persistent memory** *(Claude)* — a per-profile memory directory the model can read & write.
 - **File attachments & citations** *(Claude)* — upload documents; news is sent as
   citable sources the UI links back to.
@@ -178,11 +178,12 @@ The AI stops being a one-shot snapshot reader and starts behaving like an analys
 
 - **Autonomous investigation** — a trigger or schedule can set the AI loose on a
   *bounded* tool-backed investigation — pulling data and following leads to a
-  grounded conclusion — instead of a single static observation. Iteration- and
-  spend-capped; opt-in per trigger/schedule.
-- **It routes itself by track record** — turn it on and the AI fallback picks the
-  best-*measured* model from your eval history rather than whichever was configured
-  first. The more accurate model earns more of your runs.
+  grounded conclusion — instead of a single static observation. Armed by default on
+  new triggers and schedules, and bounded by both an iteration ceiling and a daily
+  autonomous-spend cap you control.
+- **It routes itself by track record** — the AI fallback picks the best-*measured*
+  model from your eval history rather than whichever was configured first, once your
+  history clears the minimum sample it insists on. The more accurate model earns more of your runs.
 - **It learns recurring lessons** — themes from your past trades are clustered and
   labeled by sector and direction, then surfaced cross-ticker in the Coach ("you've
   been too bullish on biotech"), so a lesson from one name informs a brand-new one.
@@ -223,7 +224,7 @@ the whole book and the market regime — and convenes a structured debate before
   returns, with an honest coverage figure when price history is thin.
 - **Unusual-options detector** — flags chain lines on volume/OI or IV outliers and
   tells you *why* each was flagged. A reasoning surface, not just a scanner.
-- **Calibration-drift sentinel** *(opt-in)* — trends each model's calibration error over time and notifies once when it drifts to over- or under-confident, re-arming on recovery (reads eval history only — no AI spend).
+- **Calibration-drift sentinel** — trends each model's calibration error over time and notifies once when it drifts to over- or under-confident, re-arming on recovery (reads eval history only — no AI spend).
 - **Consistency sentinel** — flags any new directional call that contradicts the AI's own house view or an open opposite-direction prediction, the moment it's made.
 - **Cost-per-insight, trigger heatmap, and observer timeline** round out the picture.
 
@@ -263,7 +264,7 @@ the whole book and the market regime — and convenes a structured debate before
 ### 💰 Cost governance
 
 - **Every token accounted for** — aggregation per provider, per model, and per thread.
-- **Daily & monthly spend caps** (opt-in) enforced across chats, observers, and triggers.
+- **Daily & monthly spend caps** per provider, enforced across chats, observers, and triggers. A new provider starts with a $10 daily cap; the monthly ceiling is yours to set.
 - **CSV export** and a **per-snapshot cost drill-down** that attributes spend down to each captured section.
 
 ### ⚙️ Operations & everyday UX
@@ -271,6 +272,11 @@ the whole book and the market regime — and convenes a structured debate before
 - **Automated backups** — scheduled database dumps with rotation and one-command restore.
 - **Full data export** — async zip bundles of your threads, snapshots, observations, triggers, profiles, and watchlists. Your data is yours.
 - **MCP server** *(opt-in)* — expose your second brain (house view, theses, predictions, semantic recall) to external agents like Claude Desktop over a read-only JSON-RPC endpoint at `/api/mcp/`, shared-token-gated before you reach past localhost.
+- **One page for every switch** — Settings → Features lists all 91 capabilities with
+  what each does, where it applies and whether it spends money, from AI tool use to
+  retention windows to the danger-zone restore. Everything ships on except
+  dividend-adjusted return math, which would restate a record you have already
+  built.
 - **Built for speed** — a **command palette** (`⌘/Ctrl-K`) and `g`-then-key
   shortcuts jump to any screen instantly; a polished app shell with breadcrumbs,
   notifications, and a live connection indicator.
