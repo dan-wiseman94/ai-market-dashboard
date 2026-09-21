@@ -52,28 +52,43 @@ class TradingProfile(models.Model):
         "macro",
     ]
 
+    EFFORT_HIGH: ClassVar[str] = "high"
+    EFFORT_CHOICES: ClassVar[list[tuple[str, str]]] = [
+        ("low", "Low"),
+        ("medium", "Medium"),
+        (EFFORT_HIGH, "High"),
+        ("xhigh", "Extra high"),
+        ("max", "Max"),
+    ]
+
     name = models.CharField(max_length=100, unique=True)
     style = models.TextField(help_text="The trading style text. Prepended as system prompt.")
     default_includes = models.JSONField(default=list)
     default_provider = models.CharField(max_length=32, default="claude")
     default_model = models.CharField(max_length=100, default="claude-sonnet-4-6")
     active = models.BooleanField(default=True)
-    # Opt-in AI platform features (Claude-only surfaces).
+    # AI platform features (Claude-only surfaces).
     enable_tools = models.BooleanField(
-        default=False,
+        default=True,
         help_text="Expose the default Toolset (get_quote, fetch_ohlc, search_news, "
         "get_option_chain, compute_indicator) to Claude.",
     )
     enable_thinking = models.BooleanField(
-        default=False,
+        default=True,
         help_text="Turn on extended thinking on Claude.",
     )
     thinking_budget = models.PositiveIntegerField(
         default=8_000,
         help_text="Thinking token budget when enable_thinking=True. Billed as output.",
     )
+    effort = models.CharField(
+        max_length=8,
+        choices=EFFORT_CHOICES,
+        default=EFFORT_HIGH,
+        help_text="Reasoning effort applied to this profile's runs.",
+    )
     enable_memory = models.BooleanField(
-        default=False,
+        default=True,
         help_text="Expose the Memory tool with a per-profile namespace under "
         "/data/memory/<profile_id>/.",
     )
@@ -105,6 +120,9 @@ class AgentPreset(models.Model):
     slug = models.SlugField(unique=True)
     description = models.CharField(max_length=300, blank=True, default="")
     objective_template = models.TextField()
+    # The author's note that this objective asks for a structured answer. Only
+    # objective_template travels into the composer, so nothing routes on this —
+    # ObserverSchedule.structured is the flag the fire path reads.
     structured = models.BooleanField(default=False)
     builtin = models.BooleanField(default=False)
     active = models.BooleanField(default=True)

@@ -2,13 +2,25 @@ from __future__ import annotations
 
 from django.db import IntegrityError, transaction
 from django.shortcuts import get_object_or_404
+from drf_spectacular.utils import extend_schema
 from rest_framework import mixins, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
+from apps.ai.memory import (
+    PREVIEW_CHARS,
+    MemoryPathError,
+    clear_memory,
+    list_memory_entries,
+    memory_store_exists,
+)
+
 from .models import AgentPreset, TradingProfile, Watchlist, WatchlistSymbol
 from .serializers import (
     AgentPresetSerializer,
+    ProfileMemoryClearedSerializer,
+    ProfileMemoryErrorSerializer,
+    ProfileMemorySerializer,
     TradingProfileSerializer,
     WatchlistSerializer,
     WatchlistSymbolSerializer,
@@ -70,6 +82,57 @@ class WatchlistSymbolViewSet(
 class TradingProfileViewSet(viewsets.ModelViewSet):
     queryset = TradingProfile.objects.all()
     serializer_class = TradingProfileSerializer
+
+    @extend_schema(
+        methods=["GET"],
+        request=None,
+        responses={200: ProfileMemorySerializer, 400: ProfileMemoryErrorSerializer},
+        summary="Read this profile's memory store",
+        description=(
+            "Lists every file Claude's Memory tool wrote under this profile, with a "
+            "truncated preview of each so injected content is visible. A profile that "
+            "has never run has no directory: that is a 200 with an empty list."
+        ),
+    )
+    @extend_schema(
+        methods=["DELETE"],
+        request=None,
+        responses={200: ProfileMemoryClearedSerializer, 400: ProfileMemoryErrorSerializer},
+        summary="Clear this profile's memory store",
+        description=(
+            "Deletes everything the model stored for this profile and reports what "
+            "went. The context is gone for good; later runs start from an empty store."
+        ),
+    )
+    @action(detail=True, methods=["get", "delete"], url_path="memory")
+    def memory(self, request, pk=None):
+        """Inspect or wipe the per-profile store Claude's Memory tool writes to.
+
+        The store is model-written from turns that carry untrusted DATA, and it is
+        re-read on every later run of the profile, so it needs to be auditable and
+        resettable. `apps.ai.memory` owns the path containment: the id below is the
+        row's own PK, and the helpers still re-resolve it against the memory root
+        before reading a byte or deleting a tree.
+        """
+        profile = self.get_object()
+        try:
+            if request.method == "DELETE":
+                removed = clear_memory(profile_id=profile.id)
+                return Response({"profile": profile.id, **removed})
+            entries = list_memory_entries(profile_id=profile.id)
+            exists = memory_store_exists(profile_id=profile.id)
+        except MemoryPathError as exc:
+            return Response({"code": "invalid_path", "message": str(exc)}, status=400)
+        return Response(
+            {
+                "profile": profile.id,
+                "exists": exists,
+                "entries": entries,
+                "total_files": len(entries),
+                "total_bytes": sum(int(e["size_bytes"]) for e in entries),
+                "preview_chars": PREVIEW_CHARS,
+            }
+        )
 
 
 class AgentPresetViewSet(viewsets.ModelViewSet):
