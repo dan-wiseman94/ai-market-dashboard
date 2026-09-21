@@ -70,17 +70,24 @@ jobs:
         # deterministic boundary gen) and the combinatorial `stateful` link-walk are
         # dropped to keep this ~5 min, leaving the 35-min job budget for the e2e/ui
         # Playwright suite.
-        # --exclude-path: skip two operations that crash schemathesis's OWN parameter
+        # --exclude-path, first two: operations that crash schemathesis's OWN parameter
         # generator (hypothesis "dictionary changed size during iteration" in
         # _hypothesis.generate_parameter, a tooling bug — the app never receives a request).
         # These are not app failures; revisit when schemathesis fixes the generator.
+        # The rest queue destructive or heavyweight background work a fuzzer must never
+        # call at all: a restore overwrites the live database, an eval run appends an
+        # EvalRun the coach and the calibration router read as measurement, and a recall
+        # backfill walks and re-indexes every source.
+        # Keep this list identical to the `e2e-schemathesis` target in the Makefile.
         # Retry 2× only guards a genuinely-transient infra hiccup.
         run: |
           sx() {
             docker compose -f compose.yaml -f compose.e2e.yaml exec -T --workdir /app web \
               uv run schemathesis run http://localhost:8000/api/schema/ -u http://localhost:8000 \
               -c not_a_server_error -w 1 -n 8 --phases examples,fuzzing \
-              --exclude-path /api/dashboard/ --exclude-path /api/analytics/observer-timeline/
+              --exclude-path /api/dashboard/ --exclude-path /api/analytics/observer-timeline/ \
+              --exclude-path "/api/backups/{id}/restore/" --exclude-path /api/aieval/runs/ \
+              --exclude-path /api/recall/backfill/
           }
           for attempt in 1 2; do
             echo "::group::schemathesis attempt ${attempt}/2"
