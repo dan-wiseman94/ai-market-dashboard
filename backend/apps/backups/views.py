@@ -180,11 +180,11 @@ class BackupViewSet(viewsets.ModelViewSet):
             return Response(
                 {
                     "code": "restore_failed",
-                    "detail": str(exc),
+                    "detail": (
+                        "Restore failed due to a server-side error. "
+                        "Check server logs for details."
+                    ),
                     "exit_code": exc.returncode,
-                    # Already credential-scrubbed by perform_restore; bounded so a
-                    # thousand-line pg_restore log cannot become the response body.
-                    "stderr": exc.stderr[-4000:],
                 },
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
