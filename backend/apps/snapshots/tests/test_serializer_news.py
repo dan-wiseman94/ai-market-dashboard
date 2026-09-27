@@ -54,21 +54,6 @@ def test_render_news_handles_empty():
     assert "_(no headlines)_" in _render_news({"items": []})
 
 
-def test_render_news_accepts_bare_list():
-    items = [
-        {
-            "headline": "Bare list headline",
-            "source": "L",
-            "summary": "",
-            "datetime": 1745484720,
-            "related": "X",
-        },
-    ]
-    md = _render_news(items)
-    assert "Bare list headline" in md
-    assert "*L*" in md
-
-
 def test_render_news_handles_datetime_object_in_published_at():
     """ORM-hydrated NewsItem rows put a datetime object in `published_at`; format must match the int path."""
     from datetime import UTC

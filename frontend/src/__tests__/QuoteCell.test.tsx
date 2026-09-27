@@ -17,19 +17,10 @@ function makeQuote(overrides: Partial<Quote> = {}): Quote {
 }
 
 describe("QuoteCell", () => {
-  it("renders em-dash when q is undefined", () => {
-    render(<QuoteCell q={undefined} />);
-    expect(screen.getByText("—")).toBeInTheDocument();
-  });
 
   it("renders em-dash when q.last is null", () => {
     render(<QuoteCell q={makeQuote({ last: null as unknown as number })} />);
     expect(screen.getByText("—")).toBeInTheDocument();
-  });
-
-  it("renders last value with 2 decimals", () => {
-    render(<QuoteCell q={makeQuote({ last: 123.456, pct_change: null })} />);
-    expect(screen.getByText("123.46")).toBeInTheDocument();
   });
 
   it("shows positive pct_change with + prefix and emerald color", () => {

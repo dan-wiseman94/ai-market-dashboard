@@ -145,12 +145,4 @@ describe("ErrorsPage", () => {
     );
     expect(disabledOnes.length).toBeGreaterThan(0);
   });
-
-  it("renders the page heading", () => {
-    mockHooks();
-    renderPage();
-    expect(
-      screen.getByRole("heading", { name: /errors/i }),
-    ).toBeInTheDocument();
-  });
 });

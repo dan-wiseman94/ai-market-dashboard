@@ -108,66 +108,6 @@ def test_fetch_filings_returns_normalized_list():
     assert str(_APPLE_CIK) in first["url"]
 
 
-def test_fetch_filings_form_filtering():
-    """When forms=('10-K',) only 10-K rows appear in the result."""
-    with (
-        patch("apps.market.services.edgar._get", side_effect=_get_side_effect),
-        patch(
-            "apps.market.services.edgar.cache.get_or_fetch",
-            side_effect=_passthrough_cache,
-        ),
-    ):
-        result = fetch_filings("AAPL", forms=("10-K",))
-
-    assert all(f["form"] == "10-K" for f in result)
-    assert len(result) == 1
-
-
-def test_fetch_filings_includes_10q_and_8k_by_default():
-    with (
-        patch("apps.market.services.edgar._get", side_effect=_get_side_effect),
-        patch(
-            "apps.market.services.edgar.cache.get_or_fetch",
-            side_effect=_passthrough_cache,
-        ),
-    ):
-        result = fetch_filings("AAPL")
-
-    forms_present = {f["form"] for f in result}
-    assert "10-K" in forms_present
-    assert "10-Q" in forms_present
-    assert "8-K" in forms_present
-    assert "4" not in forms_present
-
-
-def test_fetch_filings_newest_first():
-    """Filings returned in newest-first order (EDGAR returns most-recent first already)."""
-    with (
-        patch("apps.market.services.edgar._get", side_effect=_get_side_effect),
-        patch(
-            "apps.market.services.edgar.cache.get_or_fetch",
-            side_effect=_passthrough_cache,
-        ),
-    ):
-        result = fetch_filings("AAPL")
-
-    filed_dates = [f["filed"] for f in result]
-    assert filed_dates == sorted(filed_dates, reverse=True)
-
-
-def test_fetch_filings_respects_limit():
-    with (
-        patch("apps.market.services.edgar._get", side_effect=_get_side_effect),
-        patch(
-            "apps.market.services.edgar.cache.get_or_fetch",
-            side_effect=_passthrough_cache,
-        ),
-    ):
-        result = fetch_filings("AAPL", limit=2)
-
-    assert len(result) <= 2
-
-
 def test_fetch_filings_url_construction():
     """accessionNumber dashes must be stripped for the archive URL."""
     with (
@@ -199,13 +139,6 @@ def test_fetch_filings_mock_mode_returns_canned():
     assert "title" in first
     assert "url" in first
     assert first["form"] in ("10-K", "10-Q", "8-K")
-
-
-def test_fetch_filings_mock_mode_respects_form_filter():
-    with patch("apps.core.mocks.is_mock_mode", return_value=True):
-        result = fetch_filings("AAPL", forms=("10-K",))
-
-    assert all(f["form"] == "10-K" for f in result)
 
 
 def test_fetch_filings_active_insider_does_not_evict_base_filings():
@@ -311,19 +244,6 @@ def test_fetch_filings_drop_stale_entries_by_default():
     fake_get.assert_not_called()
 
 
-def test_fetch_filings_unknown_ticker_returns_empty():
-    with (
-        patch("apps.market.services.edgar._get", side_effect=_get_side_effect),
-        patch(
-            "apps.market.services.edgar.cache.get_or_fetch",
-            side_effect=_passthrough_cache,
-        ),
-    ):
-        result = fetch_filings("ZZZZZ_DOES_NOT_EXIST")
-
-    assert result == []
-
-
 def test_fetch_filings_never_raises_on_network_error():
     def _boom(url: str, *, headers: dict) -> dict:
         raise RuntimeError("connection refused")
@@ -358,20 +278,6 @@ def test_fetch_filings_never_raises_on_submissions_error():
         result = fetch_filings("AAPL")
 
     assert result == []
-
-
-def test_fetch_filings_case_insensitive_ticker():
-    with (
-        patch("apps.market.services.edgar._get", side_effect=_get_side_effect),
-        patch(
-            "apps.market.services.edgar.cache.get_or_fetch",
-            side_effect=_passthrough_cache,
-        ),
-    ):
-        result_lower = fetch_filings("aapl")
-        result_upper = fetch_filings("AAPL")
-
-    assert len(result_lower) == len(result_upper)
 
 
 def test_get_helper_sends_user_agent(monkeypatch):

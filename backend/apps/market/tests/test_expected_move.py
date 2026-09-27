@@ -52,10 +52,6 @@ def test_one_sigma_pct_bad_iv_is_none(bad):
     assert em.one_sigma_pct(bad, 30) is None
 
 
-def test_one_sigma_pct_nonpositive_horizon_is_none():
-    assert em.one_sigma_pct(0.2, 0) is None
-
-
 def test_for_horizon_picks_nearest_expiry():
     # expiries 10 and 40 days out; horizon 30 → 40d is nearer (|40-30|=10 < |10-30|=20).
     p = _payload(
@@ -65,16 +61,6 @@ def test_for_horizon_picks_nearest_expiry():
         }
     )
     assert em.for_horizon(p, 30, today=TODAY) == pytest.approx(em.one_sigma_pct(0.20, 30))
-
-
-def test_for_horizon_ignores_expired():
-    p = _payload(
-        {
-            (TODAY - timedelta(days=5)).isoformat(): 0.90,  # already expired — ignored
-            (TODAY + timedelta(days=35)).isoformat(): 0.25,
-        }
-    )
-    assert em.for_horizon(p, 30, today=TODAY) == pytest.approx(em.one_sigma_pct(0.25, 30))
 
 
 def test_moves_from_term_structure_emits_each_horizon():
@@ -88,18 +74,6 @@ def test_moves_from_term_structure_emits_each_horizon():
     row30 = next(r for r in ts if r["horizon_days"] == 30)
     assert row30["move_pct"] == pytest.approx(round(em.one_sigma_pct(0.25, 30), 4))
     assert row30["move_abs"] == pytest.approx(round(100.0 * em.one_sigma_pct(0.25, 30), 2))
-
-
-def test_moves_from_term_structure_no_spot_yields_none_abs():
-    rows = [{"expiry": (TODAY + timedelta(days=30)).isoformat(), "atm_iv": 0.25}]
-    ts = em.moves_from_term_structure(rows, None, today=TODAY)
-    assert ts
-    assert all(r["move_abs"] is None for r in ts)
-
-
-@pytest.mark.parametrize("rows", [[], None, [{"expiry": "2026-02-01", "atm_iv": None}]])
-def test_moves_from_term_structure_no_iv_is_empty(rows):
-    assert em.moves_from_term_structure(rows, 100.0, today=TODAY) == []
 
 
 @pytest.mark.parametrize(

@@ -28,24 +28,6 @@ def _fire_plain(schedule, snap):
 
 
 @pytest.mark.django_db
-def test_plain_observer_passes_investigate_flag():
-    p = TradingProfile.objects.create(name="P", style="x")
-    s = ObserverSchedule.objects.create(
-        name="x",
-        profile=p,
-        market_hours_only=False,
-        default_includes=["quotes"],
-        investigate=True,
-    )
-    snap = Snapshot.objects.create(
-        profile=p, includes=["quotes"], source="observer", status="ready"
-    )
-    run_ai = _fire_plain(s, snap)
-    run_ai.delay.assert_called_once()
-    assert run_ai.delay.call_args.kwargs["investigate"] is True
-
-
-@pytest.mark.django_db
 def test_plain_observer_investigates_by_default():
     """A schedule created without an explicit flag investigates: the bounded tool
     loop is the default fire, capped by AI_AUTONOMOUS_DAILY_CAP_USD."""

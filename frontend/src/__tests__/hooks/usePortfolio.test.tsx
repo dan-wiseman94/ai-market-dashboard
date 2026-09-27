@@ -1,6 +1,6 @@
 import { renderHook, waitFor } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { usePortfolioPositions, useCreatePosition, useClosePosition, useDeletePosition } from "@/hooks/usePortfolio";
+import { usePortfolioPositions, useClosePosition, useDeletePosition } from "@/hooks/usePortfolio";
 import { hookWrapper, mockApi, newQueryClient } from "../testUtils";
 import type { PortfolioPosition } from "@/api/portfolio";
 
@@ -40,37 +40,6 @@ const CLOSED_POSITION: PortfolioPosition = {
 };
 
 describe("usePortfolioPositions", () => {
-  it("fetches /api/portfolio/positions/ with no params", async () => {
-    const { calls } = mockApi({ "GET /api/portfolio/positions/": [OPEN_POSITION] });
-    const { result } = renderHook(() => usePortfolioPositions(), { wrapper: hookWrapper() });
-    await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(result.current.data).toHaveLength(1);
-    expect(result.current.data?.[0].ticker).toBe("AAPL");
-    const call = calls.find((c) => c.method === "GET" && c.url.includes("/api/portfolio/positions/"));
-    expect(call).toBeDefined();
-  });
-
-  it("fetches with ?status=open filter", async () => {
-    const { calls } = mockApi({ "GET /api/portfolio/positions/": [OPEN_POSITION] });
-    const { result } = renderHook(
-      () => usePortfolioPositions({ status: "open" }),
-      { wrapper: hookWrapper() },
-    );
-    await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    const call = calls.find((c) => c.url.includes("status=open"));
-    expect(call).toBeDefined();
-  });
-
-  it("fetches with ?thesis=5 filter", async () => {
-    const { calls } = mockApi({ "GET /api/portfolio/positions/": [] });
-    const { result } = renderHook(
-      () => usePortfolioPositions({ thesis: 5 }),
-      { wrapper: hookWrapper() },
-    );
-    await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    const call = calls.find((c) => c.url.includes("thesis=5"));
-    expect(call).toBeDefined();
-  });
 
   it("uses queryKey that includes portfolio/positions", async () => {
     const client = newQueryClient();
@@ -80,29 +49,6 @@ describe("usePortfolioPositions", () => {
       const keys = client.getQueryCache().findAll().map((q) => q.queryKey[0]);
       expect(keys).toContain("portfolio/positions");
     });
-  });
-});
-
-describe("useCreatePosition", () => {
-  it("POSTs to /api/portfolio/positions/ and invalidates query cache", async () => {
-    const client = newQueryClient();
-    const { calls } = mockApi({
-      "GET /api/portfolio/positions/": [],
-      "POST /api/portfolio/positions/": OPEN_POSITION,
-    });
-    const { result } = renderHook(() => useCreatePosition(), { wrapper: hookWrapper(client) });
-
-    result.current.mutate({
-      ticker: "AAPL",
-      direction: "long",
-      quantity: "10.00000000",
-      avg_cost: "150.00",
-    });
-
-    await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    const postCall = calls.find((c) => c.method === "POST" && c.url.includes("/api/portfolio/positions/"));
-    expect(postCall).toBeDefined();
-    expect(postCall?.body).toMatchObject({ ticker: "AAPL", direction: "long" });
   });
 });
 

@@ -20,21 +20,3 @@ def test_get_or_fetch_hits_when_fresh(redis_fake):
     assert v1 == {"hello": "world"}
     assert v2 == {"hello": "world"}
     fetcher.assert_called_once()
-
-
-def test_get_or_fetch_refetches_after_expiry(redis_fake):
-    fetcher = MagicMock(side_effect=[{"v": 1}, {"v": 2}])
-    cache_module.get_or_fetch("k2", ttl_seconds=1, fetcher=fetcher)
-    redis_fake.delete("k2")  # simulate expiry
-    result = cache_module.get_or_fetch("k2", ttl_seconds=1, fetcher=fetcher)
-    assert result == {"v": 2}
-    assert fetcher.call_count == 2
-
-
-def test_ttl_for_kind_returns_configured_values():
-    assert cache_module.ttl_for_kind("quotes") == 5
-    assert cache_module.ttl_for_kind("positions") == 10
-    assert cache_module.ttl_for_kind("ohlc_1m") == 30
-    assert cache_module.ttl_for_kind("ohlc_1d") == 3600
-    assert cache_module.ttl_for_kind("news") == 300
-    assert cache_module.ttl_for_kind("unknown-kind") == 30

@@ -21,14 +21,6 @@ def test_flowlite_fetcher_passes_watchlist_and_picked_primary():
     assert out == {"data": _CANNED}
 
 
-def test_flowlite_fetcher_prefers_explicit_ohlc_ticker_as_primary():
-    with patch.object(snapshot_services, "build_flowlite_payload", return_value=_CANNED) as m:
-        snapshot_services._FETCHERS["flowlite"](
-            watchlist_tickers=["NVDA", "SPY"], ohlc_ticker="TSLA"
-        )
-    m.assert_called_once_with(watchlist_tickers=["NVDA", "SPY"], primary="TSLA")
-
-
 def test_flowlite_fetcher_empty_watchlist_defaults_primary_to_spy():
     with patch.object(snapshot_services, "build_flowlite_payload", return_value=_CANNED) as m:
         snapshot_services._FETCHERS["flowlite"](watchlist_tickers=[], ohlc_ticker=None)

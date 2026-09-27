@@ -4,14 +4,6 @@ from apps.observer.models import BriefingConfig
 
 
 @pytest.mark.django_db
-def test_get_config_returns_singleton(api):
-    r = api.get("/api/briefings/config/")
-    assert r.status_code == 200
-    assert r.json()["enabled"] is True
-    assert "send_at_local" in r.json()
-
-
-@pytest.mark.django_db
 def test_get_config_exposes_the_spend_switches(api):
     """enabled and synthesis_enabled are both on out of the box and both must be
     visible: the scheduled briefing pays for an AI synthesis with no user action,

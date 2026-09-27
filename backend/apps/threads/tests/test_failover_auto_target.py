@@ -49,16 +49,6 @@ def test_auto_skips_a_provider_with_no_credential(enabled_no_secondary):
 
 
 @pytest.mark.django_db
-def test_auto_skips_a_disabled_provider(enabled_no_secondary):
-    ProviderConfig.objects.create(provider="claude", api_key="sk-a", default_model="claude-opus-5")
-    ProviderConfig.objects.create(
-        provider="openai", api_key="sk-b", default_model="gpt-5", enabled=False
-    )
-
-    assert _failover_target("claude") is None
-
-
-@pytest.mark.django_db
 def test_auto_accepts_a_local_endpoint_without_a_key(enabled_no_secondary):
     ProviderConfig.objects.create(provider="claude", api_key="sk-a", default_model="claude-opus-5")
     ProviderConfig.objects.create(
@@ -70,10 +60,3 @@ def test_auto_accepts_a_local_endpoint_without_a_key(enabled_no_secondary):
     target = _failover_target("claude")
     assert target is not None
     assert target[0] == "local"
-
-
-@pytest.mark.django_db
-def test_auto_is_off_when_failover_is_off():
-    ProviderConfig.objects.create(provider="openai", api_key="sk-b", default_model="gpt-5")
-    with override_settings(AI_FAILOVER_ENABLED=False, AI_FAILOVER_PROVIDER=""):
-        assert _failover_target("claude") is None

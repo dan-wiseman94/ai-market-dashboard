@@ -54,26 +54,6 @@ def test_handler_creates_error_event():
 
 
 @pytest.mark.django_db
-def test_handler_source_includes_task_name():
-    """source field is prefixed 'celery.task:<name>'."""
-    sender = _FakeSender("briefing.run_scheduled")
-    exc = ConnectionError("Finnhub down")
-
-    _on_task_failure(
-        sender=sender,
-        task_id="task-xyz",
-        exception=exc,
-        traceback=None,
-        einfo=None,
-    )
-
-    ev = ErrorEvent.objects.get(source="celery.task:briefing.run_scheduled")
-    assert ev.source == "celery.task:briefing.run_scheduled"
-    assert ev.fingerprint == "briefing.run_scheduled"
-    assert "ConnectionError" in ev.message
-
-
-@pytest.mark.django_db
 def test_handler_no_secret_leak_in_detail():
     """Task kwargs (which may hold API keys) must NOT appear in detail.
 

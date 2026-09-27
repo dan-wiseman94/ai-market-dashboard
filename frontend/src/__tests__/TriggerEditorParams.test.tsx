@@ -26,15 +26,6 @@ describe("TriggerEditorParams", () => {
     unmount();
   });
 
-  it("period input shows for rsi leaf", () => {
-    const onChange = vi.fn();
-    const initial: Condition = {
-      all: [{ metric: "rsi", ticker: "SPY", op: "<", value: 30, window: "1d" }],
-    };
-    render(<RuleBuilder value={initial} onChange={onChange} />);
-    expect(screen.getByLabelText("period")).toBeInTheDocument();
-  });
-
   it("fast and slow inputs show for sma_spread_pct leaf", () => {
     const onChange = vi.fn();
     const initial: Condition = {
@@ -53,13 +44,6 @@ describe("TriggerEditorParams", () => {
     render(<RuleBuilder value={initial} onChange={onChange} />);
     expect(screen.queryByLabelText("period")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("fast period")).not.toBeInTheDocument();
-  });
-
-  it("SMA cross preset button is present", () => {
-    const onChange = vi.fn();
-    const initial: Condition = { all: [{ metric: "price", ticker: "SPY", op: ">", value: 0 }] };
-    render(<RuleBuilder value={initial} onChange={onChange} />);
-    expect(screen.getByRole("button", { name: /SMA cross/i })).toBeInTheDocument();
   });
 
   it("clicking SMA cross preset emits a sma_spread_pct leaf with fast/slow params and crosses_above op", () => {

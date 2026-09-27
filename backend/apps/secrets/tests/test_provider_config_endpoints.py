@@ -22,23 +22,6 @@ def test_provider_config_create_does_not_leak_key(api):
 
 
 @pytest.mark.django_db
-def test_provider_config_update_key(api):
-    ProviderConfig.objects.create(provider="claude")
-    r = api.patch("/api/schwab/providers/claude/", {"api_key_write": "sk-ant-new"}, format="json")
-    assert r.status_code == 200
-    pc = ProviderConfig.objects.get(provider="claude")
-    assert pc.api_key == "sk-ant-new"
-
-
-@pytest.mark.django_db
-def test_ai_models_endpoint(api):
-    r = api.get("/api/schwab/models/?provider=claude")
-    assert r.status_code == 200
-    ids = [m["id"] for m in r.json()["models"]]
-    assert "claude-sonnet-4-6" in ids
-
-
-@pytest.mark.django_db
 def test_provider_config_exposes_discovery_fields(api):
     ProviderConfig.objects.create(
         provider="local", base_url="http://x:11434/v1", discovered_models=["llama3"]

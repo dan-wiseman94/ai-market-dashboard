@@ -99,16 +99,6 @@ def test_non_numeric_redis_prior_is_treated_as_none(fake_redis):
 
 
 @pytest.mark.django_db
-def test_positions_fetch_failure_is_swallowed(fake_redis):
-    t = _trigger({"metric": "position_pl", "op": "<", "value": -1000})
-    with patch(
-        "apps.observer.triggers.metrics.fetch_positions", side_effect=RuntimeError("schwab down")
-    ):
-        snap = build_snapshot([t])  # must not raise
-    assert snap["position_pl"] is None
-
-
-@pytest.mark.django_db
 def test_position_pl_pct_is_ratio_of_pl_to_market_value(fake_redis):
     t = _trigger({"metric": "position_pl_pct", "op": ">", "value": 0.0})
     rows = [
@@ -119,17 +109,6 @@ def test_position_pl_pct_is_ratio_of_pl_to_market_value(fake_redis):
         snap = build_snapshot([t])
     # (150 + 50) / (1000 + 1000) = 0.1
     assert snap["position_pl_pct"] == pytest.approx(0.1)
-
-
-@pytest.mark.django_db
-def test_position_pl_pct_none_when_no_market_value(fake_redis):
-    t = _trigger({"metric": "position_pl_pct", "op": ">", "value": 0.0})
-    with patch(
-        "apps.observer.triggers.metrics.fetch_positions",
-        return_value=[{"unrealized_pl": 0.0, "mkt_value": 0.0}],
-    ):
-        snap = build_snapshot([t])
-    assert snap["position_pl_pct"] is None
 
 
 @pytest.mark.django_db

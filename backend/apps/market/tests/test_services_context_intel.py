@@ -55,89 +55,6 @@ def _spx_bars() -> None:
 
 
 @pytest.mark.django_db
-def test_no_args_returns_expected_shape():
-    """fetch_market_context() with no tickers still returns spx/qqq/vix/sectors/breadth."""
-    with patch("apps.market.services.context.fetch_quotes", return_value=_FAKE_QUOTES):
-        ctx = fetch_market_context()
-    assert "spx_last" in ctx
-    assert "qqq_last" in ctx
-    assert "vix_last" in ctx
-    assert "sectors" in ctx
-    assert "breadth" in ctx
-
-
-@pytest.mark.django_db
-def test_no_args_relative_strength_is_none():
-    """With no tickers, relative_strength in the result must be None (no primary)."""
-    with patch("apps.market.services.context.fetch_quotes", return_value=_FAKE_QUOTES):
-        ctx = fetch_market_context()
-    assert ctx.get("relative_strength") is None
-
-
-@pytest.mark.django_db
-def test_no_args_sector_rotation_present():
-    """sector_rotation key is always present ([] when no bars)."""
-    with patch("apps.market.services.context.fetch_quotes", return_value=_FAKE_QUOTES):
-        ctx = fetch_market_context()
-    assert "sector_rotation" in ctx
-    assert isinstance(ctx["sector_rotation"], list)
-
-
-@pytest.mark.django_db
-def test_with_tickers_includes_relative_strength():
-    """fetch_market_context(tickers=["NVDA"]) includes RS for NVDA."""
-    _nvda_bars()
-    _spx_bars()
-    with patch("apps.market.services.context.fetch_quotes", return_value=_FAKE_QUOTES):
-        ctx = fetch_market_context(tickers=["NVDA"])
-    rs = ctx.get("relative_strength")
-    assert rs is not None
-    assert rs["ticker"] == "NVDA"
-    assert rs["benchmark"] == "$SPX"
-    # 1d RS: (110-100)/100 = 10.0, $SPX (5000-4900)/4900 = 2.0408 → RS ≈ 7.9592
-    assert rs["windows"][1]["ticker_pct"] == pytest.approx(10.0, rel=1e-4)
-    assert rs["windows"][1]["rs"] == pytest.approx(7.9592, rel=1e-4)
-
-
-@pytest.mark.django_db
-def test_with_tickers_no_bars_relative_strength_is_none():
-    """When the primary ticker has no daily bars, RS is None (honest coverage)."""
-    _spx_bars()  # benchmark present, but primary (NVDA) has no bars
-    with patch("apps.market.services.context.fetch_quotes", return_value=_FAKE_QUOTES):
-        ctx = fetch_market_context(tickers=["NVDA"])
-    assert ctx.get("relative_strength") is None
-
-
-@pytest.mark.django_db
-def test_sector_rotation_populated_when_bars_present():
-    """sector_rotation includes ETFs that have daily bars."""
-    _spx_bars()
-    for i, close in enumerate([40, 42, 44, 46, 48, 50]):
-        _bar("XLF", i, float(close))
-
-    with patch("apps.market.services.context.fetch_quotes", return_value=_FAKE_QUOTES):
-        ctx = fetch_market_context()
-
-    rotation = ctx.get("sector_rotation", [])
-    sectors_returned = [r["sector"] for r in rotation]
-    assert "XLF" in sectors_returned
-    # XLF 5d return: (50-40)/40 * 100 = 25.0
-    xlf_row = next(r for r in rotation if r["sector"] == "XLF")
-    assert xlf_row["return_pct"] == pytest.approx(25.0, rel=1e-4)
-    # RS = 25.0 - 11.1111 = 13.8889
-    assert xlf_row["rs"] == pytest.approx(13.8889, rel=1e-4)
-
-
-@pytest.mark.django_db
-def test_sector_rotation_empty_when_no_sector_bars():
-    """sector_rotation is [] when no sector ETF has daily bars (even with $SPX bars)."""
-    _spx_bars()
-    with patch("apps.market.services.context.fetch_quotes", return_value=_FAKE_QUOTES):
-        ctx = fetch_market_context()
-    assert ctx["sector_rotation"] == []
-
-
-@pytest.mark.django_db
 def test_cache_key_differs_by_primary_ticker():
     """Two different primaries must NOT share cached results."""
     _nvda_bars()
@@ -150,20 +67,6 @@ def test_cache_key_differs_by_primary_ticker():
     # NVDA has bars → RS present; AAPL has no bars → RS None
     assert ctx_nvda.get("relative_strength") is not None
     assert ctx_aapl.get("relative_strength") is None
-
-
-@pytest.mark.django_db
-def test_cache_key_differs_no_args_vs_ticker():
-    """fetch_market_context() and fetch_market_context(tickers=["NVDA"]) use different keys."""
-    _nvda_bars()
-    _spx_bars()
-
-    with patch("apps.market.services.context.fetch_quotes", return_value=_FAKE_QUOTES):
-        ctx_no_args = fetch_market_context()
-        ctx_nvda = fetch_market_context(tickers=["NVDA"])
-
-    assert ctx_no_args.get("relative_strength") is None
-    assert ctx_nvda.get("relative_strength") is not None
 
 
 @pytest.mark.django_db

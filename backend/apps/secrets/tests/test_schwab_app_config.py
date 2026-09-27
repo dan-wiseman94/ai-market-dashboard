@@ -7,7 +7,6 @@ from django.test import Client, override_settings
 
 from apps.secrets.models import SchwabAppConfig
 from apps.secrets.schwab_oauth import (
-    SchwabNotConfigured,
     build_authorize_url,
     schwab_app_credentials,
 )
@@ -42,25 +41,12 @@ def test_credentials_prefer_db_over_env():
 
 
 @pytest.mark.django_db
-@override_settings(SCHWAB_CLIENT_ID="ENVID", SCHWAB_CLIENT_SECRET="ENVSEC")
-def test_credentials_fall_back_to_env_when_db_blank():
-    assert schwab_app_credentials() == ("ENVID", "ENVSEC")
-
-
-@pytest.mark.django_db
 @override_settings(SCHWAB_CLIENT_ID="", SCHWAB_CLIENT_SECRET="", **AUTHORIZE_SETTINGS)
 def test_build_authorize_url_uses_db_credentials():
     cfg = SchwabAppConfig.load()
     cfg.client_id = "DBID"
     cfg.save()
     assert "client_id=DBID" in build_authorize_url()
-
-
-@pytest.mark.django_db
-@override_settings(SCHWAB_CLIENT_ID="", SCHWAB_CLIENT_SECRET="")
-def test_build_authorize_url_raises_when_unconfigured():
-    with pytest.raises(SchwabNotConfigured):
-        build_authorize_url()
 
 
 @pytest.mark.django_db

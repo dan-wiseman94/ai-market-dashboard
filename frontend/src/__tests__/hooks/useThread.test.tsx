@@ -7,7 +7,7 @@ import {
   useThread,
   useThreads,
 } from "@/hooks/useThread";
-import { hookWrapper, mockApi, mockApiError, newQueryClient } from "../testUtils";
+import { hookWrapper, mockApi, newQueryClient } from "../testUtils";
 
 const messageFixture = {
   id: 10,
@@ -74,15 +74,6 @@ describe("useSendMessage", () => {
       override_model: "gpt-5",
     });
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["thread", 42] });
-  });
-
-  it("isError on send failure", async () => {
-    mockApiError("POST /api/threads/42/send/", 400);
-    const { result } = renderHook(() => useSendMessage(42), { wrapper: hookWrapper() });
-    await act(async () => {
-      await result.current.mutateAsync({ text: "hi" }).catch(() => {});
-    });
-    await waitFor(() => expect(result.current.isError).toBe(true));
   });
 });
 

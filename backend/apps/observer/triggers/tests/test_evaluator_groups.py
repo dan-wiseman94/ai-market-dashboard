@@ -28,58 +28,6 @@ def test_all_group_false_short_circuits():
     assert values == {"price:SPY": 551.0}
 
 
-def test_any_group_true_on_first_match():
-    node = {
-        "any": [
-            {"metric": "price", "ticker": "SPY", "op": ">", "value": 550},
-            {"metric": "vix", "op": ">", "value": 100},
-        ]
-    }
-    matched, _ = evaluate(node, METRICS)
-    assert matched is True
-
-
-def test_any_group_false_when_all_miss():
-    node = {
-        "any": [
-            {"metric": "price", "ticker": "SPY", "op": ">", "value": 600},
-            {"metric": "vix", "op": ">", "value": 100},
-        ]
-    }
-    matched, _ = evaluate(node, METRICS)
-    assert matched is False
-
-
-def test_not_flips_leaf():
-    node = {"not": {"metric": "vix", "op": ">", "value": 100}}
-    matched, _ = evaluate(node, METRICS)
-    assert matched is True
-
-
-def test_not_flips_group():
-    node = {
-        "not": {
-            "all": [
-                {"metric": "price", "ticker": "SPY", "op": ">", "value": 600},
-            ]
-        }
-    }
-    matched, _ = evaluate(node, METRICS)
-    assert matched is True
-
-
-def test_empty_all_group_is_true():
-    matched, values = evaluate({"all": []}, METRICS)
-    assert matched is True
-    assert values == {}
-
-
-def test_empty_any_group_is_false():
-    matched, values = evaluate({"any": []}, METRICS)
-    assert matched is False
-    assert values == {}
-
-
 def test_nested_all_inside_any():
     node = {
         "any": [

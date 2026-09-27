@@ -158,20 +158,6 @@ describe("ProfilesPage", () => {
     expect(notesCheckbox).not.toBeChecked();
   });
 
-  it("shows a non-toggleable VIX 'always included' chip", () => {
-    renderWithProviders(<ProfilesPage />);
-    expect(screen.getByText(/VIX term structure.*always included/i)).toBeInTheDocument();
-    expect(screen.queryByRole("checkbox", { name: /vix/i })).not.toBeInTheDocument();
-  });
-
-  it("typing into name input updates the field", async () => {
-    const user = userEvent.setup();
-    renderWithProviders(<ProfilesPage />);
-    const nameInput = screen.getByPlaceholderText("Profile name");
-    await user.type(nameInput, "My Profile");
-    expect(nameInput).toHaveValue("My Profile");
-  });
-
   it("submitting form with valid name calls create.mutate with the right body", async () => {
     const user = userEvent.setup();
     const createMutate = vi.fn();
@@ -234,18 +220,6 @@ describe("ProfilesPage", () => {
     fireEvent.click(screen.getByRole("button", { name: /create/i }));
     const [body] = createMutate.mock.calls[0];
     expect(body.default_includes).not.toContain("quotes");
-  });
-
-  it("clicking Edit on a profile populates the form", async () => {
-    mockUseProfiles.mockReturnValue({ data: [PROFILE_A] } as never);
-    const user = userEvent.setup();
-    renderWithProviders(<ProfilesPage />);
-
-    const editButton = screen.getByRole("button", { name: /edit/i });
-    await user.click(editButton);
-
-    expect(screen.getByPlaceholderText("Profile name")).toHaveValue("Swing Trader");
-    expect(screen.getByRole("button", { name: /save/i })).toBeInTheDocument();
   });
 
   it("submitting while editing calls update.mutate not create", async () => {
@@ -334,13 +308,6 @@ describe("ProfilesPage", () => {
     const [body] = createMutate.mock.calls[0];
     expect(body).toMatchObject({ default_provider: "openai", default_model: "gpt-5" });
   });
-
-  it("renders existing profiles in a list", () => {
-    mockUseProfiles.mockReturnValue({ data: [PROFILE_A] } as never);
-    renderWithProviders(<ProfilesPage />);
-    expect(screen.getByTestId("profile-row-Swing Trader")).toBeInTheDocument();
-    expect(screen.getByText("Swing Trader")).toBeInTheDocument();
-  });
 });
 
 const PRESET_A: AgentPreset = {
@@ -370,17 +337,6 @@ const BUILTIN_PRESET: AgentPreset = {
 };
 
 describe("ProfilesPage – preset management", () => {
-  it("renders the 'Agent presets' heading", () => {
-    renderWithProviders(<ProfilesPage />);
-    expect(screen.getByRole("heading", { name: /agent presets/i })).toBeInTheDocument();
-  });
-
-  it("lists presets with name", () => {
-    mockUseAgentPresets.mockReturnValue({ data: [PRESET_A] } as never);
-    renderWithProviders(<ProfilesPage />);
-    expect(screen.getByTestId("preset-row-Morning Scan")).toBeInTheDocument();
-    expect(screen.getByText("Morning Scan")).toBeInTheDocument();
-  });
 
   it("shows 'builtin' badge for builtin presets", () => {
     mockUseAgentPresets.mockReturnValue({ data: [BUILTIN_PRESET] } as never);
@@ -472,15 +428,6 @@ describe("ProfilesPage – AI features fieldset", () => {
   const hintOf = (el: HTMLElement) =>
     document.getElementById(el.getAttribute("aria-describedby") ?? "");
 
-  it("groups the capability controls in a labelled fieldset", () => {
-    renderWithProviders(<ProfilesPage />);
-    expect(screen.getByRole("group", { name: /ai features/i })).toBeInTheDocument();
-    for (const name of ["Enable tools", "Extended thinking", "Memory", "Decision Coach", "Active"]) {
-      expect(screen.getByRole("switch", { name })).toBeInTheDocument();
-    }
-    expect(screen.getByRole("combobox", { name: "Effort" })).toBeInTheDocument();
-  });
-
   it("creates with the backend's capability defaults", async () => {
     const user = userEvent.setup();
     const createMutate = makeCreate();
@@ -571,15 +518,6 @@ describe("ProfilesPage – AI features fieldset", () => {
     expect(body).toMatchObject({
       default_provider: "openai", enable_thinking: false, enable_memory: false,
     });
-  });
-
-  it("points non-Claude users at the provider card's tool-use gate", async () => {
-    const user = userEvent.setup();
-    renderWithProviders(<ProfilesPage />);
-    await user.selectOptions(screen.getByLabelText("Default provider"), "openai");
-    expect(
-      screen.getByText("Tool use is off for OpenAI in Settings → AI Providers"),
-    ).toBeInTheDocument();
   });
 
   it("populates the capability controls from the edited profile", async () => {

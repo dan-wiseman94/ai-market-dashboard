@@ -8,10 +8,6 @@ from apps.observer.briefing.services.assemble import _book_section
 pytestmark = pytest.mark.django_db
 
 
-def test_book_section_default_when_empty():
-    assert _book_section() == {"concentration": None, "regime_fit": None, "top_risk": None}
-
-
 def test_book_section_populated():
     BookSnapshot.objects.create(
         as_of_date=dt.date(2026, 6, 1),

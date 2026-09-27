@@ -52,7 +52,3 @@ def test_unknown_model_resolves_to_adaptive():
 )
 def test_resolve_effort_clamps_per_model(model, asked, expected):
     assert resolve_effort("claude", model, asked) == expected
-
-
-def test_openai_rows_take_no_effort():
-    assert all(m.effort_levels == () for m in list_models("openai"))

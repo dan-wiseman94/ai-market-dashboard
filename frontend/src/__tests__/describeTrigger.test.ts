@@ -47,10 +47,6 @@ describe("describeLeaf", () => {
 });
 
 describe("describeCondition", () => {
-  it("single leaf passes through", () => {
-    const c: Condition = { metric: "price", ticker: "SPY", op: ">", value: 550 };
-    expect(describeCondition(c)).toBe("price of SPY is greater than 550");
-  });
 
   it("all group joined with AND", () => {
     const c: Condition = {

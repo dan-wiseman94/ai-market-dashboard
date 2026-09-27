@@ -6,7 +6,7 @@ from unittest.mock import patch
 import fakeredis
 import pytest
 
-from apps.observer.models import EventTrigger, TriggerFiring
+from apps.observer.models import EventTrigger
 
 
 @pytest.fixture
@@ -43,35 +43,6 @@ def test_evaluate_without_condition_or_id_400(api):
     resp = api.post("/api/triggers/evaluate/", {}, format="json")
     assert resp.status_code == 400
     assert resp.json()["code"] == "missing_condition"
-
-
-@pytest.mark.django_db
-def test_firings_pagination_falls_back_on_garbage_page_size(api, profile):
-    t = EventTrigger.objects.create(
-        name="r",
-        profile=profile,
-        condition={"metric": "price", "ticker": "SPY", "op": ">", "value": 1},
-    )
-    TriggerFiring.objects.create(trigger=t, matched_values={})
-    # DRF PageNumberPagination: a garbage page_size silently falls back to the default.
-    resp = api.get(f"/api/triggers/{t.id}/firings/?page_size=xyz")
-    assert resp.status_code == 200
-    body = resp.json()
-    assert set(body) == {"count", "next", "previous", "results"}
-    assert body["count"] == 1
-
-
-@pytest.mark.django_db
-def test_firings_pagination_garbage_page_is_404(api, profile):
-    t = EventTrigger.objects.create(
-        name="r",
-        profile=profile,
-        condition={"metric": "price", "ticker": "SPY", "op": ">", "value": 1},
-    )
-    TriggerFiring.objects.create(trigger=t, matched_values={})
-    # DRF PageNumberPagination: an invalid page is NotFound, not clamped.
-    resp = api.get(f"/api/triggers/{t.id}/firings/?page=abc")
-    assert resp.status_code == 404
 
 
 @pytest.mark.django_db

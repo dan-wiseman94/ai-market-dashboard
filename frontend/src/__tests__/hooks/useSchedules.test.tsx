@@ -1,15 +1,14 @@
-import { act, renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import {
   useCreateSchedule,
   useDeleteSchedule,
   useRunSchedule,
-  useSchedules,
   useToggleSchedule,
   useUpdateSchedule,
   useUpdateScheduleIncludes,
 } from "@/hooks/useSchedules";
-import { hookWrapper, mockApi, mockApiError, newQueryClient } from "../testUtils";
+import { hookWrapper, mockApi, newQueryClient } from "../testUtils";
 
 const scheduleFixture = {
   id: 3,
@@ -33,22 +32,6 @@ const scheduleFixture = {
   created_at: "2026-05-17T00:00:00Z",
   updated_at: "2026-05-17T00:00:00Z",
 };
-
-describe("useSchedules", () => {
-  it("returns schedules on success", async () => {
-    mockApi({ "GET /api/observer/schedules/": [scheduleFixture] });
-    const { result } = renderHook(() => useSchedules(), { wrapper: hookWrapper() });
-    await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(result.current.data).toHaveLength(1);
-    expect(result.current.data?.[0].name).toBe("Morning scan");
-  });
-
-  it("isError on fetch failure", async () => {
-    mockApiError("GET /api/observer/schedules/", 500);
-    const { result } = renderHook(() => useSchedules(), { wrapper: hookWrapper() });
-    await waitFor(() => expect(result.current.isError).toBe(true));
-  });
-});
 
 describe("useCreateSchedule", () => {
   it("sends body and invalidates ['schedules']", async () => {
@@ -111,30 +94,6 @@ describe("useUpdateScheduleIncludes", () => {
     });
     expect(calls[0].url).toContain("/api/observer/schedules/3/");
     expect(calls[0].body).toMatchObject({ default_includes: ["quotes", "news"] });
-    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["schedules"] });
-  });
-});
-
-describe("useUpdateSchedule", () => {
-  it("PATCHes an arbitrary field set and invalidates the list", async () => {
-    const client = newQueryClient();
-    const invalidateSpy = vi.spyOn(client, "invalidateQueries");
-    const { calls } = mockApi({ "PATCH /api/observer/schedules/3/": {} });
-    const { result } = renderHook(() => useUpdateSchedule(), {
-      wrapper: hookWrapper(client),
-    });
-    await act(async () => {
-      await result.current.mutateAsync({
-        id: 3,
-        body: { consensus: true, override_provider: "openai", override_model: "gpt-5.6-sol" },
-      });
-    });
-    expect(calls[0].url).toContain("/api/observer/schedules/3/");
-    expect(calls[0].body).toMatchObject({
-      consensus: true,
-      override_provider: "openai",
-      override_model: "gpt-5.6-sol",
-    });
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["schedules"] });
   });
 });

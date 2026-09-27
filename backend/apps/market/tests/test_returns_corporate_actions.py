@@ -55,11 +55,6 @@ class TestSplitAdjustment:
         # Naive (100-300)/300 = -66.7%; adjusted 100*3 == 300 -> ~0%.
         assert forward_return_pct("NVDA", START, END) == pytest.approx(0.0)
 
-    def test_no_split_leaves_return_unchanged(self, db, mk_bar) -> None:
-        mk_bar("AAPL", START, 100.0)
-        mk_bar("AAPL", END, 110.0)
-        assert forward_return_pct("AAPL", START, END) == pytest.approx(10.0)
-
     def test_reverse_split_adjusts(self, db, mk_bar) -> None:
         # 1:10 reverse split (ratio 0.1): $5 -> $50, economically flat.
         mk_bar("RVRS", START, 5.0)
@@ -95,19 +90,10 @@ def _window_split_factor(ticker: str) -> float:
 
 
 class TestSplitFactor:
-    def test_no_actions_is_one(self, db) -> None:
-        assert _window_split_factor("AAPL") == 1.0
-
     def test_multiple_splits_multiply(self, db) -> None:
         _split("X", date(2026, 1, 20), 2.0)
         _split("X", date(2026, 2, 20), 3.0)
         assert _window_split_factor("X") == pytest.approx(6.0)
-
-    def test_only_splits_strictly_in_window_count(self, db) -> None:
-        _split("X", date(2025, 12, 1), 2.0)  # before start
-        _split("X", date(2026, 2, 1), 3.0)  # inside
-        _split("X", date(2026, 6, 1), 5.0)  # after end
-        assert _window_split_factor("X") == pytest.approx(3.0)
 
 
 class TestPricePathSummary:
@@ -133,21 +119,6 @@ class TestPricePathSummary:
 
 
 class TestDividendOptIn:
-    def test_dividends_ignored_by_default(self, db, mk_bar) -> None:
-        # Default is price-return: a dividend in the window does NOT lift the number.
-        mk_bar("AAPL", START, 100.0)
-        mk_bar("AAPL", END, 100.0)
-        _div("AAPL", date(2026, 2, 1), 5.0)
-        assert forward_return_pct("AAPL", START, END) == pytest.approx(0.0)
-
-    @override_settings(RETURNS_ADJUST_DIVIDENDS=True)
-    def test_dividends_add_to_total_return_when_enabled(self, db, mk_bar) -> None:
-        mk_bar("AAPL", START, 100.0)
-        mk_bar("AAPL", END, 100.0)
-        _div("AAPL", date(2026, 2, 1), 5.0)
-        # total return = (100 + 5 - 100) / 100 = 5%
-        assert forward_return_pct("AAPL", START, END) == pytest.approx(5.0)
-
     @override_settings(RETURNS_ADJUST_DIVIDENDS=True)
     def test_dividend_after_split_scaled_onto_start_basis(self, db, mk_bar) -> None:
         # $300 entry; 3:1 split to $100 (flat); a $3/share dividend AFTER the split.

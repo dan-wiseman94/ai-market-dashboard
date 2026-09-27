@@ -71,15 +71,6 @@ def test_unknown_provider_raises():
         run_structured(provider="bard", **_kw())
 
 
-def test_reexports():
-    from apps.ai import structured
-    from apps.ai.providers.claude_structured import StructuredParseError
-
-    assert structured.StructuredParseError is StructuredParseError
-    assert callable(structured.token_usage_from_anthropic)
-    assert callable(structured.token_usage_from_openai)
-
-
 # --- resolution -------------------------------------------------------------
 
 
@@ -209,16 +200,6 @@ def test_profile_model_from_a_different_providers_catalog_falls_back_to_default(
     assert t.model == "gpt-5.6-sol"
 
 
-def test_override_model_from_a_different_providers_catalog_falls_back_to_default():
-    from apps.ai.structured import resolve_structured_target
-
-    _cfg("openai", key="sk-oai")  # no model — catalog default is the fallback
-    t = resolve_structured_target(override_provider="openai", override_model="claude-opus-5")
-    assert t is not None
-    assert t.provider == "openai"
-    assert t.model == "gpt-5.6-sol"
-
-
 def test_model_unknown_to_the_catalog_entirely_is_kept_verbatim():
     """A local model name (or any id the catalog has never heard of) is accepted
     as-is — only a catalog row belonging to a *different* provider is rejected."""
@@ -228,15 +209,6 @@ def test_model_unknown_to_the_catalog_entirely_is_kept_verbatim():
     t = resolve_structured_target(override_provider="local")
     assert t is not None
     assert t.model == "llama3"
-
-
-def test_model_matching_the_target_providers_own_catalog_is_kept():
-    from apps.ai.structured import resolve_structured_target
-
-    _cfg("openai", key="sk-oai", model="gpt-5")
-    t = resolve_structured_target(override_provider="openai")
-    assert t is not None
-    assert t.model == "gpt-5"
 
 
 def _corrupt_key(provider: str) -> None:

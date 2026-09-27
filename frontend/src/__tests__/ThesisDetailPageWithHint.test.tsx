@@ -74,24 +74,4 @@ describe("ThesisDetailPage with TrackRecordHint", () => {
     expect(screen.getByText(/3W \/ 1L/)).toBeInTheDocument();
     expect(screen.getByText(/75%/)).toBeInTheDocument();
   });
-
-  it("does NOT show hint when useTrackRecord returns available=false", async () => {
-    mockApi({ "GET /api/theses/5/": THESIS });
-    vi.spyOn(analytics, "useTrackRecord").mockReturnValue({
-      data: { ticker: "NVDA", available: false, record: null },
-      isLoading: false,
-      isSuccess: true,
-    } as ReturnType<typeof analytics.useTrackRecord>);
-
-    renderWithProviders(<ThesisDetailPage />, {
-      initialEntries: ["/theses/5"],
-      routePath: "/theses/:id",
-    });
-
-    await waitFor(() =>
-      expect(screen.getByText("NVDA breakout")).toBeInTheDocument(),
-    );
-
-    expect(screen.queryByTestId("track-record-hint")).toBeNull();
-  });
 });

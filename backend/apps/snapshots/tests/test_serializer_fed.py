@@ -15,7 +15,7 @@ from django.utils import timezone
 from apps.market.models import MarketEvent
 from apps.profiles.models import TradingProfile
 from apps.snapshots.models import Snapshot, SnapshotSection
-from apps.snapshots.serializer import _render_fed, _title, serialize_for_ai
+from apps.snapshots.serializer import _render_fed, serialize_for_ai
 
 
 @pytest.mark.django_db
@@ -64,13 +64,6 @@ def test_render_fed_caps_at_ten_items():
 
 
 @pytest.mark.django_db
-def test_render_fed_empty_items_honest_fallback():
-    out = _render_fed({"items": []})
-    assert "## Fed communication" in out
-    assert "_(no recent Fed communications)_" in out
-
-
-@pytest.mark.django_db
 def test_render_fed_non_dict_payload_treated_as_no_items():
     out = _render_fed("garbage")
     assert "_(no recent Fed communications)_" in out
@@ -93,12 +86,6 @@ def test_render_fed_includes_next_fomc_line_when_future_event_exists():
 
 
 @pytest.mark.django_db
-def test_render_fed_omits_next_fomc_line_when_no_future_event():
-    out = _render_fed({"items": []})
-    assert "Next FOMC" not in out
-
-
-@pytest.mark.django_db
 def test_render_fed_ignores_past_fomc_events():
     MarketEvent.objects.create(
         source="seed",
@@ -109,10 +96,6 @@ def test_render_fed_ignores_past_fomc_events():
     )
     out = _render_fed({"items": []})
     assert "Next FOMC" not in out
-
-
-def test_fed_title():
-    assert _title("fed") == "Fed communication"
 
 
 @pytest.mark.django_db

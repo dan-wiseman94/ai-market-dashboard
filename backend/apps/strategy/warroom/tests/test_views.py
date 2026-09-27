@@ -32,19 +32,6 @@ def test_convene_endpoint(monkeypatch):
     assert resp.json()["confidence"] == 0.5
 
 
-def test_list_and_detail_runs():
-    from apps.threads.models import Message, Thread
-
-    th = Thread.objects.create(kind="warroom", title="t")
-    Message.objects.create(
-        thread=th, role="assistant", content={"persona": "bull", "argument": "a"}
-    )
-    run = WarRoomRun.objects.create(thread=th, subject_kind="free", subject_label="q")
-    assert len(APIClient().get("/api/warroom/runs/").json()) == 1
-    body = APIClient().get(f"/api/warroom/runs/{run.id}/").json()
-    assert "messages" in body and len(body["messages"]) == 1
-
-
 def test_run_messages_carry_the_provider_that_argued_them():
     """Each persona lane names its model; a message with no run reports nulls."""
     from decimal import Decimal

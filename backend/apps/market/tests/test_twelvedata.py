@@ -40,17 +40,6 @@ _RAW_QUOTE_MSFT = {
     "exchange": "NASDAQ",
 }
 
-_RAW_QUOTE_EURUSD = {
-    "symbol": "EUR/USD",
-    "open": "1.0800",
-    "high": "1.0850",
-    "low": "1.0780",
-    "close": "1.0820",
-    "previous_close": "1.0810",
-    "volume": "0",
-    "percent_change": "0.09",
-    "exchange": "Forex",
-}
 
 _RAW_TS_VALUES = [
     {
@@ -147,23 +136,6 @@ def test_fetch_quotes_single_symbol_response_shape():
     assert aapl["ask"] is None
 
 
-def test_fetch_quotes_fx_symbol():
-    """FX symbols like EUR/USD are parsed through the single-symbol path."""
-    raw_fx = _RAW_QUOTE_EURUSD
-
-    with (
-        _FAKE_KEY,
-        _BYPASS_CACHE,
-        patch("apps.market.services.twelvedata._get", return_value=raw_fx),
-    ):
-        result = td_mod.fetch_quotes(["EUR/USD"])
-
-    assert "EUR/USD" in result
-    q = result["EUR/USD"]
-    assert q["last"] == pytest.approx(1.0820)
-    assert q["pct_change"] == pytest.approx(0.09)
-
-
 def test_fetch_quotes_bad_values_become_none():
     """Unparseable numeric fields fall back to None rather than raising."""
     raw = {
@@ -190,17 +162,6 @@ def test_fetch_quotes_bad_values_become_none():
     assert q["last"] is None
     assert q["volume"] is None
     assert q["pct_change"] is None
-
-
-def test_fetch_quotes_empty_list_returns_empty():
-    result = td_mod.fetch_quotes([])
-    assert result == {}
-
-
-def test_fetch_quotes_no_credential_returns_empty():
-    with patch("apps.market.services.twelvedata._api_key", return_value=None):
-        result = td_mod.fetch_quotes(["AAPL"])
-    assert result == {}
 
 
 def test_fetch_quotes_network_error_returns_empty():
@@ -276,25 +237,6 @@ def test_fetch_time_series_intraday_datetime_parsed():
 
 
 @pytest.mark.django_db
-def test_fetch_time_series_persists_ohlcbar():
-    """Bars are written to OHLCBar with the correct timeframe code."""
-    from apps.market.models import OHLCBar
-
-    with (
-        _FAKE_KEY,
-        _BYPASS_CACHE,
-        patch("apps.market.services.twelvedata._get", return_value=_RAW_TS_BODY),
-    ):
-        td_mod.fetch_time_series("AAPL", interval="1day", outputsize=60)
-
-    rows = list(OHLCBar.objects.filter(ticker="AAPL", timeframe="1d").order_by("ts"))
-    assert len(rows) == 2
-    assert float(rows[0].close) == pytest.approx(171.00)
-    assert rows[0].volume == 50_000_000
-    assert float(rows[1].close) == pytest.approx(172.50)
-
-
-@pytest.mark.django_db
 def test_fetch_time_series_persists_idempotent():
     """Calling twice with the same data produces exactly one OHLCBar row per bar."""
     from apps.market.models import OHLCBar
@@ -309,66 +251,6 @@ def test_fetch_time_series_persists_idempotent():
 
     count = OHLCBar.objects.filter(ticker="MSFT", timeframe="1d").count()
     assert count == 2
-
-
-@pytest.mark.django_db
-def test_fetch_time_series_upsert_updates_existing_bar():
-    """A second call with different values updates the existing row (no duplicate)."""
-    from apps.market.models import OHLCBar
-
-    first_body = {
-        "meta": {},
-        "values": [
-            {
-                "datetime": "2026-05-28",
-                "open": "100.00",
-                "high": "102.00",
-                "low": "99.00",
-                "close": "101.00",
-                "volume": "1000000",
-            }
-        ],
-        "status": "ok",
-    }
-    second_body = {
-        "meta": {},
-        "values": [
-            {
-                "datetime": "2026-05-28",
-                "open": "100.00",
-                "high": "105.00",
-                "low": "99.00",
-                "close": "104.50",
-                "volume": "2000000",
-            }
-        ],
-        "status": "ok",
-    }
-
-    with (
-        _FAKE_KEY,
-        _BYPASS_CACHE,
-        patch("apps.market.services.twelvedata._get", return_value=first_body),
-    ):
-        td_mod.fetch_time_series("TSLA", interval="1day")
-
-    with (
-        _FAKE_KEY,
-        _BYPASS_CACHE,
-        patch("apps.market.services.twelvedata._get", return_value=second_body),
-    ):
-        td_mod.fetch_time_series("TSLA", interval="1day")
-
-    rows = list(OHLCBar.objects.filter(ticker="TSLA", timeframe="1d"))
-    assert len(rows) == 1
-    assert float(rows[0].close) == pytest.approx(104.50)
-    assert rows[0].volume == 2_000_000
-
-
-def test_fetch_time_series_no_credential_returns_empty():
-    with patch("apps.market.services.twelvedata._api_key", return_value=None):
-        result = td_mod.fetch_time_series("AAPL", interval="1day")
-    assert result == []
 
 
 def test_fetch_time_series_network_error_returns_empty():

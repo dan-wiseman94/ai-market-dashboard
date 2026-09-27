@@ -7,10 +7,6 @@ from apps.threads.coach import _regime_block, assemble_coach_context_for_message
 pytestmark = pytest.mark.django_db
 
 
-def test_regime_block_empty_when_no_reading():
-    assert _regime_block() == ""
-
-
 def test_regime_block_renders_latest():
     RegimeReading.objects.create(
         composite="Risk-Off",

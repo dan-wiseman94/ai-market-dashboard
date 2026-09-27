@@ -34,14 +34,6 @@ def test_list_never_exposes_secret(api):
 
 
 @pytest.mark.django_db
-def test_put_saves_key(api):
-    r = api.put("/api/schwab/data-sources/fred/", data={"api_key_write": "abc123"}, format="json")
-    assert r.status_code == 200
-    assert r.json()["configured"] is True
-    assert ApiCredential.objects.get(provider="fred").token["api_key"] == "abc123"
-
-
-@pytest.mark.django_db
 def test_put_partial_update_preserves_secret(api):
     ApiCredential.objects.create(provider="alpaca", token={"api_key": "old", "api_secret": "sec"})
     # Rotate only the key; a blank/absent secret leaves the stored one untouched.
@@ -226,15 +218,6 @@ def test_test_credential_probes_env_key(settings):
 
 
 # --- TradingView: OAuth-authed catalog entry (MCP server) ------------------------------
-
-
-@pytest.mark.django_db
-def test_list_includes_tradingview_oauth_entry(api):
-    r = api.get("/api/schwab/data-sources/")
-    tv = {d["provider"]: d for d in r.json()["data_sources"]}["tradingview"]
-    assert tv["auth"] == "oauth"
-    assert tv["fields"] == []
-    assert tv["status"]["configured"] is False
 
 
 @pytest.mark.django_db

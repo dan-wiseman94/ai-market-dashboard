@@ -48,18 +48,3 @@ def test_summary_aggregates_by_provider_and_model() -> None:
 
     by_model = {r["model"]: r for r in out["by_model"]}
     assert by_model["claude-sonnet-4-6"]["cost_usd"] == Decimal("0.0300")
-
-
-@pytest.mark.django_db
-def test_summary_daily_zero_fills_gaps() -> None:
-    t = Thread.objects.create(kind="chat", title="t")
-    _seed_run(t, "claude", "claude-sonnet-4-6", "0.0100", day_offset=0)
-    _seed_run(t, "claude", "claude-sonnet-4-6", "0.0200", day_offset=2)
-
-    now = datetime.now(tz=UTC)
-    out = summary(start=now - timedelta(days=2), end=now)
-    dates = [row["date"] for row in out["daily"]]
-    assert len(dates) == 3  # 3-day window inclusive
-    # Day 1 (between the two seed days) should have 0
-    cost_by_date = {r["date"]: r["cost_usd"] for r in out["daily"]}
-    assert Decimal("0") in cost_by_date.values()

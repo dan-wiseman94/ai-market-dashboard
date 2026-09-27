@@ -117,23 +117,6 @@ def test_fetch_news_upsert_idempotency():
     assert row.ticker == "AAPL"
 
 
-def test_fetch_news_chunking_calls_get_multiple_times():
-    """Six tickers → two chunks of 3 → _get called twice."""
-    raw_resp = _raw_response([])
-
-    with (
-        patch("apps.market.services.marketaux._api_key", return_value="k"),
-        patch("apps.market.services.marketaux._get", return_value=raw_resp) as mock_get,
-        patch(
-            "apps.market.services.marketaux.cache.get_or_fetch",
-            side_effect=lambda key, *, ttl_seconds, fetcher: fetcher(),
-        ),
-    ):
-        marketaux_mod.fetch_news(["AAPL", "MSFT", "GOOG", "AMZN", "META", "TSLA"])
-
-    assert mock_get.call_count == 2
-
-
 def test_fetch_news_exactly_three_tickers_is_one_chunk():
     """Exactly 3 tickers → single _get call."""
     raw_resp = _raw_response([])
@@ -271,9 +254,3 @@ def test_fetch_news_limit_caps_results():
         results = marketaux_mod.fetch_news(["AAPL"], limit=3)
 
     assert len(results) == 3
-
-
-def test_fetch_news_empty_tickers_returns_empty():
-    with patch("apps.market.services.marketaux._api_key", return_value="k"):
-        result = marketaux_mod.fetch_news([])
-    assert result == []

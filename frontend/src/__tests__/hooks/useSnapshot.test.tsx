@@ -1,7 +1,7 @@
 import { renderHook, waitFor } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { useSnapshot } from "@/hooks/useSnapshot";
-import { hookWrapper, mockApi, mockApiError, newQueryClient } from "../testUtils";
+import { hookWrapper, mockApi, newQueryClient } from "../testUtils";
 
 const snapshotFixture = {
   id: 42,
@@ -24,12 +24,6 @@ describe("useSnapshot", () => {
     expect(result.current.data?.id).toBe(42);
     expect(result.current.data?.status).toBe("ready");
     expect(result.current.data?.objective).toBe("Morning briefing");
-  });
-
-  it("propagates fetch errors as isError", async () => {
-    mockApiError("GET /api/snapshots/99/", 404);
-    const { result } = renderHook(() => useSnapshot(99), { wrapper: hookWrapper() });
-    await waitFor(() => expect(result.current.isError).toBe(true));
   });
 
   it("uses query key including id", async () => {

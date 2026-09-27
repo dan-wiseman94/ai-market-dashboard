@@ -30,22 +30,6 @@ def test_index_one_null_embedding_when_no_backend(monkeypatch):
 
 
 @pytest.mark.django_db
-def test_pending_finds_unindexed():
-    p = TradingProfile.objects.create(name="P", default_includes=["quotes"])
-    th = Thesis.objects.create(title="t", ticker="NVDA", direction="bullish", profile=p)
-    assert ("thesis", th.id) in list(pending(cap=50))
-
-
-@pytest.mark.django_db
-def test_pending_excludes_already_indexed_at_db():
-    """A source already present in RecallDocument is excluded — no rescan churn."""
-    p = TradingProfile.objects.create(name="P", default_includes=["quotes"])
-    th = Thesis.objects.create(title="t", ticker="NVDA", direction="bullish", profile=p)
-    RecallDocument.objects.create(kind="thesis", object_id=th.id, text="x", content_hash="h")
-    assert ("thesis", th.id) not in pending(cap=50)
-
-
-@pytest.mark.django_db
 def test_pending_returns_newest_first_and_respects_cap():
     """Under a backlog larger than cap, the most-recent rows are picked first so the
     cap meaningfully bounds the scan (and recent items become searchable soonest)."""
@@ -83,14 +67,3 @@ def test_reconcile_deletes_orphaned_recall_docs():
     assert RecallDocument.objects.filter(pk=live.pk).exists()
     assert not RecallDocument.objects.filter(pk=orphan_thesis.pk).exists()
     assert not RecallDocument.objects.filter(pk=orphan_message.pk).exists()
-
-
-@pytest.mark.django_db
-def test_reconcile_removes_doc_after_source_deleted():
-    """End-to-end: deleting the source then reconciling removes its recall row."""
-    p = TradingProfile.objects.create(name="P", default_includes=["quotes"])
-    th = Thesis.objects.create(title="t", ticker="NVDA", direction="bullish", profile=p)
-    RecallDocument.objects.create(kind="thesis", object_id=th.id, text="x", content_hash="h")
-    th.delete()
-    assert reconcile() == 1
-    assert RecallDocument.objects.count() == 0

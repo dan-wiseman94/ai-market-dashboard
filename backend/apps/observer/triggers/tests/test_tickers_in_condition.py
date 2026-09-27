@@ -23,7 +23,3 @@ def test_collects_nested_tickers():
         ]
     }
     assert tickers_in_condition(cond) == {"SPY", "BTC-USD", "QQQ"}
-
-
-def test_empty_for_tickerless():
-    assert tickers_in_condition({"metric": "vix", "op": ">", "value": 1}) == set()

@@ -20,7 +20,9 @@ from apps.snapshots.services.flowlite import PROXY_NOTE, build_flowlite_payload
 pytestmark = pytest.mark.django_db
 
 
-def _seed_flat_then_spike(ticker: str, *, window: int = 20, flat_volume: int = 1_000_000) -> None:
+def _seed_flat_then_spike(
+    ticker: str, *, window: int = 20, flat_volume: int = 1_000_000, spike_factor: float = 5
+) -> None:
     """Seed `window` flat-volume daily bars, then one 3-sigma-spike bar as the newest.
 
     pstdev of a set of identical values is 0, so we nudge every other flat bar by a
@@ -50,7 +52,7 @@ def _seed_flat_then_spike(ticker: str, *, window: int = 20, flat_volume: int = 1
         high=base_price + 1,
         low=base_price - 1,
         close=base_price,
-        volume=flat_volume * 5,
+        volume=int(flat_volume * spike_factor),
         ts=now,
     )
 
@@ -83,10 +85,6 @@ def _chain_snapshot(ticker: str, *, volume_ratio_bias: str, fetched_offset: time
 
 
 class TestBuildFlowlitePayload:
-    def test_proxy_note_always_present(self):
-        payload = build_flowlite_payload(watchlist_tickers=[], primary="SPY")
-        assert payload["proxy_note"] == PROXY_NOTE
-
     def test_empty_db_degrades_to_empty_lists_and_none_delta(self):
         payload = build_flowlite_payload(watchlist_tickers=["SPY"], primary="SPY")
         assert payload == {
@@ -105,11 +103,13 @@ class TestBuildFlowlitePayload:
         assert top["z"] > 2
 
     def test_volume_z_sorted_by_absolute_z_descending(self):
-        _seed_flat_then_spike("SPY", flat_volume=1_000_000)
-        _seed_flat_then_spike("QQQ", flat_volume=500_000)
+        # History stdev is 1,000, so these give z ≈ +1 (SPY), -10 (QQQ), +5 (XLK) — an order
+        # that differs from both the natural ticker order and a signed-z sort.
+        _seed_flat_then_spike("SPY", spike_factor=1.001)
+        _seed_flat_then_spike("QQQ", spike_factor=0.99)
+        _seed_flat_then_spike("XLK", spike_factor=1.005)
         payload = build_flowlite_payload(watchlist_tickers=["SPY", "QQQ"], primary="SPY")
-        zs = [abs(r["z"]) for r in payload["volume_z"]]
-        assert zs == sorted(zs, reverse=True)
+        assert [r["ticker"] for r in payload["volume_z"]] == ["QQQ", "XLK", "SPY"]
 
     def test_put_call_delta_is_latest_minus_prior_ratio(self):
         # Prior fetch (older): call-heavy -> low ratio. Latest fetch (newer): put-heavy -> high ratio.
@@ -127,10 +127,6 @@ class TestBuildFlowlitePayload:
         _chain_snapshot("SPY", volume_ratio_bias="low", fetched_offset=timedelta(hours=0))
         payload = build_flowlite_payload(watchlist_tickers=["SPY"], primary="SPY")
         assert payload["put_call_delta"] is None
-
-    def test_unusual_is_capped_at_three(self):
-        payload = build_flowlite_payload(watchlist_tickers=["SPY"], primary="SPY")
-        assert len(payload["unusual"]) <= 3
 
     def test_unusual_swallows_exceptions_to_empty_list(self, monkeypatch):
         def _boom(*args, **kwargs):

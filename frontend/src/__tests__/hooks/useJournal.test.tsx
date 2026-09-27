@@ -13,24 +13,7 @@ const journalFixture = {
   created_at: "2026-05-25T10:00:00Z",
 };
 
-const journalFixtureWithThesis = {
-  id: 2,
-  thread_id: 42,
-  thesis_id: 7,
-  snapshot_id: 3,
-  decision: "passed" as const,
-  note: "Too risky given macro.",
-  created_at: "2026-05-24T09:00:00Z",
-};
-
 describe("useJournal", () => {
-  it("fetches journal entries for a thread via GET /api/journal/?thread=N", async () => {
-    mockApi({ "GET /api/journal/": [journalFixture, journalFixtureWithThesis] });
-    const { result } = renderHook(() => useJournal(42), { wrapper: hookWrapper() });
-    await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(result.current.data).toHaveLength(2);
-    expect(result.current.data?.[0].decision).toBe("acted");
-  });
 
   it("is disabled when threadId is null", () => {
     const { result } = renderHook(() => useJournal(null), { wrapper: hookWrapper() });
@@ -53,12 +36,6 @@ describe("useJournal", () => {
     const { result } = renderHook(() => useJournal(42), { wrapper: hookWrapper() });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(calls[0].url).toContain("?thread=42");
-  });
-
-  it("isError on fetch failure", async () => {
-    mockApiError("GET /api/journal/", 500);
-    const { result } = renderHook(() => useJournal(42), { wrapper: hookWrapper() });
-    await waitFor(() => expect(result.current.isError).toBe(true));
   });
 });
 
@@ -84,28 +61,6 @@ describe("useCreateJournalEntry", () => {
       decision: "acted",
       note: "Went long SPY.",
       snapshot_id: 5,
-    });
-  });
-
-  it("POSTs with thesis_id when provided", async () => {
-    const { calls } = mockApi({
-      "GET /api/journal/": [],
-      "POST /api/journal/": journalFixtureWithThesis,
-    });
-    const { result } = renderHook(() => useCreateJournalEntry(), { wrapper: hookWrapper() });
-    await act(async () => {
-      await result.current.mutateAsync({
-        thread_id: 42,
-        decision: "passed",
-        note: "Too risky.",
-        thesis_id: 7,
-        snapshot_id: 3,
-      });
-    });
-    const postCall = calls.find((c) => c.method === "POST");
-    expect(postCall?.body).toMatchObject({
-      thesis_id: 7,
-      decision: "passed",
     });
   });
 

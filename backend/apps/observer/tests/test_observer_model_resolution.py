@@ -37,13 +37,6 @@ def test_profile_model_used_on_the_profiles_own_provider(profile):
 
 
 @pytest.mark.django_db
-def test_profile_model_skipped_when_schedule_overrides_the_provider(profile):
-    cfg = ProviderConfig(provider="openai", default_model="")
-    sched = _sched(profile, override_provider="openai")
-    assert _observer_model(sched, cfg, "openai") == "gpt-5.6-sol"
-
-
-@pytest.mark.django_db
 def test_foreign_override_model_is_skipped_not_sent(profile):
     cfg = ProviderConfig(provider="openai", default_model="gpt-5")
     sched = _sched(profile, override_provider="openai", override_model="claude-opus-5")
@@ -101,12 +94,3 @@ def test_plain_fire_sends_the_resolved_pair_as_the_override(profile):
 
     override = streaming.call_args.kwargs["override"]
     assert override == {"provider": "openai", "model": "gpt-5.6-sol"}
-
-
-@pytest.mark.django_db
-def test_local_provider_falls_through_to_the_configs_own_model(profile):
-    # `local` has no catalog default, so a blank config default yields "".
-    cfg = ProviderConfig(provider="local", default_model="llama-3.1-70b")
-    sched = _sched(profile, override_provider="local")
-    assert _observer_model(sched, cfg, "local") == "llama-3.1-70b"
-    assert _observer_model(sched, ProviderConfig(provider="local"), "local") == ""

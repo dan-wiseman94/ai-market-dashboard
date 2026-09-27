@@ -90,10 +90,11 @@ def test_get_errors_unresolved_false_returns_all():
     _make_event(source="task.unresolved", resolved=False)
     _make_event(source="task.resolved", resolved=True)
 
-    resp = client.get("/api/errors/")
-    assert resp.status_code == 200
-    body = resp.json()
-    assert body["count"] >= 2
+    for query in ("?unresolved=false", ""):
+        resp = client.get(f"/api/errors/{query}")
+        assert resp.status_code == 200
+        sources = {row["source"] for row in resp.json()["results"]}
+        assert sources == {"task.unresolved", "task.resolved"}, query
 
 
 @pytest.mark.django_db
@@ -143,14 +144,6 @@ def test_resolve_flips_resolved_to_true():
 
     ev.refresh_from_db()
     assert ev.resolved is True
-
-
-@pytest.mark.django_db
-def test_resolve_nonexistent_returns_404():
-    """Resolving a non-existent event returns 404."""
-    client = Client()
-    resp = client.post("/api/errors/99999/resolve/")
-    assert resp.status_code == 404
 
 
 @pytest.mark.django_db

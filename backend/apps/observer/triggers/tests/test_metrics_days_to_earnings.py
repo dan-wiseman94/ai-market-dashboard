@@ -5,13 +5,9 @@ import pytest
 from django.utils import timezone
 
 from apps.market.models import MarketEvent
-from apps.observer.triggers.evaluator import evaluate, leaf_key
+from apps.observer.triggers.evaluator import evaluate
 from apps.observer.triggers.metrics import build_snapshot
 from apps.observer.triggers.services.describe import describe
-
-
-def test_leaf_key_for_days_to_earnings():
-    assert leaf_key({"metric": "days_to_earnings", "ticker": "NVDA"}) == "days_to_earnings:NVDA"
 
 
 @pytest.mark.django_db

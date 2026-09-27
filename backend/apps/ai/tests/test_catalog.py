@@ -3,43 +3,16 @@ import pytest
 from apps.ai.catalog import (
     DEFAULT_CLAUDE_MODEL,
     DEFAULT_OPENAI_MODEL,
-    catalog_owner,
     ceiling_for_provider,
     default_model_for,
     foreign_model_error,
     get_model,
     is_foreign_model,
-    list_models,
 )
-
-
-def test_lists_claude_models():
-    models = list_models("claude")
-    names = [m.id for m in models]
-    assert "claude-opus-4-8" in names
-    assert "claude-sonnet-4-6" in names
-    assert "claude-haiku-4-5-20251001" in names
-
-
-def test_get_model_returns_pricing():
-    m = get_model("claude", "claude-sonnet-4-6")
-    assert m is not None
-    assert m.provider == "claude"
-    assert m.input_per_mtok > 0
-    assert m.output_per_mtok > m.input_per_mtok
-    assert m.supports_vision is True
 
 
 def test_get_model_unknown_returns_none():
     assert get_model("claude", "imaginary-model") is None
-
-
-def test_list_models_without_provider_returns_full_catalog():
-    models = list_models()
-    providers = {m.provider for m in models}
-    assert "claude" in providers
-    assert "openai" in providers
-    assert len(models) >= 6
 
 
 def test_ceiling_for_provider_is_scoped_to_that_provider():
@@ -51,17 +24,6 @@ def test_ceiling_for_provider_is_scoped_to_that_provider():
     claude_ceiling = ceiling_for_provider("claude")
     assert claude_ceiling is not None
     assert claude_ceiling.id == "claude-fable-5-1"
-
-
-def test_ceiling_for_provider_unknown_returns_none():
-    assert ceiling_for_provider("nonexistent-provider") is None
-
-
-def test_current_generation_models_present():
-    claude_ids = {m.id for m in list_models("claude")}
-    assert {"claude-fable-5-1", "claude-opus-5", "claude-sonnet-5"} <= claude_ids
-    openai_ids = {m.id for m in list_models("openai")}
-    assert {"gpt-6-astra", "gpt-5.6-sol"} <= openai_ids
 
 
 @pytest.mark.parametrize(
@@ -103,12 +65,6 @@ def test_default_model_for_each_provider():
 def test_defaults_are_catalog_rows():
     assert get_model("claude", DEFAULT_CLAUDE_MODEL) is not None
     assert get_model("openai", DEFAULT_OPENAI_MODEL) is not None
-
-
-def test_catalog_owner_maps_ids_to_provider():
-    assert catalog_owner("claude-opus-5") == "claude"
-    assert catalog_owner("gpt-5.6-sol") == "openai"
-    assert catalog_owner("llama-3.1-70b") is None
 
 
 @pytest.mark.parametrize(

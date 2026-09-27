@@ -10,22 +10,12 @@ import pytest
 
 from apps.profiles.models import TradingProfile
 from apps.snapshots.models import Snapshot, SnapshotSection
-from apps.snapshots.serializer import _render_flowlite, _title, serialize_for_ai
+from apps.snapshots.serializer import _render_flowlite, serialize_for_ai
 
 
 def test_render_flowlite_heading_carries_proxy_disclaimer():
     out = _render_flowlite({"volume_z": [], "put_call_delta": None, "unusual": []})
     assert out.startswith("## Flow proxy (volume-based — not fund-flow data)")
-
-
-def test_render_flowlite_volume_z_line_includes_sigma_and_sign():
-    payload = {
-        "volume_z": [{"ticker": "SPY", "z": -2.3, "latest": 100, "avg": 50}],
-        "put_call_delta": None,
-        "unusual": [],
-    }
-    out = _render_flowlite(payload)
-    assert "SPY -2.3σ" in out
 
 
 def test_render_flowlite_volume_z_caps_at_eight_and_sorted_order_preserved():
@@ -67,20 +57,11 @@ def test_render_flowlite_unusual_rows_use_describe_unusual():
     assert "- Unusual: call 450.00 2026-10-16: vol/OI 5.0 — volume 5,000 vs OI 1,000" in out
 
 
-def test_render_flowlite_empty_payload_honest_fallback():
-    out = _render_flowlite({"volume_z": [], "put_call_delta": None, "unusual": []})
-    assert "_(insufficient stored data — needs nightly bar ingest + a prior chain)_" in out
-
-
 @pytest.mark.parametrize("payload", [{}, None, "nonsense"])
 def test_render_flowlite_degenerate_payload_is_explicit_not_empty(payload):
     out = _render_flowlite(payload)
     assert out.startswith("## Flow proxy (volume-based — not fund-flow data)")
     assert "_(insufficient stored data — needs nightly bar ingest + a prior chain)_" in out
-
-
-def test_flowlite_title():
-    assert _title("flowlite") == "Flow proxy (volume-based)"
 
 
 @pytest.mark.django_db

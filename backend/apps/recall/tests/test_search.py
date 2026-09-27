@@ -56,7 +56,7 @@ def test_related_to_situation_filters_kind_and_ticker(monkeypatch):
     from django.contrib.postgres.search import SearchVector
 
     monkeypatch.setattr(S, "embed", lambda texts: None)  # force FTS branch
-    keep = RecallDocument.objects.create(
+    RecallDocument.objects.create(
         kind="thesis",
         object_id=1,
         text="nvidia earnings beat",
@@ -77,7 +77,8 @@ def test_related_to_situation_filters_kind_and_ticker(monkeypatch):
         tickers=["SPY"],
         content_hash="3",
     )  # excluded by ticker filter
-    RecallDocument.objects.filter(pk__in=[keep.pk]).update(search=SearchVector("text"))
+    # Every doc is indexed and matches the query, so only the kind/ticker filters exclude.
+    RecallDocument.objects.update(search=SearchVector("text"))
 
     hits = S.related_to_situation(
         "NVDA", "earnings", k=5, kinds=["thesis", "observation", "postmortem"]

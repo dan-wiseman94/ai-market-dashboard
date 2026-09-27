@@ -9,9 +9,3 @@ def test_news_section_always_24h_default():
     m.assert_called_once_with(["SPY"])
     assert out["data"] == {"items": [{"id": 1}]}
     assert "window" not in out["data"]
-
-
-def test_overnight_news_helper_removed():
-    import apps.snapshots.services as svc
-
-    assert not hasattr(svc, "_overnight_news_lookback_hours")

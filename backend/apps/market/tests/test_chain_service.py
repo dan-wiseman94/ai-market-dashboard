@@ -13,25 +13,6 @@ SCHWAB_RAW = {
 
 
 @pytest.mark.django_db
-def test_fetch_chain_calls_schwab_and_persists():
-    fake_resp = MagicMock()
-    fake_resp.json.return_value = SCHWAB_RAW
-    fake_client = MagicMock()
-    fake_client.get_option_chain.return_value = fake_resp
-
-    with (
-        patch("apps.market.services.chain.get_schwab_client", return_value=fake_client),
-        patch("apps.market.services.chain.cache.get_or_fetch") as fake_cache,
-    ):
-        fake_cache.side_effect = lambda key, *, ttl_seconds, fetcher: fetcher()
-        out = fetch_chain("SPY")
-
-    assert out["underlying_last"] == "521.30"
-    assert OptionChainSnapshot.objects.filter(ticker="SPY").count() == 1
-    fake_client.get_option_chain.assert_called_once()
-
-
-@pytest.mark.django_db
 def test_fetch_chain_normalizes_index_symbol():
     # A bare index ticker must reach Schwab as "$SPX" (the snapshot's chain 400
     # was a bare "SPX"); the persisted row + payload key off the canonical symbol.

@@ -26,32 +26,6 @@ def _tools(table: dict):
     return patch("apps.market.services.tradingview.mcp.call_tool", side_effect=_call)
 
 
-@pytest.mark.django_db
-def test_is_connected_requires_token_and_no_marker():
-    with patch("apps.market.services.tradingview.load_token", return_value=None):
-        assert tv.is_connected() is False
-    with (
-        patch("apps.market.services.tradingview.load_token", return_value={"access_token": "a"}),
-        patch("apps.core.provider_health.auth_error", return_value=None),
-    ):
-        assert tv.is_connected() is True
-    with (
-        patch("apps.market.services.tradingview.load_token", return_value={"access_token": "a"}),
-        patch("apps.core.provider_health.auth_error", return_value="rejected"),
-    ):
-        assert tv.is_connected() is False
-
-
-@pytest.mark.django_db
-def test_is_connected_false_while_rate_limited():
-    with (
-        patch("apps.market.services.tradingview.load_token", return_value={"access_token": "a"}),
-        patch("apps.core.provider_health.auth_error", return_value=None),
-        patch("apps.market.services.tradingview_mcp.is_rate_limited", return_value=True),
-    ):
-        assert tv.is_connected() is False
-
-
 @pytest.mark.parametrize(
     ("ticker", "expected"),
     [

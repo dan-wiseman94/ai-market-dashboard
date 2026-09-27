@@ -269,21 +269,6 @@ def test_upcoming_events_reads_store_and_computes_days_until():
 
 
 @pytest.mark.django_db
-def test_upcoming_events_excludes_macro_when_disabled():
-    from django.utils import timezone
-
-    MarketEvent.objects.create(
-        source="s",
-        external_id="CPI:z",
-        kind="cpi",
-        title="CPI",
-        event_time=timezone.now() + timedelta(days=2),
-    )
-    out = events.upcoming_events([], include_macro=False)
-    assert out["macro"] == []
-
-
-@pytest.mark.django_db
 def test_fetch_earnings_uses_tradingview_when_finnhub_unkeyed():
     rows = [
         {

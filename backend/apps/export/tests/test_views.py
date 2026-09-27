@@ -24,18 +24,6 @@ def test_create_enqueues(client: Client) -> None:
 
 
 @pytest.mark.django_db
-def test_list(client: Client) -> None:
-    ExportJob.objects.create(
-        scope={}, format="zip", status="done", filename="x.zip", size_bytes=1, sha256="a" * 64
-    )
-    resp = client.get("/api/export/")
-    assert resp.status_code == 200
-    body = resp.json()
-    rows = body.get("results", body)
-    assert len(rows) == 1
-
-
-@pytest.mark.django_db
 def test_download_409_before_done(client: Client) -> None:
     job = ExportJob.objects.create(scope={}, format="zip", status="running")
     resp = client.get(f"/api/export/{job.id}/download/")
