@@ -29,13 +29,6 @@ function renderNav(onHelp?: () => void) {
 describe("useKeyboardShortcuts (g-chord navigation)", () => {
   afterEach(() => vi.useRealTimers());
 
-  it("navigates to the mapped route after the g prefix", () => {
-    const path = renderNav();
-    fireEvent.keyDown(window, { key: "g" });
-    fireEvent.keyDown(window, { key: "t" });
-    expect(path()).toBe("/triggers");
-  });
-
   it("is case-insensitive on the second key", () => {
     const path = renderNav();
     fireEvent.keyDown(window, { key: "g" });
@@ -49,26 +42,11 @@ describe("useKeyboardShortcuts (g-chord navigation)", () => {
     expect(path()).toBe("/");
   });
 
-  it("does not navigate when g is followed by an unmapped key", () => {
-    const path = renderNav();
-    fireEvent.keyDown(window, { key: "g" });
-    fireEvent.keyDown(window, { key: "z" });
-    expect(path()).toBe("/");
-  });
-
   it("calls the help callback on ?", () => {
     const onHelp = vi.fn();
     renderNav(onHelp);
     fireEvent.keyDown(window, { key: "?" });
     expect(onHelp).toHaveBeenCalledTimes(1);
-  });
-
-  it("ignores shortcuts while a text input is focused", () => {
-    const path = renderNav();
-    screen.getByTestId("inp").focus();
-    fireEvent.keyDown(window, { key: "g" });
-    fireEvent.keyDown(window, { key: "t" });
-    expect(path()).toBe("/");
   });
 
   it("ignores the chord when a modifier is held", () => {

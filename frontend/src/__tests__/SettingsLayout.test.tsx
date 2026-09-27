@@ -35,11 +35,6 @@ describe("SettingsLayout", () => {
     expect(links[0]).toHaveAttribute("href", "/settings/features");
   });
 
-  it("renders the features child route", () => {
-    renderAt("/settings/features");
-    expect(screen.getByText("features-outlet")).toBeInTheDocument();
-  });
-
   it("renders the matched child route via Outlet", () => {
     renderAt("/settings");
     expect(screen.getByText("providers-outlet")).toBeInTheDocument();

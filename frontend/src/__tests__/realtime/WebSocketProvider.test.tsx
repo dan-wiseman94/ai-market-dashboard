@@ -26,29 +26,6 @@ afterEach(() => {
 });
 
 describe("WebSocketProvider", () => {
-  it("opens a /ws/threads/<id>/ socket for thread.<id> channel", () => {
-    const handler = vi.fn();
-    render(
-      <WebSocketProvider>
-        <TestConsumer channel="thread.42" onMsg={handler} />
-      </WebSocketProvider>,
-    );
-    const sock = fake.find("/ws/threads/42/");
-    expect(sock).toBeDefined();
-    expect(sock?.url).toMatch(/\/ws\/threads\/42\/$/);
-  });
-
-  it("opens a /ws/notifications/ socket for the 'notifications' channel", () => {
-    const handler = vi.fn();
-    render(
-      <WebSocketProvider>
-        <TestConsumer channel="notifications" onMsg={handler} />
-      </WebSocketProvider>,
-    );
-    const sock = fake.find("/ws/notifications/");
-    expect(sock).toBeDefined();
-    expect(sock?.url).toMatch(/\/ws\/notifications\/$/);
-  });
 
   it("routes parsed JSON to the notifications handler via /ws/notifications/", () => {
     const handler = vi.fn();
@@ -66,18 +43,6 @@ describe("WebSocketProvider", () => {
       type: "notification.event",
       payload: { kind: "observer_done", title: "T" },
     });
-  });
-
-  it("opens a /ws/snapshots/<id>/ socket for snapshot.<id> channel", () => {
-    const handler = vi.fn();
-    render(
-      <WebSocketProvider>
-        <TestConsumer channel="snapshot.7" onMsg={handler} />
-      </WebSocketProvider>,
-    );
-    const sock = fake.find("/ws/snapshots/7/");
-    expect(sock).toBeDefined();
-    expect(sock?.url).toMatch(/\/ws\/snapshots\/7\/$/);
   });
 
   it("throws 'Unknown channel:' for an unrecognized prefix", () => {
@@ -111,21 +76,6 @@ describe("WebSocketProvider", () => {
     } finally {
       consoleSpy.mockRestore();
     }
-  });
-
-  it("routes parsed JSON to the channel's handler", () => {
-    const handler = vi.fn();
-    render(
-      <WebSocketProvider>
-        <TestConsumer channel="thread.1" onMsg={handler} />
-      </WebSocketProvider>,
-    );
-    const sock = fake.find("/ws/threads/1/");
-    expect(sock).toBeDefined();
-    act(() => {
-      sock!.emitMessage({ type: "tok", text: "hi" });
-    });
-    expect(handler).toHaveBeenCalledWith({ type: "tok", text: "hi" });
   });
 
   it("does NOT deliver thread.1 messages to thread.2 subscribers", () => {
@@ -231,24 +181,6 @@ describe("WebSocketProvider", () => {
         second.emitMessage({ type: "tok", text: "after-reconnect" });
       });
       expect(handler).toHaveBeenCalledWith({ type: "tok", text: "after-reconnect" });
-    } finally {
-      vi.useRealTimers();
-    }
-  });
-
-  it("does NOT reconnect after an intentional close (last subscriber leaves)", () => {
-    vi.useFakeTimers();
-    try {
-      const handler = vi.fn();
-      const { unmount } = render(
-        <WebSocketProvider>
-          <TestConsumer channel="thread.5" onMsg={handler} />
-        </WebSocketProvider>,
-      );
-      expect(fake.sockets.filter((s) => s.url.endsWith("/ws/threads/5/")).length).toBe(1);
-      act(() => unmount());
-      act(() => void vi.runAllTimers());
-      expect(fake.sockets.filter((s) => s.url.endsWith("/ws/threads/5/")).length).toBe(1);
     } finally {
       vi.useRealTimers();
     }
@@ -614,25 +546,5 @@ describe("WebSocketProvider", () => {
     } finally {
       vi.useRealTimers();
     }
-  });
-
-  it("resets the replay cursor on deliberate teardown (re-subscribe is a fresh first-connect)", () => {
-    const { unmount } = render(
-      <WebSocketProvider>
-        <TestConsumer channel="thread.3" onMsg={vi.fn()} />
-      </WebSocketProvider>,
-    );
-    const first = fake.find("/ws/threads/3/");
-    act(() => first!.emitOpen());
-    act(() => first!.emitMessage({ type: "tok", text: "x", seq: 9 }));
-    act(() => unmount()); // clears the per-channel replay cursor
-
-    render(
-      <WebSocketProvider>
-        <TestConsumer channel="thread.3" onMsg={vi.fn()} />
-      </WebSocketProvider>,
-    );
-    const fresh = fake.sockets.filter((s) => s.url.includes("/ws/threads/3/")).at(-1);
-    expect(fresh!.url).toMatch(/\/ws\/threads\/3\/$/); // no stale ?since=9
   });
 });

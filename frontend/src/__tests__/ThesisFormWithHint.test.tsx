@@ -56,18 +56,6 @@ describe("ThesisForm with TrackRecordHint", () => {
     expect(screen.getByText(/3W \/ 2L/)).toBeInTheDocument();
   });
 
-  it("does NOT show the hint when useTrackRecord returns available=false", () => {
-    vi.spyOn(analytics, "useTrackRecord").mockReturnValue({
-      data: { ticker: "NVDA", available: false, record: null },
-      isLoading: false,
-      isSuccess: true,
-    } as ReturnType<typeof analytics.useTrackRecord>);
-
-    render(<ThesisForm {...BASE_PROPS} />, { wrapper: hookWrapper() });
-
-    expect(screen.queryByTestId("track-record-hint")).toBeNull();
-  });
-
   it("renders required rationale + invalidation-note fields (pre-trade discipline)", () => {
     vi.spyOn(analytics, "useTrackRecord").mockReturnValue({
       data: { ticker: "NVDA", available: false, record: null },

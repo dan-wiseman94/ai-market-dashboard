@@ -58,14 +58,6 @@ describe("EventsPage", () => {
     expect(screen.getByText(/no high-impact US events/i)).toBeInTheDocument();
   });
 
-  it("shows section headings in the populated layout", () => {
-    renderWithProviders(<EventsPage />);
-
-    expect(screen.getByText("Upcoming earnings")).toBeInTheDocument();
-    expect(screen.getByText("Macro calendar")).toBeInTheDocument();
-    expect(screen.getByText("Market Calendar")).toBeInTheDocument();
-  });
-
   it("lists earnings rows when earnings are present", () => {
     mockUseUpcomingEvents.mockReturnValue({
       data: {

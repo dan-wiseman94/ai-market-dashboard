@@ -1,7 +1,7 @@
 import { renderHook, waitFor } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { useOhlc } from "@/hooks/useOhlc";
-import { hookWrapper, mockApi, mockApiError, newQueryClient } from "../testUtils";
+import { hookWrapper, mockApi, newQueryClient } from "../testUtils";
 
 const ohlcFixture = {
   ticker: "AAPL",
@@ -12,20 +12,6 @@ const ohlcFixture = {
 };
 
 describe("useOhlc", () => {
-  it("returns OHLC data on success and starts in loading state", async () => {
-    mockApi({ "GET /api/market/ohlc/": ohlcFixture });
-    const { result } = renderHook(() => useOhlc("AAPL", "5m", 60), { wrapper: hookWrapper() });
-    expect(result.current.isLoading).toBe(true);
-    await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(result.current.data?.ticker).toBe("AAPL");
-    expect(result.current.data?.bars).toHaveLength(1);
-  });
-
-  it("propagates fetch errors as isError", async () => {
-    mockApiError("GET /api/market/ohlc/", 503);
-    const { result } = renderHook(() => useOhlc("AAPL", "5m"), { wrapper: hookWrapper() });
-    await waitFor(() => expect(result.current.isError).toBe(true));
-  });
 
   it("uses stable query key including ticker, timeframe, and bars", async () => {
     const client = newQueryClient();

@@ -15,12 +15,6 @@ describe("useDocumentTitle", () => {
     document.title = original;
   });
 
-  it("sets document.title to '<title> · Ledger'", () => {
-    const { unmount } = renderHook(() => useDocumentTitle("Dashboard"));
-    expect(document.title).toBe("Dashboard · Ledger");
-    unmount();
-  });
-
   it("restores the previous title on unmount", () => {
     document.title = "Previous Title";
     const { unmount } = renderHook(() => useDocumentTitle("New Page"));

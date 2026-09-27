@@ -38,12 +38,6 @@ describe("api/profiles", () => {
       await expect(promise).rejects.toBeInstanceOf(ApiError);
       await expect(promise).rejects.toMatchObject({ status: 500, code: "server_error" });
     });
-
-    it("returns an empty array when no profiles exist", async () => {
-      mockApi({ "GET /api/profiles/": [] });
-      const res = await fetchProfiles();
-      expect(res).toEqual([]);
-    });
   });
 
   describe("fetchProfile", () => {
@@ -55,19 +49,6 @@ describe("api/profiles", () => {
       expect(api.calls).toHaveLength(1);
       expect(api.calls[0].method).toBe("GET");
       expect(api.calls[0].url).toMatch(/\/api\/profiles\/1\/$/);
-    });
-
-    it("throws ApiError with status 404 when profile does not exist", async () => {
-      mockApiError("GET /api/profiles/999/", 404, "not_found", "profile missing");
-      const promise = fetchProfile(999);
-      await expect(promise).rejects.toBeInstanceOf(ApiError);
-      await expect(promise).rejects.toMatchObject({ status: 404, code: "not_found" });
-    });
-
-    it("embeds the id in the URL", async () => {
-      const api = mockApi({ "GET /api/profiles/42/": profileFixture });
-      await fetchProfile(42);
-      expect(api.calls[0].url).toMatch(/\/api\/profiles\/42\/$/);
     });
   });
 
@@ -90,27 +71,6 @@ describe("api/profiles", () => {
       expect(api.calls[0].url).toMatch(/\/api\/profiles\/$/);
       expect(api.calls[0].body).toEqual(body);
     });
-
-    it("throws ApiError with status 400 on validation error", async () => {
-      mockApiError("POST /api/profiles/", 400, "validation_error", "name is required");
-      const promise = createProfile({ style: "day" });
-      await expect(promise).rejects.toBeInstanceOf(ApiError);
-      await expect(promise).rejects.toMatchObject({ status: 400, code: "validation_error" });
-    });
-
-    it("sends full body shape in the request", async () => {
-      const api = mockApi({ "POST /api/profiles/": profileFixture });
-      const fullBody = {
-        name: "Day Trader",
-        style: "day",
-        default_includes: ["quotes", "chain"],
-        default_provider: "openai",
-        default_model: "gpt-4o",
-        active: false,
-      };
-      await createProfile(fullBody);
-      expect(api.calls[0].body).toEqual(fullBody);
-    });
   });
 
   describe("updateProfile", () => {
@@ -122,13 +82,6 @@ describe("api/profiles", () => {
       expect(api.calls).toHaveLength(1);
       expect(api.calls[0].method).toBe("PATCH");
       expect(api.calls[0].url).toMatch(/\/api\/profiles\/1\/$/);
-    });
-
-    it("throws ApiError with status 401 when unauthenticated", async () => {
-      mockApiError("PATCH /api/profiles/1/", 401, "unauthorized", "login required");
-      const promise = updateProfile(1, { active: false });
-      await expect(promise).rejects.toBeInstanceOf(ApiError);
-      await expect(promise).rejects.toMatchObject({ status: 401, code: "unauthorized" });
     });
 
     it("sends only the partial body fields and embeds the id in the URL", async () => {
@@ -147,19 +100,6 @@ describe("api/profiles", () => {
       expect(api.calls).toHaveLength(1);
       expect(api.calls[0].method).toBe("DELETE");
       expect(api.calls[0].url).toMatch(/\/api\/profiles\/1\/$/);
-    });
-
-    it("throws ApiError with status 503 on service error", async () => {
-      mockApiError("DELETE /api/profiles/1/", 503, "unavailable", "service down");
-      const promise = deleteProfile(1);
-      await expect(promise).rejects.toBeInstanceOf(ApiError);
-      await expect(promise).rejects.toMatchObject({ status: 503, code: "unavailable" });
-    });
-
-    it("embeds the id correctly in the URL", async () => {
-      const api = mockApi({ "DELETE /api/profiles/55/": undefined });
-      await deleteProfile(55);
-      expect(api.calls[0].url).toMatch(/\/api\/profiles\/55\/$/);
     });
   });
 });

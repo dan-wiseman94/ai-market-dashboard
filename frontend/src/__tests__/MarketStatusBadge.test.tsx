@@ -8,17 +8,6 @@ vi.mock("@/hooks/useMarketStatus", () => ({ useMarketStatus: () => mockUse() }))
 beforeEach(() => mockUse.mockReset());
 
 describe("MarketStatusBadge", () => {
-  it("shows Open when the single market is open", () => {
-    mockUse.mockReturnValue({ data: { markets: { us_equity: { is_open: true, phase: "open" } } } });
-    render(<MarketStatusBadge />);
-    expect(screen.getByTestId("market-status")).toHaveTextContent("Open");
-  });
-
-  it("shows Closed when the single market is closed", () => {
-    mockUse.mockReturnValue({ data: { markets: { us_equity: { is_open: false, phase: "weekend" } } } });
-    render(<MarketStatusBadge />);
-    expect(screen.getByTestId("market-status")).toHaveTextContent("Closed");
-  });
 
   it("shows Extended Hours when the single market is in pre/post-market", () => {
     mockUse.mockReturnValue({

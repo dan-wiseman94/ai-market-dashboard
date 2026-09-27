@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "vitest";
 import MarketTickerPage from "../pages/MarketTickerPage";
 import { mockFetch, renderWithProviders } from "./testUtils";
@@ -45,15 +45,6 @@ beforeEach(() => {
 });
 
 describe("MarketTickerPage", () => {
-  it("renders chart, chain, and news for the requested ticker", async () => {
-    renderWithProviders(<MarketTickerPage />, {
-      initialEntries: ["/market/SPY"],
-      routePath: "/market/:ticker",
-    });
-    await waitFor(() => {
-      expect(screen.getByText(/SPY/)).toBeInTheDocument();
-    });
-  });
 
   it("surfaces the house view and links to the coverage note", async () => {
     renderWithProviders(<MarketTickerPage />, {

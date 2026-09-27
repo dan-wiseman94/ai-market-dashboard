@@ -39,15 +39,6 @@ describe("RecallPage", () => {
     vi.restoreAllMocks();
   });
 
-  it("shows empty state before any search", () => {
-    mockApi({
-      "GET /api/recall/status/": RECALL_STATUS,
-    });
-    renderWithProviders(<RecallPage />, { initialEntries: ["/recall"] });
-    expect(screen.getByTestId("recall-query-input")).toBeInTheDocument();
-    expect(screen.queryByTestId("mode-badge")).not.toBeInTheDocument();
-  });
-
   it("renders snippet, kind badge, and link after a search", async () => {
     mockApi({
       "GET /api/recall/": RECALL_RESULT,

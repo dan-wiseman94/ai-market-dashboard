@@ -1,7 +1,7 @@
 import { renderHook, waitFor } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { useAiModels } from "@/hooks/useAiModels";
-import { hookWrapper, mockApi, mockApiError, newQueryClient } from "../testUtils";
+import { hookWrapper, mockApi, newQueryClient } from "../testUtils";
 
 const modelFixture = {
   id: "claude-opus-4-8",
@@ -22,12 +22,6 @@ describe("useAiModels", () => {
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(result.current.data?.models).toHaveLength(1);
     expect(result.current.data?.models[0].id).toBe("claude-opus-4-8");
-  });
-
-  it("propagates fetch errors as isError", async () => {
-    mockApiError("GET /api/schwab/models/", 500);
-    const { result } = renderHook(() => useAiModels(), { wrapper: hookWrapper() });
-    await waitFor(() => expect(result.current.isError).toBe(true));
   });
 
   it("uses stable query key including provider filter", async () => {

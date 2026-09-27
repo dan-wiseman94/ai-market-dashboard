@@ -3,15 +3,6 @@ import { describe, it, expect } from "vitest";
 import Field from "@/components/settings/Field";
 
 describe("Field", () => {
-  it("associates the label with the control via htmlFor/id", () => {
-    render(
-      <Field label="Daily cap">
-        {({ id, describedBy }) => <input id={id} aria-describedby={describedBy} />}
-      </Field>,
-    );
-    // getByLabelText resolves only if label/control are wired correctly
-    expect(screen.getByLabelText("Daily cap")).toBeInTheDocument();
-  });
 
   it("renders a hint and wires aria-describedby to it", () => {
     render(

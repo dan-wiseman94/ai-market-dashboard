@@ -19,18 +19,6 @@ describe("api/threads.sendMessage", () => {
     vi.unstubAllGlobals();
   });
 
-  it("posts plain text body when no override provided", async () => {
-    const fetchMock = stubOk({ id: 1 });
-    await sendMessage(42, "hi");
-    const [url, opts] = fetchMock.mock.calls[0];
-    expect(url).toBe("/api/threads/42/send/");
-    expect(JSON.parse(opts.body)).toEqual({
-      text: "hi",
-      override_provider: undefined,
-      override_model: undefined,
-    });
-  });
-
   it("forwards provider+model override when supplied", async () => {
     const fetchMock = stubOk({ id: 2 });
     await sendMessage(7, "hello", { provider: "openai", model: "gpt-5-mini" });

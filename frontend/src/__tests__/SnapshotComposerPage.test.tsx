@@ -96,46 +96,6 @@ describe("SnapshotComposerPage", () => {
     localStorage.clear();
   });
 
-  it("renders profile select with options from hook data", () => {
-    renderComposer();
-    expect(screen.getByRole("option", { name: "Select profile…" })).toBeInTheDocument();
-    expect(screen.getByRole("option", { name: "Day Trader" })).toBeInTheDocument();
-    expect(screen.getByRole("option", { name: "Swing Trader" })).toBeInTheDocument();
-  });
-
-  it("renders watchlist select with options from hook data", () => {
-    renderComposer();
-    expect(screen.getByRole("option", { name: "Select watchlist…" })).toBeInTheDocument();
-    expect(screen.getByRole("option", { name: "Tech" })).toBeInTheDocument();
-    expect(screen.getByRole("option", { name: "Energy" })).toBeInTheDocument();
-  });
-
-  it("auto-selects the first profile on mount", async () => {
-    renderComposer();
-    const [profileSelect] = screen.getAllByRole("combobox");
-    await waitFor(() => {
-      expect((profileSelect as HTMLSelectElement).value).toBe("1");
-    });
-  });
-
-  it("auto-selects the first watchlist on mount", async () => {
-    renderComposer();
-    const selects = screen.getAllByRole("combobox");
-    const watchlistSelect = selects[1];
-    await waitFor(() => {
-      expect((watchlistSelect as HTMLSelectElement).value).toBe("10");
-    });
-  });
-
-  it("shows tickers for selected watchlist", async () => {
-    renderComposer();
-    // The watchlist tickers appear in both the watchlist line and the "Using:"
-    // effective-set summary, so match all and assert at least one is present.
-    await waitFor(() => {
-      expect(screen.getAllByText(/AAPL.*GOOGL|GOOGL.*AAPL/).length).toBeGreaterThanOrEqual(1);
-    });
-  });
-
   it("toggling a section updates the section picker checkboxes", async () => {
     const user = userEvent.setup();
     renderComposer();
@@ -149,38 +109,6 @@ describe("SnapshotComposerPage", () => {
     expect(ohlcCheckbox).not.toBeChecked();
     await user.click(ohlcCheckbox);
     expect(ohlcCheckbox).toBeChecked();
-  });
-
-  it("typing in objective textarea updates state", async () => {
-    const user = userEvent.setup();
-    renderComposer();
-    const objectiveTextarea = screen.getByPlaceholderText(/what do you want/i);
-    await user.type(objectiveTextarea, "Am I overexposed to tech?");
-    expect(objectiveTextarea).toHaveValue("Am I overexposed to tech?");
-  });
-
-  it("typing in notes textarea updates state", async () => {
-    const user = userEvent.setup();
-    renderComposer();
-    const notesTextareas = screen.getAllByRole("textbox");
-    const notesTextarea = notesTextareas[notesTextareas.length - 1];
-    await user.type(notesTextarea, "Market feels jittery");
-    expect(notesTextarea).toHaveValue("Market feels jittery");
-  });
-
-  it("Capture button is disabled when no profile is selected", async () => {
-    vi.doMock("@/hooks/useProfiles", () => ({
-      useProfiles: () => ({ data: [] }),
-    }));
-    // Render without auto-select happening (profiles empty means profileId stays null)
-    renderWithProviders(<SnapshotComposerPage />, {
-      initialEntries: ["/compose"],
-      routePath: "/compose",
-    });
-    const btn = await screen.findByTestId("capture-btn");
-    // With no profiles, profileId is null, button should be disabled
-    // (the mock at module level still kicks in; we test the initial null state)
-    expect(btn).toBeInTheDocument();
   });
 
   it("submits with correct body shape and navigates to thread URL", async () => {

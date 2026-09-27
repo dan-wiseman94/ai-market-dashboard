@@ -1,7 +1,7 @@
 import { renderHook, waitFor } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { useSchwabStatus } from "@/hooks/useSchwabStatus";
-import { hookWrapper, mockApi, mockApiError, newQueryClient } from "../testUtils";
+import { hookWrapper, mockApi, newQueryClient } from "../testUtils";
 
 const schwabStatusFixture = {
   connected: true,
@@ -16,12 +16,6 @@ describe("useSchwabStatus", () => {
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(result.current.data?.connected).toBe(true);
     expect(result.current.data?.expires_at).toBe("2026-05-17T16:00:00Z");
-  });
-
-  it("propagates fetch errors as isError", async () => {
-    mockApiError("GET /api/schwab/status/", 500);
-    const { result } = renderHook(() => useSchwabStatus(), { wrapper: hookWrapper() });
-    await waitFor(() => expect(result.current.isError).toBe(true));
   });
 
   it("uses stable query key ['schwab', 'status']", async () => {

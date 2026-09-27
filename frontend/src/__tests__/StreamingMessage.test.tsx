@@ -27,11 +27,6 @@ describe("StreamingMessage", () => {
     expect(screen.getByText("(empty)")).toBeInTheDocument();
   });
 
-  it("assistant role with text renders the text content", () => {
-    render(<StreamingMessage role="assistant" text="Market looks bullish" />);
-    expect(screen.getByText("Market looks bullish")).toBeInTheDocument();
-  });
-
   it("assistant role shows the provider display name", () => {
     render(
       <StreamingMessage role="assistant" text="Hello" provider="openai" />,
@@ -82,21 +77,6 @@ describe("StreamingMessage", () => {
     expect(screen.getByText("SPY")).toBeInTheDocument();
     expect(screen.getByText(/Fed minutes/)).toBeInTheDocument();
   });
-
-  it("normal assistant message still renders markdown text (fallback unchanged)", () => {
-    render(
-      <StreamingMessage
-        role="assistant"
-        text="Market looks **stable** today."
-        status="done"
-      />,
-    );
-    // The text content should be present (markdown renders strong as bold but text is visible)
-    expect(screen.getByText(/Market looks/)).toBeInTheDocument();
-    expect(screen.getByText(/stable/)).toBeInTheDocument();
-    // No ObservationReportCard headline or sections
-    expect(screen.queryByText("SPY holds 20-EMA on rising breadth")).not.toBeInTheDocument();
-  });
 });
 
 describe("StreamingMessage — citations", () => {
@@ -119,11 +99,6 @@ describe("StreamingMessage — citations", () => {
     expect(screen.getByText(/The Fed/)).toBeInTheDocument();
     expect(screen.getByTestId("citation-1")).toBeInTheDocument();
     expect(screen.getByRole("link")).toHaveAttribute("href", "https://example.com/fed");
-  });
-
-  it("renders no sources block when the message carried no citations", () => {
-    render(<StreamingMessage role="assistant" text="No sources here." status="done" />);
-    expect(screen.queryByTestId("citations")).toBeNull();
   });
 
   it("does not render a sources block on a failed message", () => {

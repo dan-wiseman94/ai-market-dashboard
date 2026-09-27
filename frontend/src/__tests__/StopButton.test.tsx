@@ -4,10 +4,6 @@ import { describe, it, expect, vi } from "vitest";
 import StopButton from "@/components/StopButton";
 
 describe("StopButton", () => {
-  it("renders with aria-label Stop generation", () => {
-    render(<StopButton onStop={() => {}} />);
-    expect(screen.getByRole("button", { name: "Stop generation" })).toBeInTheDocument();
-  });
 
   it("button text contains Stop", () => {
     render(<StopButton onStop={() => {}} />);

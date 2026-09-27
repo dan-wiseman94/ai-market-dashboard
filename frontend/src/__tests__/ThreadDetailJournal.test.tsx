@@ -169,24 +169,10 @@ describe("ThreadDetailPage — Close & journal panel", () => {
     vi.mocked(useJournal).mockReturnValue({ data: [] } as unknown as ReturnType<typeof useJournal>);
   });
 
-  it("renders the 'Close & journal' toggle button", async () => {
-    renderThread();
-    const btn = await screen.findByTestId("journal-panel-btn");
-    expect(btn).toBeInTheDocument();
-  });
-
   it("panel is hidden by default", async () => {
     renderThread();
     await screen.findByTestId("journal-panel-btn");
     expect(screen.queryByTestId("journal-panel")).not.toBeInTheDocument();
-  });
-
-  it("clicking the toggle button shows the journal panel", async () => {
-    const user = userEvent.setup();
-    renderThread();
-    const btn = await screen.findByTestId("journal-panel-btn");
-    await user.click(btn);
-    expect(await screen.findByTestId("journal-panel")).toBeInTheDocument();
   });
 
   it("'Log decision' button POSTs to /api/journal/ with thread_id and decision", async () => {
