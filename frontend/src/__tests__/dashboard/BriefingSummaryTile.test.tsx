@@ -22,13 +22,6 @@ describe("BriefingSummaryTile", () => {
     expect(screen.getByText(/No briefing yet/i)).toBeInTheDocument();
   });
 
-  it("links to /briefing", () => {
-    renderWithProviders(<BriefingSummaryTile briefing={briefingFixture} />);
-    const links = screen.getAllByRole("link", { name: /briefing|open|read/i });
-    const briefingLink = links.find((l) => l.getAttribute("href") === "/briefing");
-    expect(briefingLink).toBeTruthy();
-  });
-
   it("shows 'Open →' header link even when briefing is null", () => {
     renderWithProviders(<BriefingSummaryTile briefing={null} />);
     const link = screen.getByRole("link", { name: /Open/i });

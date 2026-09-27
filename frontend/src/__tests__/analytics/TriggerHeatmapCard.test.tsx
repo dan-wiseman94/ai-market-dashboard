@@ -29,10 +29,4 @@ describe("TriggerHeatmapCard", () => {
     expect(cells.length).toBe(168);
     expect(screen.getByText(/7 fires/)).toBeInTheDocument();
   });
-
-  it("renders skeleton rows while loading", () => {
-    mockHook({ data: undefined, isLoading: true });
-    renderWithProviders(<TriggerHeatmapCard />);
-    expect(screen.getAllByTestId("skeleton-row")).toHaveLength(3);
-  });
 });

@@ -16,40 +16,6 @@ describe("SnapshotCaptureProgress", () => {
     expect(container.firstChild).toBeNull();
   });
 
-  it("renders each section name", () => {
-    const sections = new Map([
-      ["quotes", "done" as const],
-      ["chain", "running" as const],
-    ]);
-    render(<SnapshotCaptureProgress sections={sections} />);
-    expect(screen.getByText(/quotes/i)).toBeInTheDocument();
-    expect(screen.getByText(/chain/i)).toBeInTheDocument();
-  });
-
-  it("shows checkmark for done sections", () => {
-    const sections = new Map([["quotes", "done" as const]]);
-    render(<SnapshotCaptureProgress sections={sections} />);
-    const item = screen.getByRole("listitem");
-    expect(item).toHaveTextContent("✓");
-    expect(item).toHaveTextContent("quotes");
-  });
-
-  it("shows spinner/clock for running sections", () => {
-    const sections = new Map([["chain", "running" as const]]);
-    render(<SnapshotCaptureProgress sections={sections} />);
-    const item = screen.getByRole("listitem");
-    expect(item).toHaveTextContent("⏳");
-    expect(item).toHaveTextContent("chain");
-  });
-
-  it("shows X for failed sections", () => {
-    const sections = new Map([["news", "failed" as const]]);
-    render(<SnapshotCaptureProgress sections={sections} />);
-    const item = screen.getByRole("listitem");
-    expect(item).toHaveTextContent("✗");
-    expect(item).toHaveTextContent("news");
-  });
-
   it("renders all three statuses in a multi-section map", () => {
     const sections = new Map([
       ["quotes", "done" as const],

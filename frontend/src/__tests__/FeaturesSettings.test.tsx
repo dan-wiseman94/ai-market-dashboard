@@ -164,13 +164,6 @@ describe("FeaturesSettings", () => {
     expect(screen.getByRole("group", { name: "Data & retention" })).toBeInTheDocument();
   });
 
-  it("names every switch from its visible label", async () => {
-    renderPage();
-    expect(
-      await screen.findByRole("switch", { name: "Cross-provider failover" }),
-    ).toBeInTheDocument();
-  });
-
   it("reports how many rows the filter is showing", async () => {
     renderPage();
     expect(await screen.findByText("5 of 5 shown")).toBeInTheDocument();

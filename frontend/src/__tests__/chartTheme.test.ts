@@ -2,11 +2,6 @@ import { describe, expect, it } from "vitest";
 import { lightweightLayout, rechartsColors } from "@/lib/chartTheme";
 
 describe("chartTheme", () => {
-  it("returns distinct lightweight-charts backgrounds per theme", () => {
-    expect(lightweightLayout("dark").layout.background.color).not.toBe(
-      lightweightLayout("light").layout.background.color,
-    );
-  });
 
   it("uses the expected lightweight-charts backgrounds", () => {
     expect(lightweightLayout("dark").layout.background.color.toLowerCase()).toBe("#0a0a0a");

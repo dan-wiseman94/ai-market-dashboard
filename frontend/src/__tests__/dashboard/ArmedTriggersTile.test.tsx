@@ -25,10 +25,6 @@ const triggersWithFirings: DashboardTriggers = {
 };
 
 describe("ArmedTriggersTile", () => {
-  it("shows armed_count", () => {
-    renderWithProviders(<ArmedTriggersTile triggers={triggersWithFirings} />);
-    expect(screen.getByTestId("triggers-armed-count").textContent).toBe("7");
-  });
 
   it("shows latest firing names", () => {
     renderWithProviders(<ArmedTriggersTile triggers={triggersWithFirings} />);

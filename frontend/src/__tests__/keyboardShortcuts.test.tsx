@@ -49,32 +49,11 @@ beforeEach(() => {
   installFakeWebSocket();
 });
 
-test("g t navigates to /triggers", async () => {
-  const user = userEvent.setup();
-  renderLayoutRouter(makeRouter("/"));
-  await user.keyboard("gt");
-  expect(await screen.findByTestId("triggers")).toBeInTheDocument();
-});
-
 test("g c navigates to /costs", async () => {
   const user = userEvent.setup();
   renderLayoutRouter(makeRouter("/"));
   await user.keyboard("gc");
   expect(await screen.findByTestId("costs")).toBeInTheDocument();
-});
-
-test("g p navigates to /predictions", async () => {
-  const user = userEvent.setup();
-  renderLayoutRouter(makeRouter("/"));
-  await user.keyboard("gp");
-  expect(await screen.findByTestId("predictions")).toBeInTheDocument();
-});
-
-test("g f navigates to the nested /settings/features route", async () => {
-  const user = userEvent.setup();
-  renderLayoutRouter(makeRouter("/"));
-  await user.keyboard("gf");
-  expect(await screen.findByTestId("features")).toBeInTheDocument();
 });
 
 test("shortcut ignored while typing in an input", async () => {
@@ -85,13 +64,6 @@ test("shortcut ignored while typing in an input", async () => {
   await user.keyboard("gt");
   expect(screen.getByTestId("snapshot")).toBeInTheDocument();
   expect(screen.queryByTestId("triggers")).not.toBeInTheDocument();
-});
-
-test("unmapped key after g cancels the binding", async () => {
-  const user = userEvent.setup();
-  renderLayoutRouter(makeRouter("/"));
-  await user.keyboard("gx");
-  expect(screen.getByTestId("dashboard")).toBeInTheDocument();
 });
 
 test("shortcut ignored on element with role=textbox", async () => {

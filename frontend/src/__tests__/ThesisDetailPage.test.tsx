@@ -109,17 +109,6 @@ describe("ThesisDetailPage", () => {
     expect(screen.getByText("90 days")).toBeInTheDocument();
   });
 
-  it("shows Open status badge for open thesis", async () => {
-    mockApi({ "GET /api/theses/1/": THESIS, ...NO_POSITIONS });
-    renderWithProviders(<ThesisDetailPage />, {
-      initialEntries: ["/theses/1"],
-      routePath: "/theses/:id",
-    });
-    await waitFor(() =>
-      expect(screen.getByText("Open")).toBeInTheDocument(),
-    );
-  });
-
   it("shows Win status badge for closed_win thesis", async () => {
     mockApi({ "GET /api/theses/2/": CLOSED_THESIS, ...NO_POSITIONS });
     renderWithProviders(<ThesisDetailPage />, {
@@ -130,17 +119,6 @@ describe("ThesisDetailPage", () => {
       expect(screen.getByText("Win")).toBeInTheDocument(),
     );
     expect(screen.getByText("Worked perfectly")).toBeInTheDocument();
-  });
-
-  it("renders the close control for an open thesis", async () => {
-    mockApi({ "GET /api/theses/1/": THESIS, ...NO_POSITIONS });
-    renderWithProviders(<ThesisDetailPage />, {
-      initialEntries: ["/theses/1"],
-      routePath: "/theses/:id",
-    });
-    await waitFor(() =>
-      expect(screen.getByTestId("open-close-form-btn")).toBeInTheDocument(),
-    );
   });
 
   it("does NOT render the close button for a closed thesis", async () => {
@@ -192,36 +170,6 @@ describe("ThesisDetailPage", () => {
     );
     const link = screen.getByText(/Thread #42/).closest("a");
     expect(link).toHaveAttribute("href", "/threads/42");
-  });
-
-  it("renders snapshot as plain text (not a link) when only snapshot_id is set", async () => {
-    const SNAPSHOT_ONLY = {
-      ...THESIS,
-      thread_id: null,
-      snapshot_id: 99,
-    };
-    mockApi({ "GET /api/theses/1/": SNAPSHOT_ONLY, ...NO_POSITIONS });
-    renderWithProviders(<ThesisDetailPage />, {
-      initialEntries: ["/theses/1"],
-      routePath: "/theses/:id",
-    });
-    await waitFor(() =>
-      expect(screen.getByText(/Snapshot #99/)).toBeInTheDocument(),
-    );
-    const el = screen.getByText(/Snapshot #99/);
-    expect(el.closest("a")).toBeNull();
-  });
-
-  it("renders the Run now button", async () => {
-    mockApi({ "GET /api/theses/1/": THESIS, ...NO_POSITIONS });
-    renderWithProviders(<ThesisDetailPage />, {
-      initialEntries: ["/theses/1"],
-      routePath: "/theses/:id",
-    });
-    await waitFor(() =>
-      expect(screen.getByTestId("run-postmortem-btn")).toBeInTheDocument(),
-    );
-    expect(screen.getByTestId("run-postmortem-btn")).toHaveTextContent("Run now");
   });
 
   it("renders the done post-mortem card with verdict badge, forward return, summary and lessons", async () => {

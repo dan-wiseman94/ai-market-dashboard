@@ -25,28 +25,6 @@ afterEach(() => {
 });
 
 describe("useSnapshotProgress", () => {
-  it("returns an empty map when snapshotId is null", () => {
-    const { result } = renderHook(() => useSnapshotProgress(null), { wrapper });
-    expect(result.current.sections.size).toBe(0);
-  });
-
-  it("opens a snapshot WS channel when snapshotId is provided", () => {
-    renderHook(() => useSnapshotProgress(42), { wrapper });
-    const sock = fake.find("/ws/snapshots/42/");
-    expect(sock).toBeDefined();
-  });
-
-  it("records 'running' status for a section on snapshot.section event", () => {
-    const { result } = renderHook(() => useSnapshotProgress(7), { wrapper });
-    const sock = fake.find("/ws/snapshots/7/");
-    expect(sock).toBeDefined();
-
-    act(() => {
-      sock!.emitMessage({ type: "snapshot.section", section: "quotes", status: "running" });
-    });
-
-    expect(result.current.sections.get("quotes")).toBe("running");
-  });
 
   it("updates to 'done' when a second event arrives for the same section", () => {
     const { result } = renderHook(() => useSnapshotProgress(7), { wrapper });

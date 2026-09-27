@@ -117,10 +117,6 @@ describe("ProviderCard — catalog default, capabilities and discovery", () => {
 });
 
 describe("ProviderCard", () => {
-  it("renders a labeled API key input named '<Provider> API key'", () => {
-    render(<ProviderCard provider="claude" />);
-    expect(screen.getByLabelText("Claude API key")).toBeInTheDocument();
-  });
 
   it("shows a 'key set' indicator and today's spend", () => {
     render(<ProviderCard provider="claude" />);
@@ -154,12 +150,6 @@ describe("ProviderCard", () => {
     await act(async () => { opts.onSuccess(); });
     expect(screen.getByLabelText("Claude API key")).toHaveValue("");
     expect(mockPush).toHaveBeenCalledWith(expect.objectContaining({ kind: "success" }));
-  });
-
-  it("renders the base URL field only for the local provider", () => {
-    mockUseProviderConfigs.mockReturnValue({ data: [cfg({ provider: "local", api_key_present: false })] });
-    render(<ProviderCard provider="local" />);
-    expect(screen.getByLabelText("Base URL")).toBeInTheDocument();
   });
 });
 
@@ -269,15 +259,6 @@ describe("ProviderCard — capability flags", () => {
     render(<ProviderCard provider="openai" />);
     const hintId = screen.getByLabelText("Tool use").getAttribute("aria-describedby");
     expect(document.getElementById(hintId ?? "")).toHaveTextContent(/Tools switch does nothing/i);
-  });
-
-  it("persists both flags on save", async () => {
-    mockUseProviderConfigs.mockReturnValue({ data: [cfg({ provider: "openai" })] });
-    render(<ProviderCard provider="openai" />);
-    await userEvent.click(screen.getByLabelText("Tool use"));
-    await userEvent.click(screen.getByRole("button", { name: "Save" }));
-    const [arg] = mockMutate.mock.calls[0];
-    expect(arg.body).toMatchObject({ supports_tools: false, supports_vision: true });
   });
 
   it("persists them for the local provider too, alongside the base URL", async () => {

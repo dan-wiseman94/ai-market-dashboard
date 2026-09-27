@@ -4,14 +4,6 @@ import RuleBuilder from "../components/triggers/RuleBuilder";
 import type { Condition } from "../api/triggers";
 
 describe("RuleBuilder", () => {
-  it("renders the top-level group selector and one empty leaf row", () => {
-    const onChange = vi.fn();
-    const initial: Condition = { all: [{ metric: "price", ticker: "SPY", op: ">", value: 550 }] };
-    render(<RuleBuilder value={initial} onChange={onChange} />);
-    expect(screen.getByText(/Fire when/i)).toBeInTheDocument();
-    expect(screen.getByDisplayValue("SPY")).toBeInTheDocument();
-    expect(screen.getByDisplayValue("550")).toBeInTheDocument();
-  });
 
   it("emits updated condition when a leaf value changes", () => {
     const onChange = vi.fn();

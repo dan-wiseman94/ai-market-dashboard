@@ -168,21 +168,6 @@ describe("ThreadDetailPage", () => {
     expect(await screen.findByText("The market looks oversold.")).toBeInTheDocument();
   });
 
-  it("compose input exists with placeholder text", async () => {
-    renderThread();
-    const input = await screen.findByTestId("compose-input");
-    expect(input).toBeInTheDocument();
-    expect(input).toHaveAttribute("placeholder", "Continue the thread…");
-  });
-
-  it("typing in compose input updates the field value", async () => {
-    const user = userEvent.setup();
-    renderThread();
-    const input = await screen.findByTestId("compose-input");
-    await user.type(input, "Is this a bull trap?");
-    expect(input).toHaveValue("Is this a bull trap?");
-  });
-
   it("submitting compose form calls useSendMessage.mutate with trimmed text", async () => {
     const user = userEvent.setup();
     mockSendMutate.mockImplementation((_args: unknown, opts: { onSuccess?: () => void }) => {

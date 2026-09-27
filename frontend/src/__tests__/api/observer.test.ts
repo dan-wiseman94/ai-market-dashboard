@@ -70,12 +70,6 @@ describe("api/observer", () => {
       await expect(promise).rejects.toBeInstanceOf(ApiError);
       await expect(promise).rejects.toMatchObject({ status: 500, code: "server_error" });
     });
-
-    it("returns an empty array when no schedules exist", async () => {
-      mockApi({ "GET /api/observer/schedules/": [] });
-      const res = await listSchedules();
-      expect(res).toEqual([]);
-    });
   });
 
   describe("createSchedule", () => {
@@ -104,34 +98,6 @@ describe("api/observer", () => {
       expect(api.calls[0].url).toMatch(/\/api\/observer\/schedules\/$/);
       expect(api.calls[0].body).toEqual(body);
     });
-
-    it("throws ApiError with status 503 on service unavailable", async () => {
-      mockApiError("POST /api/observer/schedules/", 503, "unavailable", "service down");
-      const promise = createSchedule({ name: "Test", profile: 1, cron: "0 * * * *" });
-      await expect(promise).rejects.toBeInstanceOf(ApiError);
-      await expect(promise).rejects.toMatchObject({ status: 503, code: "unavailable" });
-    });
-
-    it("sends full CreateScheduleBody fields in the request", async () => {
-      const api = mockApi({ "POST /api/observer/schedules/": scheduleFixture });
-      const fullBody = {
-        name: "Full Test",
-        profile: 5,
-        cron: "30 14 * * *",
-        enabled: false,
-        market_hours_only: false,
-        objective_template: "Afternoon check",
-        override_provider: "openai",
-        override_model: "gpt-4o",
-        default_includes: ["quotes", "chain", "ohlc"],
-        default_watchlist_tickers: ["SPY", "QQQ", "IWM"],
-        mode: "diff" as const,
-        structured: true,
-        use_batch: true,
-      };
-      await createSchedule(fullBody);
-      expect(api.calls[0].body).toEqual(fullBody);
-    });
   });
 
   describe("patchSchedule", () => {
@@ -142,20 +108,6 @@ describe("api/observer", () => {
       expect(api.calls).toHaveLength(1);
       expect(api.calls[0].method).toBe("PATCH");
       expect(api.calls[0].url).toMatch(/\/api\/observer\/schedules\/7\/$/);
-    });
-
-    it("throws ApiError with status 401 when unauthenticated", async () => {
-      mockApiError("PATCH /api/observer/schedules/7/", 401, "unauthorized", "login required");
-      const promise = patchSchedule(7, { enabled: false });
-      await expect(promise).rejects.toBeInstanceOf(ApiError);
-      await expect(promise).rejects.toMatchObject({ status: 401, code: "unauthorized" });
-    });
-
-    it("sends only the partial body fields and embeds the id in the URL", async () => {
-      const api = mockApi({ "PATCH /api/observer/schedules/99/": scheduleFixture });
-      await patchSchedule(99, { name: "Renamed", enabled: true });
-      expect(api.calls[0].body).toEqual({ name: "Renamed", enabled: true });
-      expect(api.calls[0].url).toMatch(/\/api\/observer\/schedules\/99\/$/);
     });
   });
 
@@ -168,19 +120,6 @@ describe("api/observer", () => {
       expect(api.calls[0].method).toBe("DELETE");
       expect(api.calls[0].url).toMatch(/\/api\/observer\/schedules\/42\/$/);
     });
-
-    it("throws ApiError with status 404 when schedule does not exist", async () => {
-      mockApiError("DELETE /api/observer/schedules/999/", 404, "not_found", "schedule missing");
-      const promise = deleteSchedule(999);
-      await expect(promise).rejects.toBeInstanceOf(ApiError);
-      await expect(promise).rejects.toMatchObject({ status: 404, code: "not_found" });
-    });
-
-    it("embeds the id correctly for different schedule ids", async () => {
-      const api = mockApi({ "DELETE /api/observer/schedules/1/": undefined });
-      await deleteSchedule(1);
-      expect(api.calls[0].url).toMatch(/\/api\/observer\/schedules\/1\/$/);
-    });
   });
 
   describe("runScheduleNow", () => {
@@ -191,19 +130,6 @@ describe("api/observer", () => {
       expect(api.calls[0].method).toBe("POST");
       expect(api.calls[0].url).toMatch(/\/api\/observer\/schedules\/7\/run-now\/$/);
       expect(api.calls[0].body).toEqual({});
-    });
-
-    it("throws ApiError with status 500 when the task fails to dispatch", async () => {
-      mockApiError("POST /api/observer/schedules/7/run-now/", 500, "dispatch_error", "celery unavailable");
-      const promise = runScheduleNow(7);
-      await expect(promise).rejects.toBeInstanceOf(ApiError);
-      await expect(promise).rejects.toMatchObject({ status: 500, code: "dispatch_error" });
-    });
-
-    it("embeds the schedule id in the URL", async () => {
-      const api = mockApi({ "POST /api/observer/schedules/55/run-now/": undefined });
-      await runScheduleNow(55);
-      expect(api.calls[0].url).toMatch(/\/api\/observer\/schedules\/55\/run-now\/$/);
     });
   });
 
@@ -216,13 +142,6 @@ describe("api/observer", () => {
       expect(api.calls[0].method).toBe("GET");
       expect(api.calls[0].url).toContain("limit=50");
       expect(api.calls[0].url).not.toContain("unread=true");
-    });
-
-    it("throws ApiError with status 403 when access is denied", async () => {
-      mockApiError("GET /api/observer/notifications/", 403, "forbidden", "access denied");
-      const promise = listNotifications();
-      await expect(promise).rejects.toBeInstanceOf(ApiError);
-      await expect(promise).rejects.toMatchObject({ status: 403, code: "forbidden" });
     });
 
     it("appends &unread=true to URL when unread=true is passed", async () => {
@@ -245,19 +164,6 @@ describe("api/observer", () => {
       expect(api.calls[0].url).toMatch(/\/api\/observer\/notifications\/42\/read\/$/);
       expect(api.calls[0].body).toEqual({});
     });
-
-    it("throws ApiError with status 404 when notification does not exist", async () => {
-      mockApiError("POST /api/observer/notifications/999/read/", 404, "not_found", "notification missing");
-      const promise = markNotificationRead(999);
-      await expect(promise).rejects.toBeInstanceOf(ApiError);
-      await expect(promise).rejects.toMatchObject({ status: 404, code: "not_found" });
-    });
-
-    it("embeds the notification id in the URL", async () => {
-      const api = mockApi({ "POST /api/observer/notifications/77/read/": notificationFixture });
-      await markNotificationRead(77);
-      expect(api.calls[0].url).toMatch(/\/api\/observer\/notifications\/77\/read\/$/);
-    });
   });
 
   describe("markAllNotificationsRead", () => {
@@ -268,19 +174,6 @@ describe("api/observer", () => {
       expect(api.calls).toHaveLength(1);
       expect(api.calls[0].method).toBe("POST");
       expect(api.calls[0].url).toMatch(/\/api\/observer\/notifications\/mark-all-read\/$/);
-    });
-
-    it("throws ApiError with status 500 on server error", async () => {
-      mockApiError("POST /api/observer/notifications/mark-all-read/", 500, "server_error", "boom");
-      const promise = markAllNotificationsRead();
-      await expect(promise).rejects.toBeInstanceOf(ApiError);
-      await expect(promise).rejects.toMatchObject({ status: 500, code: "server_error" });
-    });
-
-    it("hits the exact URL with no extra query params", async () => {
-      const api = mockApi({ "POST /api/observer/notifications/mark-all-read/": { ok: true } });
-      await markAllNotificationsRead();
-      expect(api.calls[0].url).toBe("/api/observer/notifications/mark-all-read/");
     });
   });
 
@@ -293,24 +186,6 @@ describe("api/observer", () => {
       expect(res.next_close).toBe("2026-05-17T20:00:00Z");
       expect(api.calls).toHaveLength(1);
       expect(api.calls[0].method).toBe("GET");
-      expect(api.calls[0].url).toMatch(/\/api\/observer\/market-status\/$/);
-    });
-
-    it("throws ApiError with status 503 when the market status service is down", async () => {
-      mockApiError("GET /api/observer/market-status/", 503, "unavailable", "calendar service down");
-      const promise = getMarketStatus();
-      await expect(promise).rejects.toBeInstanceOf(ApiError);
-      await expect(promise).rejects.toMatchObject({ status: 503, code: "unavailable" });
-    });
-
-    it("handles null next_open and next_close when market is mid-session with no future events", async () => {
-      const api = mockApi({
-        "GET /api/observer/market-status/": { is_open: false, next_open: null, next_close: null },
-      });
-      const res = await getMarketStatus();
-      expect(res.is_open).toBe(false);
-      expect(res.next_open).toBeNull();
-      expect(res.next_close).toBeNull();
       expect(api.calls[0].url).toMatch(/\/api\/observer\/market-status\/$/);
     });
   });

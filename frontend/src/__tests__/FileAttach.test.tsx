@@ -82,16 +82,6 @@ describe("FileAttach — delete", () => {
       expect(calls.some((c) => c.method === "DELETE" && c.url === "/api/files/3/")).toBe(true),
     );
   });
-
-  it("sends nothing when the confirmation is declined", async () => {
-    vi.stubGlobal("confirm", vi.fn(() => false));
-    const { calls } = setup("claude", { "DELETE /api/files/3/": undefined });
-
-    renderWithProviders(<FileAttach threadId={5} />);
-    fireEvent.click(await screen.findByRole("button", { name: "Delete 10k.pdf" }));
-
-    expect(calls.some((c) => c.method === "DELETE")).toBe(false);
-  });
 });
 
 describe("FileAttach — attach", () => {

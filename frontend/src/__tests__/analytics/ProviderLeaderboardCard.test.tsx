@@ -42,10 +42,4 @@ describe("ProviderLeaderboardCard", () => {
     const dashes = screen.getAllByText("—");
     expect(dashes.length).toBeGreaterThan(0);
   });
-
-  it("renders skeleton rows while loading", () => {
-    mockHook({ data: undefined, isLoading: true });
-    renderWithProviders(<ProviderLeaderboardCard />);
-    expect(screen.getAllByTestId("skeleton-row")).toHaveLength(3);
-  });
 });

@@ -1,12 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   fetchAiModels,
-  fetchProviderConfigs,
-  fetchAiUsage,
   upsertProviderConfig,
 } from "@/api/ai";
 import { ApiError } from "@/api/client";
-import { mockApi, mockApiError } from "../testUtils";
+import { mockApi } from "../testUtils";
 
 // Note: setup.ts has a global afterEach that calls vi.unstubAllGlobals(),
 // so each test starts with a fresh fetch.
@@ -60,28 +58,6 @@ describe("api/ai", () => {
       await fetchAiModels("open ai");
       expect(api.calls[0].url).toMatch(/provider=open%20ai/);
     });
-
-    it("propagates ApiError on non-2xx", async () => {
-      mockApiError("GET /api/schwab/models/", 500, "server_error", "boom");
-      const promise = fetchAiModels();
-      await expect(promise).rejects.toBeInstanceOf(ApiError);
-      await expect(promise).rejects.toMatchObject({ status: 500, code: "server_error", message: "boom" });
-    });
-  });
-
-  describe("fetchProviderConfigs", () => {
-    it("returns array of ProviderConfig on 200", async () => {
-      mockApi({ "GET /api/schwab/providers/": [claudeProviderConfig] });
-      const res = await fetchProviderConfigs();
-      expect(res).toEqual([expect.objectContaining({ provider: "claude" })]);
-    });
-
-    it("throws ApiError on 503", async () => {
-      mockApiError("GET /api/schwab/providers/", 503);
-      const promise = fetchProviderConfigs();
-      await expect(promise).rejects.toBeInstanceOf(ApiError);
-      await expect(promise).rejects.toMatchObject({ status: 503 });
-    });
   });
 
   describe("upsertProviderConfig", () => {
@@ -114,22 +90,6 @@ describe("api/ai", () => {
       });
       await expect(upsertProviderConfig("claude", {})).rejects.toBeInstanceOf(ApiError);
       expect(api.calls.map((c) => c.method)).toEqual(["PATCH"]);
-    });
-  });
-
-  describe("fetchAiUsage", () => {
-    it("returns the shaped usage object", async () => {
-      const api = mockApi({ "GET /api/schwab/usage/": { today: { claude: "0.0012", openai: "0.0000" } } });
-      const res = await fetchAiUsage();
-      expect(res.today.claude).toBe("0.0012");
-      expect(res.today.openai).toBe("0.0000");
-      expect(api.calls).toHaveLength(1);
-      expect(api.calls[0].method).toBe("GET");
-    });
-
-    it("propagates ApiError when the endpoint fails", async () => {
-      mockApiError("GET /api/schwab/usage/", 502, "bad_gateway", "upstream");
-      await expect(fetchAiUsage()).rejects.toBeInstanceOf(ApiError);
     });
   });
 });

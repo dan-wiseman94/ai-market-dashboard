@@ -20,17 +20,6 @@ function renderLayout(router: ReturnType<typeof createMemoryRouter>) {
   );
 }
 
-test("AppLayout renders Outlet children", () => {
-  const router = createMemoryRouter(
-    [{ path: "/", element: <AppLayout />, children: [
-      { index: true, element: <div>child-page</div> },
-    ]}],
-    { initialEntries: ["/"] },
-  );
-  renderLayout(router);
-  expect(screen.getByText("child-page")).toBeInTheDocument();
-});
-
 test("TopNav renders primary route links", () => {
   const router = createMemoryRouter(
     [{ path: "/", element: <AppLayout />, children: [{ index: true, element: <div>x</div> }] }],

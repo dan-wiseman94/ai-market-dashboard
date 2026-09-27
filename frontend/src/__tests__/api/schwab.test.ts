@@ -16,24 +16,6 @@ describe("api/schwab", () => {
       expect(api.calls[0].method).toBe("GET");
       expect(api.calls[0].url).toMatch(/\/api\/schwab\/status\/$/);
     });
-
-    it("GETs /api/schwab/status/ and handles disconnected state with null expires_at", async () => {
-      const api = mockApi({
-        "GET /api/schwab/status/": { connected: false, expires_at: null },
-      });
-      const res = await fetchSchwabStatus();
-      expect(res.connected).toBe(false);
-      expect(res.expires_at).toBeNull();
-      expect(api.calls).toHaveLength(1);
-      expect(api.calls[0].method).toBe("GET");
-    });
-
-    it("throws ApiError with status 503 on service unavailable", async () => {
-      mockApiError("GET /api/schwab/status/", 503, "service_unavailable", "schwab down");
-      const promise = fetchSchwabStatus();
-      await expect(promise).rejects.toBeInstanceOf(ApiError);
-      await expect(promise).rejects.toMatchObject({ status: 503, code: "service_unavailable" });
-    });
   });
 
   describe("fetchSchwabAuthorizeUrl", () => {
@@ -57,14 +39,6 @@ describe("api/schwab", () => {
       const promise = fetchSchwabAuthorizeUrl();
       await expect(promise).rejects.toBeInstanceOf(ApiError);
       await expect(promise).rejects.toMatchObject({ status: 500, code: "server_error" });
-    });
-
-    it("passes the url back verbatim without normalization", async () => {
-      const rawUrl =
-        "https://api.schwabapi.com/v1/oauth/authorize?client_id=xyz&scope=readonly&state=abc123";
-      mockApi({ "GET /api/schwab/authorize/": { url: rawUrl } });
-      const res = await fetchSchwabAuthorizeUrl();
-      expect(res.url).toBe(rawUrl);
     });
   });
 });

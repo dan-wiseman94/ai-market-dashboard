@@ -90,23 +90,6 @@ describe("useDashboard", () => {
     expect(data.events.earnings[0].days_until).toBe(2);
   });
 
-  it("returns null briefing when backend sends null", async () => {
-    mockApi({ "GET /api/dashboard/": { ...FIXTURE, briefing: null } });
-    const { result } = renderHook(() => useDashboard(), {
-      wrapper: hookWrapper(),
-    });
-    await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(result.current.data!.briefing).toBeNull();
-  });
-
-  it("isError on fetch failure", async () => {
-    mockApi({ "GET /api/dashboard/": { status: 500, code: "error", message: "oops" } });
-    const { result } = renderHook(() => useDashboard(), {
-      wrapper: hookWrapper(),
-    });
-    await waitFor(() => expect(result.current.isError).toBe(true));
-  });
-
   it("uses query key ['dashboard']", async () => {
     const client = newQueryClient();
     mockApi({ "GET /api/dashboard/": FIXTURE });

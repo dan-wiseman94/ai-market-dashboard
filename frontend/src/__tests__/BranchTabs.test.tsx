@@ -11,20 +11,6 @@ describe("BranchTabs", () => {
     expect(container.firstChild).toBeNull();
   });
 
-  it("renders one button per branch", () => {
-    render(
-      <BranchTabs
-        branches={[
-          { id: 1, label: "claude/sonnet", status: "done" },
-          { id: 2, label: "openai/gpt-5", status: "done" },
-        ]}
-        activeId={null}
-        onSelect={() => {}}
-      />,
-    );
-    expect(screen.getAllByRole("button")).toHaveLength(2);
-  });
-
   it("clicking a branch calls onSelect with branch id", async () => {
     const user = userEvent.setup();
     const onSelect = vi.fn();

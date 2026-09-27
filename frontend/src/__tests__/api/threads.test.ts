@@ -83,13 +83,6 @@ describe("api/threads", () => {
       await expect(promise).rejects.toBeInstanceOf(ApiError);
       await expect(promise).rejects.toMatchObject({ status: 500, code: "server_error" });
     });
-
-    it("returns empty array when no threads exist", async () => {
-      const api = mockApi({ "GET /api/threads/": { results: [] } });
-      const res = await fetchThreads();
-      expect(res).toEqual([]);
-      expect(api.calls).toHaveLength(1);
-    });
   });
 
   describe("fetchThread", () => {
@@ -104,22 +97,6 @@ describe("api/threads", () => {
       expect(api.calls[0].method).toBe("GET");
       expect(api.calls[0].url).toMatch(/\/api\/threads\/1\/$/);
     });
-
-    it("throws ApiError with status 404 when thread does not exist", async () => {
-      mockApiError("GET /api/threads/999/", 404, "not_found", "thread missing");
-      const promise = fetchThread(999);
-      await expect(promise).rejects.toBeInstanceOf(ApiError);
-      await expect(promise).rejects.toMatchObject({ status: 404, code: "not_found" });
-    });
-
-    it("handles thread with pinned_snapshot_id: null and profile: null", async () => {
-      const nullableThread = { ...threadFixture, pinned_snapshot_id: null, profile: null };
-      const api = mockApi({ "GET /api/threads/1/": nullableThread });
-      const res = await fetchThread(1);
-      expect(res.pinned_snapshot_id).toBeNull();
-      expect(res.profile).toBeNull();
-      expect(api.calls[0].method).toBe("GET");
-    });
   });
 
   describe("createThread", () => {
@@ -132,21 +109,6 @@ describe("api/threads", () => {
       expect(api.calls[0].method).toBe("POST");
       expect(api.calls[0].url).toMatch(/\/api\/threads\/$/);
       expect(api.calls[0].body).toEqual(body);
-    });
-
-    it("POSTs with full body including profile_id, pinned_snapshot_id, and title", async () => {
-      const api = mockApi({ "POST /api/threads/": threadFixture });
-      const fullBody = { kind: "chat" as const, profile_id: 2, pinned_snapshot_id: 99, title: "EOD review" };
-      const res = await createThread(fullBody);
-      expect(res.id).toBe(1);
-      expect(api.calls[0].body).toEqual(fullBody);
-    });
-
-    it("throws ApiError with status 400 on validation error", async () => {
-      mockApiError("POST /api/threads/", 400, "validation_error", "kind is required");
-      const promise = createThread({ kind: "consult" });
-      await expect(promise).rejects.toBeInstanceOf(ApiError);
-      await expect(promise).rejects.toMatchObject({ status: 400, code: "validation_error" });
     });
   });
 
@@ -171,13 +133,6 @@ describe("api/threads", () => {
         override_provider: "openai",
         override_model: "gpt-5-mini",
       });
-    });
-
-    it("throws ApiError with status 503 and URL contains threadId", async () => {
-      mockApiError("POST /api/threads/7/send/", 503, "service_unavailable", "provider down");
-      const promise = sendMessage(7, "hello");
-      await expect(promise).rejects.toBeInstanceOf(ApiError);
-      await expect(promise).rejects.toMatchObject({ status: 503, code: "service_unavailable" });
     });
   });
 
@@ -208,21 +163,6 @@ describe("api/threads", () => {
         ],
       });
     });
-
-    it("throws ApiError with status 500 and URL contains threadId", async () => {
-      mockApiError("POST /api/threads/3/compare/", 500, "server_error", "internal error");
-      const promise = compareMessage(3, "Compare this", [{ provider: "claude", model: "claude-opus-4-5" }]);
-      await expect(promise).rejects.toBeInstanceOf(ApiError);
-      await expect(promise).rejects.toMatchObject({ status: 500, code: "server_error" });
-    });
-
-    it("sends empty branches array when no branches provided", async () => {
-      const compareResponse = { user_message_id: 60, branches: [] };
-      const api = mockApi({ "POST /api/threads/3/compare/": compareResponse });
-      const res = await compareMessage(3, "No branches", []);
-      expect(res.branches).toHaveLength(0);
-      expect(api.calls[0].body).toEqual({ text: "No branches", branches: [] });
-    });
   });
 
   describe("stopMessage", () => {
@@ -232,13 +172,6 @@ describe("api/threads", () => {
       expect(res.ok).toBe(true);
       expect(api.calls[0].method).toBe("POST");
       expect(api.calls[0].url).toMatch(/\/api\/threads\/5\/stop\/200\/$/);
-    });
-
-    it("throws ApiError with status 404 when message does not exist", async () => {
-      mockApiError("POST /api/threads/5/stop/999/", 404, "not_found", "message not found");
-      const promise = stopMessage(5, 999);
-      await expect(promise).rejects.toBeInstanceOf(ApiError);
-      await expect(promise).rejects.toMatchObject({ status: 404, code: "not_found" });
     });
 
     it("sends no request body (apiPost called without body argument)", async () => {

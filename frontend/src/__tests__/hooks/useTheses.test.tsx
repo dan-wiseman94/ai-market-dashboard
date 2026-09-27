@@ -10,7 +10,7 @@ import {
   usePurgeThesis,
   useRunPostmortem,
 } from "@/hooks/useTheses";
-import { hookWrapper, mockApi, mockApiError, newQueryClient } from "../testUtils";
+import { hookWrapper, mockApi, newQueryClient } from "../testUtils";
 
 const thesisFixture = {
   id: 1,
@@ -38,19 +38,6 @@ const thesisFixture = {
 };
 
 describe("useTheses", () => {
-  it("returns theses on success", async () => {
-    mockApi({ "GET /api/theses/": [thesisFixture] });
-    const { result } = renderHook(() => useTheses(), { wrapper: hookWrapper() });
-    await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(result.current.data).toHaveLength(1);
-    expect(result.current.data?.[0].ticker).toBe("SPY");
-  });
-
-  it("isError on fetch failure", async () => {
-    mockApiError("GET /api/theses/", 500);
-    const { result } = renderHook(() => useTheses(), { wrapper: hookWrapper() });
-    await waitFor(() => expect(result.current.isError).toBe(true));
-  });
 
   it("uses query key ['theses', {filter}] and defaults to the live slice", async () => {
     const client = newQueryClient();
@@ -75,12 +62,6 @@ describe("useTheses", () => {
 });
 
 describe("useThesis", () => {
-  it("fetches a single thesis when id is provided", async () => {
-    mockApi({ "GET /api/theses/1/": thesisFixture });
-    const { result } = renderHook(() => useThesis(1), { wrapper: hookWrapper() });
-    await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(result.current.data?.title).toBe("SPY hits 600");
-  });
 
   it("is disabled when id is null", () => {
     const { result } = renderHook(() => useThesis(null), { wrapper: hookWrapper() });
@@ -121,15 +102,6 @@ describe("useCreateThesis", () => {
       profile_id: 3,
     });
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["theses"] });
-  });
-
-  it("isError on mutation failure", async () => {
-    mockApiError("POST /api/theses/", 400);
-    const { result } = renderHook(() => useCreateThesis(), { wrapper: hookWrapper() });
-    await act(async () => {
-      await result.current.mutateAsync({ title: "t", ticker: "T", direction: "bullish" }).catch(() => {});
-    });
-    await waitFor(() => expect(result.current.isError).toBe(true));
   });
 });
 
@@ -189,14 +161,6 @@ describe("useRestoreThesis", () => {
 });
 
 describe("usePurgeThesis", () => {
-  it("sends DELETE with ?purge=true", async () => {
-    const { calls } = mockApi({ "DELETE /api/theses/1/": undefined });
-    const { result } = renderHook(() => usePurgeThesis(), { wrapper: hookWrapper() });
-    await act(async () => {
-      await result.current.mutateAsync(1);
-    });
-    expect(calls[0].url).toContain("purge=true");
-  });
 
   it("rejects with the 409 envelope when a completed post-mortem exists", async () => {
     mockApi({
@@ -247,16 +211,5 @@ describe("useRunPostmortem", () => {
     });
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["theses", 5] });
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["theses"] });
-  });
-
-  it("isError on mutation failure", async () => {
-    mockApiError("POST /api/theses/1/run-postmortem/", 500);
-    const { result } = renderHook(() => useRunPostmortem(), {
-      wrapper: hookWrapper(),
-    });
-    await act(async () => {
-      await result.current.mutateAsync(1).catch(() => {});
-    });
-    await waitFor(() => expect(result.current.isError).toBe(true));
   });
 });

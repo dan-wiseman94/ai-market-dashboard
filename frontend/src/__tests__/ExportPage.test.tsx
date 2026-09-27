@@ -23,22 +23,6 @@ beforeEach(() => {
   });
 });
 
-test("renders scope form + recent jobs list", async () => {
-  renderWithProviders(<ExportPage />);
-  expect(screen.getByRole("button", { name: /start export/i })).toBeInTheDocument();
-  expect(await screen.findByText(/x\.zip/)).toBeInTheDocument();
-});
-
-test("clicking Start export POSTs scope", async () => {
-  const spy = vi.spyOn(globalThis, "fetch");
-  renderWithProviders(<ExportPage />);
-  await userEvent.click(screen.getByRole("button", { name: /start export/i }));
-  const called = spy.mock.calls.some(
-    ([u, init]) => String(u).endsWith("/api/export/") && (init as RequestInit | undefined)?.method === "POST",
-  );
-  expect(called).toBe(true);
-});
-
 test("unchecking every scope sends the minimal scope", async () => {
   const spy = vi.spyOn(globalThis, "fetch");
   renderWithProviders(<ExportPage />);

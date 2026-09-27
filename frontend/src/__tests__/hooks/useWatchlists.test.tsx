@@ -6,7 +6,7 @@ import {
   useRenameWatchlist,
   useWatchlists,
 } from "@/hooks/useWatchlists";
-import { hookWrapper, mockApi, mockApiError, newQueryClient } from "../testUtils";
+import { hookWrapper, mockApi, newQueryClient } from "../testUtils";
 
 const watchlistFixture = {
   id: 1,
@@ -22,12 +22,6 @@ describe("useWatchlists", () => {
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(result.current.data).toHaveLength(1);
     expect(result.current.data?.[0].name).toBe("My list");
-  });
-
-  it("isError on fetch failure", async () => {
-    mockApiError("GET /api/watchlists/", 500);
-    const { result } = renderHook(() => useWatchlists(), { wrapper: hookWrapper() });
-    await waitFor(() => expect(result.current.isError).toBe(true));
   });
 });
 

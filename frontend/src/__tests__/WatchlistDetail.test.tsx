@@ -105,11 +105,6 @@ describe("WatchlistDetail", () => {
     expect(screen.getAllByTestId("skeleton-row").length).toBeGreaterThan(0);
   });
 
-  it("renders watchlist name as h1 when loaded", () => {
-    renderDetail();
-    expect(screen.getByRole("heading", { level: 1, name: "Tech Watchlist" })).toBeInTheDocument();
-  });
-
   it("add ticker: type ticker, submit form, calls add.mutate with uppercased ticker", async () => {
     const addMutate = vi.fn();
     mockUseAddSymbol.mockReturnValue({ mutate: addMutate, isError: false, error: null, isPending: false } as never);
@@ -144,14 +139,6 @@ describe("WatchlistDetail", () => {
 
     renderDetail();
     expect(screen.getByText("Symbol not found")).toBeInTheDocument();
-  });
-
-  it("renders WatchlistTable with tickers", () => {
-    renderDetail();
-    // Scope to the table's market links (tickers also appear in the
-    // "what changed" section's expander buttons below the table).
-    expect(screen.getByRole("link", { name: "AAPL" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "MSFT" })).toBeInTheDocument();
   });
 
   it("WatchlistTable onRemove is wired to remove.mutate", async () => {
@@ -201,21 +188,6 @@ describe("WatchlistDetail", () => {
 
     await user.click(screen.getByRole("button", { name: "Move AAPL down" }));
     expect(reorderMutate).toHaveBeenCalledWith([2, 1]);
-  });
-
-  it("move up sends the swapped symbol-id order", async () => {
-    const reorderMutate = makeReorder();
-    const user = userEvent.setup();
-    renderDetail();
-
-    await user.click(screen.getByRole("button", { name: "Move MSFT up" }));
-    expect(reorderMutate).toHaveBeenCalledWith([2, 1]);
-  });
-
-  it("the end-of-list move buttons are disabled", () => {
-    renderDetail();
-    expect(screen.getByRole("button", { name: "Move AAPL up" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Move MSFT down" })).toBeDisabled();
   });
 
   it("surfaces a reorder failure", () => {

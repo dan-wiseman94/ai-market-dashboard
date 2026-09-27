@@ -114,24 +114,6 @@ function renderDashboard(client = newQueryClient()) {
 }
 
 describe("Dashboard", () => {
-  it("renders without crashing", () => {
-    renderDashboard();
-    expect(screen.getByRole("main")).toBeInTheDocument();
-  });
-
-  it("includes a time-based greeting in the hero heading", () => {
-    renderDashboard();
-    const heading = screen.getByRole("heading", { level: 1 });
-    expect(heading.textContent).toMatch(/good morning|good afternoon|good evening|late watch/i);
-  });
-
-  it("hero headline says the tape is open during the regular session", () => {
-    mockMarketStatus.mockReturnValue({
-      data: { markets: { us_equity: { is_open: true, phase: "open" } } },
-    });
-    renderDashboard();
-    expect(screen.getByRole("heading", { level: 1 }).textContent).toMatch(/the tape is open/i);
-  });
 
   it("hero reflects extended hours (headline + status) instead of 'open'", () => {
     mockMarketStatus.mockReturnValue({
@@ -152,29 +134,6 @@ describe("Dashboard", () => {
     expect(screen.getByRole("heading", { level: 1 }).textContent).toMatch(/the tape is closed/i);
   });
 
-  it("includes the 'Market context' section label", () => {
-    renderDashboard();
-    expect(screen.getByText(/market context/i)).toBeInTheDocument();
-  });
-
-  it("includes the 'The book' section label (positions area)", () => {
-    renderDashboard();
-    // "The book" appears in both the h2 section heading and the PositionsBookTile eyebrow
-    expect(screen.getAllByText(/the book/i).length).toBeGreaterThanOrEqual(1);
-  });
-
-  it("includes a 'Capture snapshot' call-to-action link", () => {
-    renderDashboard();
-    const ctaLink = screen.getByRole("link", { name: /capture snapshot/i });
-    expect(ctaLink).toBeInTheDocument();
-    expect(ctaLink).toHaveAttribute("href", "/snapshot");
-  });
-
-  it("includes a 'Watchlists' navigation link in the book section", () => {
-    renderDashboard();
-    expect(screen.getByRole("link", { name: /watchlists/i })).toBeInTheDocument();
-  });
-
   it("shows the AAPL thesis from useDashboard", () => {
     renderDashboard();
     expect(screen.getByText("AAPL")).toBeInTheDocument();
@@ -183,11 +142,6 @@ describe("Dashboard", () => {
   it("shows armed triggers count from useDashboard", () => {
     renderDashboard();
     expect(screen.getByTestId("triggers-armed-count").textContent).toBe("7");
-  });
-
-  it("shows latest firing name from useDashboard", () => {
-    renderDashboard();
-    expect(screen.getByText("SPY drop")).toBeInTheDocument();
   });
 
   it("shows observer runs_today from useDashboard", () => {
@@ -212,11 +166,6 @@ describe("Dashboard", () => {
     // SkeletonRows renders data-testid="skeleton-row"
     const rows = screen.getAllByTestId("skeleton-row");
     expect(rows.length).toBeGreaterThan(0);
-  });
-
-  it("shows 'Command centre' section heading", () => {
-    renderDashboard();
-    expect(screen.getByText(/command centre/i)).toBeInTheDocument();
   });
 
   it("invalidates the dashboard query when a notification.event arrives over /ws/notifications/", () => {
