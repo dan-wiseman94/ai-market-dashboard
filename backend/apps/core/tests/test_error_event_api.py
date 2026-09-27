@@ -90,10 +90,11 @@ def test_get_errors_unresolved_false_returns_all():
     _make_event(source="task.unresolved", resolved=False)
     _make_event(source="task.resolved", resolved=True)
 
-    resp = client.get("/api/errors/")
-    assert resp.status_code == 200
-    body = resp.json()
-    assert body["count"] >= 2
+    for query in ("?unresolved=false", ""):
+        resp = client.get(f"/api/errors/{query}")
+        assert resp.status_code == 200
+        sources = {row["source"] for row in resp.json()["results"]}
+        assert sources == {"task.unresolved", "task.resolved"}, query
 
 
 @pytest.mark.django_db

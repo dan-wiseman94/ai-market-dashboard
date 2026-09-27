@@ -57,7 +57,11 @@ def test_backtest_returns_timestamps(db, aapl_bars) -> None:
     )
     assert resp.status_code == 200
     matches = resp.json()["matches"]
-    assert len(matches) == 2  # 115 and 120
+    # The bars that closed at 115 and 120.
+    assert [datetime.fromisoformat(m["ts"]) for m in matches] == [
+        datetime(2026, 3, 8, 14, 30, tzinfo=UTC),
+        datetime(2026, 3, 10, 14, 30, tzinfo=UTC),
+    ]
 
 
 def test_backtest_bad_dates_400(db) -> None:

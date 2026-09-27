@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { CitationText, type CitationRef } from "@/components/CitationText";
 
@@ -29,9 +29,11 @@ describe("CitationText", () => {
 
   it("numbers the markers in arrival order", () => {
     render(<CitationText citations={[WEB, NEWS, DOC]} />);
-    expect(screen.getByTestId("citation-1")).toBeInTheDocument();
-    expect(screen.getByTestId("citation-2")).toBeInTheDocument();
-    expect(screen.getByTestId("citation-3")).toBeInTheDocument();
+    [WEB, NEWS, DOC].forEach((c, i) => {
+      const row = screen.getByTestId(`citation-row-${i + 1}`);
+      expect(within(row).getByTestId(`citation-${i + 1}`)).toBeInTheDocument();
+      expect(row).toHaveTextContent(c.title);
+    });
   });
 
   it("renders title and cited text straight from the event payload", () => {
