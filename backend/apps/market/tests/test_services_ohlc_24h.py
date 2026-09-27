@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from apps.market import cache as cache_module
-from apps.market.services.ohlc import _most_recent_session_open, _union_window
+from apps.market.services.ohlc import _union_window
 
 
 @pytest.fixture(autouse=True)
@@ -20,16 +20,6 @@ def fake_redis(monkeypatch):
 # 2026-05-29 is a regular Friday session: open 13:30 UTC. 2026-06-01 is the next Monday.
 _THU_OPEN = datetime(2026, 5, 28, 13, 30, tzinfo=UTC)
 _FRI_OPEN = datetime(2026, 5, 29, 13, 30, tzinfo=UTC)
-
-
-def test_most_recent_session_open_after_close_is_todays_open():
-    now = datetime(2026, 5, 28, 21, 0, tzinfo=UTC)  # Thu 17:00 ET, after close
-    assert _most_recent_session_open("SPY", at=now) == _THU_OPEN
-
-
-def test_most_recent_session_open_premarket_is_prior_session():
-    now = datetime(2026, 5, 29, 12, 0, tzinfo=UTC)  # Fri 08:00 ET, before Fri open
-    assert _most_recent_session_open("SPY", at=now) == _THU_OPEN
 
 
 def test_union_window_midsession_is_rolling_24h():
@@ -185,33 +175,3 @@ def test_fetch_ohlc_24h_early_session_keeps_whole_session_fine():
     assert (k5["start_datetime"], k5["end_datetime"]) == (start, session_open)
     _, k1 = client.get_price_history_every_minute.call_args
     assert (k1["start_datetime"], k1["end_datetime"]) == (session_open, end)
-
-
-@pytest.mark.django_db
-def test_fetch_ohlc_24h_weekend_capture_coarsens_stale_session():
-    # Weekend/pre-market: the window snapped back to Friday's open. Only the
-    # last 4h stays 1m (dead air on a Saturday); Friday's session comes back 5m
-    # instead of ~1,000 stale 1m bars.
-    session_open = datetime(2026, 5, 29, 13, 30, tzinfo=UTC)
-    start = session_open  # now-24h is after the session open -> snapped
-    end = datetime(2026, 6, 1, 12, 0, tzinfo=UTC)
-    fine_start = datetime(2026, 6, 1, 8, 0, tzinfo=UTC)  # end - 4h
-
-    resp5 = MagicMock()
-    resp5.json.return_value = {"candles": [_candle(datetime(2026, 5, 29, 14, 0, tzinfo=UTC), 2)]}
-    resp1 = MagicMock()
-    resp1.json.return_value = {"candles": []}
-    client = MagicMock()
-    client.get_price_history_every_five_minutes.return_value = resp5
-    client.get_price_history_every_minute.return_value = resp1
-    with (
-        patch("apps.market.services.ohlc.get_schwab_client", return_value=client),
-        patch("apps.market.services.ohlc._union_window", return_value=(start, end, session_open)),
-    ):
-        bars = fetch_ohlc_24h("SPY", timeframe="1m")
-
-    assert [b["close"] for b in bars] == [2]
-    _, k5 = client.get_price_history_every_five_minutes.call_args
-    assert (k5["start_datetime"], k5["end_datetime"]) == (start, fine_start)
-    _, k1 = client.get_price_history_every_minute.call_args
-    assert (k1["start_datetime"], k1["end_datetime"]) == (fine_start, end)

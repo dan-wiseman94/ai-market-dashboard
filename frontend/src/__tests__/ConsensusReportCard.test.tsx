@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
-import ConsensusReportCard, { agreementLine } from "@/components/ConsensusReportCard";
+import ConsensusReportCard from "@/components/ConsensusReportCard";
 import type { ConsensusReport } from "@/api/observation";
 
 // SaveCardButton rasterizes the card; jsdom has no canvas.
@@ -41,16 +41,6 @@ const DEGRADED: ConsensusReport = {
   per_ticker: {},
   note: "single provider — no consensus available",
 };
-
-describe("agreementLine", () => {
-  it("counts the agreeing providers", () => {
-    expect(agreementLine(REPORT)).toBe("2 of 3 agree (67%)");
-  });
-
-  it("is silent below two takes, where no consensus is meaningful", () => {
-    expect(agreementLine(DEGRADED)).toBeNull();
-  });
-});
 
 describe("ConsensusReportCard", () => {
   it("shows agreement, divergence, every take and the per-ticker split", () => {

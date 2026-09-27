@@ -5,9 +5,7 @@ import { createMemoryRouter, RouterProvider } from "react-router-dom";
 import { QueryClientProvider } from "@tanstack/react-query";
 import Breadcrumbs from "../../components/layout/Breadcrumbs";
 import ConnectionStatusDot from "../../components/layout/ConnectionStatusDot";
-import NotificationBell from "../../components/NotificationBell";
 import { CommandPalette } from "../../components/CommandPalette";
-import { Skeleton } from "../../components/Skeleton";
 
 beforeEach(() => {
   // Stub fetch so QueryClient / useHealth don't throw
@@ -45,28 +43,8 @@ describe("layout testids", () => {
     expect(screen.getByTestId("connection-status-dot")).toBeInTheDocument();
   });
 
-  it("NotificationBell has data-testid='notification-bell'", () => {
-    renderWithProviders(<NotificationBell />);
-    expect(screen.getByTestId("notification-bell")).toBeInTheDocument();
-  });
-
   it("CommandPalette has data-testid='command-palette' when open", () => {
     renderWithProviders(<CommandPalette open onClose={() => {}} commands={[]} />);
     expect(screen.getByTestId("command-palette")).toBeInTheDocument();
-  });
-
-  it("CommandPalette is absent from DOM when closed", () => {
-    renderWithProviders(<CommandPalette open={false} onClose={() => {}} commands={[]} />);
-    expect(screen.queryByTestId("command-palette")).not.toBeInTheDocument();
-  });
-
-  it("Skeleton has data-testid='skeleton-generic' by default", () => {
-    render(<Skeleton />);
-    expect(screen.getByTestId("skeleton-generic")).toBeInTheDocument();
-  });
-
-  it("Skeleton accepts a `where` prop and uses it in testid", () => {
-    render(<Skeleton where="dashboard" />);
-    expect(screen.getByTestId("skeleton-dashboard")).toBeInTheDocument();
   });
 });

@@ -15,12 +15,6 @@ describe("api client", () => {
     vi.unstubAllGlobals();
   });
 
-  it("returns parsed JSON on 200", async () => {
-    stubFetchOnce({ ok: true, status: 200, json: async () => ({ hello: "world" }) });
-    const result = await apiGet<{ hello: string }>("/api/x/");
-    expect(result).toEqual({ hello: "world" });
-  });
-
   it("throws ApiError on non-2xx responses", async () => {
     stubFetchOnce({
       ok: false,

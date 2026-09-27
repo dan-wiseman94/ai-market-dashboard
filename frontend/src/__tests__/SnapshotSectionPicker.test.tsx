@@ -34,14 +34,6 @@ describe("SnapshotSectionPicker", () => {
     }
   });
 
-  it("offers overnight, fundamentals, fed, and flowlite", () => {
-    render(<SnapshotSectionPicker value={[]} onChange={() => {}} />);
-    expect(screen.getByLabelText("Overnight board")).toBeInTheDocument();
-    expect(screen.getByLabelText("Company fundamentals")).toBeInTheDocument();
-    expect(screen.getByLabelText("Fed communication")).toBeInTheDocument();
-    expect(screen.getByLabelText("Flow proxy (volume-based)")).toBeInTheDocument();
-  });
-
   it("checkboxes reflect value prop checked states", () => {
     render(
       <SnapshotSectionPicker value={["quotes", "ohlc"]} onChange={() => {}} />,

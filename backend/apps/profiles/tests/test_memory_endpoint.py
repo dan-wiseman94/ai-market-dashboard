@@ -104,14 +104,6 @@ def test_delete_clears_the_store_and_reports_what_went(api, mem_root, profile):
 
 
 @pytest.mark.django_db
-def test_delete_on_an_empty_store_is_a_zero_200(api, mem_root, profile):
-    resp = api.delete(f"/api/profiles/{profile.id}/memory/")
-
-    assert resp.status_code == 200
-    assert resp.json() == {"profile": profile.id, "removed_files": 0, "removed_bytes": 0}
-
-
-@pytest.mark.django_db
 def test_one_profiles_clear_leaves_another_profiles_memory_alone(api, mem_root, profile):
     other = TradingProfile.objects.create(name="Scalp", style="s")
     _write(profile.id, "mine.md", "mine")

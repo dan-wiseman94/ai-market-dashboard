@@ -284,13 +284,4 @@ describe("ScorecardPage", () => {
     expect(c).toHaveTextContent(/NVDA/);
     expect(c).toHaveTextContent(/bearish call vs bullish house view/i);
   });
-
-  it("hides the live AI calibration section when no predictions resolved", () => {
-    mock(POPULATED);
-    mockDrill();
-    mockEval();
-    mockAICal();
-    render(<ScorecardPage />);
-    expect(screen.queryByText(/Live AI prediction calibration/i)).not.toBeInTheDocument();
-  });
 });

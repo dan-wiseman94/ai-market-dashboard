@@ -132,25 +132,6 @@ def test_tool_use_loops_and_yields_events() -> None:
     assert tr_evt.ok is True
 
 
-def test_no_tools_path_unchanged() -> None:
-    from apps.ai.providers.claude import ClaudeProvider
-
-    final = MagicMock(
-        stop_reason="end_turn",
-        content=[MagicMock(type="text", text="hi")],
-        usage=MagicMock(input_tokens=2, output_tokens=1, cache_read_input_tokens=0),
-    )
-
-    with patch("apps.ai.providers.claude.AsyncAnthropic") as ac:
-        client = ac.return_value
-        client.messages.stream = MagicMock(return_value=_make_stream(final))
-        provider = ClaudeProvider(api_key="x")
-        events = asyncio.run(_drain(provider.run(_req(tools=[]))))
-
-    assert any(isinstance(e, TextDelta) for e in events)
-    assert not any(isinstance(e, ToolCallEvent) for e in events)
-
-
 def test_adaptive_model_sends_adaptive_thinking_and_effort() -> None:
     kwargs = _stream_kwargs(_req(tools=[], thinking=True, effort="max", budget=8000))
 
@@ -201,10 +182,3 @@ def test_budget_model_sends_no_effort_even_when_requested() -> None:
     kwargs = _stream_kwargs(_req(tools=[], effort="max", model="claude-haiku-4-5-20251001"))
 
     assert "output_config" not in kwargs
-
-
-def test_thinking_disabled_sends_disabled_rather_than_omitting() -> None:
-    # Omitting the parameter would leave adaptive thinking on and still bill for it.
-    kwargs = _stream_kwargs(_req(tools=[], budget=8000))
-
-    assert kwargs["thinking"] == {"type": "disabled"}

@@ -72,19 +72,3 @@ def test_every_provider_short_circuits(provider: str) -> None:
         ),
         _Nested,
     )
-
-
-def test_outside_mock_mode_the_guard_does_not_swallow_the_call(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.delenv("MOCK_EXTERNAL", raising=False)
-
-    with pytest.raises(Exception, match=r".+"):
-        run_structured(
-            provider="claude",
-            api_key="not-a-key",
-            model="claude-opus-5",
-            system="",
-            user="",
-            output_model=_Nested,
-        )

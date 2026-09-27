@@ -44,6 +44,29 @@ def _line(strike: str, *, bid: str, ask: str, iv: str, volume: int, oi: int) -> 
 
 def test_flags_volume_over_open_interest(db) -> None:
     now = datetime(2026, 4, 10, tzinfo=UTC)
+    # Flat IV history (stdev 0 -> no iv_z), so only the volume/OI rule can fire.
+    for d in range(30):
+        _mk_snapshot(
+            "AAPL",
+            when=now - timedelta(days=30 - d),
+            calls=[_line("150", bid="1.0", ask="1.1", iv="0.30", volume=100, oi=10_000)],
+            puts=[],
+        )
+    _mk_snapshot(
+        "AAPL",
+        when=now,
+        calls=[_line("150", bid="1.0", ask="1.1", iv="0.30", volume=40_000, oi=10_000)],
+        puts=[],
+    )
+
+    flagged = unusual_options(ticker="AAPL", at=now)
+    assert len(flagged) == 1
+    assert flagged[0]["triggers"] == ["volume_vs_oi"]
+    assert flagged[0]["volume_ratio"] == pytest.approx(4.0)
+
+
+def test_flags_iv_spike_over_30_day_history(db) -> None:
+    now = datetime(2026, 4, 10, tzinfo=UTC)
     # Some natural IV variation across the 30-day history so stdev > 0.
     for d in range(30):
         iv_val = f"{0.28 + 0.01 * (d % 5):.3f}"  # 0.28..0.32 cycle
@@ -65,8 +88,9 @@ def test_flags_volume_over_open_interest(db) -> None:
     hit = flagged[0]
     assert hit["strike"] == "150"
     assert hit["side"] == "call"
-    assert hit["volume_ratio"] == pytest.approx(2.0, rel=0.01)
+    assert hit["volume_ratio"] == pytest.approx(2.0, rel=0.01)  # under the 3.0 volume threshold
     assert hit["iv_z"] is not None and hit["iv_z"] > 1.5
+    assert hit["triggers"] == ["iv_spike"]
 
 
 def test_no_unusual_when_within_ratios(db) -> None:

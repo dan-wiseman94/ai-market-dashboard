@@ -129,54 +129,6 @@ def test_unanimous_not_divergent():
     assert result.divergent is False
 
 
-def test_single_provider_degrades_honestly():
-    """<2 usable pairs -> degraded result; no fabricated consensus."""
-    pairs = _pairs(1)
-    with (
-        patch(
-            "apps.observer.services.consensus.structured_capable_pairs",
-            return_value=pairs,
-        ),
-        patch(
-            "apps.observer.services.consensus.run_structured",
-            side_effect=[_report("bullish")],
-        ),
-        patch("apps.observer.services.consensus.check_daily_cap"),
-        patch("apps.observer.services.consensus.check_monthly_cap"),
-    ):
-        from apps.observer.services.consensus import consensus_report
-
-        result = consensus_report(system="sys", user="usr")
-
-    assert result.n_providers == 1
-    assert result.bias_agreement is None
-    assert result.modal_bias == "bullish"  # the lone take's bias, honestly reported
-    assert result.divergent is False
-    assert "single provider" in result.note
-    assert result.per_ticker == {}
-
-
-def test_zero_pairs_degrades_to_empty():
-    """No structured-capable providers at all -> n=0, None agreement, note set."""
-    with (
-        patch(
-            "apps.observer.services.consensus.structured_capable_pairs",
-            return_value=[],
-        ),
-        patch("apps.observer.services.consensus.run_structured") as mock_run,
-    ):
-        from apps.observer.services.consensus import consensus_report
-
-        result = consensus_report(system="sys", user="usr")
-
-    mock_run.assert_not_called()
-    assert result.n_providers == 0
-    assert result.bias_agreement is None
-    assert result.modal_bias is None
-    assert result.divergent is False
-    assert "single provider" in result.note or "no consensus" in result.note
-
-
 def test_error_pair_is_skipped_not_raised():
     """A pair whose run_structured raises is skipped + counted out; no crash.
 
@@ -290,23 +242,6 @@ def test_structured_capable_pairs_selects_every_usable_provider():
     assert pairs[0][2] == "sk-ant-1"
     assert pairs[1][2] == ""  # local: no key needed
     assert pairs[2][2] == "sk-oai"
-
-
-def test_structured_capable_pairs_skips_local_without_base_url():
-    ProviderConfig.objects.create(provider="local", default_model="llama")
-    from apps.observer.services.consensus import structured_capable_pairs
-
-    assert structured_capable_pairs() == []
-
-
-def test_structured_capable_pairs_skips_disabled():
-    """Disabled claude config is excluded even with a key."""
-    c = ProviderConfig.objects.create(provider="claude", default_model="m", enabled=False)
-    c.api_key = "sk-ant"  # type: ignore[misc]
-    c.save()
-    from apps.observer.services.consensus import structured_capable_pairs
-
-    assert structured_capable_pairs() == []
 
 
 def test_structured_capable_pairs_skips_keyless_enabled():

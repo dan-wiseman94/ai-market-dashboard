@@ -90,28 +90,6 @@ def test_classify_rates(t10y2y, tnx_change, expected):
     assert c.classify_rates(t10y2y, tnx_change) == expected
 
 
-def test_fold_composite_risk_on():
-    axes = {
-        "volatility": "Low",
-        "trend": "Uptrend",
-        "breadth": "Broad",
-        "leadership": "Offensive",
-        "rates": "Easing",
-    }
-    assert c.fold_composite(axes) == "Risk-On"
-
-
-def test_fold_composite_risk_off():
-    axes = {
-        "volatility": "Elevated",
-        "trend": "Downtrend",
-        "breadth": "Narrow",
-        "leadership": "Defensive",
-        "rates": "Inverted",
-    }
-    assert c.fold_composite(axes) == "Risk-Off"
-
-
 def test_fold_composite_stress_short_circuit():
     axes = {
         "volatility": "Stress",

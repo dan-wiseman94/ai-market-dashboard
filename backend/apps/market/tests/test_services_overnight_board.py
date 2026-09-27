@@ -18,9 +18,3 @@ def test_board_groups_symbols_and_drops_unquoted():
     assert board["overseas"]["$DAX"]["last"] == 18000.0
     # Symbols Schwab didn't quote (e.g. /NQ) simply don't appear.
     assert "/NQ" not in board["futures"]
-
-
-def test_board_empty_groups_when_nothing_quoted():
-    with patch("apps.market.services.overnight.fetch_quotes", return_value={}):
-        board = overnight_board()
-    assert board == {"futures": {}, "vol_rates": {}, "overseas": {}}

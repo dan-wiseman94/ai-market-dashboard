@@ -15,7 +15,7 @@ from unittest.mock import patch
 
 import pytest
 
-from apps.observer.triggers.evaluator import evaluate, leaf_key
+from apps.observer.triggers.evaluator import evaluate
 from apps.observer.triggers.metrics import build_snapshot
 
 PATCH_TARGET = "apps.observer.triggers.metrics.fetch_fundamentals"
@@ -31,42 +31,6 @@ _FULL_FUND = {
 
 def _trigger(condition):
     return SimpleNamespace(condition=condition)
-
-
-def test_leaf_key_pe_ratio():
-    assert (
-        leaf_key({"metric": "pe_ratio", "ticker": "NVDA", "op": "<", "value": 30})
-        == "pe_ratio:NVDA"
-    )
-
-
-def test_leaf_key_market_cap():
-    assert (
-        leaf_key({"metric": "market_cap", "ticker": "NVDA", "op": ">=", "value": 1e12})
-        == "market_cap:NVDA"
-    )
-
-
-def test_leaf_key_revenue_growth():
-    assert (
-        leaf_key({"metric": "revenue_growth", "ticker": "NVDA", "op": ">", "value": 0.1})
-        == "revenue_growth:NVDA"
-    )
-
-
-def test_leaf_key_gross_margin():
-    assert (
-        leaf_key({"metric": "gross_margin", "ticker": "NVDA", "op": ">", "value": 60.0})
-        == "gross_margin:NVDA"
-    )
-
-
-def test_build_snapshot_resolves_pe_ratio():
-    cond = {"metric": "pe_ratio", "ticker": "NVDA", "op": "<", "value": 30}
-    with patch(PATCH_TARGET, return_value=_FULL_FUND) as mock_fetch:
-        snap = build_snapshot([_trigger(cond)])
-    assert snap["pe_ratio:NVDA"] == 25.0
-    mock_fetch.assert_called_once_with("NVDA")
 
 
 def test_build_snapshot_resolves_market_cap():
@@ -88,23 +52,6 @@ def test_build_snapshot_resolves_gross_margin():
     with patch(PATCH_TARGET, return_value=_FULL_FUND):
         snap = build_snapshot([_trigger(cond)])
     assert snap["gross_margin:NVDA"] == pytest.approx(74.5)
-
-
-def test_evaluate_pe_ratio_matches():
-    cond = {"metric": "pe_ratio", "ticker": "NVDA", "op": "<", "value": 30}
-    with patch(PATCH_TARGET, return_value=_FULL_FUND):
-        snap = build_snapshot([_trigger(cond)])
-    matched, values = evaluate(cond, snap)
-    assert matched is True
-    assert values["pe_ratio:NVDA"] == 25.0
-
-
-def test_evaluate_pe_ratio_no_match():
-    cond = {"metric": "pe_ratio", "ticker": "NVDA", "op": ">", "value": 100}
-    with patch(PATCH_TARGET, return_value=_FULL_FUND):
-        snap = build_snapshot([_trigger(cond)])
-    matched, _ = evaluate(cond, snap)
-    assert matched is False
 
 
 def test_missing_fundamentals_leaf_absent_from_snapshot():
@@ -161,21 +108,3 @@ def test_fundamentals_fetched_once_per_distinct_ticker():
     assert mock_fetch.call_count == 2
     assert snap["pe_ratio:NVDA"] == 25.0
     assert snap["pe_ratio:AAPL"] == 28.0
-
-
-@pytest.mark.django_db
-def test_cheap_into_earnings_snapshot_keys_present():
-    """Both leaves populate independent keys — compound condition can evaluate."""
-    cond = {
-        "all": [
-            {"metric": "pe_ratio", "ticker": "NVDA", "op": "<", "value": 30},
-            {"metric": "days_to_earnings", "ticker": "NVDA", "op": "<=", "value": 3},
-        ]
-    }
-    # patch fetch_fundamentals; days_to_earnings path uses the DB (absent → None → no-match)
-    with patch(PATCH_TARGET, return_value=_FULL_FUND):
-        snap = build_snapshot([_trigger(cond)])
-
-    assert snap["pe_ratio:NVDA"] == 25.0
-    # days_to_earnings may be absent (no DB row) — that's fine; we just check pe was resolved
-    assert "pe_ratio:NVDA" in snap

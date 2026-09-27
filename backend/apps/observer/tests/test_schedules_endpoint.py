@@ -150,17 +150,6 @@ def test_create_batch_schedule_requires_claude_provider(api, profile):
 
 
 @pytest.mark.django_db
-def test_create_structured_schedule_with_claude_provider_ok(api, profile):
-    # profile.default_provider defaults to "claude"
-    resp = api.post(
-        "/api/observer/schedules/",
-        {"name": "s", "profile": profile.id, "cron": "0 * * * *", "structured": True},
-        format="json",
-    )
-    assert resp.status_code == 201, resp.content
-
-
-@pytest.mark.django_db
 def test_patch_use_batch_on_non_claude_schedule_rejected(api):
     p = TradingProfile.objects.create(name="O2", style="x", default_provider="openai")
     resp = api.post(

@@ -3,16 +3,12 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from apps.ai.providers.local import LocalProvider
+from apps.ai.types import DoneEvent, TextDelta, UsageEvent
 
 
 def test_local_requires_base_url():
     with pytest.raises(ValueError):
         LocalProvider(api_key="", base_url="")
-
-
-def test_local_name_is_local():
-    p = LocalProvider(api_key="", base_url="http://localhost:11434/v1")
-    assert p.name == "local"
 
 
 @pytest.mark.asyncio
@@ -61,7 +57,12 @@ async def test_local_reuses_openai_streaming_shape():
         req = RunRequest(
             model="llama3", system="x", messages=[ChatMessage(role="user", content="hi")]
         )
-        async for _ in p.run(req):
-            pass
+        events = [ev async for ev in p.run(req)]
 
     assert captured["base_url"].startswith("http://host.docker.internal")
+    # The same normalized event stream the OpenAI provider emits: text, cumulative usage, done.
+    text, usage, done = events
+    assert isinstance(text, TextDelta) and text.text == "hello"
+    assert isinstance(usage, UsageEvent)
+    assert (usage.usage.input_tokens, usage.usage.output_tokens) == (1, 1)
+    assert isinstance(done, DoneEvent)

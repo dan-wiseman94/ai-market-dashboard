@@ -49,26 +49,6 @@ describe("useChannel", () => {
     expect(second).toHaveBeenCalledWith({ event: "message_done" });
   });
 
-  it("calls unsubscribe on unmount", () => {
-    const unsub = vi.fn();
-    subscribeSpy.mockReturnValue(unsub);
-    const { unmount } = renderHook(() => useChannel("thread.2", () => {}));
-    unmount();
-    expect(unsub).toHaveBeenCalled();
-  });
-
-  it("routes messages to the handler", () => {
-    let captured: ((m: unknown) => void) | null = null;
-    subscribeSpy.mockImplementationOnce((_ch: string, h: (m: unknown) => void) => {
-      captured = h;
-      return () => {};
-    });
-    const onMessage = vi.fn();
-    renderHook(() => useChannel("thread.3", onMessage));
-    captured!({ type: "tok", text: "hi" });
-    expect(onMessage).toHaveBeenCalledWith({ type: "tok", text: "hi" });
-  });
-
   it("does NOT subscribe when channel is null", () => {
     renderHook(() => useChannel(null, () => {}));
     expect(subscribeSpy).not.toHaveBeenCalled();

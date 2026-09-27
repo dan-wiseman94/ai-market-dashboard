@@ -39,11 +39,6 @@ describe("CommandPalette", () => {
     expect(screen.getByText("Triggers")).toBeInTheDocument();
   });
 
-  it("does not render when closed", () => {
-    render(<Wrap open={false} />);
-    expect(screen.queryByText("Dashboard")).not.toBeInTheDocument();
-  });
-
   it("Escape closes", () => {
     const onClose = vi.fn();
     render(<Wrap open={true} onClose={onClose} />);

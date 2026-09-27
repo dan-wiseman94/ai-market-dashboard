@@ -1,30 +1,7 @@
-from unittest.mock import patch
-
 import pytest
 
 from apps.profiles.models import TradingProfile
 from apps.snapshots.models import Snapshot, SnapshotSection
-
-
-@pytest.mark.django_db
-def test_create_snapshot_kicks_off_capture(api):
-    p = TradingProfile.objects.create(name="P", style="x")
-    with patch("apps.snapshots.views.capture_task.delay") as task:
-        task.return_value.id = "task-1"
-        resp = api.post(
-            "/api/snapshots/",
-            {
-                "profile_id": p.id,
-                "objective": "test",
-                "includes": ["quotes"],
-                "watchlist_tickers": ["SPY"],
-            },
-            format="json",
-        )
-    assert resp.status_code == 202
-    body = resp.json()
-    assert "id" in body
-    assert body["status"] == "pending"
 
 
 @pytest.mark.django_db

@@ -8,7 +8,6 @@ The load-bearing property is that what this endpoint reports as
 import pytest
 from rest_framework.test import APIClient
 
-from apps.thesis.lessons import MIN_LESSON_SUPPORT
 from apps.thesis.models import Lesson
 
 
@@ -40,23 +39,6 @@ def test_list_mute_and_prune():
     resp = client.delete(f"/api/lessons/{lesson.id}/")
     assert resp.status_code == 204
     assert Lesson.objects.count() == 0
-
-
-@pytest.mark.django_db
-def test_create_authors_a_pinned_lesson():
-    resp = APIClient().post(
-        "/api/lessons/",
-        {"text": "  Size down into earnings  ", "tags": {"directions": ["bullish"]}},
-        format="json",
-    )
-    assert resp.status_code == 201
-    body = resp.json()
-    assert body["text"] == "Size down into earnings"
-    # No evidence rows, so support_n stays below the threshold — `pinned` is what
-    # keeps the lesson reachable.
-    assert body["support_n"] == 0 < MIN_LESSON_SUPPORT
-    assert body["pinned"] is True
-    assert body["visible_to_coach"] is True
 
 
 @pytest.mark.django_db

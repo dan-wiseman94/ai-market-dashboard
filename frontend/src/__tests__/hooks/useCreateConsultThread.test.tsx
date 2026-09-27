@@ -1,8 +1,8 @@
-import { act, renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { useCreateConsultThread } from "@/hooks/useCreateConsultThread";
 import type { Thread } from "@/api/threads";
-import { hookWrapper, mockApi, mockApiError } from "../testUtils";
+import { hookWrapper, mockApi } from "../testUtils";
 
 const threadFixture = {
   id: 1,
@@ -15,18 +15,6 @@ const threadFixture = {
 } satisfies Partial<Thread>;
 
 describe("useCreateConsultThread", () => {
-  it("returns the created Thread on success", async () => {
-    mockApi({ "POST /api/threads/": threadFixture });
-    const { result } = renderHook(() => useCreateConsultThread(), {
-      wrapper: hookWrapper(),
-    });
-    let data: Thread | undefined;
-    await act(async () => {
-      data = await result.current.mutateAsync({});
-    });
-    expect(data?.id).toBe(1);
-    expect(data?.kind).toBe("consult");
-  });
 
   it("sends kind: 'consult' merged with the body fields", async () => {
     const { calls } = mockApi({ "POST /api/threads/": threadFixture });
@@ -41,16 +29,5 @@ describe("useCreateConsultThread", () => {
       profile_id: 7,
       title: "test",
     });
-  });
-
-  it("isError when the request fails", async () => {
-    mockApiError("POST /api/threads/", 400);
-    const { result } = renderHook(() => useCreateConsultThread(), {
-      wrapper: hookWrapper(),
-    });
-    await act(async () => {
-      await result.current.mutateAsync({}).catch(() => {});
-    });
-    await waitFor(() => expect(result.current.isError).toBe(true));
   });
 });

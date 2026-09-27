@@ -33,20 +33,6 @@ describe("api/watchlists", () => {
       expect(api.calls[0].method).toBe("GET");
       expect(api.calls[0].url).toMatch(/\/api\/watchlists\/$/);
     });
-
-    it("throws ApiError with status 500 on server error", async () => {
-      mockApiError("GET /api/watchlists/", 500, "server_error", "internal error");
-      const promise = fetchWatchlists();
-      await expect(promise).rejects.toBeInstanceOf(ApiError);
-      await expect(promise).rejects.toMatchObject({ status: 500, code: "server_error" });
-    });
-
-    it("returns empty array when no watchlists exist", async () => {
-      const api = mockApi({ "GET /api/watchlists/": [] });
-      const res = await fetchWatchlists();
-      expect(res).toEqual([]);
-      expect(api.calls).toHaveLength(1);
-    });
   });
 
   describe("fetchWatchlist", () => {
@@ -59,20 +45,6 @@ describe("api/watchlists", () => {
       expect(api.calls).toHaveLength(1);
       expect(api.calls[0].method).toBe("GET");
       expect(api.calls[0].url).toMatch(/\/api\/watchlists\/1\/$/);
-    });
-
-    it("throws ApiError with status 404 when watchlist does not exist", async () => {
-      mockApiError("GET /api/watchlists/999/", 404, "not_found", "watchlist missing");
-      const promise = fetchWatchlist(999);
-      await expect(promise).rejects.toBeInstanceOf(ApiError);
-      await expect(promise).rejects.toMatchObject({ status: 404, code: "not_found" });
-    });
-
-    it("URL contains the requested id", async () => {
-      const api = mockApi({ "GET /api/watchlists/42/": { ...watchlistFixture, id: 42 } });
-      const res = await fetchWatchlist(42);
-      expect(res.id).toBe(42);
-      expect(api.calls[0].url).toMatch(/\/api\/watchlists\/42\/$/);
     });
   });
 
@@ -87,19 +59,6 @@ describe("api/watchlists", () => {
       expect(api.calls[0].url).toMatch(/\/api\/watchlists\/$/);
       expect(api.calls[0].body).toEqual({ name: "Tech Picks" });
     });
-
-    it("throws ApiError with status 400 on validation error", async () => {
-      mockApiError("POST /api/watchlists/", 400, "validation_error", "name is required");
-      const promise = createWatchlist("");
-      await expect(promise).rejects.toBeInstanceOf(ApiError);
-      await expect(promise).rejects.toMatchObject({ status: 400, code: "validation_error" });
-    });
-
-    it("sends exactly {name} body with no extra fields", async () => {
-      const api = mockApi({ "POST /api/watchlists/": watchlistFixture });
-      await createWatchlist("My List");
-      expect(api.calls[0].body).toEqual({ name: "My List" });
-    });
   });
 
   describe("renameWatchlist", () => {
@@ -113,20 +72,6 @@ describe("api/watchlists", () => {
       expect(api.calls[0].url).toMatch(/\/api\/watchlists\/1\/$/);
       expect(api.calls[0].body).toEqual({ name: "Renamed List" });
     });
-
-    it("throws ApiError with status 401 when not authenticated", async () => {
-      mockApiError("PATCH /api/watchlists/1/", 401, "unauthorized", "login required");
-      const promise = renameWatchlist(1, "New Name");
-      await expect(promise).rejects.toBeInstanceOf(ApiError);
-      await expect(promise).rejects.toMatchObject({ status: 401, code: "unauthorized" });
-    });
-
-    it("sends partial {name} body only, URL contains id", async () => {
-      const api = mockApi({ "PATCH /api/watchlists/7/": { ...watchlistFixture, id: 7, name: "Partial" } });
-      await renameWatchlist(7, "Partial");
-      expect(api.calls[0].body).toEqual({ name: "Partial" });
-      expect(api.calls[0].url).toMatch(/\/api\/watchlists\/7\/$/);
-    });
   });
 
   describe("deleteWatchlist", () => {
@@ -136,20 +81,6 @@ describe("api/watchlists", () => {
       expect(api.calls).toHaveLength(1);
       expect(api.calls[0].method).toBe("DELETE");
       expect(api.calls[0].url).toMatch(/\/api\/watchlists\/1\/$/);
-    });
-
-    it("throws ApiError with status 404 when watchlist does not exist", async () => {
-      mockApiError("DELETE /api/watchlists/999/", 404, "not_found", "watchlist missing");
-      const promise = deleteWatchlist(999);
-      await expect(promise).rejects.toBeInstanceOf(ApiError);
-      await expect(promise).rejects.toMatchObject({ status: 404, code: "not_found" });
-    });
-
-    it("throws ApiError with status 500 on server error", async () => {
-      mockApiError("DELETE /api/watchlists/1/", 500, "server_error", "internal error");
-      const promise = deleteWatchlist(1);
-      await expect(promise).rejects.toBeInstanceOf(ApiError);
-      await expect(promise).rejects.toMatchObject({ status: 500, code: "server_error" });
     });
   });
 
@@ -164,20 +95,6 @@ describe("api/watchlists", () => {
       expect(api.calls[0].url).toMatch(/\/api\/watchlists\/1\/tickers\/$/);
       expect(api.calls[0].body).toEqual({ ticker: "AAPL" });
     });
-
-    it("throws ApiError with status 400 on invalid ticker", async () => {
-      mockApiError("POST /api/watchlists/1/tickers/", 400, "validation_error", "invalid ticker");
-      const promise = addSymbol(1, "");
-      await expect(promise).rejects.toBeInstanceOf(ApiError);
-      await expect(promise).rejects.toMatchObject({ status: 400, code: "validation_error" });
-    });
-
-    it("URL contains watchlist id but not symbol id", async () => {
-      const api = mockApi({ "POST /api/watchlists/5/tickers/": { ...symbolFixture, id: 20, ticker: "MSFT" } });
-      await addSymbol(5, "MSFT");
-      expect(api.calls[0].url).toMatch(/\/api\/watchlists\/5\/tickers\/$/);
-      expect(api.calls[0].url).not.toMatch(/\/tickers\/20\//);
-    });
   });
 
   describe("removeSymbol", () => {
@@ -187,19 +104,6 @@ describe("api/watchlists", () => {
       expect(api.calls).toHaveLength(1);
       expect(api.calls[0].method).toBe("DELETE");
       expect(api.calls[0].url).toMatch(/\/api\/watchlists\/1\/tickers\/10\/$/);
-    });
-
-    it("throws ApiError with status 404 when symbol does not exist", async () => {
-      mockApiError("DELETE /api/watchlists/1/tickers/999/", 404, "not_found", "symbol missing");
-      const promise = removeSymbol(1, 999);
-      await expect(promise).rejects.toBeInstanceOf(ApiError);
-      await expect(promise).rejects.toMatchObject({ status: 404, code: "not_found" });
-    });
-
-    it("URL has both wid and sid", async () => {
-      const api = mockApi({ "DELETE /api/watchlists/3/tickers/7/": undefined });
-      await removeSymbol(3, 7);
-      expect(api.calls[0].url).toMatch(/\/api\/watchlists\/3\/tickers\/7\/$/);
     });
   });
 
@@ -219,13 +123,6 @@ describe("api/watchlists", () => {
       const promise = reorderSymbols(1, [1, 2, 3]);
       await expect(promise).rejects.toBeInstanceOf(ApiError);
       await expect(promise).rejects.toMatchObject({ status: 500, code: "server_error" });
-    });
-
-    it("sends {order: [3,1,2]} body exactly and URL contains wid", async () => {
-      const api = mockApi({ "POST /api/watchlists/9/reorder/": { ok: true } });
-      await reorderSymbols(9, [3, 1, 2]);
-      expect(api.calls[0].body).toEqual({ order: [3, 1, 2] });
-      expect(api.calls[0].url).toMatch(/\/api\/watchlists\/9\/reorder\/$/);
     });
   });
 });

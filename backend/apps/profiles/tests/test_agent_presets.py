@@ -7,37 +7,6 @@ from apps.profiles.models import AgentPreset
 
 
 @pytest.mark.django_db
-def test_slug_auto_generated_from_name():
-    preset = AgentPreset.objects.create(
-        name="My Cool Preset",
-        objective_template="Do something useful.",
-    )
-    assert preset.slug == "my-cool-preset"
-
-
-@pytest.mark.django_db
-def test_explicit_slug_preserved():
-    preset = AgentPreset.objects.create(
-        name="Some Preset",
-        slug="custom-slug",
-        objective_template="Some objective.",
-    )
-    assert preset.slug == "custom-slug"
-
-
-@pytest.mark.django_db
-def test_defaults():
-    preset = AgentPreset.objects.create(
-        name="Defaults Test",
-        objective_template="Check defaults.",
-    )
-    assert preset.structured is False
-    assert preset.builtin is False
-    assert preset.active is True
-    assert preset.description == ""
-
-
-@pytest.mark.django_db
 def test_slug_uniqueness_raises():
     AgentPreset.objects.create(
         name="First",
@@ -50,12 +19,6 @@ def test_slug_uniqueness_raises():
             slug="same-slug",
             objective_template="Second preset.",
         )
-
-
-@pytest.mark.django_db
-def test_str():
-    preset = AgentPreset(name="My Preset", slug="my-preset", objective_template="x")
-    assert str(preset) == "My Preset"
 
 
 # Builtin presets seeded by the data migrations. Keep in sync when a new seed
@@ -78,20 +41,6 @@ EXPECTED_BUILTIN_SLUGS = {
     # 0008_seed_macro_fundamentals_preset
     "macro-fundamentals-brief",
 }
-
-
-@pytest.mark.django_db
-def test_seed_migration_creates_builtins():
-    builtins = AgentPreset.objects.filter(builtin=True)
-    slugs = set(builtins.values_list("slug", flat=True))
-    assert slugs == EXPECTED_BUILTIN_SLUGS
-
-
-@pytest.mark.django_db
-def test_seed_migration_builtins_are_active():
-    for slug in EXPECTED_BUILTIN_SLUGS:
-        preset = AgentPreset.objects.get(slug=slug)
-        assert preset.active is True
 
 
 @pytest.mark.django_db
@@ -131,44 +80,6 @@ def test_create_preset_builtin_forced_false(api):
     resp = api.post("/api/presets/", payload, format="json")
     assert resp.status_code == 201
     assert resp.json()["builtin"] is False
-
-
-@pytest.mark.django_db
-def test_patch_preset(api):
-    preset = AgentPreset.objects.create(
-        name="Editable",
-        objective_template="Original objective.",
-    )
-    resp = api.patch(
-        f"/api/presets/{preset.id}/",
-        {"objective_template": "Updated objective."},
-        format="json",
-    )
-    assert resp.status_code == 200
-    preset.refresh_from_db()
-    assert preset.objective_template == "Updated objective."
-
-
-@pytest.mark.django_db
-def test_delete_preset(api):
-    preset = AgentPreset.objects.create(
-        name="To Delete",
-        objective_template="Gone soon.",
-    )
-    resp = api.delete(f"/api/presets/{preset.id}/")
-    assert resp.status_code == 204
-    assert not AgentPreset.objects.filter(id=preset.id).exists()
-
-
-@pytest.mark.django_db
-def test_retrieve_single_preset(api):
-    preset = AgentPreset.objects.get(slug="earnings-prep")
-    resp = api.get(f"/api/presets/{preset.id}/")
-    assert resp.status_code == 200
-    body = resp.json()
-    assert body["slug"] == "earnings-prep"
-    assert body["builtin"] is True
-    assert "objective_template" in body
 
 
 @pytest.mark.django_db

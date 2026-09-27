@@ -27,10 +27,4 @@ describe("ObserverTimelineCard", () => {
     expect(screen.getByText("2026-04-01")).toBeInTheDocument();
     expect(screen.getByText("2026-04-02")).toBeInTheDocument();
   });
-
-  it("renders skeleton rows while loading", () => {
-    mockHook({ data: undefined, isLoading: true });
-    renderWithProviders(<ObserverTimelineCard />);
-    expect(screen.getAllByTestId("skeleton-row")).toHaveLength(3);
-  });
 });

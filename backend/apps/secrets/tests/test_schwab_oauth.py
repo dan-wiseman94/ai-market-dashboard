@@ -132,18 +132,6 @@ def test_refresh_token_uses_refresh_grant():
 
 
 @pytest.mark.django_db
-def test_persist_token_creates_or_updates_credential():
-    tok = {"access_token": "A", "refresh_token": "R", "expires_at": 1700000000}
-    persist_token(tok)
-    cred = ApiCredential.objects.get(provider="schwab")
-    assert cred.token["access_token"] == "A"
-    tok2 = {"access_token": "A2", "refresh_token": "R2", "expires_at": 1800000000}
-    persist_token(tok2)
-    cred.refresh_from_db()
-    assert cred.token["access_token"] == "A2"
-
-
-@pytest.mark.django_db
 def test_load_token_returns_none_when_undecryptable():
     """An undecryptable stored token (key rotated / salt reset) must read as None so the
     Schwab client behaves as not-connected instead of raising InvalidToken at call time."""

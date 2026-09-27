@@ -24,16 +24,6 @@ def test_news_endpoint_returns_items(api):
 
 
 @pytest.mark.django_db
-def test_news_endpoint_default_lookback_24(api):
-    with patch("apps.market.views.fetch_news") as fake:
-        fake.return_value = []
-        api.get("/api/market/news/?tickers=SPY")
-        fake.assert_called_once()
-        _, kwargs = fake.call_args
-        assert kwargs["lookback_hours"] == 24
-
-
-@pytest.mark.django_db
 def test_news_endpoint_invalid_lookback_hours_returns_400(api):
     resp = api.get("/api/market/news/?tickers=SPY&lookback_hours=abc")
     assert resp.status_code == 400

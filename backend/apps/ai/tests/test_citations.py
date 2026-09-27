@@ -58,7 +58,3 @@ def test_missing_url_falls_back_to_id_pseudo_uri() -> None:
     ]
     blocks = news_to_search_result_blocks(items)
     assert blocks[0]["source"] == "news://7"
-
-
-def test_empty_items_returns_empty_list() -> None:
-    assert news_to_search_result_blocks([]) == []

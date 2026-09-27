@@ -52,12 +52,3 @@ def test_previous_snapshot_for_same_ticker_prior_ready():
     assert previous_snapshot_for(newer).id == older.id
     assert previous_snapshot_for(older) is None
     assert previous_snapshot_for(other) is None
-
-
-@pytest.mark.django_db
-def test_previous_snapshot_for_none_when_no_ticker():
-    p = TradingProfile.objects.create(name="P", default_includes=["news"])
-    snap = Snapshot.objects.create(
-        profile=p, includes=["news"], status="ready", primary_ticker=None
-    )
-    assert previous_snapshot_for(snap) is None

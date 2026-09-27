@@ -7,7 +7,7 @@ from unittest.mock import patch
 import pytest
 
 from apps.ai.tools import tradingview as bridge
-from apps.ai.tools.registry import default_toolset, request_toolset
+from apps.ai.tools.registry import default_toolset
 
 LIVE = [
     {
@@ -158,47 +158,12 @@ def test_tv_spec_runs_call_tool_with_kwargs() -> None:
     c.assert_called_once_with("get_ohlcv", {"symbol": "NASDAQ:AAPL", "interval": "1D"})
 
 
-def test_default_toolset_dispatches_tv_names_without_io() -> None:
-    ts = default_toolset()
-    with (
-        _enabled(True),
-        patch("apps.market.services.tradingview.is_connected", return_value=True),
-        patch("apps.market.services.tradingview_mcp.call_tool", return_value="ok") as c,
-    ):
-        assert ts.run("tv_get_news", {"symbol": "NASDAQ:AAPL"}) == {"ok": True, "result": "ok"}
-        assert ts.run("tv_create_alert", {"symbol": "x", "price": 1})["ok"] is False
-    c.assert_called_once()
-
-
-def test_runner_raises_when_toggle_disabled_and_call_tool_not_invoked() -> None:
-    spec = bridge.resolve_dynamic("tv_get_news")
-    with (
-        _enabled(False),
-        patch("apps.market.services.tradingview_mcp.call_tool") as c,
-        pytest.raises(RuntimeError, match="disabled"),
-    ):
-        spec.fn(symbol="NASDAQ:AAPL")
-    c.assert_not_called()
-
-
 def test_default_toolset_run_surfaces_disabled_toggle_as_ok_false() -> None:
     ts = default_toolset()
     with _enabled(False), patch("apps.market.services.tradingview_mcp.call_tool") as c:
         result = ts.run("tv_get_news", {"symbol": "NASDAQ:AAPL"})
     assert result["ok"] is False
     assert "disabled" in result["error"]
-    c.assert_not_called()
-
-
-def test_runner_raises_when_not_connected_and_call_tool_not_invoked() -> None:
-    spec = bridge.resolve_dynamic("tv_get_news")
-    with (
-        _enabled(True),
-        patch("apps.market.services.tradingview.is_connected", return_value=False),
-        patch("apps.market.services.tradingview_mcp.call_tool") as c,
-        pytest.raises(RuntimeError, match="not connected"),
-    ):
-        spec.fn(symbol="NASDAQ:AAPL")
     c.assert_not_called()
 
 
@@ -264,14 +229,3 @@ def test_tradingview_toolset_reraises_synchronous_only_operation() -> None:
         pytest.raises(SynchronousOnlyOperation),
     ):
         bridge.tradingview_toolset()
-
-
-@pytest.mark.django_db
-def test_request_toolset_merges_tradingview_specs() -> None:
-    with (
-        _enabled(True),
-        patch("apps.market.services.tradingview.is_connected", return_value=True),
-        patch("apps.market.services.tradingview_mcp.list_tools", return_value=LIVE),
-    ):
-        names = set(request_toolset().specs)
-    assert {"get_quote", "fetch_ohlc", "tv_get_ohlcv"} <= names

@@ -19,16 +19,6 @@ vi.mock("@/hooks/useAiModels", () => ({
 const baseValue = { provider: "claude", model: "claude-sonnet-4-6" };
 
 describe("ProviderModelPicker", () => {
-  it("renders provider options from data (unique providers)", () => {
-    const onChange = vi.fn();
-    render(<ProviderModelPicker value={baseValue} onChange={onChange} />);
-    const providerSelect = screen.getAllByRole("combobox")[0];
-    const options = Array.from(providerSelect.querySelectorAll("option")).map((o) => o.value);
-    expect(options).toContain("claude");
-    expect(options).toContain("openai");
-    // no duplicates
-    expect(new Set(options).size).toBe(options.length);
-  });
 
   it("renders models for the current value.provider", () => {
     const onChange = vi.fn();

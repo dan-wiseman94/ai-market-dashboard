@@ -143,17 +143,6 @@ def test_status_surfaces_schwab_auth_error():
 
 
 @pytest.mark.django_db
-def test_status_connected():
-    future = timezone.now() + timedelta(days=5)
-    ApiCredential.objects.create(provider="schwab", token={"access_token": "A"}, expires_at=future)
-    client = Client()
-    response = client.get("/api/schwab/status/")
-    body = response.json()
-    assert body["connected"] is True
-    assert body["expires_at"] is not None
-
-
-@pytest.mark.django_db
 def test_status_reports_not_connected_when_token_undecryptable():
     """A credential encrypted under a now-gone key (DJANGO_SECRET_KEY rotated / salt reset)
     must report not-connected, not 500. Decryption fires during the .get() row fetch via

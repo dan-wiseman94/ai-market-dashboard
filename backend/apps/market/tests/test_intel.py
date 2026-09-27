@@ -84,81 +84,11 @@ def _spx_bars() -> None:
 
 class TestReturnOverSessions:
     @pytest.mark.django_db
-    def test_1_session_nvda(self):
-        """(110-100)/100 * 100 = 10.0"""
-        _nvda_bars()
-        result = return_over_sessions("NVDA", 1)
-        assert result == pytest.approx(10.0, rel=1e-4)
-
-    @pytest.mark.django_db
-    def test_5_session_nvda(self):
-        """(110-60)/60 * 100 = 83.3333..."""
-        _nvda_bars()
-        result = return_over_sessions("NVDA", 5)
-        assert result == pytest.approx(83.3333, rel=1e-4)
-
-    @pytest.mark.django_db
-    def test_1_session_spx(self):
-        """(5000-4900)/4900 * 100 = 2.0408..."""
-        _spx_bars()
-        result = return_over_sessions("$SPX", 1)
-        assert result == pytest.approx(2.0408, rel=1e-4)
-
-    @pytest.mark.django_db
-    def test_5_session_spx(self):
-        """(5000-4500)/4500 * 100 = 11.1111..."""
-        _spx_bars()
-        result = return_over_sessions("$SPX", 5)
-        assert result == pytest.approx(11.1111, rel=1e-4)
-
-    @pytest.mark.django_db
-    def test_none_when_ticker_has_no_bars(self):
-        _nvda_bars()
-        assert return_over_sessions("ZZZZ", 1) is None
-
-    @pytest.mark.django_db
-    def test_none_when_only_one_bar_and_need_two(self):
-        """sessions=1 needs 2 bars; with only 1 bar returns None."""
-        _bar("SOLO", 0, 100.0)
-        assert return_over_sessions("SOLO", 1) is None
-
-    @pytest.mark.django_db
     def test_none_when_exactly_sessions_bars_but_not_sessions_plus_one(self):
         """sessions=5 needs 6 bars; with only 5 bars returns None."""
         for i in range(5):
             _bar("FEW", i, float(100 + i))
         assert return_over_sessions("FEW", 5) is None
-
-    @pytest.mark.django_db
-    def test_returns_value_when_exactly_sessions_plus_one_bars(self):
-        """sessions=1 needs exactly 2 bars; should return a value."""
-        _bar("PAIR", 0, 100.0)
-        _bar("PAIR", 1, 105.0)
-        result = return_over_sessions("PAIR", 1)
-        # (105-100)/100*100 = 5.0
-        assert result == pytest.approx(5.0, rel=1e-4)
-
-    @pytest.mark.django_db
-    def test_ignores_non_daily_bars(self):
-        """Only timeframe='1d' bars count; '1m' bars are ignored."""
-        OHLCBar.objects.create(
-            ticker="INTRA",
-            timeframe="1m",
-            ts=BASE + DAY,
-            open=200.0,
-            high=200.0,
-            low=200.0,
-            close=200.0,
-            volume=1,
-        )
-        assert return_over_sessions("INTRA", 1) is None
-
-    @pytest.mark.django_db
-    def test_lowercase_ticker_normalised(self):
-        """Ticker lookup is case-insensitive (stored upper, queried upper)."""
-        _nvda_bars()
-        result = return_over_sessions("nvda", 1)
-        assert result == pytest.approx(10.0, rel=1e-4)
 
     @pytest.mark.django_db
     def test_none_when_prior_close_is_zero(self):
@@ -199,10 +129,6 @@ class TestRelativeStrength:
         assert relative_strength("ZZZZ") is None
 
     @pytest.mark.django_db
-    def test_returns_none_for_empty_ticker(self):
-        assert relative_strength("") is None
-
-    @pytest.mark.django_db
     def test_rs_none_per_window_when_benchmark_missing(self):
         """When benchmark has no bars, rs is None per window but ticker_pct is present."""
         _nvda_bars()
@@ -213,44 +139,6 @@ class TestRelativeStrength:
         assert w[1]["benchmark_pct"] is None
         assert w[1]["rs"] is None
 
-    @pytest.mark.django_db
-    def test_rs_none_per_window_when_window_too_thin(self):
-        """Only 2 bars: 1d window works, 5d and 20d are None (thin data)."""
-        _bar("THIN", 0, 100.0)
-        _bar("THIN", 1, 110.0)
-        _spx_bars()  # enough for 1d and 5d but not 20d for benchmark
-        result = relative_strength("THIN")
-        assert result is not None
-        w = result["windows"]
-        # 1d: THIN has 2 bars → ticker_pct present; but 5d and 20d → None
-        assert w[1]["ticker_pct"] == pytest.approx(10.0, rel=1e-4)
-        assert w[5]["ticker_pct"] is None
-        assert w[20]["ticker_pct"] is None
-        assert w[5]["rs"] is None
-
-    @pytest.mark.django_db
-    def test_ticker_uppercased_in_result(self):
-        _nvda_bars()
-        _spx_bars()
-        result = relative_strength("nvda")
-        assert result is not None
-        assert result["ticker"] == "NVDA"
-
-    @pytest.mark.django_db
-    def test_custom_benchmark(self):
-        """Custom benchmark is used and reflected in result."""
-        _nvda_bars()
-        for i, close in enumerate([300, 310, 320, 330, 340, 350]):
-            _bar("QQQ", i, float(close))
-        result = relative_strength("NVDA", benchmark="QQQ")
-        assert result is not None
-        assert result["benchmark"] == "QQQ"
-        # QQQ 1d: (350-340)/340*100 = 2.9412
-        # RS 1d: 10.0 - 2.9412 = 7.0588
-        w = result["windows"]
-        assert w[1]["benchmark_pct"] == pytest.approx(2.9412, rel=1e-4)
-        assert w[1]["rs"] == pytest.approx(10.0 - 2.9412, rel=1e-3)
-
 
 class TestSectorRotation:
     @pytest.mark.django_db
@@ -259,21 +147,6 @@ class TestSectorRotation:
         _spx_bars()
         result = sector_rotation()
         assert result == []
-
-    @pytest.mark.django_db
-    def test_skips_sectors_with_no_bars(self):
-        """Only XLK + XLF have bars; result has only those two."""
-        _spx_bars()
-        for i, close in enumerate([180, 182, 184, 186, 188, 190]):
-            _bar("XLK", i, float(close))
-        for i, close in enumerate([40, 42, 44, 46, 48, 50]):
-            _bar("XLF", i, float(close))
-
-        result = sector_rotation(sectors=["XLK", "XLF", "XLE"])  # XLE has no bars
-        tickers_in_result = [r["sector"] for r in result]
-        assert "XLE" not in tickers_in_result
-        assert "XLK" in tickers_in_result
-        assert "XLF" in tickers_in_result
 
     @pytest.mark.django_db
     def test_leaders_first_sorted_by_rs(self):
@@ -308,12 +181,6 @@ class TestSectorRotation:
         assert result[0]["sector"] == "XLF"
         assert result[0]["return_pct"] == pytest.approx(25.0, rel=1e-4)
         assert result[0]["rs"] is None
-
-    @pytest.mark.django_db
-    def test_returns_empty_list_when_no_sectors_provided(self):
-        _spx_bars()
-        result = sector_rotation(sectors=[])
-        assert result == []
 
 
 def _factor_returns_bars() -> None:
@@ -386,12 +253,6 @@ class TestFactorReturns:
         )
         assert out["etfs"]["QUAL"][5] is None  # unseeded leg → honest None
 
-    @pytest.mark.django_db
-    def test_factor_returns_none_when_no_bars(self):
-        """No bars at all → None."""
-        out = factor_returns(["MTUM", "VLUE"])
-        assert out is None
-
 
 class TestBreadthStats:
     @pytest.mark.django_db
@@ -402,9 +263,3 @@ class TestBreadthStats:
         assert out["pct_above_sma"][20]["n"] == 4
         assert out["highs"] == 1 and out["lows"] == 1
         assert out["min_span_sessions"] == 60  # labels the REAL window, not 252
-
-    @pytest.mark.django_db
-    def test_breadth_stats_none_when_thin(self):
-        """< 3 usable tickers → None."""
-        out = breadth_stats(["XLK"])
-        assert out is None

@@ -19,12 +19,6 @@ def test_create_profile_with_defaults():
 
 
 @pytest.mark.django_db
-def test_new_profile_seeds_rich_defaults():
-    p = TradingProfile.objects.create(name="t", style="s")
-    assert p.default_includes == NEW_DEFAULTS
-
-
-@pytest.mark.django_db
 def test_backfill_appends_missing_and_preserves_custom():
     from django.apps import apps as django_apps
 

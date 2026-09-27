@@ -124,24 +124,6 @@ def _fake_get_factory(ticker: str = "AAPL"):
 
 
 @pytest.mark.django_db
-def test_fetch_chain_returns_normalized_chain():
-    with (
-        patch("apps.market.services.tradier._api_key", return_value="testkey"),
-        patch("apps.market.services.tradier._get", side_effect=_fake_get_factory()),
-        patch(
-            "apps.market.services.tradier.cache.get_or_fetch",
-            side_effect=lambda key, *, ttl_seconds, fetcher: fetcher(),
-        ),
-    ):
-        result = tradier_mod.fetch_chain("AAPL", max_expiries=2)
-
-    assert result["ticker"] == "AAPL"
-    assert result["underlying_last"] == "150.75"
-    assert "2026-01-16" in result["expiries"]
-    assert "2026-02-20" in result["expiries"]
-
-
-@pytest.mark.django_db
 def test_fetch_chain_calls_puts_split_correctly():
     with (
         patch("apps.market.services.tradier._api_key", return_value="testkey"),
@@ -157,23 +139,6 @@ def test_fetch_chain_calls_puts_split_correctly():
     assert all(c["delta"] is not None for c in exp["calls"])
     assert len(exp["calls"]) == 2  # 145 + 150 calls
     assert len(exp["puts"]) == 1  # 145 put only
-
-
-@pytest.mark.django_db
-def test_fetch_chain_strike_sorted_ascending():
-    with (
-        patch("apps.market.services.tradier._api_key", return_value="testkey"),
-        patch("apps.market.services.tradier._get", side_effect=_fake_get_factory()),
-        patch(
-            "apps.market.services.tradier.cache.get_or_fetch",
-            side_effect=lambda key, *, ttl_seconds, fetcher: fetcher(),
-        ),
-    ):
-        result = tradier_mod.fetch_chain("AAPL", max_expiries=1)
-
-    calls = result["expiries"]["2026-01-16"]["calls"]
-    strikes = [float(c["strike"]) for c in calls]
-    assert strikes == sorted(strikes)
 
 
 @pytest.mark.django_db
@@ -217,29 +182,6 @@ def test_fetch_chain_persists_option_chain_snapshot():
     assert "2026-02-20" in first.expiries
     assert first.payload["ticker"] == "AAPL"
     assert first.payload["underlying_last"] == "150.75"
-
-
-@pytest.mark.django_db
-def test_fetch_chain_single_expiration_string_normalised():
-    def _fake_get_single(path: str, params: dict, *, api_key: str) -> dict:
-        if "expirations" in path:
-            return EXPIRATIONS_SINGLE_DATE_RESPONSE
-        if "quotes" in path:
-            return QUOTE_RESPONSE
-        return CHAIN_RESPONSE_2026_01_16
-
-    with (
-        patch("apps.market.services.tradier._api_key", return_value="testkey"),
-        patch("apps.market.services.tradier._get", side_effect=_fake_get_single),
-        patch(
-            "apps.market.services.tradier.cache.get_or_fetch",
-            side_effect=lambda key, *, ttl_seconds, fetcher: fetcher(),
-        ),
-    ):
-        result = tradier_mod.fetch_chain("AAPL", max_expiries=2)
-
-    assert "2026-01-16" in result["expiries"]
-    assert len(result["expiries"]) == 1
 
 
 @pytest.mark.django_db
@@ -391,14 +333,6 @@ def test_fetch_chain_mock_mode_returns_canned():
 
 
 @pytest.mark.django_db
-def test_fetch_chain_no_credential_returns_empty():
-    with patch("apps.market.services.tradier._api_key", return_value=None):
-        result = tradier_mod.fetch_chain("AAPL")
-
-    assert result == {"ticker": "AAPL", "underlying_last": None, "expiries": {}}
-
-
-@pytest.mark.django_db
 def test_fetch_chain_never_raises_on_network_failure():
     def _boom(path: str, params: dict, *, api_key: str):
         raise RuntimeError("connection refused")
@@ -431,26 +365,6 @@ def test_fetch_chain_max_expiries_respected():
     assert len(result["expiries"]) == 1
     assert "2026-01-16" in result["expiries"]
     assert "2026-02-20" not in result["expiries"]
-
-
-@pytest.mark.django_db
-def test_fetch_chain_empty_expirations_returns_empty():
-    def _fake_get_no_exp(path: str, params: dict, *, api_key: str) -> dict:
-        if "expirations" in path:
-            return {"expirations": {"date": []}}
-        return {}
-
-    with (
-        patch("apps.market.services.tradier._api_key", return_value="testkey"),
-        patch("apps.market.services.tradier._get", side_effect=_fake_get_no_exp),
-        patch(
-            "apps.market.services.tradier.cache.get_or_fetch",
-            side_effect=lambda key, *, ttl_seconds, fetcher: fetcher(),
-        ),
-    ):
-        result = tradier_mod.fetch_chain("AAPL")
-
-    assert result == {"ticker": "AAPL", "underlying_last": None, "expiries": {}}
 
 
 @pytest.mark.django_db

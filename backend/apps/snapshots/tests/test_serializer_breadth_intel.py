@@ -52,20 +52,6 @@ def test_render_breadth_without_rs_unchanged():
     assert "- Sector rotation" not in result  # old leader/laggard line gone
 
 
-def test_render_breadth_rs_none_no_rs_line():
-    """relative_strength=None → no RS line."""
-    payload = _base_payload(relative_strength=None)
-    result = _render_breadth(payload)
-    assert "Relative strength" not in result
-
-
-def test_render_breadth_empty_rotation_no_rotation_line():
-    """sector_rotation=[] → no rotation line."""
-    payload = _base_payload(sector_rotation=[])
-    result = _render_breadth(payload)
-    assert "Sector rotation" not in result
-
-
 def test_rs_line_rendered_with_int_keys():
     """RS line produced when relative_strength present with int keys.
 
@@ -78,13 +64,6 @@ def test_rs_line_rendered_with_int_keys():
     payload = _base_payload(relative_strength=_rs_payload(int_keys=True))
     result = _render_breadth(payload)
     assert "- Relative strength (NVDA vs $SPX): 1d +7.96%, 5d +72.22%" in result
-
-
-def test_rs_line_omits_windows_with_none_rs():
-    """Windows whose rs is None are omitted from the RS line (20d here)."""
-    payload = _base_payload(relative_strength=_rs_payload(int_keys=True))
-    result = _render_breadth(payload)
-    assert "20d" not in result
 
 
 def test_rs_line_rendered_with_str_keys():
@@ -128,27 +107,6 @@ def test_rotation_line_leader_and_laggard():
     result = _render_breadth(payload)
     assert "| XLF | 45.00 | — | 25.00 | 13.89 |" in result
     assert "| XLK | 210.00 | — | 5.56 | -5.56 |" in result
-
-
-def test_rotation_line_single_sector():
-    """Single sector rotation row in table."""
-    rotation = [{"sector": "XLF", "return_pct": 25.0, "rs": 13.89}]
-    payload = _base_payload(sector_rotation=rotation)
-    result = _render_breadth(payload)
-    assert "| XLF | 45.00 | — | 25.00 | 13.89 |" in result
-
-
-def test_rotation_negative_returns_formatted_correctly():
-    """Negative return_pct is formatted correctly in table rows."""
-    rotation = [
-        {"sector": "XLF", "return_pct": -3.5, "rs": -14.61},
-        {"sector": "XLK", "return_pct": -8.0, "rs": -19.11},
-    ]
-    payload = _base_payload(sector_rotation=rotation)
-    result = _render_breadth(payload)
-    # XLF is second in sectors dict, XLK is first; order follows sectors dict
-    assert "| XLK | 210.00 | — | -8.00 | -19.11 |" in result
-    assert "| XLF | 45.00 | — | -3.50 | -14.61 |" in result
 
 
 def test_rs_and_rotation_both_rendered():

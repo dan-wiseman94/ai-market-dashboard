@@ -47,18 +47,30 @@ def test_perform_restore_connects_with_mapped_postgres_creds(tmp_path, monkeypat
     assert str(dump) in argv
 
 
-def test_perform_restore_missing_file_raises(tmp_path, monkeypatch) -> None:
-    monkeypatch.setenv("BACKUPS_DIR", str(tmp_path))
-    with pytest.raises(FileNotFoundError):
-        perform_restore("does-not-exist.sql.gz")
-
-
 @pytest.mark.parametrize("bad", ["../etc/passwd", "sub/dir.sql.gz", "..\\win", "a/../../b"])
 def test_perform_restore_rejects_path_traversal(tmp_path, monkeypatch, bad) -> None:
-    monkeypatch.setenv("BACKUPS_DIR", str(tmp_path))
-    (tmp_path / "real.sql.gz").write_bytes(b"x")
-    with pytest.raises(FileNotFoundError):
+    # Every traversal target exists as a real file, so only the name guard — not the
+    # is_file() check — stands between the input and pg_restore.
+    backups = tmp_path / "backups"
+    (backups / "sub").mkdir(parents=True)
+    (backups / "a").mkdir()
+    (tmp_path / "etc").mkdir()
+    for target in (
+        tmp_path / "etc" / "passwd",
+        backups / "sub" / "dir.sql.gz",
+        backups / "..\\win",
+        tmp_path / "b",
+    ):
+        target.write_bytes(b"x")
+    monkeypatch.setenv("BACKUPS_DIR", str(backups))
+    with (
+        patch(
+            "apps.backups.services.subprocess.run", side_effect=AssertionError("pg_restore ran")
+        ) as run,
+        pytest.raises(FileNotFoundError, match="invalid backup name"),
+    ):
         perform_restore(bad)
+    run.assert_not_called()
 
 
 def test_restore_db_command_invokes_perform_restore() -> None:

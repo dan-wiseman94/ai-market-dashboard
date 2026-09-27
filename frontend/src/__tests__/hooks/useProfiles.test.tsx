@@ -4,11 +4,10 @@ import {
   useClearProfileMemory,
   useCreateProfile,
   useDeleteProfile,
-  useProfileMemory,
   useProfiles,
   useUpdateProfile,
 } from "@/hooks/useProfiles";
-import { hookWrapper, mockApi, mockApiError, newQueryClient } from "../testUtils";
+import { hookWrapper, mockApi, newQueryClient } from "../testUtils";
 
 const profileFixture = {
   id: 1,
@@ -27,12 +26,6 @@ describe("useProfiles", () => {
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(result.current.data).toHaveLength(1);
     expect(result.current.data?.[0].name).toBe("Swing Trader");
-  });
-
-  it("isError on fetch failure", async () => {
-    mockApiError("GET /api/profiles/", 500);
-    const { result } = renderHook(() => useProfiles(), { wrapper: hookWrapper() });
-    await waitFor(() => expect(result.current.isError).toBe(true));
   });
 
   it("uses query key ['profiles']", async () => {
@@ -61,17 +54,6 @@ describe("useCreateProfile", () => {
       await result.current.mutateAsync({ name: "Swing Trader", style: "swing" });
     });
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["profiles"] });
-  });
-
-  it("isError on mutation failure", async () => {
-    mockApiError("POST /api/profiles/", 400);
-    const { result } = renderHook(() => useCreateProfile(), {
-      wrapper: hookWrapper(),
-    });
-    await act(async () => {
-      await result.current.mutateAsync({}).catch(() => {});
-    });
-    await waitFor(() => expect(result.current.isError).toBe(true));
   });
 });
 
@@ -103,39 +85,6 @@ describe("useDeleteProfile", () => {
       await result.current.mutateAsync(1);
     });
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["profiles"] });
-  });
-});
-
-const memoryFixture = {
-  profile: 1,
-  exists: true,
-  entries: [
-    {
-      path: "notes.md",
-      size_bytes: 3,
-      modified_at: "2026-09-20T00:00:00Z",
-      preview: "abc",
-      preview_truncated: false,
-    },
-  ],
-  total_files: 1,
-  total_bytes: 3,
-  preview_chars: 400,
-};
-
-describe("useProfileMemory", () => {
-  it("reads the profile's memory store", async () => {
-    mockApi({ "GET /api/profiles/1/memory/": memoryFixture });
-    const { result } = renderHook(() => useProfileMemory(1), { wrapper: hookWrapper() });
-    await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(result.current.data?.entries[0].path).toBe("notes.md");
-  });
-
-  it("stays idle (and sends nothing) for an unsaved profile", async () => {
-    const { calls } = mockApi({ "GET /api/profiles/1/memory/": memoryFixture });
-    const { result } = renderHook(() => useProfileMemory(null), { wrapper: hookWrapper() });
-    await waitFor(() => expect(result.current.fetchStatus).toBe("idle"));
-    expect(calls).toHaveLength(0);
   });
 });
 

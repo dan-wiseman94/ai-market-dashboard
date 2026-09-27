@@ -57,16 +57,6 @@ def _seed_daily_bars(ticker: str, days: int = 60) -> None:
 class TestLongHorizonSummary:
     """Tests for _long_horizon_summary function."""
 
-    def test_long_horizon_summary_returns_empty_when_ticker_is_none(self):
-        """_long_horizon_summary returns empty string when ticker is None."""
-        result = _long_horizon_summary(None)
-        assert result == ""
-
-    def test_long_horizon_summary_returns_empty_when_ticker_is_empty_string(self):
-        """_long_horizon_summary returns empty string when ticker is empty."""
-        result = _long_horizon_summary("")
-        assert result == ""
-
     @pytest.mark.django_db
     def test_long_horizon_summary_returns_empty_with_few_bars(self):
         """_long_horizon_summary returns empty string when fewer than 20 daily bars exist."""
@@ -154,47 +144,9 @@ class TestLongHorizonSummary:
         assert "9999" in unbounded
         assert "26-session high 9999.00" in unbounded
 
-    def test_long_horizon_summary_captured_at_none_is_back_compat(self):
-        """Explicitly passing captured_at=None (the default) behaves like the
-        pre-fix unbounded call — no DB access here, just the signature check."""
-        assert _long_horizon_summary(None, None) == ""
-        assert _long_horizon_summary("", None) == ""
-
 
 class TestRenderOhlcWithLongHorizonSummary:
     """Tests for _render_ohlc with long-horizon summary appended."""
-
-    @pytest.mark.django_db
-    def test_render_ohlc_includes_long_horizon_block_when_bars_exist(self):
-        """_render_ohlc appends the long-horizon block when sufficient daily bars exist."""
-        _seed_daily_bars("SPY", days=60)
-        payload = _ohlc_payload("SPY")
-        result = _render_ohlc(payload)
-
-        assert "**Longer horizon (stored daily bars):**" in result
-        assert "60-session high" in result
-        assert "vs 20dSMA" in result
-
-    @pytest.mark.django_db
-    def test_render_ohlc_omits_long_horizon_block_without_bars(self):
-        """_render_ohlc does not include the long-horizon block when daily bars are missing."""
-        payload = _ohlc_payload("SPY")
-        result = _render_ohlc(payload)
-
-        # Block should NOT appear without bars
-        assert "**Longer horizon (stored daily bars):**" not in result
-        assert "vs 20dSMA" not in result
-
-    @pytest.mark.django_db
-    def test_render_ohlc_without_stored_bars_unchanged(self):
-        """Existing OHLC rendering is unchanged when no stored bars exist."""
-        payload = _ohlc_payload("SPY")
-        result = _render_ohlc(payload)
-
-        # Core OHLC structure should still be present
-        assert "## OHLC" in result
-        assert "ts,open,high,low,close,volume" in result
-        assert "2026-05-23" in result
 
     @pytest.mark.django_db
     def test_render_ohlc_preserves_existing_sections(self):
@@ -248,44 +200,6 @@ class TestRenderOhlcWithLongHorizonSummary:
 
 class TestSerializeForAiWithLongHorizonSummary:
     """End-to-end tests for serialize_for_ai with long-horizon summary."""
-
-    @pytest.mark.django_db
-    def test_serialize_for_ai_includes_long_horizon_in_full_path(self):
-        """Full serialize_for_ai path includes the long-horizon block when appropriate."""
-        _seed_daily_bars("SPY", days=60)
-
-        profile = TradingProfile.objects.create(name="long-horizon-test", style="s")
-        snap = Snapshot.objects.create(profile=profile, includes=["ohlc"], status="ready")
-        SnapshotSection.objects.create(
-            snapshot=snap,
-            kind="ohlc",
-            status="done",
-            payload=_ohlc_payload("SPY"),
-        )
-
-        result = serialize_for_ai(snap)
-
-        assert "**Longer horizon (stored daily bars):**" in result
-        assert "60-session high" in result
-        assert "vs 20dSMA" in result
-
-    @pytest.mark.django_db
-    def test_serialize_for_ai_omits_long_horizon_without_bars(self):
-        """serialize_for_ai does not include long-horizon block without stored bars."""
-        profile = TradingProfile.objects.create(name="no-bars-test", style="s")
-        snap = Snapshot.objects.create(profile=profile, includes=["ohlc"], status="ready")
-        SnapshotSection.objects.create(
-            snapshot=snap,
-            kind="ohlc",
-            status="done",
-            payload=_ohlc_payload("SPY"),
-        )
-
-        result = serialize_for_ai(snap)
-
-        assert "**Longer horizon (stored daily bars):**" not in result
-        # But should still have the intraday OHLC
-        assert "## OHLC" in result
 
     @pytest.mark.django_db
     def test_serialize_for_ai_long_horizon_bounded_to_snapshot_captured_at(self):

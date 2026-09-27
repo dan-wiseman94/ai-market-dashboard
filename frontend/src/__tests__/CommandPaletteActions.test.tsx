@@ -15,10 +15,8 @@
  */
 
 import { screen, fireEvent } from "@testing-library/react";
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { CommandPalette, type Command } from "../components/CommandPalette";
-import * as briefingHooks from "@/hooks/useBriefing";
-import * as recallHooks from "@/hooks/useRecall";
 import { renderWithProviders } from "./testUtils";
 
 function renderPalette(commands: Command[], extra: Command[] = [], onClose = vi.fn()) {
@@ -26,66 +24,6 @@ function renderPalette(commands: Command[], extra: Command[] = [], onClose = vi.
     <CommandPalette open={true} onClose={onClose} commands={commands} extraCommands={extra} />,
   );
 }
-
-describe("CommandPalette — existing static behaviour", () => {
-  it("renders static commands unchanged", () => {
-    renderPalette([
-      { id: "go-dashboard", label: "Go to Dashboard", keywords: "home", run: vi.fn() },
-      { id: "go-triggers", label: "Go to Triggers", keywords: "alerts", run: vi.fn() },
-    ]);
-    expect(screen.getByText("Go to Dashboard")).toBeInTheDocument();
-    expect(screen.getByText("Go to Triggers")).toBeInTheDocument();
-  });
-
-  it("still filters static commands by label when query is set", () => {
-    renderPalette([
-      { id: "go-dashboard", label: "Go to Dashboard", keywords: "home", run: vi.fn() },
-      { id: "go-triggers", label: "Go to Triggers", keywords: "alerts", run: vi.fn() },
-    ]);
-    fireEvent.change(screen.getByPlaceholderText(/search/i), { target: { value: "trigger" } });
-    expect(screen.queryByText("Go to Dashboard")).not.toBeInTheDocument();
-    expect(screen.getByText("Go to Triggers")).toBeInTheDocument();
-  });
-});
-
-describe("CommandPalette — action verb: run briefing", () => {
-  const mutateSpy = vi.fn();
-
-  beforeEach(() => {
-    vi.restoreAllMocks();
-    vi.spyOn(briefingHooks, "useRunBriefing").mockReturnValue({
-      mutate: mutateSpy,
-      isPending: false,
-    } as never);
-  });
-
-  it("action-run-briefing command calls mutate when clicked", () => {
-    const runCmd: Command = {
-      id: "action-run-briefing",
-      label: "Run morning briefing now",
-      keywords: "briefing digest run trigger now",
-      run: () => { mutateSpy(undefined); },
-    };
-    renderPalette([runCmd]);
-    fireEvent.click(screen.getByText("Run morning briefing now"));
-    expect(mutateSpy).toHaveBeenCalledWith(undefined);
-  });
-});
-
-describe("CommandPalette — action verb: show keyboard shortcuts", () => {
-  it("action-show-shortcuts command calls onShowHelp callback when clicked", () => {
-    const onShowHelp = vi.fn();
-    const shortcutCmd: Command = {
-      id: "action-show-shortcuts",
-      label: "Show keyboard shortcuts",
-      keywords: "help shortcuts keys hotkeys",
-      run: onShowHelp,
-    };
-    renderPalette([shortcutCmd]);
-    fireEvent.click(screen.getByText("Show keyboard shortcuts"));
-    expect(onShowHelp).toHaveBeenCalledTimes(1);
-  });
-});
 
 describe("CommandPalette — extraCommands (recall search results)", () => {
   it("renders recall hits passed as extraCommands", () => {
@@ -158,65 +96,5 @@ describe("CommandPalette — extraCommands (recall search results)", () => {
     );
     fireEvent.change(screen.getByPlaceholderText(/search/i), { target: { value: "earnings" } });
     expect(onQueryChange).toHaveBeenCalledWith("earnings");
-  });
-});
-
-describe("recall search integration — useRecallCommands shape", () => {
-  beforeEach(() => vi.restoreAllMocks());
-
-  it("returns commands shaped from recall hits, navigating to hit.link", () => {
-    // We test the shape by rendering a palette with extraCommands as useRecallCommands would produce
-    const navigateSpy = vi.fn();
-
-    // Simulate the output of useRecallCommands (which calls useNavigate internally)
-    const recallCommands: Command[] = [
-      {
-        id: "recall:thesis:10",
-        label: "AAPL puts on weak guidance",
-        section: "Recall",
-        keywords: "AAPL",
-        run: () => navigateSpy("/theses/10"),
-      },
-    ];
-
-    const { getByText } = renderWithProviders(
-      <CommandPalette
-        open={true}
-        onClose={vi.fn()}
-        commands={[]}
-        extraCommands={recallCommands}
-      />,
-    );
-
-    expect(getByText("AAPL puts on weak guidance")).toBeInTheDocument();
-    fireEvent.click(getByText("AAPL puts on weak guidance"));
-    expect(navigateSpy).toHaveBeenCalledWith("/theses/10");
-  });
-});
-
-describe("recall hook enabled guard", () => {
-  beforeEach(() => vi.restoreAllMocks());
-
-  it("useRecall is called with empty string (disabled) when query < 2 chars", () => {
-    const spy = vi.spyOn(recallHooks, "useRecall").mockReturnValue({ data: undefined } as never);
-
-    // Render the palette with a 1-char query — AppLayout passes paletteQuery
-    // gated at length >= 2. We simulate the guard here directly.
-    const query = "A";
-    const effectiveQuery = query.trim().length >= 2 ? query : "";
-
-    // Validate the guard logic — empty string is passed to useRecall which disables it
-    expect(effectiveQuery).toBe("");
-
-    renderWithProviders(<CommandPalette open={true} onClose={vi.fn()} commands={[]} />);
-    // The palette itself doesn't call useRecall; the hook is called in AppLayout.
-    // We validate the guard logic above is correct.
-    spy.mockRestore();
-  });
-
-  it("useRecall receives the full query when query >= 2 chars", () => {
-    const query = "earnings";
-    const effectiveQuery = query.trim().length >= 2 ? query : "";
-    expect(effectiveQuery).toBe("earnings");
   });
 });

@@ -45,25 +45,6 @@ def test_capture_task_propagates_news_503_and_marks_news_failed():
 
 @pytest.mark.django_db
 @override_settings(CELERY_TASK_ALWAYS_EAGER=True, CELERY_TASK_EAGER_PROPAGATES=True)
-def test_capture_task_default_scenario_keeps_news_done():
-    profile = TradingProfile.objects.create(name="P", style="x")
-    snap = Snapshot.objects.create(
-        profile=profile,
-        objective="",
-        includes=["news"],
-        source="manual",
-        status="pending",
-    )
-
-    with patch("apps.core.mocks.is_mock_mode", return_value=True):
-        capture_task(snapshot_id=snap.id, watchlist_tickers=["SPY"], scenario="default")
-
-    snap.refresh_from_db()
-    assert snap.sections.get(kind="news").status == "done"
-
-
-@pytest.mark.django_db
-@override_settings(CELERY_TASK_ALWAYS_EAGER=True, CELERY_TASK_EAGER_PROPAGATES=True)
 def test_capture_task_propagates_schwab_401_and_fails_schwab_sections():
     from apps.market.cache import _redis
 

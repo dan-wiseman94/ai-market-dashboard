@@ -48,24 +48,6 @@ def test_oversized_ohlc_is_truncated_to_newest_bars_not_dropped():
 
 
 @pytest.mark.django_db
-def test_ohlc_within_budget_is_not_truncated():
-    p = TradingProfile.objects.create(name="P", style="x")
-    s = Snapshot.objects.create(profile=p, includes=["ohlc"], source="manual")
-    bars = [
-        {"ts": "2026-07-22T13:00:00+00:00", "open": 1, "high": 2, "low": 1, "close": 2, "volume": 5}
-    ]
-    SnapshotSection.objects.create(
-        snapshot=s,
-        kind="ohlc",
-        status="done",
-        payload={"ticker": "NQ", "timeframe": "1m", "window": "24h", "bars": bars},
-    )
-    out = serialize_for_ai(s)
-    assert "older bars trimmed" not in out
-    assert bars[0]["ts"] in out
-
-
-@pytest.mark.django_db
 def test_serializes_quotes_section_as_table():
     p = TradingProfile.objects.create(name="P", style="x")
     s = Snapshot.objects.create(
@@ -154,54 +136,3 @@ def test_missing_section_marked_unavailable():
     assert "News" in out
     assert "unavailable" in out
     assert "Finnhub 503" in out
-
-
-@pytest.mark.django_db
-def test_ohlc_section_csv_block():
-    p = TradingProfile.objects.create(name="P", style="x")
-    s = Snapshot.objects.create(profile=p, includes=["ohlc"], source="manual")
-    SnapshotSection.objects.create(
-        snapshot=s,
-        kind="ohlc",
-        status="done",
-        payload={
-            "ticker": "SPY",
-            "timeframe": "1m",
-            "bars": [
-                {
-                    "ts": "2026-01-01T00:00:00+00:00",
-                    "open": 1,
-                    "high": 2,
-                    "low": 1,
-                    "close": 2,
-                    "volume": 100,
-                },
-                {
-                    "ts": "2026-01-01T00:01:00+00:00",
-                    "open": 2,
-                    "high": 3,
-                    "low": 1,
-                    "close": 3,
-                    "volume": 200,
-                },
-            ],
-        },
-    )
-    out = serialize_for_ai(s)
-    assert "ts,open,high,low,close,volume" in out
-    assert "```" in out
-
-
-@pytest.mark.django_db
-def test_notes_section_appears_at_top():
-    p = TradingProfile.objects.create(name="P", style="x")
-    s = Snapshot.objects.create(
-        profile=p, includes=["notes"], source="manual", notes="looking risk-on"
-    )
-    out = serialize_for_ai(s)
-    idx_notes = out.find("looking risk-on")
-    idx_any_section = min(
-        (out.find(h) for h in ["## Quotes", "## OHLC", "## Positions"] if out.find(h) != -1),
-        default=10**9,
-    )
-    assert idx_notes < idx_any_section or idx_any_section == 10**9

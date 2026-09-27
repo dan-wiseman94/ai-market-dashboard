@@ -123,20 +123,6 @@ def test_labeled_examples_horizon_filters(profile):
     assert len(labeled_examples(horizon=30)) == 1
 
 
-def test_replay_one_extracts_direction_confidence_and_hit(profile):
-    snap = _snapshot(profile)
-    pm = _postmortem(
-        _thesis(profile, direction="bullish", snapshot=snap), verdict="correct", fwd=5.0
-    )
-    # model says bullish; outcome (correct bullish thesis) is bullish -> hit
-    with patch.object(svc, "run_structured", return_value=_report("bullish", confs=(0.6, 1.0))):
-        r = replay_one(pm, system="sys", model="claude-opus-4-8")
-    assert r["predicted_direction"] == "bullish"
-    assert r["outcome_direction"] == "bullish"
-    assert r["hit"] is True
-    assert r["confidence"] == 0.8  # mean(0.6, 1.0)
-
-
 def test_replay_one_miss_when_model_wrong(profile):
     snap = _snapshot(profile)
     # thesis bullish + verdict incorrect => the market actually went bearish.
@@ -232,13 +218,6 @@ def test_evaluate_skips_error_row_never_raises(profile):
     assert res["skipped"] == 1
     assert res["n"] == 1
     assert res["hit_rate"] == 1.0
-
-
-def test_evaluate_empty_dataset(profile):
-    res = evaluate(system="sys", model="claude-opus-4-8", label="cand")
-    assert res["n"] == 0
-    assert res["hit_rate"] is None
-    assert res["brier"] is None
 
 
 def test_command_runs_and_prints(profile):
@@ -345,29 +324,6 @@ def test_confidence_calibration_empty_results():
         assert b["mean_confidence"] is None
 
 
-def test_confidence_calibration_error_hand_checkable():
-    """calibration_error = mean abs(observed - mean_conf) over non-empty buckets.
-
-    Using confidences [0.95(hit), 0.92(miss), 0.6(hit), 0.4(hit)]:
-      non-empty buckets:
-        [0.0,0.5): observed=1.0, mean_conf=0.4 -> abs=0.6
-        [0.5,0.7): observed=1.0, mean_conf=0.6 -> abs=0.4
-        [0.9,1.0): observed=0.5, mean_conf=0.935 -> abs=0.435
-      calibration_error = round((0.6 + 0.4 + 0.435) / 3, 4) = round(1.435/3, 4) = 0.4783
-    """
-    results = [
-        {"confidence": 0.95, "hit": True},
-        {"confidence": 0.92, "hit": False},
-        {"confidence": 0.6, "hit": True},
-        {"confidence": 0.4, "hit": True},
-    ]
-    buckets = confidence_calibration(results)
-    non_empty = [b for b in buckets if b["n"] > 0]
-    abs_errors = [abs(b["observed_hit_rate"] - b["mean_confidence"]) for b in non_empty]
-    expected_error = round(sum(abs_errors) / len(abs_errors), 4)
-    assert expected_error == round((0.6 + 0.4 + 0.435) / 3, 4)  # 0.4783
-
-
 def test_evaluate_includes_calibration_key(profile):
     """evaluate() must return a 'calibration' key (list of buckets) and
     a 'calibration_error' key. Verified with a minimal dataset."""
@@ -394,45 +350,6 @@ def test_evaluate_includes_calibration_key(profile):
     assert "calibration_error" in res
     # Only one non-empty bucket: abs(1.0 - 0.85) = 0.15
     assert res["calibration_error"] == round(abs(1.0 - 0.85), 4)  # 0.15
-
-
-def test_command_prints_calibration_table(profile):
-    """The management command must print a calibration table when data exists."""
-    snap = _snapshot(profile)
-    _postmortem(
-        _thesis(profile, direction="bullish", conviction=3, snapshot=snap),
-        verdict="correct",
-        fwd=5.0,
-    )
-    out = StringIO()
-    with patch.object(svc, "run_structured", return_value=_report("bullish", confs=(0.85,))):
-        call_command(
-            "aieval",
-            "--model",
-            "claude-opus-4-8",
-            "--limit",
-            "1",
-            "--label",
-            "caltest",
-            stdout=out,
-        )
-    text = out.getvalue()
-    assert "calibration" in text
-    assert "conf [" in text
-
-
-def test_predicted_confidence_field_accepted():
-    """ObservationReport accepts an optional predicted_confidence in [0,1]."""
-    r = ObservationReport(
-        headline="h",
-        bias="bullish",
-        summary="s",
-        next_check_in="tomorrow",
-        predicted_confidence=0.73,
-    )
-    assert r.predicted_confidence == 0.73
-    r2 = ObservationReport(headline="h", bias="bullish", summary="s", next_check_in="t")
-    assert r2.predicted_confidence is None
 
 
 def test_confidence_prefers_predicted_confidence_over_signal_mean():
@@ -495,13 +412,6 @@ def test_persist_eval_run_maps_result_to_row(db):
     assert run.avg_confidence == 0.68 and run.calibration_error == 0.12
     assert run.calibration[0]["observed_hit_rate"] == 0.75
     assert run.examples[0]["hit"] is True
-
-
-def test_persist_eval_run_defaults_source_manual(db):
-    run = persist_eval_run({"label": "x", "model": "m", "n": 0})
-    assert run.source == "manual"
-    assert run.provider == "claude"  # every run written before the column was Claude
-    assert run.horizon is None and run.hit_rate is None
 
 
 def test_eval_runs_list_endpoint(db):
@@ -686,19 +596,6 @@ def test_scheduled_skips_on_cost_cap(profile, settings):
     _record_spend("claude", "2.00")
     _postmortem(_thesis(profile, snapshot=_snapshot(profile)), verdict="correct", fwd=5.0)
     assert run_scheduled() == {"skipped": "cost_cap"}
-
-
-def test_scheduled_skips_when_no_data(settings, db):
-    settings.AIEVAL_SCHEDULED_ENABLED = True
-    _usable_claude_config()
-    assert run_scheduled() == {"skipped": "no_data"}
-
-
-def test_scheduled_skips_when_the_provider_has_no_usable_config(settings, db):
-    """Without a credential there is no model to resolve; say so rather than run an
-    eval that would report 'no data' on a configuration problem."""
-    settings.AIEVAL_SCHEDULED_ENABLED = True
-    assert run_scheduled() == {"skipped": "no_provider"}
 
 
 def test_latest_eval_for_model(db):

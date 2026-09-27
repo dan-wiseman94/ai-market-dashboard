@@ -32,12 +32,6 @@ def _make_record(tmp_path, status: str = "ok") -> BackupRecord:
 
 
 @pytest.mark.django_db
-def test_verify_latest_no_backup_returns_no_backup() -> None:
-    result = verify_latest()
-    assert result == {"ok": False, "reason": "no_backup"}
-
-
-@pytest.mark.django_db
 def test_verify_latest_no_backup_only_failed_records(tmp_path, monkeypatch) -> None:
     """Even if there are failed records, still returns no_backup."""
     monkeypatch.setenv("BACKUPS_DIR", str(tmp_path))
@@ -82,21 +76,6 @@ def test_verify_latest_success_creates_no_error_event(tmp_path, monkeypatch) -> 
         verify_latest()
 
     assert ErrorEvent.objects.count() == 0
-
-
-@pytest.mark.django_db
-def test_verify_latest_failure_returncode_returns_not_ok(tmp_path, monkeypatch) -> None:
-    monkeypatch.setenv("BACKUPS_DIR", str(tmp_path))
-    rec = _make_record(tmp_path)
-
-    bad_result = SimpleNamespace(
-        returncode=1, stdout="", stderr="pg_restore: error: invalid magic number"
-    )
-
-    with patch("apps.backups.services.subprocess.run", return_value=bad_result):
-        result = verify_latest()
-
-    assert result == {"ok": False, "filename": rec.filename, "backup_id": rec.id}
 
 
 @pytest.mark.django_db

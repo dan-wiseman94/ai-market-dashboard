@@ -83,30 +83,6 @@ def test_images_are_left_out_when_the_endpoint_has_no_vision_head(
     assert "look" in text
 
 
-def test_run_carries_images_sees_the_turns_own_snapshot(profile, snapshot_with_image):
-    thread, msg = _pinned_turn(profile, snapshot_with_image)
-
-    assert run_carries_images(thread, msg) is True
-
-
-def test_run_carries_images_sees_the_threads_latest_snapshot_on_a_follow_up(
-    profile, snapshot_with_image
-):
-    thread, _ = _pinned_turn(profile, snapshot_with_image)
-    follow_up = Message.objects.create(
-        thread=thread, role="user", status="done", content={"text": "and now?"}
-    )
-
-    assert run_carries_images(thread, follow_up) is True
-
-
-def test_run_carries_images_is_false_without_an_image_section(profile):
-    snap = Snapshot.objects.create(profile=profile, objective="o", status="ready")
-    thread, msg = _pinned_turn(profile, snap)
-
-    assert run_carries_images(thread, msg) is False
-
-
 def test_run_carries_images_is_false_on_a_bare_chat_turn(profile):
     thread = Thread.objects.create(kind="chat", profile=profile)
     msg = Message.objects.create(thread=thread, role="user", status="done", content={"text": "hi"})

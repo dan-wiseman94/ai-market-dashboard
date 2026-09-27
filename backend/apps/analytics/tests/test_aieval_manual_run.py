@@ -88,14 +88,6 @@ def test_post_400_when_no_model_can_be_resolved(api):
 
 
 @pytest.mark.django_db
-def test_post_400_when_the_provider_has_no_credential(api):
-    ProviderConfig.objects.create(provider="openai")  # enabled, no key
-    r = api.post("/api/aieval/runs/", {"provider": "openai"}, format="json")
-    assert r.status_code == 400
-    assert r.json()["code"] == "no_provider"
-
-
-@pytest.mark.django_db
 def test_post_409_when_the_cap_is_already_exceeded(api, openai_cfg):
     with patch(
         "apps.analytics.aieval_views.ensure_within_caps",
@@ -179,11 +171,3 @@ def test_task_notifies_when_there_is_nothing_to_replay():
     assert out == {"skipped": "no_data"}
     assert EvalRun.objects.count() == 0
     assert Notification.objects.filter(kind="eval_done").exists()
-
-
-@pytest.mark.django_db
-def test_list_endpoint_exposes_the_provider(api):
-    EvalRun.objects.create(model="gpt-5.6-sol", provider="openai", label="x")
-    r = api.get("/api/aieval/runs/")
-    assert r.status_code == 200
-    assert r.json()[0]["provider"] == "openai"

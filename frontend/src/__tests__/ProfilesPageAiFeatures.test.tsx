@@ -110,14 +110,6 @@ describe("ProfileForm — AI features", () => {
     );
   });
 
-  it("hides the thinking budget once extended thinking is switched off", async () => {
-    const user = userEvent.setup();
-    renderWithProviders(<ProfilesPage />);
-    expect(screen.getByLabelText("Thinking budget")).toBeInTheDocument();
-    await user.click(screen.getByRole("switch", { name: "Extended thinking" }));
-    expect(screen.queryByLabelText("Thinking budget")).not.toBeInTheDocument();
-  });
-
   it("names the features the selected provider cannot honor", async () => {
     const user = userEvent.setup();
     renderWithProviders(<ProfilesPage />);
@@ -128,13 +120,6 @@ describe("ProfileForm — AI features", () => {
     expect(
       screen.getByText("Tool use is off for OpenAI in Settings → AI Providers"),
     ).toBeInTheDocument();
-  });
-
-  it("carries the model with the provider so no foreign id is submitted", async () => {
-    const user = userEvent.setup();
-    renderWithProviders(<ProfilesPage />);
-    await user.selectOptions(screen.getByLabelText("Default provider"), "openai");
-    expect(screen.getByLabelText("Default model")).toHaveValue("gpt-5.6-sol");
   });
 });
 

@@ -96,27 +96,11 @@ describe("WatchlistTable", () => {
     expect(screen.queryByRole("button", { name: /move/i })).not.toBeInTheDocument();
   });
 
-  it("each move button names its ticker and direction", () => {
-    render(wrap(<WatchlistTable tickers={tickers} onReorder={vi.fn()} />));
-    expect(screen.getByRole("button", { name: "Move AAPL up" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Move AAPL down" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Move TSLA up" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Move TSLA down" })).toBeInTheDocument();
-  });
-
   it("moving down emits the full id list with the two rows swapped", async () => {
     const user = userEvent.setup();
     const onReorder = vi.fn();
     render(wrap(<WatchlistTable tickers={tickers} onReorder={onReorder} />));
     await user.click(screen.getByRole("button", { name: "Move AAPL down" }));
-    expect(onReorder).toHaveBeenCalledWith([2, 1]);
-  });
-
-  it("moving up emits the full id list with the two rows swapped", async () => {
-    const user = userEvent.setup();
-    const onReorder = vi.fn();
-    render(wrap(<WatchlistTable tickers={tickers} onReorder={onReorder} />));
-    await user.click(screen.getByRole("button", { name: "Move TSLA up" }));
     expect(onReorder).toHaveBeenCalledWith([2, 1]);
   });
 

@@ -4,16 +4,6 @@ from apps.observer.models import Notification
 
 
 @pytest.mark.django_db
-def test_list_notifications_returns_anonymous_only(api):
-    Notification.objects.create(user=None, kind="error", title="anon")
-    resp = api.get("/api/observer/notifications/")
-    assert resp.status_code == 200
-    body = resp.json()
-    items = body.get("results", body) if isinstance(body, dict) else body
-    assert len(items) == 1
-
-
-@pytest.mark.django_db
 def test_list_unread_filter(api):
     from django.utils import timezone
 

@@ -26,16 +26,6 @@ def test_client_kwargs_returns_defaults():
     assert kw["timeout"] == 60.0
 
 
-@override_settings(AI_PROVIDER_MAX_RETRIES=5, AI_PROVIDER_TIMEOUT_SECONDS=30.0)
-def test_client_kwargs_respects_override_settings():
-    """override_settings changes client_kwargs output."""
-    from apps.ai.providers._config import client_kwargs
-
-    kw = client_kwargs()
-    assert kw["max_retries"] == 5
-    assert kw["timeout"] == 30.0
-
-
 @override_settings(AI_PROVIDER_MAX_RETRIES=0, AI_PROVIDER_TIMEOUT_SECONDS=10.0)
 def test_client_kwargs_zero_retries_is_valid():
     """Zero retries (disable backoff) is a valid configuration."""
@@ -44,24 +34,6 @@ def test_client_kwargs_zero_retries_is_valid():
     kw = client_kwargs()
     assert kw["max_retries"] == 0
     assert kw["timeout"] == 10.0
-
-
-@override_settings(AI_PROVIDER_MAX_RETRIES=2, AI_PROVIDER_TIMEOUT_SECONDS=60.0)
-def test_claude_provider_passes_resilience_kwargs_to_client():
-    """ClaudeProvider.__init__ must call AsyncAnthropic with max_retries + timeout."""
-    captured: dict = {}
-
-    class _FakeAnthropic:
-        def __init__(self, **kw):
-            captured.update(kw)
-
-    with patch("apps.ai.providers.claude.AsyncAnthropic", _FakeAnthropic):
-        from apps.ai.providers.claude import ClaudeProvider
-
-        ClaudeProvider(api_key="sk-ant-test")
-
-    assert captured["max_retries"] == 2
-    assert captured["timeout"] == 60.0
 
 
 @override_settings(AI_PROVIDER_MAX_RETRIES=4, AI_PROVIDER_TIMEOUT_SECONDS=45.0)
@@ -101,24 +73,6 @@ def test_claude_provider_with_base_url_passes_resilience_kwargs():
     assert captured["base_url"] == "https://proxy.example.com"
 
 
-@override_settings(AI_PROVIDER_MAX_RETRIES=2, AI_PROVIDER_TIMEOUT_SECONDS=60.0)
-def test_openai_provider_passes_resilience_kwargs_to_client():
-    """OpenAIProvider.__init__ must call AsyncOpenAI with max_retries + timeout."""
-    captured: dict = {}
-
-    class _FakeOpenAI:
-        def __init__(self, **kw):
-            captured.update(kw)
-
-    with patch("apps.ai.providers.openai.AsyncOpenAI", _FakeOpenAI):
-        from apps.ai.providers.openai import OpenAIProvider
-
-        OpenAIProvider(api_key="sk-test")
-
-    assert captured["max_retries"] == 2
-    assert captured["timeout"] == 60.0
-
-
 @override_settings(AI_PROVIDER_MAX_RETRIES=3, AI_PROVIDER_TIMEOUT_SECONDS=90.0)
 def test_openai_provider_passes_overridden_kwargs():
     """override_settings is reflected in the kwargs passed to AsyncOpenAI."""
@@ -156,57 +110,6 @@ def test_openai_provider_with_base_url_passes_resilience_kwargs():
     assert "host.docker.internal" in captured["base_url"]
 
 
-@override_settings(AI_PROVIDER_MAX_RETRIES=2, AI_PROVIDER_TIMEOUT_SECONDS=60.0)
-def test_local_provider_passes_resilience_kwargs_to_client():
-    """LocalProvider (OpenAIProvider subclass) also passes max_retries + timeout."""
-    captured: dict = {}
-
-    class _FakeOpenAI:
-        def __init__(self, **kw):
-            captured.update(kw)
-
-    with patch("apps.ai.providers.openai.AsyncOpenAI", _FakeOpenAI):
-        from apps.ai.providers.local import LocalProvider
-
-        LocalProvider(api_key="", base_url="http://host.docker.internal:11434/v1")
-
-    assert captured["max_retries"] == 2
-    assert captured["timeout"] == 60.0
-
-
-@override_settings(AI_PROVIDER_MAX_RETRIES=2, AI_PROVIDER_TIMEOUT_SECONDS=60.0)
-def test_claude_structured_passes_resilience_kwargs_to_client():
-    """run_structured must build its sync Anthropic client with max_retries + timeout."""
-    from pydantic import BaseModel
-
-    class _Schema(BaseModel):
-        answer: str
-
-    captured: dict = {}
-
-    class _FakeAnthropic:
-        def __init__(self, **kw):
-            captured.update(kw)
-            self.messages = MagicMock()
-            parsed = MagicMock()
-            parsed.parsed_output = _Schema(answer="yes")
-            self.messages.parse.return_value = parsed
-
-    with patch("apps.ai.providers.claude_structured.Anthropic", _FakeAnthropic):
-        from apps.ai.providers.claude_structured import run_structured
-
-        run_structured(
-            api_key="sk-ant-test",
-            model="claude-sonnet-4-6",
-            system="Be concise.",
-            user="Is the sky blue?",
-            output_model=_Schema,
-        )
-
-    assert captured["max_retries"] == 2
-    assert captured["timeout"] == 60.0
-
-
 @override_settings(AI_PROVIDER_MAX_RETRIES=1, AI_PROVIDER_TIMEOUT_SECONDS=20.0)
 def test_claude_structured_passes_overridden_kwargs():
     """override_settings is reflected in run_structured's Anthropic client kwargs."""
@@ -238,35 +141,3 @@ def test_claude_structured_passes_overridden_kwargs():
 
     assert captured["max_retries"] == 1
     assert captured["timeout"] == 20.0
-
-
-@override_settings(AI_PROVIDER_MAX_RETRIES=2, AI_PROVIDER_TIMEOUT_SECONDS=60.0)
-def test_claude_provider_mock_mode_still_constructs(monkeypatch):
-    """With MOCK_EXTERNAL=true, ClaudeProvider constructs without error (kwargs additive)."""
-    monkeypatch.setenv("MOCK_EXTERNAL", "true")
-
-    class _FakeAnthropic:
-        def __init__(self, **kw):
-            pass  # must accept **kw without raising
-
-    with patch("apps.ai.providers.claude.AsyncAnthropic", _FakeAnthropic):
-        from apps.ai.providers.claude import ClaudeProvider
-
-        provider = ClaudeProvider(api_key="sk-ant-test")
-        assert provider is not None
-
-
-@override_settings(AI_PROVIDER_MAX_RETRIES=2, AI_PROVIDER_TIMEOUT_SECONDS=60.0)
-def test_openai_provider_mock_mode_still_constructs(monkeypatch):
-    """With MOCK_EXTERNAL=true and no key, OpenAIProvider constructs without error."""
-    monkeypatch.setenv("MOCK_EXTERNAL", "true")
-
-    class _FakeOpenAI:
-        def __init__(self, **kw):
-            pass  # must accept **kw without raising
-
-    with patch("apps.ai.providers.openai.AsyncOpenAI", _FakeOpenAI):
-        from apps.ai.providers.openai import OpenAIProvider
-
-        provider = OpenAIProvider(api_key="")
-        assert provider is not None

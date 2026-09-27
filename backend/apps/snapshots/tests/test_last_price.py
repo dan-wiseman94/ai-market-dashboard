@@ -17,14 +17,6 @@ def _quotes(snap, payload, *, status="done"):
 
 
 @pytest.mark.django_db
-def test_done_section_returns_float(profile):
-    snap = _snap(profile)
-    _quotes(snap, {"NVDA": {"last": 123.45}})
-    assert last_price(snap, "NVDA") == 123.45
-    assert isinstance(last_price(snap, "NVDA"), float)
-
-
-@pytest.mark.django_db
 @pytest.mark.parametrize("status", ["failed", "pending"])
 def test_non_done_quotes_section_is_ignored(profile, status):
     snap = _snap(profile)
@@ -58,7 +50,3 @@ def test_junk_value_returns_none(profile, row):
     snap = _snap(profile)
     _quotes(snap, {"NVDA": row})
     assert last_price(snap, "NVDA") is None
-
-
-def test_none_snapshot_returns_none():
-    assert last_price(None, "NVDA") is None

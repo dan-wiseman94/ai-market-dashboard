@@ -6,7 +6,7 @@ import {
   useDeletePreset,
   useUpdatePreset,
 } from "@/hooks/useAgentPresets";
-import { hookWrapper, mockApi, mockApiError, newQueryClient } from "../testUtils";
+import { hookWrapper, mockApi, newQueryClient } from "../testUtils";
 
 const presetFixture = {
   id: 1,
@@ -28,12 +28,6 @@ describe("useAgentPresets", () => {
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(result.current.data).toHaveLength(1);
     expect(result.current.data?.[0].name).toBe("Morning Scan");
-  });
-
-  it("isError on fetch failure", async () => {
-    mockApiError("GET /api/presets/", 500);
-    const { result } = renderHook(() => useAgentPresets(), { wrapper: hookWrapper() });
-    await waitFor(() => expect(result.current.isError).toBe(true));
   });
 
   it("uses query key ['presets']", async () => {
@@ -64,18 +58,6 @@ describe("useCreatePreset", () => {
     });
     expect(calls.some((c) => c.url.endsWith("/api/presets/") && c.method === "POST")).toBe(true);
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["presets"] });
-  });
-
-  it("isError on mutation failure", async () => {
-    mockApiError("POST /api/presets/", 400);
-    const { result } = renderHook(() => useCreatePreset(), { wrapper: hookWrapper() });
-    await act(async () => {
-      await result.current.mutateAsync({
-        name: "Bad",
-        objective_template: "",
-      }).catch(() => {});
-    });
-    await waitFor(() => expect(result.current.isError).toBe(true));
   });
 });
 

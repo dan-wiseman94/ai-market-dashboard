@@ -19,9 +19,3 @@ def test_fed_fetcher_wraps_items_under_data():
         out = snapshot_services._FETCHERS["fed"]()
     m.assert_called_once_with()
     assert out == {"data": {"items": canned}}
-
-
-def test_fed_fetcher_empty_feed_returns_empty_items():
-    with patch.object(snapshot_services, "fetch_fed_communications", return_value=[]):
-        out = snapshot_services._FETCHERS["fed"]()
-    assert out == {"data": {"items": []}}

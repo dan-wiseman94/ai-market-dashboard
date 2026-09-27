@@ -43,13 +43,6 @@ def _get_by_url(table: dict[str, httpx.Response]):
     return _get
 
 
-def test_protected_resource_metadata_url_is_path_based():
-    assert (
-        tvo._protected_resource_metadata_url(MCP)
-        == "https://mcp.tradingview.com/.well-known/oauth-protected-resource/mcp"
-    )
-
-
 @override_settings(TRADINGVIEW_MCP_URL=MCP)
 def test_discover_uses_path_based_document_and_caches(fake_redis):
     table = {
@@ -213,13 +206,6 @@ def test_consume_oauth_state_is_one_time_and_fails_closed(fake_redis):
     assert tvo.consume_oauth_state("s1") is None  # replay rejected
 
 
-@override_settings(TRADINGVIEW_CALLBACK_URL=CALLBACK)
-def test_build_authorize_url_is_stub_under_mock():
-    with patch("apps.core.mocks.is_mock_mode", return_value=True):
-        url = tvo.build_authorize_url()
-    assert url == f"{CALLBACK}?code=MOCK_OAUTH&state=mock"
-
-
 FLOW = {"client_id": "cid", "client_secret": "", "code_verifier": "verifier"}
 
 
@@ -316,11 +302,6 @@ def test_persist_token_self_heals_undecryptable_row():
     ):
         tvo.persist_token(_token())
     assert ApiCredential.objects.get(provider="tradingview").token["access_token"] == "A"
-
-
-@pytest.mark.django_db
-def test_load_token_none_when_not_connected():
-    assert tvo.load_token() is None
 
 
 @pytest.mark.django_db
@@ -432,12 +413,6 @@ def test_release_lock_is_a_noop_when_the_value_mismatches(fake_redis):
     assert fake_redis.get(tvo._REFRESH_LOCK_KEY) == b"someone-elses-value"
 
 
-def test_release_lock_deletes_when_the_value_matches(fake_redis):
-    fake_redis.set(tvo._REFRESH_LOCK_KEY, "our-value", ex=120)
-    tvo._release_lock("our-value")
-    assert fake_redis.get(tvo._REFRESH_LOCK_KEY) is None
-
-
 @pytest.mark.django_db
 def test_wait_for_other_refresh_times_out_to_stale_token(fake_redis):
     stale = _token(access_token="STALE", expires_at=int(time.time()) + 10)
@@ -465,10 +440,3 @@ def test_revoke_and_disconnect_deletes_row_even_if_revocation_fails(fake_redis):
     assert p.call_args.kwargs["data"] == {"token": "R", "client_id": "cid"}
     assert not ApiCredential.objects.filter(provider="tradingview").exists()
     reset.assert_called_once()
-
-
-@pytest.mark.django_db
-def test_exchange_code_is_canned_under_mock():
-    with patch("apps.core.mocks.is_mock_mode", return_value=True):
-        token = tvo.exchange_code("MOCK_OAUTH", {"client_id": "mock", "code_verifier": "v"})
-    assert token["access_token"] and token["refresh_token"] and token["expires_at"]

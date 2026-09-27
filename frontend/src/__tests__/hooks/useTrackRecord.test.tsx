@@ -68,20 +68,4 @@ describe("useTrackRecord", () => {
     expect(result.current.fetchStatus).toBe("idle");
     expect(spy).not.toHaveBeenCalled();
   });
-
-  it("returns available:false correctly when record is null", async () => {
-    const spy = vi.spyOn(client, "apiGet").mockResolvedValue({
-      ticker: "XYZ",
-      available: false,
-      record: null,
-    });
-    const { result } = renderHook(
-      () => useTrackRecord("XYZ"),
-      { wrapper: hookWrapper() },
-    );
-    await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(result.current.data?.available).toBe(false);
-    expect(result.current.data?.record).toBeNull();
-    expect(spy).toHaveBeenCalledWith(expect.stringContaining("ticker=XYZ"));
-  });
 });

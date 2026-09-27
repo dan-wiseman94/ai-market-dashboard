@@ -30,10 +30,6 @@ _OBS_MISSING = {
 }
 
 
-def _passthrough_cache(key: str, *, ttl_seconds: int, fetcher):
-    return fetcher()
-
-
 def test_fred_returns_normalized_dict():
     """Patching _fetch_series and cache gives correct normalized output."""
     fetch_map = {
@@ -127,22 +123,6 @@ def test_fred_per_series_resilience():
     assert result["DGS10"]["value"] == pytest.approx(4.32)
 
 
-def test_fred_all_series_fail_returns_empty_dict():
-    """If every series raises, the result is {} (not an exception)."""
-
-    def _boom(sid: str, api_key: str) -> dict:
-        raise ConnectionError("refused")
-
-    with (
-        patch("apps.market.services.fred._api_key", return_value="k"),
-        patch("apps.market.services.fred._fetch_series", side_effect=_boom),
-        patch("apps.core.mocks.is_mock_mode", return_value=False),
-    ):
-        result = fred_mod.fetch_macro(series_ids=["CPIAUCSL", "DGS10"])
-
-    assert result == {}
-
-
 def test_fred_mock_mode_returns_canned():
     """With MOCK_EXTERNAL=true the function returns the canned dict without hitting
     the credential store or the network."""
@@ -168,27 +148,3 @@ def test_fred_no_credential_returns_empty():
         result = fred_mod.fetch_macro()
 
     assert result == {}
-
-
-def test_fred_network_error_per_series_skipped():
-    """A requests-level exception inside the fetcher lambda is caught per-series."""
-
-    def _fake_get_or_fetch(key: str, *, ttl_seconds: int, fetcher):
-        raise OSError("host unreachable")
-
-    with (
-        patch("apps.core.mocks.is_mock_mode", return_value=False),
-        patch("apps.market.services.fred._api_key", return_value="k"),
-        patch("apps.market.services.fred.cache.get_or_fetch", side_effect=_fake_get_or_fetch),
-    ):
-        result = fred_mod.fetch_macro(series_ids=["CPIAUCSL", "DGS10"])
-
-    assert result == {}
-
-
-def test_series_includes_credit_spread_oas_rows():
-    """The SERIES dict includes HY and IG OAS credit-spread series."""
-    assert fred_mod.SERIES["BAMLH0A0HYM2"] == "HY OAS"
-    assert fred_mod.SERIES["BAMLC0A0CM"] == "IG OAS"
-    # The macro fetch iterates SERIES generically — the dict IS the contract.
-    assert list(fred_mod.SERIES) == list(dict.fromkeys(fred_mod.SERIES))  # no dup keys

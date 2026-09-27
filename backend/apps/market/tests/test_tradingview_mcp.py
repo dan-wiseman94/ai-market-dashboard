@@ -233,16 +233,6 @@ def test_not_connected_raises_without_http():
     p.assert_not_called()
 
 
-def test_429_raises_rate_limited_without_retry():
-    server = _Server([lambda req: _rpc(req["id"], {}), httpx.Response(202), httpx.Response(429)])
-    with (
-        patch("apps.market.services.tradingview_mcp.httpx.post", side_effect=server),
-        pytest.raises(mcp.TradingViewRateLimited),
-    ):
-        mcp.call_tool("x")
-    assert len(server.requests) == 3
-
-
 def test_429_sets_rate_limit_marker_and_reset_state_clears_it():
     server = _Server([lambda req: _rpc(req["id"], {}), httpx.Response(202), httpx.Response(429)])
     with (

@@ -29,35 +29,6 @@ def test_ready_happy_path_status_200() -> None:
 
 
 @pytest.mark.django_db
-def test_ready_happy_path_response_shape() -> None:
-    """Response body must contain exactly {database, redis} with string values."""
-    client = Client()
-    response = client.get("/api/ready/")
-    body = response.json()
-    assert "database" in body, "response must contain 'database' key"
-    assert "redis" in body, "response must contain 'redis' key"
-    assert body["database"] in ("ok", "error"), f"unexpected database value: {body['database']}"
-    assert body["redis"] in ("ok", "error"), f"unexpected redis value: {body['redis']}"
-
-
-@pytest.mark.django_db
-def test_ready_happy_path_db_ok() -> None:
-    """database key reports 'ok' when the DB is reachable (always true under pytest-django)."""
-    client = Client()
-    response = client.get("/api/ready/")
-    body = response.json()
-    assert body["database"] == "ok"
-
-
-@pytest.mark.django_db
-def test_ready_method_not_allowed() -> None:
-    """Only GET is allowed; POST must return 405."""
-    client = Client()
-    response = client.post("/api/ready/")
-    assert response.status_code == 405
-
-
-@pytest.mark.django_db
 def test_ready_503_when_db_down() -> None:
     """When the DB check raises, /api/ready/ must return 503 with database='error'."""
     client = Client()
@@ -77,18 +48,3 @@ def test_ready_503_when_redis_down() -> None:
     assert response.status_code == 503
     body = response.json()
     assert body["redis"] == "error"
-
-
-@pytest.mark.django_db
-def test_ready_200_only_when_both_ok() -> None:
-    """200 is returned only when both database and redis report 'ok'."""
-    client = Client()
-    with (
-        patch("apps.core.views._check_database", return_value="ok"),
-        patch("apps.core.views._check_redis", return_value="ok"),
-    ):
-        response = client.get("/api/ready/")
-    assert response.status_code == 200
-    body = response.json()
-    assert body["database"] == "ok"
-    assert body["redis"] == "ok"

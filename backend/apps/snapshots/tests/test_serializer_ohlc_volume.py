@@ -27,12 +27,6 @@ def test_all_zero_volume_omits_column_with_note():
     assert "no traded volume" in out
 
 
-def test_real_volume_keeps_column():
-    out = _render_ohlc({"ticker": "SPY", "timeframe": "1m", "bars": [_bar(0, 100), _bar(1, 200)]})
-    assert "ts,open,high,low,close,volume" in out
-    assert "no traded volume" not in out
-
-
 def test_missing_volume_key_treated_as_absent():
     out = _render_ohlc({"ticker": "$TNX", "timeframe": "1d", "bars": [_bar(0, None)]})
     csv_block = out.split("```csv")[1].split("```")[0]

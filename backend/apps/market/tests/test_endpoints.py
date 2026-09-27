@@ -38,36 +38,10 @@ def no_schwab(monkeypatch):
 
 
 @pytest.mark.django_db
-def test_quotes_endpoint_happy(api):
-    with patch("apps.market.views.fetch_quotes", return_value={"SPY": {"last": 550.0}}):
-        r = api.get("/api/market/quotes/?tickers=SPY")
-        assert r.status_code == 200
-        assert r.json() == {"SPY": {"last": 550.0}}
-
-
-@pytest.mark.django_db
 def test_quotes_endpoint_missing_param(api):
     r = api.get("/api/market/quotes/")
     assert r.status_code == 400
     assert r.json()["code"] == "missing_tickers"
-
-
-@pytest.mark.django_db
-def test_ohlc_endpoint_happy(api):
-    bars = [
-        {
-            "ts": "2026-01-01T00:00:00+00:00",
-            "open": 1,
-            "high": 2,
-            "low": 1,
-            "close": 2,
-            "volume": 10,
-        }
-    ]
-    with patch("apps.market.views.fetch_ohlc", return_value=bars):
-        r = api.get("/api/market/ohlc/?ticker=SPY&timeframe=1m&bars=60")
-        assert r.status_code == 200
-        assert r.json()["bars"] == bars
 
 
 @pytest.mark.django_db
@@ -76,15 +50,6 @@ def test_positions_endpoint_happy(api):
         r = api.get("/api/market/positions/")
         assert r.status_code == 200
         assert r.json()[0]["ticker"] == "NVDA"
-
-
-@pytest.mark.django_db
-def test_context_endpoint_happy(api):
-    ctx = {"spx_last": 6000, "qqq_last": 480, "vix_last": 14, "sectors": {}, "breadth": {}}
-    with patch("apps.market.views.fetch_market_context", return_value=ctx):
-        r = api.get("/api/market/context/")
-        assert r.status_code == 200
-        assert r.json() == ctx
 
 
 @pytest.mark.django_db

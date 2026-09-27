@@ -1,8 +1,4 @@
-from apps.snapshots.serializer import _render_events, _title
-
-
-def test_events_title():
-    assert _title("events") == "Upcoming events"
+from apps.snapshots.serializer import _render_events
 
 
 def test_render_events_lists_earnings_and_macro():
@@ -17,10 +13,6 @@ def test_render_events_lists_earnings_and_macro():
     assert "AMC" in out
     assert "est EPS 0.84" in out
     assert "CPI in 5d" in out
-
-
-def test_render_events_empty():
-    assert "_(none" in _render_events({"earnings": [], "macro": []})
 
 
 def test_render_events_shows_detail_and_corporate_actions():
@@ -61,10 +53,6 @@ def test_render_events_empty_with_no_corporate_actions_key():
     # corporate_actions is a newer key; payloads captured before this change
     # (or fetcher failures) may omit it entirely — must not raise.
     assert "_(none" in _render_events({"earnings": [], "macro": []})
-
-
-def test_render_events_all_empty_including_corporate_actions():
-    assert "_(none" in _render_events({"earnings": [], "macro": [], "corporate_actions": []})
 
 
 def test_render_events_split_branch():

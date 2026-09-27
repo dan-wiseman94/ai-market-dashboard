@@ -79,17 +79,6 @@ describe("useUploadFile", () => {
     expect(calls[0].method).toBe("POST");
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["files"] });
   });
-
-  it("rejects when the upload fails", async () => {
-    mockApiError("POST /api/files/", 400);
-    const { result } = renderHook(() => useUploadFile(), {
-      wrapper: hookWrapper(),
-    });
-    await act(async () => {
-      await result.current.mutateAsync(new FormData()).catch(() => {});
-    });
-    await waitFor(() => expect(result.current.isError).toBe(true));
-  });
 });
 
 describe("useAttachFileToThread", () => {

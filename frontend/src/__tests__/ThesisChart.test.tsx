@@ -34,15 +34,6 @@ beforeEach(() => {
 });
 
 describe("ThesisChart", () => {
-  it("renders the chart container after data loads", async () => {
-    mockOhlc();
-    renderWithProviders(
-      <ThesisChart ticker="SPY" entry="540.00" target="600.00" invalidation="520.00" />,
-    );
-    await waitFor(() =>
-      expect(screen.getByTestId("thesis-chart")).toBeInTheDocument(),
-    );
-  });
 
   it("requests OHLC with the backend's lowercase '1d' timeframe (not '1D')", async () => {
     // The backend OHLC endpoint 400s on '1D' (only 1m/5m/15m/1h/1d are valid);

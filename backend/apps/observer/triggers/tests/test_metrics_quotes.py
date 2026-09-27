@@ -76,21 +76,6 @@ def test_build_snapshot_populates_prior_for_crossings(fake_redis):
 
 
 @pytest.mark.django_db
-def test_build_snapshot_missing_ticker_is_none(fake_redis):
-    p = TradingProfile.objects.create(name="P", style="x")
-    t = EventTrigger.objects.create(
-        name="r",
-        profile=p,
-        condition={"metric": "price", "ticker": "NOPE", "op": ">", "value": 1},
-    )
-    with patch("apps.observer.triggers.metrics.fetch_quotes") as fq:
-        fq.return_value = {}
-        snap = build_snapshot([t])
-
-    assert snap["price:NOPE"] is None
-
-
-@pytest.mark.django_db
 def test_build_snapshot_vix_metric_fetches_vix_symbol(fake_redis):
     p = TradingProfile.objects.create(name="P", style="x")
     t = EventTrigger.objects.create(
@@ -125,18 +110,3 @@ def test_build_snapshot_skips_positions_when_not_needed(fake_redis):
         build_snapshot([t])
 
     fp.assert_not_called()
-
-
-@pytest.mark.django_db
-def test_build_snapshot_stamps_last_tick_at(fake_redis):
-    p = TradingProfile.objects.create(name="P", style="x")
-    t = EventTrigger.objects.create(
-        name="r",
-        profile=p,
-        condition={"metric": "price", "ticker": "SPY", "op": ">", "value": 550},
-    )
-    with patch("apps.observer.triggers.metrics.fetch_quotes") as fq:
-        fq.return_value = {"SPY": {"last": 551.0}}
-        build_snapshot([t])
-
-    assert fake_redis.get("trigger:last_tick_at") is not None

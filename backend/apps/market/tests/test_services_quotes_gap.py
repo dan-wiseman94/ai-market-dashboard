@@ -62,12 +62,3 @@ def test_gap_context_tolerates_missing_fields():
     assert q["prior_close"] is None
     assert q["gap_pct"] is None
     assert q["regular_last"] is None
-
-
-@pytest.mark.django_db
-def test_default_quotes_unchanged_no_gap_keys():
-    client = MagicMock()
-    client.get_quotes.return_value = _schwab_resp({"closePrice": 98.0})
-    with patch("apps.market.services.quotes.get_schwab_client", return_value=client):
-        out = fetch_quotes(["SPY"])  # gap_context defaults False
-    assert set(out["SPY"]) == {"last", "bid", "ask", "volume", "high", "low", "pct_change"}

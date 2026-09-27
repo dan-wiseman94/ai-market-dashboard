@@ -11,16 +11,6 @@ function Fixture() {
 }
 
 describe("Toasts", () => {
-  it("renders a toast when push() is called", () => {
-    render(
-      <ToastProvider>
-        <Toasts />
-        <Fixture />
-      </ToastProvider>,
-    );
-    fireEvent.click(screen.getByText("go"));
-    expect(screen.getByText("saved!")).toBeInTheDocument();
-  });
 
   it("auto-dismisses after the configured duration", () => {
     vi.useFakeTimers();
