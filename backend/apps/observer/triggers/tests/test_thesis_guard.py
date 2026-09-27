@@ -18,8 +18,12 @@ def test_build_condition_bullish():
         invalidation_price=150,
     )
     cond = build_guard_condition(th)
-    ops = {leaf["op"] for leaf in cond["any"]}
-    assert ops == {"crosses_above", "crosses_below"}
+    assert cond is not None
+    # Bullish: the target fires on an upside cross, the invalidation on a downside cross.
+    assert {(leaf["op"], leaf["value"]) for leaf in cond["any"]} == {
+        ("crosses_above", 200.0),
+        ("crosses_below", 150.0),
+    }
 
 
 @pytest.mark.django_db

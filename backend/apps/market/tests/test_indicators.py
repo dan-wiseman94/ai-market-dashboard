@@ -25,10 +25,13 @@ def test_rsi_all_losses_is_0() -> None:
 
 
 def test_atr_uses_true_range() -> None:
+    # Gap bars, so true range differs from high-low: a gap up (|high - prev close| = 2
+    # beats the 1.5 range) then a gap down (|low - prev close| = 2 beats the 1.0 range).
+    # A plain high-low average would give 1.25.
     bars = [
         {"high": 10, "low": 8, "close": 9},
-        {"high": 11, "low": 9, "close": 10},
-        {"high": 12, "low": 10, "close": 11},
+        {"high": 11, "low": 9.5, "close": 10},
+        {"high": 9, "low": 8, "close": 8.5},
     ]
     assert compute("ATR", bars, period=2) == pytest.approx(2.0)
 

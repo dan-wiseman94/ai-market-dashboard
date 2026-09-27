@@ -7,7 +7,7 @@ pytestmark = pytest.mark.django_db
 
 
 @override_settings(ANOMALY_SWEEP_ENABLED=False)
-def test_sweep_disabled_by_default(monkeypatch):
+def test_sweep_is_a_noop_when_the_switch_is_off(monkeypatch):
     calls = []
     monkeypatch.setattr(tasks, "run_sweep", lambda **k: calls.append(1))
     assert tasks.sweep.run() is None
