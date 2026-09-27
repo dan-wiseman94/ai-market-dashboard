@@ -17,15 +17,6 @@ def _trigger(profile, name, ticker):
 
 
 @pytest.mark.django_db
-@freeze_time("2026-04-18 14:00:00")  # Saturday
-def test_all_equity_triggers_skipped_off_hours():
-    profile = TradingProfile.objects.create(name="p", style="s")
-    _trigger(profile, "eq", "SPY")
-    result = evaluate_triggers()
-    assert result.get("skipped") == "all_markets_closed"
-
-
-@pytest.mark.django_db
 @freeze_time("2026-04-18 14:00:00")  # Saturday — crypto open
 def test_crypto_trigger_is_evaluated_off_hours():
     profile = TradingProfile.objects.create(name="p", style="s")

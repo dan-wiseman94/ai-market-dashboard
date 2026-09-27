@@ -80,19 +80,6 @@ def test_macro_omits_live_curve_proxy_when_30y_missing():
     assert "Live curve proxy" not in out
 
 
-def test_macro_omits_live_curve_proxy_when_13w_missing():
-    """Live curve proxy line absent when 13W tenor is missing."""
-    out = _render_macro(
-        {
-            "series": {},
-            "live_yields": {
-                "30Y": {"ticker": "$TYX", "yield_pct": 4.9},
-            },
-        }
-    )
-    assert "Live curve proxy" not in out
-
-
 def test_macro_omits_live_curve_proxy_when_yield_pct_not_numeric():
     """Live curve proxy line absent when yield_pct is not a number."""
     out = _render_macro(

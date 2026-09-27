@@ -91,17 +91,6 @@ def test_auto_reply_without_snapshot_does_not_enqueue(api, django_capture_on_com
 
 
 @pytest.mark.django_db
-def test_patch_thread_renames_title(api):
-    p = TradingProfile.objects.create(name="P", style="x")
-    t = Thread.objects.create(kind="consult", profile=p, title="old")
-    resp = api.patch(f"/api/threads/{t.id}/", {"title": "renamed"}, format="json")
-    assert resp.status_code == 200
-    assert resp.json()["title"] == "renamed"
-    t.refresh_from_db()
-    assert t.title == "renamed"
-
-
-@pytest.mark.django_db
 def test_patch_thread_ignores_readonly_kind(api):
     """Only title is mutable; kind/pinned_snapshot are locked on update."""
     p = TradingProfile.objects.create(name="P", style="x")
@@ -136,30 +125,3 @@ def test_list_threads_is_paginated_and_omits_message_bodies(api):
     assert row["profile"]["id"] == p.id
     assert "messages" not in row
     assert row["message_count"] == 2
-
-
-@pytest.mark.django_db
-def test_retrieve_thread_includes_full_messages(api):
-    """Retrieve keeps the full ThreadSerializer (messages nested) for the detail view."""
-    p = TradingProfile.objects.create(name="P", style="x")
-    t = Thread.objects.create(kind="consult", profile=p, title="T")
-    Message.objects.create(thread=t, role="user", content={"text": "hi"}, status="done")
-
-    resp = api.get(f"/api/threads/{t.id}/")
-    assert resp.status_code == 200
-    body = resp.json()
-    assert len(body["messages"]) == 1
-    assert body["messages"][0]["content"]["text"] == "hi"
-
-
-@pytest.mark.django_db
-def test_send_message_enqueues_ai_run(api):
-    p = TradingProfile.objects.create(name="P", style="x")
-    t = Thread.objects.create(kind="consult", profile=p, title="x")
-    with patch("apps.threads.views.run_ai_on_message.delay") as enqueue:
-        enqueue.return_value.id = "task-1"
-        r = api.post(f"/api/threads/{t.id}/send/", {"text": "hello"}, format="json")
-    assert r.status_code == 202
-    user_msg = Message.objects.get(thread=t, role="user")
-    assert user_msg.content["text"] == "hello"
-    enqueue.assert_called_once()

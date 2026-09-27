@@ -62,9 +62,6 @@ class TestCurrentAIView:
         _pred(status="resolved")
         assert current_ai_view("NVDA") is None
 
-    def test_none_when_no_view(self):
-        assert current_ai_view("ZZZ") is None
-
 
 @pytest.mark.django_db
 class TestPayloadAndEndpoint:

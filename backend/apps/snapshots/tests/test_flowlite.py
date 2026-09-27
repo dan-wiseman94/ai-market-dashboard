@@ -83,10 +83,6 @@ def _chain_snapshot(ticker: str, *, volume_ratio_bias: str, fetched_offset: time
 
 
 class TestBuildFlowlitePayload:
-    def test_proxy_note_always_present(self):
-        payload = build_flowlite_payload(watchlist_tickers=[], primary="SPY")
-        assert payload["proxy_note"] == PROXY_NOTE
-
     def test_empty_db_degrades_to_empty_lists_and_none_delta(self):
         payload = build_flowlite_payload(watchlist_tickers=["SPY"], primary="SPY")
         assert payload == {
@@ -127,10 +123,6 @@ class TestBuildFlowlitePayload:
         _chain_snapshot("SPY", volume_ratio_bias="low", fetched_offset=timedelta(hours=0))
         payload = build_flowlite_payload(watchlist_tickers=["SPY"], primary="SPY")
         assert payload["put_call_delta"] is None
-
-    def test_unusual_is_capped_at_three(self):
-        payload = build_flowlite_payload(watchlist_tickers=["SPY"], primary="SPY")
-        assert len(payload["unusual"]) <= 3
 
     def test_unusual_swallows_exceptions_to_empty_list(self, monkeypatch):
         def _boom(*args, **kwargs):

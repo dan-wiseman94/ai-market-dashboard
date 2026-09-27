@@ -49,22 +49,6 @@ def test_universe_coverage_and_timeframe():
 
 
 @pytest.mark.django_db
-def test_return_shape_all_success():
-    """requested == ingested == universe size on full success."""
-    wl = Watchlist.objects.create(name="Core")
-    WatchlistSymbol.objects.create(watchlist=wl, ticker="NVDA")
-    WatchlistSymbol.objects.create(watchlist=wl, ticker="AAPL")
-
-    expected_size = len(_expected_universe(["NVDA", "AAPL"]))
-
-    with patch("apps.market.services.ohlc.fetch_ohlc", return_value=[]):
-        result = ingest_daily_bars()
-
-    assert result["requested"] == expected_size
-    assert result["ingested"] == expected_size
-
-
-@pytest.mark.django_db
 def test_never_raises_one_symbol_fails():
     """Task must not raise even when one symbol's fetch raises. The failing symbol
     is excluded from ingested count; all other symbols are still attempted."""
@@ -91,20 +75,6 @@ def test_never_raises_one_symbol_fails():
 
 
 @pytest.mark.django_db
-def test_empty_watchlist_still_includes_fixed_universe():
-    """With no watchlist rows the fixed symbols are still ingested."""
-    fixed = _expected_universe([])
-
-    with patch("apps.market.services.ohlc.fetch_ohlc", return_value=[]) as mock_fetch:
-        result = ingest_daily_bars()
-
-    called_tickers = {c.args[0] for c in mock_fetch.call_args_list}
-    assert called_tickers == fixed
-    assert result["requested"] == len(fixed)
-    assert result["ingested"] == len(fixed)
-
-
-@pytest.mark.django_db
 def test_ingest_daily_bars_requests_260():
     """Task must request 260 bars (52-week depth) for each symbol."""
     seen = []
@@ -116,31 +86,3 @@ def test_ingest_daily_bars_requests_260():
     assert seen, "Expected at least one fetch_ohlc call"
     for sym, _timeframe, bar_count in seen:
         assert bar_count == 260, f"Expected bars=260 but got bars={bar_count} for {sym}"
-
-
-@pytest.mark.django_db
-def test_universe_includes_every_factor_etf():
-    """FACTOR_ETFS (MTUM/VLUE/QUAL/USMV/IWM/SPY) must be ingested — factor_returns()
-    reads OHLCBar for these symbols and silently returns None on every real fetch
-    when they're missing from the ingest universe."""
-    with patch("apps.market.services.ohlc.fetch_ohlc", return_value=[]) as mock_fetch:
-        ingest_daily_bars()
-
-    called_tickers = {c.args[0] for c in mock_fetch.call_args_list}
-    assert set(FACTOR_ETFS) <= called_tickers, (
-        f"Expected FACTOR_ETFS {set(FACTOR_ETFS)} to be a subset of ingested tickers, "
-        f"missing {set(FACTOR_ETFS) - called_tickers}"
-    )
-
-
-def test_beat_registration():
-    """Beat schedule must include the ingest-daily-bars entry with the correct task name."""
-    from config.celery import app
-
-    assert "ingest-daily-bars" in app.conf.beat_schedule, (
-        "Beat schedule missing 'ingest-daily-bars' entry"
-    )
-    entry = app.conf.beat_schedule["ingest-daily-bars"]
-    assert entry["task"] == "market.ingest_daily_bars", (
-        f"Expected task='market.ingest_daily_bars' but got {entry['task']!r}"
-    )

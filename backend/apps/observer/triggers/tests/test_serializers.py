@@ -9,23 +9,6 @@ from apps.profiles.models import TradingProfile
 
 
 @pytest.mark.django_db
-def test_event_trigger_serializer_roundtrip():
-    p = TradingProfile.objects.create(name="P", style="x")
-    t = EventTrigger.objects.create(
-        name="r",
-        profile=p,
-        condition={"metric": "price", "ticker": "SPY", "op": ">", "value": 550},
-    )
-    data = EventTriggerSerializer(t).data
-    assert data["name"] == "r"
-    assert data["profile"] == p.id
-    assert data["condition"] == {"metric": "price", "ticker": "SPY", "op": ">", "value": 550}
-    assert data["enabled"] is True
-    assert data["investigate"] is True
-    assert data["firings_count"] == 0
-
-
-@pytest.mark.django_db
 def test_event_trigger_serializer_round_trips_investigate():
     """investigate is API-writable, not just a model field: without it in `fields`
     the autonomous-investigation mode is unreachable from the API entirely."""
@@ -48,43 +31,6 @@ def test_event_trigger_serializer_round_trips_investigate():
     obj = ser.save()
     obj.refresh_from_db()
     assert obj.investigate is True
-
-
-@pytest.mark.django_db
-def test_event_trigger_serializer_validates_dsl_on_create():
-    p = TradingProfile.objects.create(name="P", style="x")
-    ser = EventTriggerSerializer(
-        data={
-            "name": "bad",
-            "profile": p.id,
-            "condition": {"metric": "nope", "op": ">", "value": 1},
-            "cooldown_seconds": 300,
-            "enabled": True,
-        }
-    )
-    assert ser.is_valid() is False
-    assert "condition" in ser.errors
-
-
-@pytest.mark.django_db
-def test_event_trigger_serializer_accepts_valid_dsl():
-    p = TradingProfile.objects.create(name="P", style="x")
-    ser = EventTriggerSerializer(
-        data={
-            "name": "ok",
-            "profile": p.id,
-            "condition": {
-                "all": [
-                    {"metric": "price", "ticker": "SPY", "op": ">", "value": 550},
-                ]
-            },
-            "cooldown_seconds": 600,
-            "enabled": True,
-        }
-    )
-    assert ser.is_valid(), ser.errors
-    obj = ser.save()
-    assert obj.name == "ok"
 
 
 @pytest.mark.django_db

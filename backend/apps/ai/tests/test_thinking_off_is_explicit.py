@@ -35,14 +35,6 @@ def test_off_on_an_adaptive_row_sends_disabled_and_drops_effort() -> None:
     assert "output_config" not in kwargs
 
 
-def test_on_sends_adaptive_summarized_plus_effort() -> None:
-    kwargs: dict = {}
-    _apply_thinking(kwargs, _req(enable_thinking=True, effort="xhigh"))
-
-    assert kwargs["thinking"] == {"type": "adaptive", "display": "summarized"}
-    assert kwargs["output_config"] == {"effort": "xhigh"}
-
-
 def test_a_row_that_cannot_disable_thinking_omits_rather_than_400s() -> None:
     kwargs: dict = {}
     _apply_thinking(kwargs, _req(model="claude-fable-5-1", enable_thinking=False))

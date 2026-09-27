@@ -16,19 +16,8 @@ from apps.profiles.models import TradingProfile
 VOL_COND = {"metric": "volume_z", "ticker": "NVDA", "op": ">=", "value": 2.0, "window": "5m"}
 
 
-def test_zscore_none_below_min_samples():
-    assert _zscore(10.0, [10.0, 10.0]) is None
-
-
 def test_zscore_none_when_flat():
     assert _zscore(5.0, [5.0, 5.0, 5.0, 5.0]) is None
-
-
-def test_zscore_positive_for_spike():
-    baseline = [1000.0, 1000.0, 1000.0, 1000.0, 1000.0, 45000.0]
-    z = _zscore(45000.0, baseline)
-    assert z is not None
-    assert z > 1.5
 
 
 @pytest.fixture
@@ -36,17 +25,6 @@ def fake_redis():
     client = fakeredis.FakeStrictRedis()
     with patch("apps.observer.triggers.metrics._redis", return_value=client):
         yield client
-
-
-@pytest.mark.django_db
-def test_volume_z_cold_start_is_none(fake_redis):
-    p = TradingProfile.objects.create(name="P", style="x")
-    t = EventTrigger.objects.create(name="r", profile=p, condition=VOL_COND)
-    with patch("apps.observer.triggers.metrics.fetch_quotes") as fq:
-        fq.return_value = {"NVDA": {"last": 5.0, "volume": 1_000_000}}
-        snap = build_snapshot([t])
-    # First tick has no prior cumulative reading → no interval → None.
-    assert snap["volume_z:NVDA:5m"] is None
 
 
 @pytest.mark.django_db

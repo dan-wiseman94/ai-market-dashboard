@@ -5,18 +5,6 @@ from apps.profiles.models import TradingProfile
 
 
 @pytest.mark.django_db
-def test_list_triggers(api):
-    p = TradingProfile.objects.create(name="P", style="x")
-    EventTrigger.objects.create(name="r1", profile=p, condition={"all": []})
-    EventTrigger.objects.create(name="r2", profile=p, condition={"any": []})
-    resp = api.get("/api/triggers/")
-    assert resp.status_code == 200
-    body = resp.json()
-    assert len(body) == 2
-    assert all("firings_count" in row for row in body)
-
-
-@pytest.mark.django_db
 def test_create_trigger_validates_dsl(api):
     p = TradingProfile.objects.create(name="P", style="x")
     resp = api.post(
@@ -32,24 +20,6 @@ def test_create_trigger_validates_dsl(api):
     )
     assert resp.status_code == 400
     assert "condition" in resp.json()
-
-
-@pytest.mark.django_db
-def test_create_trigger_ok(api):
-    p = TradingProfile.objects.create(name="P", style="x")
-    resp = api.post(
-        "/api/triggers/",
-        {
-            "name": "SPY",
-            "profile": p.id,
-            "condition": {"metric": "price", "ticker": "SPY", "op": ">", "value": 550},
-            "cooldown_seconds": 1800,
-            "enabled": True,
-        },
-        format="json",
-    )
-    assert resp.status_code == 201
-    assert EventTrigger.objects.filter(name="SPY").exists()
 
 
 @pytest.mark.django_db

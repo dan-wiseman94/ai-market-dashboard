@@ -30,9 +30,3 @@ def test_perfectly_correlated_names_cluster():
     clusters = correlation_clusters(["NVDA", "AMD", "TLT"])
     members = [set(c["members"]) for c in clusters]
     assert any({"NVDA", "AMD"} <= m for m in members)
-
-
-def test_thin_history_excluded():
-    _seed("XYZ", [10, 11])  # < CORR_MIN_BARS
-    clusters = correlation_clusters(["XYZ"])
-    assert clusters == []

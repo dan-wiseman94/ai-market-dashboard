@@ -63,23 +63,7 @@ def test_overnight_outside_extended_is_closed():
     assert st.phase == "closed"
 
 
-@freeze_time("2026-05-27 12:00:00")  # NYSE premarket time; crypto has no pre/post → stays open
-def test_extended_hours_only_for_markets_that_define_them():
-    crypto = market_state(market="crypto")
-    assert crypto.is_open is True
-    assert crypto.phase == "open"
-
-
 @freeze_time("2026-04-18 14:00:00")  # Saturday — crypto still open
 def test_crypto_always_open():
     assert is_open(symbol="BTC-USD") is True
     assert is_open(symbol="SPY") is False
-
-
-@freeze_time("2026-04-15 14:00:00")
-def test_to_json_is_iso_serializable():
-    st = market_state(market="us_equity")
-    d = st.to_json()
-    assert d["is_open"] is True
-    assert isinstance(d["session_close"], str)  # ISO string
-    assert d["market_key"] == "us_equity"

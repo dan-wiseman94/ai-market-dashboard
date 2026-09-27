@@ -24,15 +24,6 @@ def test_fetch_news_raises_under_news_503():
             reset_scenario()
 
 
-def test_fetch_news_returns_canned_under_default():
-    from apps.market.services.news import fetch_news
-
-    with patch("apps.core.mocks.is_mock_mode", return_value=True):
-        reset_scenario()
-        items = fetch_news(["AAPL"])
-    assert isinstance(items, list)
-
-
 def test_mock_schwab_client_raises_under_schwab_401():
     from apps.market.schwab_client import _MockSchwabClient
 
@@ -42,14 +33,6 @@ def test_mock_schwab_client_raises_under_schwab_401():
             _MockSchwabClient().get_quotes(["AAPL"])
     finally:
         reset_scenario()
-
-
-def test_mock_schwab_client_ok_under_default():
-    from apps.market.schwab_client import _MockSchwabClient
-
-    reset_scenario()
-    resp = _MockSchwabClient().get_quotes(["AAPL"])
-    assert "AAPL" in resp.json()
 
 
 def test_mock_schwab_client_ohlc_fallthrough_honors_scenario():

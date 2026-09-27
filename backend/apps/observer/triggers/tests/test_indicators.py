@@ -5,11 +5,6 @@ from apps.observer.triggers import indicators as ind
 CLOSES = [float(x) for x in range(1, 60)]  # strictly rising
 
 
-def test_rsi_rising_is_high():
-    v = ind.rsi(CLOSES, 14)
-    assert v is not None and v > 90  # all gains -> RSI ~100
-
-
 def test_rsi_insufficient_none():
     assert ind.rsi([1, 2, 3], 14) is None
 

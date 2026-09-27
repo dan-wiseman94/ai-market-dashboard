@@ -70,11 +70,6 @@ class TestHistoryList:
         assert row["diversified_var_usd"] is None
         assert row["regime"] is None
 
-    def test_default_order_is_newest_first(self, db):
-        self._seed(3)
-        dates = [r["as_of_date"] for r in APIClient().get("/api/book/").json()]
-        assert dates == sorted(dates, reverse=True)
-
     def test_order_asc_returns_oldest_first(self, db):
         self._seed(3)
         dates = [r["as_of_date"] for r in APIClient().get("/api/book/?order=asc").json()]

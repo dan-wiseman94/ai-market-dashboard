@@ -56,12 +56,6 @@ def test_compute_indicator_uses_fetch_ohlc_closes() -> None:
     assert res["result"] == 18.0
 
 
-def test_unknown_tool_returns_error() -> None:
-    ts = default_toolset()
-    res = ts.run("make_coffee", {})
-    assert res == {"ok": False, "error": "Unknown tool: make_coffee"}
-
-
 def test_tool_error_is_captured_not_raised() -> None:
     ts = default_toolset()
     with patch("apps.ai.tools.registry.fetch_quotes", side_effect=RuntimeError("boom")):

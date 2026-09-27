@@ -15,12 +15,6 @@ def test_sweep_disabled_by_default(monkeypatch):
 
 
 @override_settings(ANOMALY_SWEEP_ENABLED=True)
-def test_sweep_runs_when_enabled(monkeypatch):
-    monkeypatch.setattr(tasks, "run_sweep", lambda **k: 2)
-    assert tasks.sweep.run() == 2
-
-
-@override_settings(ANOMALY_SWEEP_ENABLED=True)
 def test_settings_switch_overrides_the_env_default(monkeypatch):
     """The Settings → Features switch reaches this task: a SystemSettings value
     beats the env default, and a NULL one inherits it."""

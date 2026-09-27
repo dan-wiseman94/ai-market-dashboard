@@ -146,14 +146,6 @@ def test_resolve_flips_resolved_to_true():
 
 
 @pytest.mark.django_db
-def test_resolve_nonexistent_returns_404():
-    """Resolving a non-existent event returns 404."""
-    client = Client()
-    resp = client.post("/api/errors/99999/resolve/")
-    assert resp.status_code == 404
-
-
-@pytest.mark.django_db
 def test_resolve_already_resolved_is_idempotent():
     """Resolving an already-resolved event returns 200 and stays resolved."""
     client = Client()

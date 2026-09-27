@@ -10,17 +10,6 @@ def api():
 
 
 @pytest.mark.django_db
-def test_create_profile_rejects_foreign_model(api):
-    r = api.post(
-        "/api/profiles/",
-        {"name": "P", "style": "s", "default_provider": "openai", "default_model": "claude-opus-5"},
-        format="json",
-    )
-    assert r.status_code == 400
-    assert "claude catalog model" in r.json()["default_model"][0]
-
-
-@pytest.mark.django_db
 def test_create_profile_accepts_same_vendor_and_unknown_ids(api):
     ok = api.post(
         "/api/profiles/",

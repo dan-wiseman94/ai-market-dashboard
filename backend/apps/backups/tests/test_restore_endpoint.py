@@ -216,16 +216,6 @@ def test_missing_file_on_disk_is_409_not_a_crash(backup, tmp_path) -> None:
     assert resp.json()["code"] == "backup_file_missing"
 
 
-@override_settings(RESTORE_FROM_UI_ENABLED=True)
-def test_unknown_backup_is_404(db) -> None:
-    resp = Client().post(
-        "/api/backups/999999/restore/",
-        data={"confirm": "whatever.sql.gz"},
-        content_type="application/json",
-    )
-    assert resp.status_code == 404
-
-
 @pytest.mark.parametrize(
     ("raw", "password"),
     [

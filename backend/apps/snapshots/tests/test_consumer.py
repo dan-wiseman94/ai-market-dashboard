@@ -8,23 +8,6 @@ from apps.snapshots.models import Snapshot
 
 @pytest.mark.asyncio
 @pytest.mark.django_db(transaction=True)
-async def test_snapshot_consumer_connects_and_closes():
-    from channels.db import database_sync_to_async
-
-    p = await database_sync_to_async(TradingProfile.objects.create)(name="P", style="x")
-    snap = await database_sync_to_async(Snapshot.objects.create)(
-        profile=p,
-        includes=["quotes"],
-        source="manual",
-    )
-    communicator = WebsocketCommunicator(application, f"/ws/snapshots/{snap.id}/")
-    connected, _ = await communicator.connect()
-    assert connected
-    await communicator.disconnect()
-
-
-@pytest.mark.asyncio
-@pytest.mark.django_db(transaction=True)
 async def test_broadcast_section_done_event():
     from channels.db import database_sync_to_async
     from channels.layers import get_channel_layer

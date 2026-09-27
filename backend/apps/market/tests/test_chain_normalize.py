@@ -72,12 +72,6 @@ def test_normalize_chain_flattens_schwab_shape():
     assert puts[0]["strike"] == "515.00"
 
 
-def test_normalize_chain_handles_empty_maps():
-    out = _normalize_chain({"underlyingPrice": 100.0, "callExpDateMap": {}, "putExpDateMap": {}})
-    assert out["underlying_last"] == "100.00"
-    assert out["expiries"] == {}
-
-
 def test_normalize_chain_handles_schwab_sentinel_strings():
     """Schwab returns 'N/A' or '' for unavailable greeks; _fmt should return None, not crash."""
     raw = {

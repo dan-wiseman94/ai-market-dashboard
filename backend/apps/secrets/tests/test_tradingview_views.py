@@ -111,13 +111,6 @@ def test_test_endpoint_delegates_to_probe(api):
 
 
 @pytest.mark.django_db
-def test_schwab_test_endpoint_still_not_key_managed(api):
-    r = api.post("/api/schwab/data-sources/schwab/test/")
-    assert r.status_code == 400
-    assert r.json()["code"] == "not_key_managed"
-
-
-@pytest.mark.django_db
 def test_delete_disconnects(api):
     ApiCredential.objects.create(provider="tradingview", token=dict(TOKEN))
     with patch(

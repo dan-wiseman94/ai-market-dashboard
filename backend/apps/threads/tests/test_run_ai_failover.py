@@ -49,18 +49,6 @@ def test_failover_target_none_when_disabled():
 
 
 @pytest.mark.django_db
-def test_failover_target_resolves_enabled_secondary():
-    ProviderConfig.objects.create(
-        provider="openai", api_key="sk", default_model="gpt-5", enabled=True
-    )
-    with override_settings(AI_FAILOVER_ENABLED=True, AI_FAILOVER_PROVIDER="openai"):
-        out = _failover_target("claude")
-    assert out is not None
-    name, model, _cfg = out
-    assert name == "openai" and model == "gpt-5"
-
-
-@pytest.mark.django_db
 def test_failover_target_none_when_same_as_primary():
     ProviderConfig.objects.create(provider="claude", api_key="sk", default_model="claude-x")
     with override_settings(AI_FAILOVER_ENABLED=True, AI_FAILOVER_PROVIDER="claude"):

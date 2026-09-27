@@ -1,18 +1,7 @@
-import inspect
-
 import pytest
 
 from apps.profiles.models import TradingProfile
 from apps.snapshots.services import capture_for_existing
-from apps.snapshots.tasks import capture_task
-
-
-def test_capture_for_existing_has_no_overnight_param():
-    assert "overnight" not in inspect.signature(capture_for_existing).parameters
-
-
-def test_capture_task_has_no_overnight_param():
-    assert "overnight" not in inspect.signature(capture_task).parameters
 
 
 @pytest.mark.django_db

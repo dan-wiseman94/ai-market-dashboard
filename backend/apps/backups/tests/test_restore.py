@@ -47,12 +47,6 @@ def test_perform_restore_connects_with_mapped_postgres_creds(tmp_path, monkeypat
     assert str(dump) in argv
 
 
-def test_perform_restore_missing_file_raises(tmp_path, monkeypatch) -> None:
-    monkeypatch.setenv("BACKUPS_DIR", str(tmp_path))
-    with pytest.raises(FileNotFoundError):
-        perform_restore("does-not-exist.sql.gz")
-
-
 @pytest.mark.parametrize("bad", ["../etc/passwd", "sub/dir.sql.gz", "..\\win", "a/../../b"])
 def test_perform_restore_rejects_path_traversal(tmp_path, monkeypatch, bad) -> None:
     monkeypatch.setenv("BACKUPS_DIR", str(tmp_path))

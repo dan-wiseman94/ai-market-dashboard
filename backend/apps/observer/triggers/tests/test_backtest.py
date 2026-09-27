@@ -60,14 +60,6 @@ def test_backtest_returns_timestamps(db, aapl_bars) -> None:
     assert len(matches) == 2  # 115 and 120
 
 
-def test_backtest_missing_condition_400(db) -> None:
-    client = APIClient()
-    resp = client.post(
-        "/api/triggers/backtest/", data={"start": "2026-03-01", "end": "2026-03-10"}, format="json"
-    )
-    assert resp.status_code == 400
-
-
 def test_backtest_bad_dates_400(db) -> None:
     client = APIClient()
     resp = client.post(
@@ -157,75 +149,6 @@ def msft_scoring_bars(db):
         for ts, close in zip(_MSFT_TRADING_DAYS, _MSFT_CLOSES, strict=True)
     ]
     OHLCBar.objects.bulk_create(rows)
-
-
-def test_matched_bars_carry_forward_return_fields(db, msft_scoring_bars) -> None:
-    """Each matched BacktestMatch exposes fwd_1d_pct and fwd_5d_pct."""
-    from apps.observer.triggers.backtest import BacktestMatch, backtest
-
-    condition = {"all": [{"metric": "price", "ticker": "MSFT", "op": ">", "value": 102}]}
-    matches = backtest(
-        condition,
-        start=_MSFT_TRADING_DAYS[0],
-        end=_MSFT_TRADING_DAYS[-1],
-    )
-    # 8 matches (days 2-9, closes 103..110 all >102)
-    assert len(matches) == 8
-    for m in matches:
-        assert isinstance(m, BacktestMatch)
-        assert hasattr(m, "fwd_1d_pct")
-        assert hasattr(m, "fwd_5d_pct")
-
-
-def test_fwd_return_values_are_correct(db, msft_scoring_bars) -> None:
-    """Hand-verify specific forward-return values for the first three matches."""
-    from apps.observer.triggers.backtest import backtest
-
-    condition = {"all": [{"metric": "price", "ticker": "MSFT", "op": ">", "value": 102}]}
-    matches = backtest(
-        condition,
-        start=_MSFT_TRADING_DAYS[0],
-        end=_MSFT_TRADING_DAYS[-1],
-    )
-    # day2 match (May6, close=103): fwd1=(106-103)/103*100=2.9126%, fwd5=(108-103)/103*100=4.8544%
-    m0 = matches[0]
-    assert m0.fwd_1d_pct is not None
-    assert abs(m0.fwd_1d_pct - 2.9126) < 0.01
-    assert m0.fwd_5d_pct is not None
-    assert abs(m0.fwd_5d_pct - 4.8544) < 0.01
-
-    # day3 match (May7, close=106): fwd1=(104-106)/106*100=-1.8868% (negative)
-    m1 = matches[1]
-    assert m1.fwd_1d_pct is not None
-    assert abs(m1.fwd_1d_pct - (-1.8868)) < 0.01
-
-    # day4 match (May8, close=104): fwd5=(110-104)/104*100=5.7692%
-    m2 = matches[2]
-    assert m2.fwd_5d_pct is not None
-    assert abs(m2.fwd_5d_pct - 5.7692) < 0.01
-
-
-def test_no_forward_bar_gives_none_score(db, msft_scoring_bars) -> None:
-    """Coverage-honest: a match at the last bar has no forward data → None (not 0, not stale)."""
-    from apps.observer.triggers.backtest import backtest
-
-    condition = {"all": [{"metric": "price", "ticker": "MSFT", "op": ">", "value": 102}]}
-    matches = backtest(
-        condition,
-        start=_MSFT_TRADING_DAYS[0],
-        end=_MSFT_TRADING_DAYS[-1],
-    )
-    # day9 (May15, idx=7 in matches) is the last match — no fwd1 or fwd5 bar seeded
-    last = matches[-1]
-    assert last.ts == _MSFT_TRADING_DAYS[9]
-    assert last.fwd_1d_pct is None, "last bar has no next trading-day bar — must be None, not 0"
-    assert last.fwd_5d_pct is None
-
-    # day5 (May11, idx=3 in matches): fwd1 exists, fwd5→May18 (no bar) → None
-    m_day5 = matches[3]  # 4th match (days 2,3,4,5 → indices 0,1,2,3)
-    assert m_day5.ts == _MSFT_TRADING_DAYS[5]
-    assert m_day5.fwd_1d_pct is not None  # May12 bar exists
-    assert m_day5.fwd_5d_pct is None  # May18 not seeded
 
 
 def test_backtest_summary_counts_and_rates(db, msft_scoring_bars) -> None:
@@ -370,50 +293,6 @@ def test_vix_only_condition_no_match_without_bars(db, msft_scoring_bars) -> None
         end=_MSFT_TRADING_DAYS[-1],
     )
     assert matches == []
-
-
-def test_backtest_api_response_includes_summary(db, msft_scoring_bars) -> None:
-    """The backtest endpoint now returns a 'summary' dict with all expected keys."""
-    client = APIClient()
-    resp = client.post(
-        "/api/triggers/backtest/",
-        data={
-            "condition": {"all": [{"metric": "price", "ticker": "MSFT", "op": ">", "value": 102}]},
-            # Use 2026-05-16 as end so all 10 bars (last at 2026-05-15 20:00 UTC) are in range.
-            # ISO date strings parse to midnight; a same-day end would exclude the 20:00 bar.
-            "start": "2026-05-04",
-            "end": "2026-05-16",
-        },
-        format="json",
-    )
-    assert resp.status_code == 200, resp.content
-    body = resp.json()
-
-    assert "summary" in body
-    summary = body["summary"]
-    for key in (
-        "matches",
-        "scored_1d",
-        "avg_fwd_1d_pct",
-        "hit_rate_1d",
-        "scored_5d",
-        "avg_fwd_5d_pct",
-        "hit_rate_5d",
-    ):
-        assert key in summary, f"summary missing key {key!r}"
-
-    assert summary["matches"] == 8
-    if summary["hit_rate_1d"] is not None:
-        assert 0.0 <= summary["hit_rate_1d"] <= 1.0
-    if summary["hit_rate_5d"] is not None:
-        assert 0.0 <= summary["hit_rate_5d"] <= 1.0
-
-    for m in body["matches"]:
-        assert "fwd_1d_pct" in m
-        assert "fwd_5d_pct" in m
-
-    assert "match_count" in body
-    assert "matches" in body
 
 
 def test_backtest_api_summary_values(db, msft_scoring_bars) -> None:

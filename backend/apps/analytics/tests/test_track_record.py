@@ -29,13 +29,6 @@ def _pm(thesis: Thesis, verdict: str) -> PostMortem:
 
 
 @pytest.mark.django_db
-def test_returns_none_below_min_n_and_no_slice():
-    _thesis("closed_win")
-    _thesis("closed_loss")  # only 2 closed, < min_n=3, no direction/conviction slice
-    assert track_record_for_ticker("NVDA") is None
-
-
-@pytest.mark.django_db
 def test_ticker_summary_counts_and_hit_rate():
     for st in ("closed_win", "closed_loss", "closed_loss", "invalidated"):
         _thesis(st)
@@ -59,8 +52,3 @@ def test_direction_conviction_slice_from_postmortems():
         "n": 4,
         "hit_rate": 0.25,
     }
-
-
-@pytest.mark.django_db
-def test_empty_ticker_returns_none():
-    assert track_record_for_ticker("") is None

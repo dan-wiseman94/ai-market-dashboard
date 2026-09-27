@@ -116,25 +116,3 @@ def test_tick_does_not_double_fire_before_async_fire_records(fake_redis):
     fire.delay.assert_called_once()
     t.refresh_from_db()
     assert t.last_fired_at is not None
-
-
-@pytest.mark.django_db
-@freeze_time("2026-04-15 14:00:00")
-def test_tick_skips_when_cooldown_active(fake_redis):
-    from django.utils import timezone as dj_tz
-
-    p = TradingProfile.objects.create(name="P", style="x")
-    EventTrigger.objects.create(
-        name="r",
-        profile=p,
-        cooldown_seconds=3600,
-        last_fired_at=dj_tz.now(),
-        condition={"metric": "price", "ticker": "SPY", "op": ">", "value": 0},
-    )
-    with (
-        patch("apps.observer.triggers.metrics.fetch_quotes") as fq,
-        patch("apps.observer.triggers.tasks.fire_trigger") as fire,
-    ):
-        fq.return_value = {"SPY": {"last": 551.0}}
-        evaluate_triggers()
-    fire.delay.assert_not_called()

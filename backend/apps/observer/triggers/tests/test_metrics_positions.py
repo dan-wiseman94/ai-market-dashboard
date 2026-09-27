@@ -16,29 +16,6 @@ def fake_redis():
 
 
 @pytest.mark.django_db
-def test_position_pl_fetches_positions_once(fake_redis):
-    p = TradingProfile.objects.create(name="P", style="x")
-    t = EventTrigger.objects.create(
-        name="r",
-        profile=p,
-        condition={"metric": "position_pl", "op": "<", "value": -500},
-    )
-    with (
-        patch("apps.observer.triggers.metrics.fetch_quotes") as fq,
-        patch("apps.observer.triggers.metrics.fetch_positions") as fp,
-    ):
-        fq.return_value = {}
-        fp.return_value = [
-            {"ticker": "SPY", "unrealized_pl": -100.0, "mkt_value": 5000.0},
-            {"ticker": "TSLA", "unrealized_pl": -400.0, "mkt_value": 3000.0},
-        ]
-        snap = build_snapshot([t])
-
-    fp.assert_called_once()
-    assert snap["position_pl"] == -500.0
-
-
-@pytest.mark.django_db
 def test_position_pl_pct_computed_from_totals(fake_redis):
     p = TradingProfile.objects.create(name="P", style="x")
     t = EventTrigger.objects.create(

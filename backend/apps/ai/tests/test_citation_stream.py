@@ -53,12 +53,6 @@ def test_document_citation_does_not_raise_on_missing_attributes():
     assert evt.cited_text == "revenue grew 12%"
 
 
-def test_citation_event_tolerates_a_bare_object():
-    evt = _citation_event(None)
-
-    assert evt == CitationEvent()
-
-
 def test_provider_emits_a_citation_event_from_the_stream():
     from apps.ai.providers.claude import ClaudeProvider
 

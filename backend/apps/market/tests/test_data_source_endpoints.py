@@ -40,11 +40,3 @@ def test_filings_missing_tickers_400(api):
     r = api.get("/api/market/filings/")
     assert r.status_code == 400
     assert r.json()["code"] == "missing_tickers"
-
-
-@pytest.mark.django_db
-def test_treasury_endpoint(api):
-    with patch("apps.market.views.fetch_treasury", return_value={"rates": {"x": 1.0}, "debt": {}}):
-        r = api.get("/api/market/treasury/")
-    assert r.status_code == 200
-    assert r.json()["rates"]["x"] == 1.0

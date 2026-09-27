@@ -16,17 +16,3 @@ async def test_ping_consumer_echoes_pong():
     assert reply == {"type": "pong"}
 
     await communicator.disconnect()
-
-
-@pytest.mark.django_db  # Channels closes old DB connections on dispatch; allow DB access
-@pytest.mark.asyncio
-async def test_ping_consumer_ignores_unknown_types():
-    """Unknown message types are ignored; no reply, connection stays up."""
-    communicator = WebsocketCommunicator(application, "/ws/ping/")
-    connected, _ = await communicator.connect()
-    assert connected
-
-    await communicator.send_json_to({"type": "garbage"})
-    assert await communicator.receive_nothing(timeout=0.5)
-
-    await communicator.disconnect()

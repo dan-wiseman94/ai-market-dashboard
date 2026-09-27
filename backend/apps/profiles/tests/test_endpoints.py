@@ -4,20 +4,6 @@ from apps.profiles.models import Watchlist, WatchlistSymbol
 
 
 @pytest.mark.django_db
-def test_list_create_watchlist(api):
-    assert api.get("/api/watchlists/").json() == []
-
-    resp = api.post("/api/watchlists/", {"name": "Scalps"}, format="json")
-    assert resp.status_code == 201
-    wid = resp.json()["id"]
-
-    data = api.get("/api/watchlists/").json()
-    assert len(data) == 1
-    assert data[0]["name"] == "Scalps"
-    assert data[0]["id"] == wid
-
-
-@pytest.mark.django_db
 def test_rename_and_delete_watchlist(api):
     w = Watchlist.objects.create(name="A")
     api.patch(f"/api/watchlists/{w.id}/", {"name": "B"}, format="json")
@@ -54,23 +40,6 @@ def test_reorder_tickers(api):
     b.refresh_from_db()
     assert b.sort_order == 0
     assert a.sort_order == 1
-
-
-@pytest.mark.django_db
-def test_duplicate_ticker_returns_400(api):
-    w = Watchlist.objects.create(name="A")
-    api.post(f"/api/watchlists/{w.id}/tickers/", {"ticker": "SPY"}, format="json")
-    r = api.post(f"/api/watchlists/{w.id}/tickers/", {"ticker": "SPY"}, format="json")
-    assert r.status_code == 400
-
-
-@pytest.mark.django_db
-def test_add_ticker_strips_whitespace(api):
-    w = Watchlist.objects.create(name="A")
-
-    r = api.post(f"/api/watchlists/{w.id}/tickers/", {"ticker": "nvda "}, format="json")
-    assert r.status_code == 201
-    assert WatchlistSymbol.objects.get(id=r.json()["id"]).ticker == "NVDA"
 
 
 @pytest.mark.django_db

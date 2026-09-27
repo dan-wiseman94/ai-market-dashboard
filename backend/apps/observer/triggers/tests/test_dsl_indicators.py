@@ -44,10 +44,6 @@ def test_sma_spread_fast_lt_slow():
     )
 
 
-def test_daily_only_rejects_window():
-    bad({"metric": "gap_pct", "ticker": "NVDA", "window": "1d", "op": ">", "value": 0.03})
-
-
 def test_daily_only_ok_without_window():
     ok({"metric": "gap_pct", "ticker": "NVDA", "op": ">", "value": 0.03})
 

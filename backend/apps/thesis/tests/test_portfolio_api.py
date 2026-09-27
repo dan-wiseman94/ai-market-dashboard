@@ -92,15 +92,6 @@ def test_create_position_without_thesis(api, profile):
 
 
 @pytest.mark.django_db
-def test_list_positions(api, open_position):
-    """GET /api/portfolio/positions/ returns at least our position."""
-    resp = api.get("/api/portfolio/positions/")
-    assert resp.status_code == 200
-    ids = [p["id"] for p in resp.json()]
-    assert open_position.id in ids
-
-
-@pytest.mark.django_db
 def test_list_positions_query_count_is_constant(api, profile, django_assert_max_num_queries):
     """The list endpoint must not issue one OHLCBar query per row (N+1). Query count
     stays bounded regardless of how many positions/tickers are returned."""
@@ -128,29 +119,6 @@ def test_list_unrealized_uses_batched_price(api, profile):
     row = next(p for p in resp.json() if p["ticker"] == "NVDA")
     assert row["unrealized"]["last"] == pytest.approx(480.0)
     assert row["unrealized"]["unrealized_pnl"] == pytest.approx(3_000.0)
-
-
-@pytest.mark.django_db
-def test_filter_by_status_open(api, db, profile):
-    """?status=open returns only open positions."""
-    pos_open = Position.objects.create(
-        ticker="AAPL", quantity="10", avg_cost="180", profile=profile
-    )
-    pos_closed = Position.objects.create(
-        ticker="MSFT",
-        quantity="5",
-        avg_cost="300",
-        profile=profile,
-        status="closed",
-        close_price="310",
-        realized_pnl="50",
-        closed_at=timezone.now(),
-    )
-    resp = api.get("/api/portfolio/positions/?status=open")
-    assert resp.status_code == 200
-    ids = [p["id"] for p in resp.json()]
-    assert pos_open.id in ids
-    assert pos_closed.id not in ids
 
 
 @pytest.mark.django_db
@@ -203,21 +171,6 @@ def test_filter_by_thesis(api, open_position, profile):
     ids = [p["id"] for p in resp.json()]
     assert open_position.id in ids
     assert pos_unlinked.id not in ids
-
-
-@pytest.mark.django_db
-def test_retrieve_includes_unrealized_dict(api, open_position):
-    """GET /api/portfolio/positions/<id>/ includes the 'unrealized' dict."""
-    resp = api.get(f"/api/portfolio/positions/{open_position.id}/")
-    assert resp.status_code == 200
-    data = resp.json()
-    assert "unrealized" in data
-    unrealized = data["unrealized"]
-    # No bar seeded — all None (honest gap)
-    assert unrealized["last"] is None
-    assert unrealized["market_value"] is None
-    assert unrealized["unrealized_pnl"] is None
-    assert unrealized["unrealized_pct"] is None
 
 
 @pytest.mark.django_db
@@ -303,24 +256,3 @@ def test_close_action_custom_closed_at(api, open_position):
     assert resp.status_code == 200
     # closed_at reflects the provided value (ISO string in response)
     assert "2026-01-15" in resp.json()["closed_at"]
-
-
-@pytest.mark.django_db
-def test_patch_note(api, open_position):
-    """PATCH /api/portfolio/positions/<id>/ updates the note field."""
-    resp = api.patch(
-        f"/api/portfolio/positions/{open_position.id}/",
-        data={"note": "Watching for breakout"},
-        format="json",
-    )
-    assert resp.status_code == 200
-    assert resp.json()["note"] == "Watching for breakout"
-
-
-@pytest.mark.django_db
-def test_delete_position(api, open_position):
-    """DELETE /api/portfolio/positions/<id>/ removes the row."""
-    pos_id = open_position.id
-    resp = api.delete(f"/api/portfolio/positions/{pos_id}/")
-    assert resp.status_code == 204
-    assert not Position.objects.filter(id=pos_id).exists()

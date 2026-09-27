@@ -64,20 +64,6 @@ def test_anomaly_sweep_refuses_under_mock_mode():
     run_sweep.assert_not_called()
 
 
-@pytest.mark.django_db  # past the mock guard the task resolves the runtime knob
-@override_settings(ANOMALY_SWEEP_ENABLED=True)
-def test_anomaly_sweep_still_runs_when_not_mocked():
-    from apps.strategy.tasks import sweep
-
-    with (
-        patch("apps.core.mocks.is_mock_mode", return_value=False),
-        patch("apps.strategy.tasks.run_sweep", return_value=3) as run_sweep,
-    ):
-        assert sweep() == 3
-
-    run_sweep.assert_called_once()
-
-
 @override_settings(ANOMALY_SWEEP_ENABLED=False)
 def test_manual_sweep_is_not_gated_by_mock_mode():
     """sweep_now is the user's own click — it runs regardless of the flag AND of

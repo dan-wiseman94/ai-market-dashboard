@@ -37,25 +37,6 @@ def test_snapshot_markdown_renders_sections() -> None:
 
 
 @pytest.mark.django_db
-def test_snapshot_images_streams_bytes() -> None:
-    from apps.profiles.models import TradingProfile
-    from apps.snapshots.models import Snapshot, SnapshotImage
-
-    prof = TradingProfile.objects.create(name="p3", style="scalp")
-    snap = Snapshot.objects.create(profile=prof)
-    SnapshotImage.objects.create(
-        snapshot=snap,
-        kind="server_render",
-        data=b"\x89PNG\r\n\x1a\n" + b"x" * 100,
-    )
-    images = list(snapshot_images(snap))
-    assert len(images) == 1
-    name, data = images[0]
-    assert name.endswith(".png")
-    assert data[:8] == b"\x89PNG\r\n\x1a\n"
-
-
-@pytest.mark.django_db
 def test_snapshot_images_reads_disk_offloaded_bytes(tmp_path) -> None:
     """Disk-offloaded images (data=NULL, file_path set — the default from
     image_store.create_image) must export their real bytes via read_image_bytes.

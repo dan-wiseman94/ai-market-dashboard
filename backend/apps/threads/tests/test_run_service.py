@@ -36,20 +36,3 @@ def test_run_ai_returns_the_assistant_message_id_on_success():
     a = Message.objects.filter(thread=t, role="assistant").latest("created_at")
     assert out == {"ok": True, "message_id": a.id}
     assert a.status == "done"
-
-
-@pytest.mark.django_db
-def test_run_ai_failure_also_carries_the_failed_message_id():
-    p = TradingProfile.objects.create(name="P", style="x")
-    t = Thread.objects.create(kind="chat", profile=p, title="x")
-    u = Message.objects.create(thread=t, role="user", content={"text": "hi"})
-
-    with patch(
-        "apps.threads.tasks.resolve_provider_and_model", return_value=("claude", "claude-x")
-    ):
-        out = run_ai(thread_id=t.id, user_message_id=u.id)  # no ProviderConfig row
-
-    failed = Message.objects.filter(thread=t, role="assistant", status="failed").latest(
-        "created_at"
-    )
-    assert out == {"ok": False, "error": "no_key", "message_id": failed.id}

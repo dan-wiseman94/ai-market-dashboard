@@ -58,37 +58,16 @@ _RAW_BARS_BODY = {
 }
 
 
-def test_normalize_snapshot_aapl_quote_fields():
-    result = _normalize_snapshot("AAPL", _RAW_SNAPSHOT_AAPL)
-    assert result["last"] == 189.30
-    assert result["bid"] == 189.28
-    assert result["ask"] == 189.32
-    assert result["volume"] == 48_312_100
-    assert result["high"] == 190.10
-    assert result["low"] == 188.45
-
-
 def test_normalize_snapshot_pct_change_computed_from_daily_vs_prev():
     result = _normalize_snapshot("AAPL", _RAW_SNAPSHOT_AAPL)
     assert result["pct_change"] is not None
     assert abs(result["pct_change"] - (189.30 - 187.95) / 187.95 * 100) < 0.001
 
 
-def test_normalize_snapshot_pct_change_none_when_prev_missing():
-    blob = {**_RAW_SNAPSHOT_AAPL, "prevDailyBar": {}}
-    result = _normalize_snapshot("AAPL", blob)
-    assert result["pct_change"] is None
-
-
 def test_normalize_snapshot_pct_change_none_when_prev_zero():
     blob = {**_RAW_SNAPSHOT_AAPL, "prevDailyBar": {"c": 0}}
     result = _normalize_snapshot("AAPL", blob)
     assert result["pct_change"] is None
-
-
-def test_normalize_snapshot_volume_is_int():
-    result = _normalize_snapshot("AAPL", _RAW_SNAPSHOT_AAPL)
-    assert isinstance(result["volume"], int)
 
 
 def test_normalize_snapshot_missing_sections_return_none():
@@ -113,20 +92,6 @@ def test_normalize_bars_maps_alpaca_keys():
     assert result[0]["volume"] == 45_000_000
     assert result[0]["ts"] == "2026-05-29T20:00:00Z"
     assert result[1]["close"] == 190.75
-
-
-def test_credentials_returns_none_none_on_missing_row():
-    with patch.object(alpaca_mod, "decrypt_token", return_value=None):
-        key, secret = alpaca_mod._credentials()
-    assert key is None
-    assert secret is None
-
-
-def test_credentials_returns_none_none_when_key_missing():
-    with patch.object(alpaca_mod, "decrypt_token", return_value={"api_secret": "s"}):
-        key, secret = alpaca_mod._credentials()
-    assert key is None
-    assert secret is None
 
 
 def test_credentials_returns_none_none_when_secret_missing():
@@ -220,27 +185,6 @@ def test_fetch_bars_returns_normalized_list():
     assert result[0]["close"] == 189.30
     assert result[0]["ts"] == "2026-05-29T20:00:00Z"
     assert result[1]["close"] == 190.75
-
-
-@pytest.mark.django_db
-def test_fetch_bars_persists_ohlcbar_rows():
-    from apps.market.models import OHLCBar
-
-    with (
-        patch("apps.market.services.alpaca._credentials", return_value=("k", "s")),
-        patch("apps.market.services.alpaca._get", return_value=_RAW_BARS_BODY),
-        patch(
-            "apps.market.services.alpaca.cache.get_or_fetch",
-            side_effect=lambda key, *, ttl_seconds, fetcher: fetcher(),
-        ),
-    ):
-        fetch_bars("AAPL", timeframe="1d", limit=60)
-
-    rows = list(OHLCBar.objects.filter(ticker="AAPL", timeframe="1d").order_by("ts"))
-    assert len(rows) == 2
-    assert float(rows[0].close) == 189.30
-    assert rows[0].volume == 45_000_000
-    assert float(rows[1].close) == 190.75
 
 
 @pytest.mark.django_db

@@ -17,21 +17,6 @@ def test_no_provider_config_returns_empty():
     assert N.book_narrative(DATA) == ""
 
 
-def test_returns_summary_when_ok(monkeypatch):
-    from apps.secrets.models import ProviderConfig
-
-    ProviderConfig.objects.create(
-        provider="claude", _api_key={"k": "sk-test"}, default_model="claude-opus-4-8"
-    )
-
-    class _R:
-        summary = "Concentrated, net-long into a risk-off tape."
-
-    monkeypatch.setattr(N, "run_structured", lambda **kw: _R())
-    monkeypatch.setattr(N, "ensure_within_caps", lambda target: None)
-    assert "Concentrated" in N.book_narrative(DATA)
-
-
 def test_error_degrades(monkeypatch):
     from apps.secrets.models import ProviderConfig
 

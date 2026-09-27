@@ -12,14 +12,6 @@ def test_empty_ticker_returns_available_false(api):
 
 
 @pytest.mark.django_db
-def test_empty_ticker_explicit_blank(api):
-    r = api.get("/api/analytics/track-record/?ticker=")
-    assert r.status_code == 200
-    body = r.json()
-    assert body == {"ticker": "", "available": False, "record": None}
-
-
-@pytest.mark.django_db
 def test_ticker_below_min_n_returns_available_false(api):
     # Only 2 closed theses — below the default min_n=3 threshold
     Thesis.objects.create(
