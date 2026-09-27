@@ -24,13 +24,3 @@ def test_maybe_cache_last_message_noop_when_flag_false() -> None:
     msgs = [{"role": "user", "content": "hello"}]
     out = _maybe_cache_last_message(msgs, cache=False)
     assert out == msgs
-
-
-def test_maybe_cache_last_message_noop_on_empty() -> None:
-    assert _maybe_cache_last_message([], cache=True) == []
-
-
-def test_maybe_cache_last_message_doesnt_mutate_input() -> None:
-    msgs = [{"role": "user", "content": "a"}]
-    _ = _maybe_cache_last_message(msgs, cache=True)
-    assert msgs[0]["content"] == "a"

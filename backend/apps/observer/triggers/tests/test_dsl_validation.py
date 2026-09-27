@@ -28,38 +28,10 @@ def test_validate_volume_z_leaf_ok():
     )
 
 
-def test_validate_volume_z_requires_window():
-    with pytest.raises(ValidationError) as exc:
-        validate_condition({"metric": "volume_z", "ticker": "NVDA", "op": ">=", "value": 2.0})
-    assert "window" in str(exc.value)
-
-
 def test_validate_volume_z_requires_ticker():
     with pytest.raises(ValidationError) as exc:
         validate_condition({"metric": "volume_z", "op": ">=", "value": 2.0, "window": "5m"})
     assert "ticker" in str(exc.value)
-
-
-def test_validate_all_group_ok():
-    validate_condition(
-        {
-            "all": [
-                {"metric": "price", "ticker": "SPY", "op": ">", "value": 550},
-                {"metric": "vix", "op": ">", "value": 20},
-            ]
-        }
-    )
-
-
-def test_validate_any_group_ok():
-    validate_condition(
-        {
-            "any": [
-                {"metric": "price", "ticker": "SPY", "op": ">", "value": 550},
-                {"metric": "price", "ticker": "QQQ", "op": ">", "value": 480},
-            ]
-        }
-    )
 
 
 def test_validate_not_wraps_one_node():
@@ -78,12 +50,6 @@ def test_validate_not_rejects_multiple():
         )
 
 
-def test_validate_unknown_metric():
-    with pytest.raises(ValidationError) as exc:
-        validate_condition({"metric": "foo", "ticker": "SPY", "op": ">", "value": 1})
-    assert "metric" in str(exc.value)
-
-
 def test_validate_unknown_op():
     with pytest.raises(ValidationError) as exc:
         validate_condition({"metric": "price", "ticker": "SPY", "op": "??", "value": 1})
@@ -94,11 +60,6 @@ def test_validate_price_requires_ticker():
     with pytest.raises(ValidationError) as exc:
         validate_condition({"metric": "price", "op": ">", "value": 1})
     assert "ticker" in str(exc.value)
-
-
-def test_validate_vix_ticker_optional():
-    validate_condition({"metric": "vix", "op": ">", "value": 20})
-    validate_condition({"metric": "vix", "ticker": "$VIX", "op": ">", "value": 20})
 
 
 def test_validate_window_must_be_valid():

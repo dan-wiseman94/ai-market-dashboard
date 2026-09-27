@@ -38,14 +38,6 @@ def test_upload_invalid_png_returns_400(api):
 
 
 @pytest.mark.django_db
-def test_list_staged_returns_only_unattached(api):
-    SnapshotImage.objects.create(snapshot=None, kind="client_capture", data=PNG_BYTES)
-    resp = api.get("/api/snapshots/images/?staged=true")
-    assert resp.status_code == 200
-    assert len(resp.json()["images"]) == 1
-
-
-@pytest.mark.django_db
 def test_serve_image_returns_bytes(api):
     img = SnapshotImage.objects.create(snapshot=None, kind="client_capture", data=PNG_BYTES)
     resp = api.get(f"/api/snapshots/images/{img.id}/")

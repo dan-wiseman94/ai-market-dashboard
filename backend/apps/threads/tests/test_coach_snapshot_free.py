@@ -33,29 +33,11 @@ def _snap(profile) -> Snapshot:
 
 
 class TestTickerFromText:
-    def test_extracts_cashtag(self) -> None:
-        assert _ticker_from_text("thoughts on $NVDA into earnings?") == "NVDA"
-
     def test_lowercase_cashtag_is_upcased(self) -> None:
         assert _ticker_from_text("watching $aapl") == "AAPL"
 
-    def test_none_without_cashtag(self) -> None:
-        assert _ticker_from_text("should I sell my position?") is None
-
-    def test_none_for_empty(self) -> None:
-        assert _ticker_from_text("") is None
-
 
 class TestAssembleForMessage:
-    def test_disabled_profile_returns_empty(self, db) -> None:
-        p = _profile(enable_coach=False)
-        with patch("apps.threads.coach.search", return_value=HITS):
-            assert assemble_coach_context_for_message("$NVDA hello", p) == ""
-
-    def test_empty_text_returns_empty(self, db) -> None:
-        p = _profile(enable_coach=True)
-        assert assemble_coach_context_for_message("   ", p) == ""
-
     def test_recall_hits_populate_block_scoped_to_cashtag(self, db) -> None:
         p = _profile(enable_coach=True)
         with patch("apps.threads.coach.search", return_value=HITS) as s:

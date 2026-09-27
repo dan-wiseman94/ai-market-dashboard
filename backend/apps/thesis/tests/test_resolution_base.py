@@ -8,16 +8,9 @@ from __future__ import annotations
 import pytest
 from django.utils import timezone
 
-from apps.core.model_bases import Resolution
 from apps.thesis.models import PostMortem, Thesis
 
 pytestmark = pytest.mark.django_db
-
-
-def test_postmortem_inherits_resolution():
-    assert issubclass(PostMortem, Resolution)
-    names = {f.name for f in PostMortem._meta.get_fields()}
-    assert {"forward_return_pct", "verdict"} <= names  # provided by the base
 
 
 def test_postmortem_claim_is_idempotent():

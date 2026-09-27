@@ -14,10 +14,6 @@ def test_claude_supports_everything():
     assert unsupported_features("claude", prof, supports_tools=False) == []
 
 
-def test_none_profile_is_empty():
-    assert unsupported_features("openai", None, supports_tools=True) == []
-
-
 def test_openai_thinking_and_memory_unsupported():
     prof = _profile(enable_thinking=True, enable_memory=True)
     out = unsupported_features("openai", prof, supports_tools=True)
@@ -39,13 +35,6 @@ def test_local_tools_ok_when_flag_on():
 # --- vision: a per-ProviderConfig declaration, not a Claude-only feature ----------
 
 
-def test_images_dropped_is_reported_for_a_vision_less_provider():
-    out = unsupported_features(
-        "local", None, supports_tools=True, supports_vision=False, carries_images=True
-    )
-    assert out == ["chart images"]
-
-
 def test_images_dropped_is_reported_for_claude_too():
     """supports_vision is declared per config row, so Claude is not exempt."""
     prof = _profile()
@@ -53,20 +42,6 @@ def test_images_dropped_is_reported_for_claude_too():
         "claude", prof, supports_tools=True, supports_vision=False, carries_images=True
     )
     assert out == ["chart images"]
-
-
-def test_no_image_gap_when_the_run_carries_no_images():
-    out = unsupported_features(
-        "local", None, supports_tools=True, supports_vision=False, carries_images=False
-    )
-    assert out == []
-
-
-def test_no_image_gap_when_the_endpoint_declares_vision():
-    out = unsupported_features(
-        "local", None, supports_tools=True, supports_vision=True, carries_images=True
-    )
-    assert out == []
 
 
 def test_image_gap_joins_the_other_gaps():

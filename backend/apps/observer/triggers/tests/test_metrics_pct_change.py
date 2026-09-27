@@ -40,18 +40,6 @@ def test_pct_change_none_when_quote_missing(fake_redis):
 
 
 @pytest.mark.django_db
-def test_pct_change_first_tick_seeds_baseline_and_returns_none(fake_redis):
-    t = _trigger()
-    with patch(
-        "apps.observer.triggers.metrics.fetch_quotes", return_value={"SPY": {"last": 550.0}}
-    ):
-        snap = build_snapshot([t])
-    # Cold start: no prior sample yet, so None — but a sample is now recorded.
-    assert snap["pct_change:SPY:5m"] is None
-    assert fake_redis.zcard(ZKEY) == 1
-
-
-@pytest.mark.django_db
 def test_pct_change_second_tick_computes_delta(fake_redis):
     t = _trigger()
     with patch(

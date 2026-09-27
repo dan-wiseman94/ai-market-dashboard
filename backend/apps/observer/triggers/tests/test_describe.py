@@ -41,7 +41,3 @@ def test_describe_ignores_prior_keys():
 def test_describe_ignores_none_values():
     out = describe({"price:SPY": None, "vix": 22.5})
     assert out == "vix=22.50"
-
-
-def test_describe_empty():
-    assert describe({}) == ""

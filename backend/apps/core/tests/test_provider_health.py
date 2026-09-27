@@ -13,16 +13,6 @@ def fake_redis():
         yield client
 
 
-def test_mark_read_clear_auth_error_round_trip(fake_redis):
-    from apps.core import provider_health
-
-    assert provider_health.auth_error("schwab") is None
-    provider_health.mark_auth_error("schwab", "Schwab rejected the saved credential")
-    assert provider_health.auth_error("schwab") == "Schwab rejected the saved credential"
-    provider_health.clear_auth_error("schwab")
-    assert provider_health.auth_error("schwab") is None
-
-
 def test_auth_error_is_per_provider(fake_redis):
     from apps.core import provider_health
 

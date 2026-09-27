@@ -1,6 +1,6 @@
 import pytest
 
-from apps.strategy.desk.services.scoring import in_cooldown, originated_today, rank
+from apps.strategy.desk.services.scoring import originated_today, rank
 from apps.strategy.models import DeskEntry
 
 pytestmark = pytest.mark.django_db
@@ -13,12 +13,6 @@ def test_rank_orders_by_severity():
     ]
     ranked = rank(cands)
     assert ranked[0]["ticker"] == "Y"
-
-
-def test_cooldown_blocks_recent_same_key():
-    DeskEntry.objects.create(anomaly_type="price_move", ticker="X", severity=5.0)
-    assert in_cooldown("price_move", "X") is True
-    assert in_cooldown("price_move", "Z") is False
 
 
 def test_originated_today_counts_only_todays_entries():

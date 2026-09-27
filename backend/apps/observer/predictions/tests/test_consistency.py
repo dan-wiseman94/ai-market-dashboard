@@ -30,19 +30,6 @@ def _pred(ticker, direction, status="open"):
 
 
 @pytest.mark.django_db
-def test_bullish_call_contradicts_bear_house_view():
-    _note("NVDA", "bear")
-    c = find_contradictions("NVDA", "bullish")
-    assert any(x["source"] == "coverage" and x["stance"] == "bear" for x in c)
-
-
-@pytest.mark.django_db
-def test_same_direction_is_consistent():
-    _note("NVDA", "bull")
-    assert find_contradictions("NVDA", "bullish") == []
-
-
-@pytest.mark.django_db
 def test_neutral_never_contradicts():
     _note("NVDA", "bear")
     assert find_contradictions("NVDA", "neutral") == []

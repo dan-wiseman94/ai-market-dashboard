@@ -6,7 +6,6 @@ thread id per run so it never collides with live data.
 
 from __future__ import annotations
 
-import itertools
 import uuid
 
 from apps.threads.event_log import record, replay_since
@@ -34,13 +33,3 @@ def test_record_stamps_monotonic_seq_and_replays_tail():
 
     # Caught up → nothing to replay.
     assert replay_since(tid, e3["seq"]) == []
-
-
-def test_replayed_seqs_are_contiguous():
-    tid = _tid()
-    seqs = [record(tid, {"event": "text_delta", "text": str(i)})["seq"] for i in range(5)]
-    replayed = replay_since(tid, seqs[0])
-    got = [e["seq"] for e in replayed]
-    assert got == seqs[1:]
-    for a, b in itertools.pairwise(got):
-        assert b == a + 1

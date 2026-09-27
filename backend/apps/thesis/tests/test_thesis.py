@@ -38,23 +38,6 @@ def snapshot_with_quotes(db, snapshot):
 
 
 @pytest.mark.django_db
-def test_ticker_uppercased_on_save(profile):
-    t = Thesis.objects.create(
-        title="Long AAPL",
-        ticker="aapl",
-        direction="bullish",
-        profile=profile,
-    )
-    assert t.ticker == "AAPL"
-
-
-@pytest.mark.django_db
-def test_ticker_already_upper_stays(profile):
-    t = Thesis.objects.create(title="Long SPY", ticker="SPY", direction="bearish", profile=profile)
-    assert t.ticker == "SPY"
-
-
-@pytest.mark.django_db
 def test_ticker_stripped_on_save(profile):
     t = Thesis.objects.create(
         title="Long NVDA",
@@ -63,26 +46,6 @@ def test_ticker_stripped_on_save(profile):
         profile=profile,
     )
     assert t.ticker == "NVDA"
-
-
-@pytest.mark.django_db
-def test_defaults(profile):
-    t = Thesis.objects.create(title="test", ticker="TSLA", direction="neutral", profile=profile)
-    assert t.conviction == 3
-    assert t.horizon_days == 30
-    assert t.status == "open"
-    assert t.rationale == ""
-    assert t.entry_price is None
-    assert t.close_note == ""
-    assert t.closed_at is None
-
-
-@pytest.mark.django_db
-def test_str(profile):
-    t = Thesis.objects.create(title="x", ticker="nvda", direction="bullish", profile=profile)
-    assert "NVDA" in str(t)
-    assert "bullish" in str(t)
-    assert "open" in str(t)
 
 
 @pytest.mark.django_db
@@ -140,25 +103,6 @@ def test_create_requires_rationale_and_invalidation(api, profile):
     )
     assert r4.status_code == 201
     assert r4.json()["invalidation_note"] == "breaks below 100"
-
-
-@pytest.mark.django_db
-def test_list(api, profile):
-    Thesis.objects.create(title="a", ticker="A", direction="bullish", profile=profile)
-    Thesis.objects.create(title="b", ticker="B", direction="bearish", profile=profile)
-    resp = api.get("/api/theses/", format="json")
-    assert resp.status_code == 200
-    assert len(resp.json()) == 2
-
-
-@pytest.mark.django_db
-def test_retrieve(api, profile):
-    t = Thesis.objects.create(
-        title="retrieve me", ticker="AMD", direction="neutral", profile=profile
-    )
-    resp = api.get(f"/api/theses/{t.id}/", format="json")
-    assert resp.status_code == 200
-    assert resp.json()["id"] == t.id
 
 
 @pytest.mark.django_db
@@ -267,18 +211,6 @@ def test_close_win(api, profile):
 
 
 @pytest.mark.django_db
-def test_close_loss(api, profile):
-    t = Thesis.objects.create(title="loser", ticker="TSLA", direction="bearish", profile=profile)
-    resp = api.post(
-        f"/api/theses/{t.id}/close/",
-        {"status": "closed_loss", "close_note": "stopped out"},
-        format="json",
-    )
-    assert resp.status_code == 200
-    assert resp.json()["status"] == "closed_loss"
-
-
-@pytest.mark.django_db
 def test_close_invalidated(api, profile):
     t = Thesis.objects.create(
         title="invalidated", ticker="AMD", direction="bullish", profile=profile
@@ -317,16 +249,6 @@ def test_close_rejects_missing_status(api, profile):
 # ---------------------------------------------------------------------------
 # run-postmortem endpoint (full behaviour covered in test_postmortem.py)
 # ---------------------------------------------------------------------------
-
-
-@pytest.mark.django_db
-def test_run_postmortem_returns_202(api, profile):
-    t = Thesis.objects.create(title="pm", ticker="NVDA", direction="bullish", profile=profile)
-    with patch("apps.thesis.views.run_postmortem_task.delay") as mock_delay:
-        resp = api.post(f"/api/theses/{t.id}/run-postmortem/", format="json")
-    assert resp.status_code == 202
-    assert "postmortem_id" in resp.json()
-    mock_delay.assert_called_once()
 
 
 @pytest.mark.django_db

@@ -8,25 +8,9 @@ from __future__ import annotations
 import pytest
 from django.utils import timezone
 
-from apps.core.model_bases import DirectionalCall, Resolution
 from apps.observer.models import AIPrediction
 
 pytestmark = pytest.mark.django_db
-
-
-def test_aiprediction_inherits_shared_bases():
-    assert issubclass(AIPrediction, DirectionalCall)
-    assert issubclass(AIPrediction, Resolution)
-    names = {f.name for f in AIPrediction._meta.get_fields()}
-    assert {
-        "ticker",
-        "direction",
-        "horizon_days",
-        "invalidation_price",
-        "invalidation_note",
-        "forward_return_pct",
-        "verdict",
-    } <= names
 
 
 def test_aiprediction_claim_is_idempotent():

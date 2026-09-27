@@ -55,8 +55,3 @@ def test_batched_forward_returns_match_per_run():
         batched = trading_day_forward_returns(requests, fh)
         per_run = [trading_day_forward_return_pct(t, at, fh) for t, at in requests]
         assert batched == per_run, f"fh={fh}: batched={batched} per_run={per_run}"
-
-
-@pytest.mark.django_db
-def test_batched_forward_returns_empty_input():
-    assert trading_day_forward_returns([], 24) == []

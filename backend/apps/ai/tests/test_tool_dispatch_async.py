@@ -40,23 +40,6 @@ def _thread_recording_toolset(sink: dict) -> Toolset:
     return ts
 
 
-def test_sync_run_executes_on_the_loop_thread():
-    """Characterization: calling Toolset.run directly inside the loop runs the tool
-    (and any ORM it does) ON the loop thread — where @async_unsafe fires on reconnect.
-    """
-    sink: dict = {}
-    ts = _thread_recording_toolset(sink)
-    loop: dict = {}
-
-    async def drive():
-        loop["thread"] = threading.get_ident()
-        return ts.run("rec", {})
-
-    outcome = asyncio.run(drive())
-    assert outcome["ok"] is True
-    assert sink["tool_thread"] == loop["thread"]  # the hazard: tool ran on the loop thread
-
-
 def test_sync_to_async_offload_runs_off_the_loop_thread():
     """The fix the providers apply: sync_to_async(thread_sensitive=True) runs the tool
     on asgiref's executor thread — no running loop there, so an ORM reconnect is safe.

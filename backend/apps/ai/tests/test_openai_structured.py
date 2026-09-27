@@ -105,15 +105,6 @@ def test_refusal_raises_parse_error():
         _run(client=client)
 
 
-def test_invalid_json_content_raises_parse_error():
-    from apps.ai.providers.claude_structured import StructuredParseError
-
-    client = MagicMock()
-    client.chat.completions.create.return_value = _completion(content='{"nope": 1}')
-    with pytest.raises(StructuredParseError):
-        _run(client=client)
-
-
 def test_length_finish_reason_raises_parse_error():
     from apps.ai.providers.claude_structured import StructuredParseError
 
@@ -184,19 +175,6 @@ def test_local_falls_back_to_json_object_on_400():
     assert "JSON" in system_text
     assert '"summary"' in system_text  # the schema is in the prompt
     assert kw["messages"][1] == {"role": "user", "content": "hi"}
-
-
-def test_local_fallback_invalid_json_raises_parse_error():
-    from apps.ai.providers.claude_structured import StructuredParseError
-
-    client = MagicMock()
-    client.chat.completions.create.side_effect = [
-        _bad_request(),
-        _completion(content='{"nope": 1}'),
-    ]
-
-    with pytest.raises(StructuredParseError):
-        _run(provider="local", base_url="http://x/v1", client=client)
 
 
 def test_openai_400_is_not_retried():

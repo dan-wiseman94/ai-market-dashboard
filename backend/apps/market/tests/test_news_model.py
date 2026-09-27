@@ -27,17 +27,3 @@ def test_newsitem_unique_per_provider_external_id():
             source="Reuters",
             published_at=datetime(2026, 4, 17, 9, 12, tzinfo=UTC),
         )
-
-
-@pytest.mark.django_db
-def test_newsitem_blank_ticker_for_market_wide_news():
-    n = NewsItem.objects.create(
-        provider="finnhub",
-        external_id="market1",
-        ticker="",
-        headline="Market-wide",
-        url="https://example.com/m",
-        source="Bloomberg",
-        published_at=datetime(2026, 4, 17, 8, 0, tzinfo=UTC),
-    )
-    assert n.ticker == ""

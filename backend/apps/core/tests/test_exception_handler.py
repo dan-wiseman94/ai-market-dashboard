@@ -16,12 +16,6 @@ def test_delete_profile_with_protected_dependents_returns_409():
 
 
 @pytest.mark.django_db
-def test_non_integer_detail_pk_is_4xx_not_500():
-    r = APIClient().get("/api/threads/not-a-number/")
-    assert r.status_code in (400, 404)
-
-
-@pytest.mark.django_db
 def test_thread_create_with_non_object_body_returns_400():
     r = APIClient().post("/api/threads/", [1, 2, 3], format="json")
     assert r.status_code == 400

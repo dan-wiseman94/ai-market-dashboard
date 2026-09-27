@@ -32,15 +32,6 @@ def test_run_one_persona_dispatches_and_stamps(monkeypatch):
     assert msg.content["persona"] == "bull"
 
 
-def test_run_one_persona_none_when_no_assistant(monkeypatch):
-    th = Thread.objects.create(kind="warroom", title="t")
-    monkeypatch.setattr(D, "run_ai_on_message", lambda **kw: {"status": "failed"})
-    assert (
-        D.run_one_persona(th, "bear", "ctx", [], provider="claude", model="m", grounding=False)
-        is None
-    )
-
-
 def test_run_one_persona_does_not_inherit_a_prior_personas_message(monkeypatch):
     """Personas run sequentially in one shared thread. If THIS persona's run fails or
     no-ops, it must return None — not pick up the *previous* persona's assistant

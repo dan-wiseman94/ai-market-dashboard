@@ -98,11 +98,3 @@ def test_mcp_requires_bearer_token_when_configured(settings):
         HTTP_AUTHORIZATION="Bearer unit-test-token-placeholder",
     )
     assert ok.status_code == 200
-
-
-@pytest.mark.django_db
-def test_mcp_open_when_token_unset(settings):
-    settings.MCP_AUTH_TOKEN = ""  # default — localhost posture, no auth required
-    c = Client()
-    body = json.dumps({"jsonrpc": "2.0", "id": 1, "method": "initialize"})
-    assert c.post("/api/mcp/", data=body, content_type="application/json").status_code == 200

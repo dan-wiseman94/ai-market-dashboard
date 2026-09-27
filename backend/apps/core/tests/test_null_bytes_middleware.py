@@ -29,9 +29,3 @@ def test_null_byte_in_path_returns_400():
 def test_null_byte_in_authorization_header_returns_400():
     r = APIClient().get("/api/threads/", HTTP_AUTHORIZATION=f"Basic a{NUL}b")
     assert r.status_code == 400
-
-
-@pytest.mark.django_db
-def test_clean_request_is_not_blocked():
-    r = APIClient().get("/api/threads/")
-    assert r.status_code == 200

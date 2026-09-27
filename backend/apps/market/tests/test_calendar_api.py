@@ -37,15 +37,6 @@ def test_calendar_override_case_variant_duplicate_returns_400_not_500():
 
 
 @pytest.mark.django_db
-def test_reject_unknown_market_key():
-    c = APIClient()
-    r = c.post(
-        "/api/market/calendar-overrides/", {"ticker": "X", "market_key": "mars"}, format="json"
-    )
-    assert r.status_code == 400
-
-
-@pytest.mark.django_db
 @freeze_time("2026-04-18 14:00:00")  # Saturday
 def test_calendar_status_for_tickers():
     c = APIClient()

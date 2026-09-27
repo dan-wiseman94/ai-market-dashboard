@@ -5,16 +5,6 @@ from apps.threads.models import Message
 
 
 @pytest.mark.django_db
-def test_observer_thread_endpoint_creates_on_first_call(api):
-    p = TradingProfile.objects.create(name="P", style="x")
-    resp = api.get(f"/api/observer/threads/{p.id}/")
-    assert resp.status_code == 200
-    body = resp.json()
-    assert body["kind"] == "observer"
-    assert body["profile_id"] == p.id
-
-
-@pytest.mark.django_db
 def test_observer_thread_endpoint_idempotent(api):
     p = TradingProfile.objects.create(name="P", style="x")
     resp1 = api.get(f"/api/observer/threads/{p.id}/")

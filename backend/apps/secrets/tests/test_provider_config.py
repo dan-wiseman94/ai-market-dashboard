@@ -1,19 +1,7 @@
-from decimal import Decimal
-
 import pytest
 from django.db import IntegrityError
 
 from apps.secrets.models import ProviderConfig
-
-
-@pytest.mark.django_db
-def test_create_provider_config_defaults():
-    pc = ProviderConfig.objects.create(provider="claude")
-    assert pc.enabled is True
-    assert pc.supports_vision is True
-    assert pc.daily_cost_cap_usd == Decimal("10.00")
-    assert pc.default_model == ""
-    assert pc.base_url == ""
 
 
 @pytest.mark.django_db

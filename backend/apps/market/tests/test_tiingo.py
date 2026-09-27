@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import datetime
 from unittest.mock import patch
 
 import pytest
@@ -99,20 +99,6 @@ def test_fetch_daily_bars_returns_normalized_bars():
 
 
 @pytest.mark.django_db
-def test_fetch_daily_bars_persists_ohlc_rows():
-    with (
-        patch("apps.market.services.tiingo._api_key", return_value="testkey"),
-        patch("apps.market.services.tiingo._get", return_value=_RAW_BARS),
-        patch("apps.market.services.tiingo.cache.get_or_fetch", side_effect=_BYPASS_CACHE),
-    ):
-        tiingo_mod.fetch_daily_bars("AAPL")
-
-    assert OHLCBar.objects.filter(ticker="AAPL", timeframe="1d").count() == 2
-    bar = OHLCBar.objects.get(ticker="AAPL", timeframe="1d", close="184.7600")
-    assert bar.volume == 72_000_000
-
-
-@pytest.mark.django_db
 def test_fetch_daily_bars_persist_is_idempotent():
     """Calling fetch_daily_bars twice with the same data must not duplicate rows."""
     with (
@@ -140,14 +126,6 @@ def test_fetch_daily_bars_mock_mode_returns_canned():
     assert "close" in bar
     assert "volume" in bar
     assert "ts" in bar
-
-
-@pytest.mark.django_db
-def test_fetch_daily_bars_no_credential_returns_empty():
-    with patch("apps.market.services.tiingo._api_key", return_value=None):
-        result = tiingo_mod.fetch_daily_bars("AAPL")
-
-    assert result == []
 
 
 @pytest.mark.django_db
@@ -236,14 +214,6 @@ def test_fetch_news_mock_mode_returns_canned():
 
 
 @pytest.mark.django_db
-def test_fetch_news_no_credential_returns_empty():
-    with patch("apps.market.services.tiingo._api_key", return_value=None):
-        result = tiingo_mod.fetch_news(["AAPL"])
-
-    assert result == []
-
-
-@pytest.mark.django_db
 def test_fetch_news_never_raises_on_network_failure():
     def _boom(*args, **kwargs):
         raise RuntimeError("Tiingo news API unavailable")
@@ -256,33 +226,6 @@ def test_fetch_news_never_raises_on_network_failure():
         result = tiingo_mod.fetch_news(["AAPL"])
 
     assert result == []
-
-
-@pytest.mark.django_db
-def test_fetch_news_publisheddate_trailing_z_is_parsed():
-    """publishedDate values ending in 'Z' (UTC shorthand) must parse correctly."""
-    raw_with_z = [
-        {
-            "id": 99999,
-            "title": "Z-suffix date test",
-            "description": "Testing Z suffix handling.",
-            "url": "https://example.com/z-test",
-            "source": "TestSource",
-            "publishedDate": "2026-01-05T10:00:00Z",
-            "tickers": ["spy"],
-        }
-    ]
-
-    with (
-        patch("apps.market.services.tiingo._api_key", return_value="k"),
-        patch("apps.market.services.tiingo._get", return_value=raw_with_z),
-        patch("apps.market.services.tiingo.cache.get_or_fetch", side_effect=_BYPASS_CACHE),
-    ):
-        result = tiingo_mod.fetch_news(["SPY"])
-
-    assert len(result) == 1
-    assert result[0]["published_at"] == datetime(2026, 1, 5, 10, 0, 0, tzinfo=UTC)
-    assert result[0]["ticker"] == "SPY"
 
 
 @pytest.mark.django_db

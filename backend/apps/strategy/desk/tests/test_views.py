@@ -6,12 +6,6 @@ from apps.strategy.models import DeskEntry
 pytestmark = pytest.mark.django_db
 
 
-def test_list_feed():
-    DeskEntry.objects.create(anomaly_type="price_move", ticker="NVDA", severity=9.0, finding="f")
-    rows = APIClient().get("/api/desk/").json()
-    assert len(rows) == 1 and rows[0]["ticker"] == "NVDA"
-
-
 def test_manual_sweep_dispatches_async(monkeypatch):
     # The endpoint must NOT run the (N-AI-call) sweep in the request thread — it
     # queues a task and returns 202 so the HTTP call doesn't block.

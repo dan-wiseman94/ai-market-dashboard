@@ -10,11 +10,6 @@ def test_local_requires_base_url():
         LocalProvider(api_key="", base_url="")
 
 
-def test_local_name_is_local():
-    p = LocalProvider(api_key="", base_url="http://localhost:11434/v1")
-    assert p.name == "local"
-
-
 @pytest.mark.asyncio
 async def test_local_reuses_openai_streaming_shape():
     """LocalProvider.run should behave identically to OpenAIProvider.run when

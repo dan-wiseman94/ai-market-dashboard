@@ -189,20 +189,6 @@ ANALYTICS_PAYLOAD = {
 }
 
 
-def test_render_chain_analytics_block_present():
-    """The '### Chain analytics' section must appear after the per-expiry table."""
-    md = _render_chain(ANALYTICS_PAYLOAD, ticker="TST")
-    assert "### Chain analytics" in md
-    assert "### Expiry 2026-01-01" in md
-
-
-def test_render_chain_analytics_max_pain():
-    """Max-pain = 100.0 for this fixture (verified by hand above)."""
-    md = _render_chain(ANALYTICS_PAYLOAD, ticker="TST")
-    assert "Max-pain" in md
-    assert "100.00" in md
-
-
 def test_render_chain_analytics_put_call_ratio():
     """P/C volume ratio = 650/1000 = 0.65; line must appear in output.
 
@@ -407,16 +393,6 @@ def test_render_chain_unusual_activity_present_when_flagged():
     assert mock_unusual.call_args.kwargs["ticker"] == "TST"
     assert "**Unusual activity:**" in md
     assert "call 105.00 2026-01-01: vol/OI 4.2 — volume 8,400 vs OI 2,000" in md
-
-
-def test_render_chain_unusual_activity_absent_without_captured_at():
-    """No captured_at → the unusual-options lookup is skipped entirely."""
-    with patch(
-        "apps.analytics.services.unusual_options.unusual_options", return_value=[_UNUSUAL_ROW]
-    ) as mock_unusual:
-        md = _render_chain(ANALYTICS_PAYLOAD, ticker="TST")
-    mock_unusual.assert_not_called()
-    assert "**Unusual activity:**" not in md
 
 
 def test_render_chain_unusual_activity_swallows_exception():

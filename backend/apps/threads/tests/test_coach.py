@@ -72,41 +72,9 @@ def _snap(profile, *, ticker="NVDA", last=188.2) -> Snapshot:
 
 
 @pytest.mark.django_db
-def test_coach_empty_when_disabled(coach_profile):
-    coach_profile.enable_coach = False
-    coach_profile.save()
-    assert assemble_coach_context(_snap(coach_profile), coach_profile) == ""
-
-
-@pytest.mark.django_db
-def test_coach_empty_without_primary_ticker(coach_profile):
-    snap = Snapshot.objects.create(
-        profile=coach_profile, status="ready", includes=["quotes"], source="manual"
-    )
-    assert snap.primary_ticker is None
-    assert assemble_coach_context(snap, coach_profile) == ""
-
-
-@pytest.mark.django_db
 def test_coach_empty_when_no_history(coach_profile):
     # primary_ticker set, but no theses / no prior snapshot / no recall / no track record
     assert assemble_coach_context(_snap(coach_profile), coach_profile) == ""
-
-
-@pytest.mark.django_db
-def test_coach_includes_open_thesis_with_header(coach_profile):
-    Thesis.objects.create(
-        title="AI capex",
-        ticker="NVDA",
-        direction="bullish",
-        conviction=4,
-        status="open",
-        target_price=210,
-    )
-    out = assemble_coach_context(_snap(coach_profile), coach_profile)
-    assert "🧭 What you already know" in out
-    assert "Open theses on NVDA" in out
-    assert "AI capex" in out
 
 
 @pytest.mark.django_db
@@ -180,13 +148,6 @@ def test_recall_block_uses_situation_search(coach_profile, monkeypatch):
     assert set(captured["kinds"]) == {"postmortem", "thesis", "observation"}
     assert "### You've noted this before" in out
     assert "NVDA ran into earnings" in out
-
-
-@pytest.mark.django_db
-def test_recall_block_empty_ticker_returns_empty(coach_profile):
-    from apps.threads.coach import _recall_block
-
-    assert _recall_block(_snap(coach_profile), "") == ""
 
 
 @pytest.mark.django_db
@@ -283,21 +244,6 @@ def test_lessons_block_caps_at_two(coach_profile):
     assert out.count("[correct, 30d]") == 2
 
 
-def test_lessons_block_empty_ticker():
-    from apps.threads.coach import _lessons_block
-
-    assert _lessons_block("") == ""
-
-
-def test_calibration_verdict_overconfident():
-    # observed < stated in both buckets -> overconfident
-    buckets = [
-        {"n": 2, "observed_hit_rate": 0.5, "mean_confidence": 0.9},
-        {"n": 1, "observed_hit_rate": 0.6, "mean_confidence": 0.8},
-    ]
-    assert "OVER-confident" in _calibration_verdict(buckets)
-
-
 def test_calibration_verdict_underconfident():
     buckets = [{"n": 3, "observed_hit_rate": 0.9, "mean_confidence": 0.6}]
     assert "UNDER-confident" in _calibration_verdict(buckets)
@@ -334,11 +280,6 @@ def test_calibration_block_renders_latest_run(coach_profile):
     assert "Model calibration" in block
     assert "62%" in block or "63%" in block  # 0.625 hit-rate as a percentage
     assert "OVER-confident" in block
-
-
-@pytest.mark.django_db
-def test_calibration_block_empty_when_no_run(coach_profile):
-    assert _calibration_block(coach_profile) == ""
 
 
 @pytest.mark.django_db

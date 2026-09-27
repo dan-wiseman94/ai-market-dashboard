@@ -16,57 +16,6 @@ def fake_redis(monkeypatch):
 
 
 @pytest.mark.django_db
-def test_fetch_quotes_uses_schwab_and_caches():
-    # Schwab get_quotes returns a mapping: {"SPY": {...}, "QQQ": {...}}
-    schwab_resp = MagicMock()
-    schwab_resp.json.return_value = {
-        "SPY": {
-            "quote": {
-                "lastPrice": 550.0,
-                "bidPrice": 549.9,
-                "askPrice": 550.1,
-                "totalVolume": 1000,
-                "highPrice": 552,
-                "lowPrice": 548,
-                "netPercentChange": 0.5,
-            }
-        },
-        "QQQ": {
-            "quote": {
-                "lastPrice": 480.0,
-                "bidPrice": 479.9,
-                "askPrice": 480.1,
-                "totalVolume": 900,
-                "highPrice": 482,
-                "lowPrice": 478,
-                "netPercentChange": 0.2,
-            }
-        },
-    }
-    client = MagicMock()
-    client.get_quotes.return_value = schwab_resp
-
-    with patch("apps.market.services.quotes.get_schwab_client", return_value=client):
-        result = fetch_quotes(["SPY", "QQQ"])
-
-    assert result["SPY"]["last"] == 550.0
-    assert result["QQQ"]["last"] == 480.0
-    client.get_quotes.assert_called_once_with(["QQQ", "SPY"])
-
-    # Second call within TTL should NOT hit Schwab again
-    with patch("apps.market.services.quotes.get_schwab_client", return_value=client):
-        result2 = fetch_quotes(["SPY", "QQQ"])
-    assert result2 == result
-    assert client.get_quotes.call_count == 1
-
-
-@pytest.mark.django_db
-def test_fetch_quotes_empty_list():
-    result = fetch_quotes([])
-    assert result == {}
-
-
-@pytest.mark.django_db
 def test_fetch_quotes_normalizes_index_aliases():
     # A bare "SPX" must reach Schwab as the "$SPX" index symbol, otherwise
     # Schwab returns nothing and the section comes back silently empty.

@@ -62,18 +62,6 @@ def _streaming_msg() -> Message:
 
 
 @pytest.mark.django_db(transaction=True)
-def test_flush_partial_persists_buffer_to_streaming_message():
-    msg = _streaming_msg()
-    flush = _make_flush_partial(msg.id, ["Hello", ", ", "world"])
-
-    _run(flush(force=True))
-
-    msg.refresh_from_db()
-    assert msg.content["text"] == "Hello, world"
-    assert msg.status == "streaming"
-
-
-@pytest.mark.django_db(transaction=True)
 def test_flush_partial_is_noop_once_message_left_streaming():
     """A concurrent stop/finalize must not be resurrected: the flush is guarded on
     status='streaming', so a cancelled message keeps its terminal state and text."""

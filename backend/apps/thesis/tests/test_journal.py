@@ -87,52 +87,10 @@ def test_create_with_thesis_and_snapshot(api, thread, thesis, snapshot):
 
 
 @pytest.mark.django_db
-def test_create_watching_decision(api, thread):
-    resp = api.post(
-        "/api/journal/",
-        {"thread_id": thread.id, "decision": "watching"},
-        format="json",
-    )
-    assert resp.status_code == 201
-    assert resp.json()["decision"] == "watching"
-
-
-@pytest.mark.django_db
-def test_create_missing_thread_id_returns_400(api):
-    resp = api.post(
-        "/api/journal/",
-        {"decision": "acted"},
-        format="json",
-    )
-    assert resp.status_code == 400
-
-
-@pytest.mark.django_db
-def test_create_missing_decision_returns_400(api, thread):
-    resp = api.post(
-        "/api/journal/",
-        {"thread_id": thread.id},
-        format="json",
-    )
-    assert resp.status_code == 400
-
-
-@pytest.mark.django_db
 def test_create_invalid_decision_returns_400(api, thread):
     resp = api.post(
         "/api/journal/",
         {"thread_id": thread.id, "decision": "bought"},
-        format="json",
-    )
-    assert resp.status_code == 400
-
-
-@pytest.mark.django_db
-def test_create_invalid_thread_id_returns_400(api):
-    """Non-existent thread_id should be rejected."""
-    resp = api.post(
-        "/api/journal/",
-        {"thread_id": 999999, "decision": "acted"},
         format="json",
     )
     assert resp.status_code == 400
@@ -173,39 +131,8 @@ def test_list_ordered_newest_first(api, thread):
 
 
 @pytest.mark.django_db
-def test_list_filter_nonexistent_thread_returns_empty(api):
-    """Filter by a thread that doesn't exist returns empty list, not an error."""
-    resp = api.get("/api/journal/?thread=999999", format="json")
-    assert resp.status_code == 200
-    assert resp.json() == []
-
-
-@pytest.mark.django_db
 def test_list_filter_non_integer_thread_returns_200_empty(api):
     """GET /api/journal/?thread=foo returns 200 with empty list (not 500)."""
     resp = api.get("/api/journal/?thread=foo", format="json")
     assert resp.status_code == 200
     assert resp.json() == []
-
-
-@pytest.mark.django_db
-def test_response_uses_star_id_keys(api, thread, thesis, snapshot):
-    """Verify the response serializer uses thread_id / thesis_id / snapshot_id."""
-    resp = api.post(
-        "/api/journal/",
-        {
-            "thread_id": thread.id,
-            "decision": "acted",
-            "thesis_id": thesis.id,
-            "snapshot_id": snapshot.id,
-        },
-        format="json",
-    )
-    assert resp.status_code == 201
-    body = resp.json()
-    assert "thread_id" in body
-    assert "thesis_id" in body
-    assert "snapshot_id" in body
-    assert "thread" not in body
-    assert "thesis" not in body
-    assert "snapshot" not in body

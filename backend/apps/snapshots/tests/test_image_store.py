@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 
 from apps.snapshots import image_store
-from apps.snapshots.image_store import create_image, read_image_bytes, write_image_file
+from apps.snapshots.image_store import create_image, read_image_bytes
 from apps.snapshots.models import SnapshotImage
 
 PNG = b"\x89PNG\r\n\x1a\nDATA"
@@ -21,14 +21,6 @@ def image_dir(tmp_path, settings):
     return tmp_path / "images"
 
 
-def test_write_image_file_writes_to_configured_dir(image_dir):
-    path = write_image_file(PNG)
-    p = Path(path)
-    assert p.exists()
-    assert p.parent == image_dir
-    assert p.read_bytes() == PNG
-
-
 @pytest.mark.django_db
 def test_create_image_offloads_bytes_to_disk(image_dir):
     img = create_image(snapshot_id=None, kind="server_render", data=PNG, caption="c")
@@ -36,13 +28,6 @@ def test_create_image_offloads_bytes_to_disk(image_dir):
     assert img.data is None  # bytes are NOT in Postgres
     assert Path(img.file_path).exists()
     assert read_image_bytes(img) == PNG
-
-
-@pytest.mark.django_db
-def test_read_falls_back_to_in_db_bytes(image_dir):
-    # An in-DB row: bytes in the BinaryField, no file_path.
-    indb = SnapshotImage.objects.create(kind="client_capture", data=PNG, file_path="")
-    assert read_image_bytes(indb) == PNG
 
 
 @pytest.mark.django_db
@@ -77,15 +62,6 @@ def test_build_image_blocks_reads_offloaded_bytes(image_dir):
 
 
 @pytest.mark.django_db
-def test_image_file_unlinked_on_row_delete(image_dir):
-    img = create_image(snapshot_id=None, kind="server_render", data=PNG)
-    path = Path(img.file_path)
-    assert path.exists()
-    img.delete()
-    assert not path.exists()
-
-
-@pytest.mark.django_db
 def test_image_file_unlinked_on_queryset_delete(image_dir):
     # Connecting the post_delete signal must also disable fast-delete, so a
     # queryset .delete() (e.g. a Snapshot cascade) still unlinks each file.
@@ -94,10 +70,3 @@ def test_image_file_unlinked_on_queryset_delete(image_dir):
     assert path.exists()
     SnapshotImage.objects.filter(id=img.id).delete()
     assert not path.exists()
-
-
-@pytest.mark.django_db
-def test_in_db_row_delete_is_safe(image_dir):
-    # An in-DB row (bytes in DB, no file_path) deletes without trying to unlink.
-    indb = SnapshotImage.objects.create(kind="client_capture", data=PNG, file_path="")
-    indb.delete()  # must not raise

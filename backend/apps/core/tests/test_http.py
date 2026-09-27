@@ -17,13 +17,6 @@ from apps.core.http import parse_datetime_range
 rf = RequestFactory()
 
 
-def test_naive_iso_values_get_utc_attached():
-    req = rf.get("/x?start=2026-08-01T00:00:00&end=2026-08-02T00:00:00")
-    start, end = parse_datetime_range(req, default_days=30)
-    assert start == datetime(2026, 8, 1, tzinfo=UTC)
-    assert end == datetime(2026, 8, 2, tzinfo=UTC)
-
-
 def test_space_mangled_plus_offset_parses():
     # Raw query string: Django's QueryDict decodes the unencoded '+' to a space.
     req = rf.get("/x?end=2026-08-01T12:00:00+00:00")

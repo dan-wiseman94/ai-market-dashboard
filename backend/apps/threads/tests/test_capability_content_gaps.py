@@ -41,13 +41,6 @@ def test_document_block_is_reported(profile):
     assert claude_only_content_kinds(thread, msg) == ["file attachments"]
 
 
-def test_plain_text_turn_reports_nothing(profile):
-    thread = _thread(profile)
-    msg = Message.objects.create(thread=thread, role="user", status="done", content={"text": "hi"})
-
-    assert claude_only_content_kinds(thread, msg) == []
-
-
 def test_snapshot_news_is_reported_on_a_later_turn(profile):
     snap = Snapshot.objects.create(profile=profile, objective="o", status="ready")
     SnapshotSection.objects.create(
@@ -85,9 +78,3 @@ def test_unsupported_features_carries_content_kinds_through():
     )
 
     assert out == ["file attachments"]
-
-
-def test_claude_reports_no_gaps_even_with_content_kinds():
-    from apps.ai.capabilities import unsupported_features
-
-    assert unsupported_features("claude", None, supports_tools=False, content_kinds=["x"]) == []

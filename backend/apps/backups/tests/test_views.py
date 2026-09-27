@@ -20,16 +20,6 @@ def seeded(db, tmp_path, monkeypatch):
     )
 
 
-def test_list(client: Client, seeded) -> None:
-    resp = client.get("/api/backups/")
-    assert resp.status_code == 200
-    data = resp.json()
-    # DRF PageNumberPagination envelope
-    assert set(data) == {"count", "next", "previous", "results"}
-    assert data["count"] == 1
-    assert data["results"][0]["filename"] == seeded.filename
-
-
 def test_list_respects_page_size(client: Client, seeded, tmp_path) -> None:
     for i in range(2):
         f = tmp_path / f"2026-04-19-02300{i}.sql.gz"

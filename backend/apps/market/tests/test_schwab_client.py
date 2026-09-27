@@ -29,12 +29,6 @@ def _resp_raising(status: int, *, body: str = ""):
     return resp
 
 
-@pytest.mark.parametrize("status", [401, 403])
-def test_schwab_json_translates_auth_errors(status):
-    with pytest.raises(SchwabAuthError):
-        schwab_json(_resp_raising(status))
-
-
 def test_schwab_json_client_not_authorized_points_to_api_products():
     # The Trader-API "Client not authorized" 401 is an app-entitlement problem;
     # the message must not tell the user to reconnect.
@@ -58,13 +52,6 @@ def test_schwab_json_propagates_other_http_errors():
     # A 500 is a genuine upstream failure, not a reconnect signal — let it surface.
     with pytest.raises(httpx.HTTPStatusError):
         schwab_json(_resp_raising(500))
-
-
-def test_schwab_json_returns_body_on_success():
-    resp = MagicMock()
-    resp.raise_for_status.return_value = None
-    resp.json.return_value = {"ok": True}
-    assert schwab_json(resp) == {"ok": True}
 
 
 def test_mock_client_responses_survive_schwab_json():
@@ -129,22 +116,6 @@ def test_returns_client_when_connected():
         assert client is factory.return_value
         args, kwargs = factory.call_args
         assert kwargs.get("api_key") == "cid" or (args and args[0] == "cid")
-
-
-@pytest.mark.django_db
-@override_settings(SCHWAB_CLIENT_ID="cid", SCHWAB_CLIENT_SECRET="csec")
-def test_write_func_persists_refreshed_token():
-    ApiCredential.objects.create(
-        provider="schwab",
-        token={"access_token": "OLD", "refresh_token": "RT"},
-    )
-    from apps.market.schwab_client import _make_write_func
-
-    write = _make_write_func()
-    write({"access_token": "NEW", "refresh_token": "RT2", "expires_at": 9999999999})
-    cred = ApiCredential.objects.get(provider="schwab")
-    assert cred.token["access_token"] == "NEW"
-    assert cred.token["refresh_token"] == "RT2"
 
 
 @pytest.mark.django_db

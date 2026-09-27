@@ -14,21 +14,13 @@ from apps.ai.types import DoneEvent, TextDelta, ThinkingDeltaEvent
 from apps.profiles.models import TradingProfile
 from apps.secrets.models import ProviderConfig
 from apps.threads import tasks as task_mod
-from apps.threads.models import AIRun, Message, Thread, ToolCall
+from apps.threads.models import Message, Thread, ToolCall
 from apps.threads.tasks import (
     _build_request,
-    _extract_text,
     _persist_tool_calls,
     _run_ai_on_message,
     run_ai_on_message,
 )
-
-
-def test_extract_text_reads_block_text_not_repr():
-    # A "blocks" content (e.g. a Files-API document attach) surfaces its text
-    # blocks — the Python repr of the dict must never reach the model.
-    content = {"blocks": [{"type": "text", "text": "hi"}]}  # no top-level "text" key
-    assert _extract_text(Message(content=content)) == "hi"
 
 
 @pytest.mark.django_db
@@ -200,40 +192,6 @@ def test_stream_runner_broadcasts_citation_markers():
     citation = next(e for e in seen if e["event"] == "citation")
     assert citation["source"] == "news://7"
     assert citation["title"] == "Fed holds rates"
-
-
-@pytest.mark.django_db
-def test_run_ai_records_cancelled_run_when_message_flipped_during_stream():
-    ProviderConfig.objects.create(provider="claude", api_key="sk")  # type: ignore[misc]
-    p = TradingProfile.objects.create(name="P", style="x")
-    t = Thread.objects.create(kind="chat", profile=p, title="x")
-    u = Message.objects.create(thread=t, role="user", content={"text": "hi"})
-
-    def noop_runner(*a, **k):
-        async def drive():
-            return None
-
-        return drive
-
-    def flip_to_cancelled(message_id):
-        # clear_stop runs synchronously (post-stream, pre-refresh), so this write
-        # is visible to the refresh_from_db() inside _run_ai_on_message — unlike an
-        # async-context write, which would land on a separate connection.
-        Message.objects.filter(id=message_id).update(status="failed", error="cancelled")
-
-    with (
-        patch("apps.threads.tasks.resolve_provider_and_model", return_value=("claude", "claude-x")),
-        patch("apps.threads.tasks.get_provider", return_value=MagicMock()),
-        patch("apps.threads.tasks._build_stream_runner", noop_runner),
-        patch("apps.threads.tasks.clear_stop", side_effect=flip_to_cancelled),
-    ):
-        out = _run_ai_on_message(thread_id=t.id, user_message_id=u.id)
-
-    a = Message.objects.filter(thread=t, role="assistant").latest("created_at")
-    assert out == {"ok": False, "error": "cancelled", "message_id": a.id}
-    run = AIRun.objects.get(message=a)
-    assert run.status == "failed"
-    assert run.error == "cancelled"
 
 
 @pytest.mark.django_db

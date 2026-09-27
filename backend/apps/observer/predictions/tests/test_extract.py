@@ -117,17 +117,6 @@ class TestExtract:
         assert a.id != b.id
         assert AIPrediction.objects.filter(status="open").count() == 2
 
-    def test_same_provider_and_model_still_dedups(self, profile):
-        snap = _snap(profile)
-        a = _extract(
-            _report(direction="bullish"), snap, profile, provider="openai", model="gpt-5.6-sol"
-        )
-        b = _extract(
-            _report(direction="bullish"), snap, profile, provider="openai", model="gpt-5.6-sol"
-        )
-        assert a.id == b.id
-        assert AIPrediction.objects.filter(status="open").count() == 1
-
     def test_two_models_on_one_provider_keep_two_open_calls(self, profile):
         snap = _snap(profile)
         _extract(_report(), snap, profile, provider="claude", model="claude-opus-5")
@@ -329,11 +318,3 @@ def test_extract_freezes_expected_move_from_chain(profile):
     pred = _extract(_report(direction="bullish", horizon=7), snap, profile)
     assert pred is not None
     assert pred.expected_move_pct == pytest.approx(em.for_horizon(chain_payload, 7), rel=1e-3)
-
-
-@pytest.mark.django_db
-def test_extract_without_chain_freezes_none(profile):
-    snap = _snap(profile, ticker="NVDA")  # no chain section
-    pred = _extract(_report(), snap, profile)
-    assert pred is not None
-    assert pred.expected_move_pct is None

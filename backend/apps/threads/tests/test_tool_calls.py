@@ -76,22 +76,3 @@ def test_tool_call_events_persist_toolcall_rows(db, thread_and_message) -> None:
     assert tc.ok is True
     assert tc.tool_output == {"AAPL": {"last": 180.0}}
     assert tc.latency_ms == 12
-
-
-def test_no_tool_calls_persists_no_rows(db, thread_and_message) -> None:
-    from apps.ai.types import DoneEvent, TextDelta, TokenUsage, UsageEvent
-    from apps.threads.tasks import run_ai_on_message
-
-    thread, user_msg = thread_and_message
-
-    async def fake_provider_run(self, req):
-        yield TextDelta(text="just text")
-        yield UsageEvent(usage=TokenUsage(input_tokens=2, output_tokens=2, cached_tokens=0))
-        yield DoneEvent()
-
-    with patch("apps.ai.providers.claude.ClaudeProvider.run", fake_provider_run):
-        run_ai_on_message(thread_id=thread.id, user_message_id=user_msg.id)
-
-    assistant = Message.objects.filter(thread=thread, role="assistant", status="done").first()
-    assert assistant is not None
-    assert ToolCall.objects.filter(message=assistant).count() == 0

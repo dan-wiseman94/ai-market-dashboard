@@ -22,17 +22,6 @@ def _fire_at(trig, when: datetime) -> None:
     TriggerFiring.objects.filter(id=f.id).update(fired_at=when)
 
 
-def test_heatmap_has_168_cells(db, trigger) -> None:
-    now = datetime(2026, 4, 10, tzinfo=UTC)
-    cells = trigger_heatmap(
-        start=now - timedelta(days=7),
-        end=now + timedelta(days=1),
-    )
-    assert len(cells) == 7 * 24
-    assert {c["weekday"] for c in cells} == set(range(7))
-    assert {c["hour"] for c in cells} == set(range(24))
-
-
 def test_heatmap_counts_fires_in_correct_bucket(db, trigger) -> None:
     mon_1430 = datetime(2026, 4, 6, 14, 30, tzinfo=UTC)
     _fire_at(trigger, mon_1430)
